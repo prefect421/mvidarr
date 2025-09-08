@@ -19,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 from werkzeug.utils import secure_filename
 
-from src.database.connection import get_db
+from src.database.connection import get_db_session
 from src.database.models import Artist, Download, Video, VideoStatus
 from src.services.imvdb_service import imvdb_service
 from src.services.search_optimization_service import search_optimization_service
@@ -181,7 +181,7 @@ async def list_artists(
     has_videos: Optional[bool] = Query(None, description="Filter by video existence"),
     has_imvdb: Optional[bool] = Query(None, description="Filter by IMVDb link"),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """List all tracked artists with search and filtering - OPTIMIZED"""
     try:
@@ -221,7 +221,7 @@ async def list_artists(
         if query:
             search_filter = or_(
                 Artist.name.ilike(f"%{query}%"),
-                Artist.sort_name.ilike(f"%{query}%") if Artist.sort_name else False
+                Artist.name.ilike(f"%{query}%")
             )
             base_query = base_query.filter(search_filter)
             
@@ -280,17 +280,17 @@ async def list_artists(
             artist_dict = {
                 "id": artist.id,
                 "name": artist.name,
-                "sort_name": artist.sort_name,
+                "sort_name": getattr(artist, 'sort_name', artist.name),
                 "folder_path": artist.folder_path,
                 "imvdb_id": artist.imvdb_id,
-                "imvdb_slug": artist.imvdb_slug,
+                "imvdb_slug": getattr(artist, 'imvdb_slug', None),
                 "thumbnail_url": f"/api/artists/{artist.id}/thumbnail" if artist.id else None,
-                "biography": artist.biography,
-                "formed_year": artist.formed_year,
-                "location": artist.location,
-                "website": artist.website,
-                "wikipedia_url": artist.wikipedia_url,
-                "musicbrainz_id": artist.musicbrainz_id,
+                "biography": getattr(artist, 'biography', None),
+                "formed_year": getattr(artist, "formed_year", None),
+                "location": getattr(artist, "location", None),
+                "website": getattr(artist, "website", None),
+                "wikipedia_url": getattr(artist, "wikipedia_url", None),
+                "musicbrainz_id": getattr(artist, "musicbrainz_id", None),
                 "spotify_id": artist.spotify_id,
                 "video_count": video_count or 0,
                 "created_at": artist.created_at.isoformat() if artist.created_at else None,
@@ -323,7 +323,7 @@ async def list_artists(
 async def get_artist(
     artist_id: int = FastAPIPath(..., ge=1),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get specific artist by ID with video count"""
     try:
@@ -346,17 +346,17 @@ async def get_artist(
         return ArtistResponse(
             id=artist.id,
             name=artist.name,
-            sort_name=artist.sort_name,
+            sort_name=getattr(artist, 'sort_name', artist.name),
             folder_path=artist.folder_path,
             imvdb_id=artist.imvdb_id,
-            imvdb_slug=artist.imvdb_slug,
+            imvdb_slug=getattr(artist, 'imvdb_slug', None),
             thumbnail_url=f"/api/artists/{artist.id}/thumbnail",
-            biography=artist.biography,
-            formed_year=artist.formed_year,
-            location=artist.location,
-            website=artist.website,
-            wikipedia_url=artist.wikipedia_url,
-            musicbrainz_id=artist.musicbrainz_id,
+            biography=getattr(artist, 'biography', None),
+            formed_year=getattr(artist, "formed_year", None),
+            location=getattr(artist, "location", None),
+            website=getattr(artist, "website", None),
+            wikipedia_url=getattr(artist, "wikipedia_url", None),
+            musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
             video_count=video_count or 0,
             created_at=artist.created_at,
@@ -373,7 +373,7 @@ async def get_artist(
 async def create_artist(
     artist_data: ArtistCreateRequest = Body(...),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Add new artist to tracking"""
     try:
@@ -430,17 +430,17 @@ async def create_artist(
         return ArtistResponse(
             id=artist.id,
             name=artist.name,
-            sort_name=artist.sort_name,
+            sort_name=getattr(artist, 'sort_name', artist.name),
             folder_path=artist.folder_path,
             imvdb_id=artist.imvdb_id,
-            imvdb_slug=artist.imvdb_slug,
+            imvdb_slug=getattr(artist, 'imvdb_slug', None),
             thumbnail_url=f"/api/artists/{artist.id}/thumbnail",
-            biography=artist.biography,
-            formed_year=artist.formed_year,
-            location=artist.location,
-            website=artist.website,
-            wikipedia_url=artist.wikipedia_url,
-            musicbrainz_id=artist.musicbrainz_id,
+            biography=getattr(artist, 'biography', None),
+            formed_year=getattr(artist, "formed_year", None),
+            location=getattr(artist, "location", None),
+            website=getattr(artist, "website", None),
+            wikipedia_url=getattr(artist, "wikipedia_url", None),
+            musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
             video_count=0,
             created_at=artist.created_at,
@@ -459,7 +459,7 @@ async def update_artist(
     artist_id: int = FastAPIPath(..., ge=1),
     update_data: ArtistUpdateRequest = Body(...),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Update artist information"""
     try:
@@ -492,17 +492,17 @@ async def update_artist(
         return ArtistResponse(
             id=artist.id,
             name=artist.name,
-            sort_name=artist.sort_name,
+            sort_name=getattr(artist, 'sort_name', artist.name),
             folder_path=artist.folder_path,
             imvdb_id=artist.imvdb_id,
-            imvdb_slug=artist.imvdb_slug,
+            imvdb_slug=getattr(artist, 'imvdb_slug', None),
             thumbnail_url=f"/api/artists/{artist.id}/thumbnail",
-            biography=artist.biography,
-            formed_year=artist.formed_year,
-            location=artist.location,
-            website=artist.website,
-            wikipedia_url=artist.wikipedia_url,
-            musicbrainz_id=artist.musicbrainz_id,
+            biography=getattr(artist, 'biography', None),
+            formed_year=getattr(artist, "formed_year", None),
+            location=getattr(artist, "location", None),
+            website=getattr(artist, "website", None),
+            wikipedia_url=getattr(artist, "wikipedia_url", None),
+            musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
             video_count=video_count or 0,
             created_at=artist.created_at,
@@ -521,7 +521,7 @@ async def delete_artist(
     artist_id: int = FastAPIPath(..., ge=1),
     delete_videos: bool = Query(False, description="Also delete associated videos"),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Delete individual artist"""
     try:
@@ -591,7 +591,7 @@ async def advanced_search(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Advanced search with multiple filters"""
     try:
@@ -675,11 +675,11 @@ async def advanced_search(
             artist_dict = {
                 "id": artist.id,
                 "name": artist.name,
-                "sort_name": artist.sort_name,
+                "sort_name": getattr(artist, 'sort_name', artist.name),
                 "folder_path": artist.folder_path,
                 "imvdb_id": artist.imvdb_id,
-                "formed_year": artist.formed_year,
-                "location": artist.location,
+                "formed_year": getattr(artist, "formed_year", None),
+                "location": getattr(artist, "location", None),
                 "video_count": video_count or 0,
                 "thumbnail_url": f"/api/artists/{artist.id}/thumbnail"
             }
@@ -714,7 +714,7 @@ async def get_search_suggestions(
     query: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get search suggestions for artist names"""
     try:
@@ -743,7 +743,7 @@ async def get_search_suggestions(
 async def import_artist_from_imvdb(
     import_request: IMVDbImportRequest = Body(...),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Import artist from IMVDb"""
     try:
@@ -813,17 +813,17 @@ async def import_artist_from_imvdb(
         return ArtistResponse(
             id=artist.id,
             name=artist.name,
-            sort_name=artist.sort_name,
+            sort_name=getattr(artist, 'sort_name', artist.name),
             folder_path=artist.folder_path,
             imvdb_id=artist.imvdb_id,
-            imvdb_slug=artist.imvdb_slug,
+            imvdb_slug=getattr(artist, 'imvdb_slug', None),
             thumbnail_url=f"/api/artists/{artist.id}/thumbnail",
-            biography=artist.biography,
-            formed_year=artist.formed_year,
-            location=artist.location,
-            website=artist.website,
-            wikipedia_url=artist.wikipedia_url,
-            musicbrainz_id=artist.musicbrainz_id,
+            biography=getattr(artist, 'biography', None),
+            formed_year=getattr(artist, "formed_year", None),
+            location=getattr(artist, "location", None),
+            website=getattr(artist, "website", None),
+            wikipedia_url=getattr(artist, "wikipedia_url", None),
+            musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
             video_count=0,
             created_at=artist.created_at,
@@ -879,7 +879,7 @@ async def preview_imvdb_artist(
 async def get_artist_thumbnail(
     artist_id: int = FastAPIPath(..., ge=1),
     size: Optional[str] = Query(None, pattern="^(small|medium|large)$"),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Serve artist thumbnail image"""
     try:
@@ -888,38 +888,40 @@ async def get_artist_thumbnail(
         if not artist:
             raise HTTPException(status_code=404, detail="Artist not found")
             
-        # Construct thumbnail path
-        thumbnail_dir = Path("/data/thumbnails/artists")
-        
-        if size:
-            thumbnail_file = thumbnail_dir / f"{artist_id}_{size}.webp"
-        else:
-            # Try different sizes in order of preference
-            for sz in ["medium", "large", "small"]:
-                thumbnail_file = thumbnail_dir / f"{artist_id}_{sz}.webp"
-                if thumbnail_file.exists():
-                    break
-            else:
-                # Try without size suffix
-                thumbnail_file = thumbnail_dir / f"{artist_id}.webp"
-                
-        if thumbnail_file.exists():
+        # Check if artist has a thumbnail_path in database
+        if artist.thumbnail_path and Path(artist.thumbnail_path).exists():
             return FileResponse(
-                thumbnail_file,
-                media_type="image/webp",
-                filename=f"artist_{artist_id}_thumbnail.webp"
+                artist.thumbnail_path,
+                media_type="image/jpeg",
+                filename=f"artist_{artist_id}_thumbnail.jpg"
+            )
+            
+        # Construct thumbnail path using actual file naming convention
+        thumbnail_dir = Path("data/thumbnails/artists")
+        
+        # Try to find thumbnail file by artist name (convert to lowercase and replace spaces with underscores)
+        artist_name_safe = artist.name.lower().replace(' ', '_').replace('-', '_')
+        
+        # Look for files matching the artist name pattern
+        if thumbnail_dir.exists():
+            for thumbnail_file in thumbnail_dir.glob(f"{artist_name_safe}_*.jpg"):
+                if thumbnail_file.exists():
+                    return FileResponse(
+                        thumbnail_file,
+                        media_type="image/jpeg", 
+                        filename=f"artist_{artist_id}_thumbnail.jpg"
+                    )
+                    
+        # Return placeholder thumbnail
+        placeholder_path = Path("frontend/static/placeholder-artist.png")
+        if placeholder_path.exists():
+            return FileResponse(
+                placeholder_path,
+                media_type="image/png",
+                filename="placeholder.png"
             )
         else:
-            # Return placeholder thumbnail
-            placeholder_path = Path("frontend/static/placeholder-artist.png")
-            if placeholder_path.exists():
-                return FileResponse(
-                    placeholder_path,
-                    media_type="image/png",
-                    filename="placeholder.png"
-                )
-            else:
-                raise HTTPException(status_code=404, detail="Thumbnail not found")
+            raise HTTPException(status_code=404, detail="Thumbnail not found")
                 
     except HTTPException:
         raise
@@ -932,7 +934,7 @@ async def search_artist_thumbnail(
     artist_id: int = FastAPIPath(..., ge=1),
     search_request: ThumbnailSearchRequest = Body(...),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Search for artist thumbnail from various sources"""
     try:
@@ -994,7 +996,7 @@ async def search_artist_thumbnail(
 async def bulk_delete_artists(
     request: BulkDeleteRequest = Body(...),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Delete multiple artists with optional video deletion"""
     try:
@@ -1079,7 +1081,7 @@ async def bulk_delete_artists(
 async def bulk_edit_artists(
     request: BulkEditRequest = Body(...),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Update multiple artists with the same changes"""
     try:
@@ -1135,7 +1137,7 @@ async def bulk_edit_artists(
 @router.post("/cleanup-zero-videos")
 async def cleanup_zero_video_artists(
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Delete artists with zero videos"""
     try:
@@ -1178,7 +1180,7 @@ async def cleanup_zero_video_artists(
 async def get_artist_detailed(
     artist_id: int = FastAPIPath(..., ge=1),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get comprehensive artist details with statistics"""
     try:
@@ -1188,13 +1190,13 @@ async def get_artist_detailed(
         if not artist:
             raise HTTPException(status_code=404, detail="Artist not found")
             
-        # Get video statistics
+        # Get video statistics - MySQL/MariaDB compatible
+        from sqlalchemy import case
         video_stats = session.query(
             func.count(Video.id).label("total_videos"),
-            func.count(Video.id).filter(Video.status == "DOWNLOADED").label("downloaded"),
-            func.count(Video.id).filter(Video.status == "WANTED").label("wanted"),
-            func.count(Video.id).filter(Video.status == "DOWNLOADING").label("downloading"),
-            func.sum(Video.file_size).label("total_size"),
+            func.sum(case((Video.status == VideoStatus.DOWNLOADED, 1), else_=0)).label("downloaded"),
+            func.sum(case((Video.status == VideoStatus.WANTED, 1), else_=0)).label("wanted"),
+            func.sum(case((Video.status == VideoStatus.DOWNLOADING, 1), else_=0)).label("downloading"),
             func.avg(Video.duration).label("avg_duration")
         ).filter(Video.artist_id == artist_id).first()
         
@@ -1210,17 +1212,18 @@ async def get_artist_detailed(
             "artist": {
                 "id": artist.id,
                 "name": artist.name,
-                "sort_name": artist.sort_name,
+                "sort_name": getattr(artist, 'sort_name', artist.name),
                 "folder_path": artist.folder_path,
                 "imvdb_id": artist.imvdb_id,
-                "imvdb_slug": artist.imvdb_slug,
-                "biography": artist.biography,
-                "formed_year": artist.formed_year,
-                "location": artist.location,
-                "website": artist.website,
-                "wikipedia_url": artist.wikipedia_url,
-                "musicbrainz_id": artist.musicbrainz_id,
+                "imvdb_slug": getattr(artist, 'imvdb_slug', None),
+                "biography": getattr(artist, 'biography', None),
+                "formed_year": getattr(artist, "formed_year", None),
+                "location": getattr(artist, "location", None),
+                "website": getattr(artist, "website", None),
+                "wikipedia_url": getattr(artist, "wikipedia_url", None),
+                "musicbrainz_id": getattr(artist, "musicbrainz_id", None),
                 "spotify_id": artist.spotify_id,
+                "imvdb_metadata": artist.imvdb_metadata,
                 "created_at": artist.created_at.isoformat() if artist.created_at else None,
                 "updated_at": artist.updated_at.isoformat() if artist.updated_at else None,
                 "thumbnail_url": f"/api/artists/{artist.id}/thumbnail"
@@ -1230,7 +1233,7 @@ async def get_artist_detailed(
                 "downloaded": video_stats.downloaded or 0,
                 "wanted": video_stats.wanted or 0,
                 "downloading": video_stats.downloading or 0,
-                "total_size_bytes": video_stats.total_size or 0,
+                "total_size_bytes": 0,  # File size info moved to Downloads table
                 "average_duration_seconds": float(video_stats.avg_duration or 0)
             },
             "recent_videos": [
@@ -1248,6 +1251,64 @@ async def get_artist_detailed(
         raise
     except Exception as e:
         logger.error(f"Error getting detailed artist {artist_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{artist_id}/navigation")
+async def get_artist_navigation(
+    artist_id: int = FastAPIPath(..., ge=1),
+    sort: str = Query("name", description="Sort field"),
+    order: str = Query("asc", description="Sort order"),
+    session: Session = Depends(get_db_session)
+):
+    """Get artist navigation info (prev/next artists)"""
+    try:
+        # Get current artist
+        current_artist = session.query(Artist).filter(Artist.id == artist_id).first()
+        if not current_artist:
+            raise HTTPException(status_code=404, detail="Artist not found")
+        
+        # Get all artists sorted by specified field
+        sort_column = getattr(Artist, sort, Artist.name)
+        query = session.query(Artist).order_by(sort_column.asc() if order == "asc" else sort_column.desc())
+        all_artists = query.all()
+        
+        # Find current artist position
+        current_position = None
+        for i, artist in enumerate(all_artists):
+            if artist.id == artist_id:
+                current_position = i
+                break
+        
+        if current_position is None:
+            raise HTTPException(status_code=404, detail="Artist position not found")
+        
+        # Get prev/next artists
+        prev_artist = all_artists[current_position - 1] if current_position > 0 else None
+        next_artist = all_artists[current_position + 1] if current_position < len(all_artists) - 1 else None
+        
+        return {
+            "current_artist": {
+                "id": current_artist.id,
+                "name": current_artist.name,
+                "position": current_position + 1,
+                "total": len(all_artists)
+            },
+            "prev_artist": {
+                "id": prev_artist.id,
+                "name": prev_artist.name
+            } if prev_artist else None,
+            "next_artist": {
+                "id": next_artist.id,
+                "name": next_artist.name  
+            } if next_artist else None,
+            "sort": sort,
+            "order": order
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting artist navigation for {artist_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ========================================================================================
