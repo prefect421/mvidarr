@@ -338,7 +338,9 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
             'user-agent', 'accept', 'accept-language', 'accept-encoding', 
             'connection', 'cache-control', 'upgrade-insecure-requests',
             'sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-user', 'sec-fetch-dest',
-            'referer', 'origin', 'host', 'content-type', 'content-length'
+            'referer', 'origin', 'host', 'content-type', 'content-length',
+            'priority',  # HTTP/2 priority header
+            'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform'  # Client Hints headers
         }
         
         # Check header sizes
