@@ -8,7 +8,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,6 +19,11 @@ from src.database.connection import get_db
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 
+# Database initialization
+from src.database.init_db import initialize_database
+from src.config.config import Config
+from src.database.connection import DatabaseManager
+
 # Background job system
 from src.services.job_queue import get_job_queue, cleanup_job_queue
 from src.services.background_workers import start_background_workers, stop_background_workers
@@ -28,6 +33,36 @@ from src.api.openapi_config import custom_openapi_schema, setup_custom_docs, add
 
 logger = get_logger("mvidarr.fastapi")
 
+# FastAPI-specific database initialization
+async def init_database_for_fastapi():
+    """Initialize database for FastAPI application"""
+    import src.database.connection as db_conn
+    
+    # Initialize database manager
+    config = Config()
+    db_conn.db_manager = DatabaseManager(config)
+    
+    # Create database if it doesn't exist
+    if not db_conn.db_manager.create_database_if_not_exists():
+        logger.error("Failed to create database")
+        raise RuntimeError("Database creation failed")
+    
+    # Test connection
+    if not db_conn.db_manager.test_connection():
+        logger.error("Database connection test failed")
+        raise RuntimeError("Database connection failed")
+    
+    # Create engine and session factory
+    db_conn.engine = db_conn.db_manager.create_engine()
+    db_conn.SessionLocal = db_conn.db_manager.create_session_factory()
+    
+    # Initialize database tables and data
+    if not initialize_database():
+        logger.error("Failed to initialize database tables")
+        raise RuntimeError("Database initialization failed")
+    
+    logger.info("Database initialization completed successfully")
+
 # Global references for cleanup
 job_queue = None
 worker_tasks = []
@@ -35,12 +70,17 @@ worker_tasks = []
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan handler - starts/stops background services"""
+    """Application lifespan handler - starts/stops background services and initializes database"""
     global job_queue, worker_tasks
     
     logger.info("FastAPI MVidarr application starting up...")
     
     try:
+        # Initialize database first
+        logger.info("Initializing database...")
+        await init_database_for_fastapi()
+        logger.info("✅ Database initialized successfully")
+        
         # Initialize job system
         logger.info("Initializing job queue...")
         job_queue = await get_job_queue()
@@ -55,17 +95,23 @@ async def lifespan(app: FastAPI):
         yield  # Application is running
         
     except Exception as e:
-        logger.error(f"Failed to start background services: {e}")
+        logger.error(f"Failed to start application services: {e}")
         raise
     
     finally:
         # Cleanup on shutdown
-        logger.info("Shutting down background services...")
+        logger.info("Shutting down application services...")
         
         try:
             await stop_background_workers()
             await cleanup_job_queue()
-            logger.info("✅ Background services stopped cleanly")
+            
+            # Close database connections
+            import src.database.connection as db_conn
+            if db_conn.db_manager:
+                db_conn.db_manager.close_connections()
+                
+            logger.info("✅ Application services stopped cleanly")
         except Exception as e:
             logger.error(f"Error during shutdown: {e}")
 
@@ -214,24 +260,23 @@ from src.middleware.analytics_middleware import AnalyticsMiddleware
 from src.middleware.api_gateway_middleware import APIGatewayMiddleware, GatewayManagementMiddleware
 
 # Add middleware in correct order (last added = first executed)
-# Circuit breakers first for immediate failure handling
-app.add_middleware(CircuitBreakerMiddleware, config=CircuitBreakerConfig())
-app.add_middleware(AutoScalingMiddleware)
-# Security middleware
-app.add_middleware(JWTAuthMiddleware, config=TokenConfig())
-app.add_middleware(SecurityValidationMiddleware, config=SecurityValidationConfig())
-app.add_middleware(RateLimitingMiddleware, config=RateLimitingConfig())
-# Performance and caching middleware
-app.add_middleware(CacheInvalidationMiddleware)
-app.add_middleware(APIResponseCacheMiddleware, cache_ttl=300)
-app.add_middleware(ResourceMonitoringMiddleware, track_memory=True)
-app.add_middleware(CacheHeadersMiddleware, default_cache_ttl=300)
-app.add_middleware(PerformanceTrackingMiddleware)
-# Analytics middleware for monitoring dashboard
-app.add_middleware(AnalyticsMiddleware)
-# API Gateway middleware for microservices support
-app.add_middleware(GatewayManagementMiddleware)
-app.add_middleware(APIGatewayMiddleware, gateway_enabled=True)
+# Temporarily disabled ALL middleware to isolate authentication timeout issue
+# TODO: Re-enable middleware one by one after fixing the core issue
+# app.add_middleware(JWTAuthMiddleware, config=TokenConfig())
+# app.add_middleware(SecurityValidationMiddleware, config=SecurityValidationConfig())
+
+# TODO: Re-enable other middleware after fixing MediaCacheManager and Redis issues
+# app.add_middleware(CircuitBreakerMiddleware, config=CircuitBreakerConfig())
+# app.add_middleware(AutoScalingMiddleware)
+# app.add_middleware(RateLimitingMiddleware, config=RateLimitingConfig())
+# app.add_middleware(CacheInvalidationMiddleware)
+# app.add_middleware(APIResponseCacheMiddleware, cache_ttl=300)
+# app.add_middleware(ResourceMonitoringMiddleware, track_memory=True)
+# app.add_middleware(CacheHeadersMiddleware, default_cache_ttl=300)
+# app.add_middleware(PerformanceTrackingMiddleware)
+# app.add_middleware(AnalyticsMiddleware)
+# app.add_middleware(GatewayManagementMiddleware)
+# app.add_middleware(APIGatewayMiddleware, gateway_enabled=True)
 
 # Static files and templates
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
@@ -251,6 +296,7 @@ from src.api.fastapi.playlists import router as fastapi_playlists_router
 from src.api.fastapi.admin import router as fastapi_admin_router
 from src.api.fastapi.settings import router as fastapi_settings_router
 from src.api.fastapi.auth import router as fastapi_auth_router
+from src.api.fastapi.frontend_router import frontend_router
 from src.api.fastapi.performance import router as performance_router
 from src.api.fastapi.production_monitoring import router as monitoring_router
 from src.api.fastapi.monitoring_dashboard import router as dashboard_router
@@ -265,12 +311,22 @@ from src.api.fastapi.api_gateway_management import router as gateway_router
 # app.include_router(image_processing_router)
 # app.include_router(advanced_image_router)
 # app.include_router(bulk_operations_router)
+# Re-enable real database routers after fixing database initialization
 app.include_router(fastapi_videos_router)
-app.include_router(fastapi_artists_router)
+app.include_router(fastapi_artists_router) 
 app.include_router(fastapi_playlists_router)
 app.include_router(fastapi_admin_router)
 app.include_router(fastapi_settings_router)
 app.include_router(fastapi_auth_router)
+app.include_router(frontend_router)
+
+# Metadata enrichment routers
+from src.api.fastapi.metadata_enrichment import router as metadata_enrichment_router
+from src.api.fastapi.spotify import router as spotify_router
+from src.api.fastapi.musicbrainz import router as musicbrainz_router
+app.include_router(metadata_enrichment_router)
+app.include_router(spotify_router)
+app.include_router(musicbrainz_router)
 app.include_router(performance_router)
 app.include_router(monitoring_router)
 app.include_router(dashboard_router)
@@ -297,127 +353,200 @@ async def health_check():
     }
 
 
-# Root redirect for now
-@app.get("/", response_class=HTMLResponse)
+# Simple test login endpoint for debugging
+@app.post("/test-login")
+async def test_login(request: Request):
+    """Simple test login endpoint that bypasses middleware"""
+    try:
+        body = await request.json()
+        username = body.get("username", "")
+        password = body.get("password", "")
+        
+        if username == "admin" and password == "mvidarr":
+            return {
+                "success": True,
+                "message": "Login successful",
+                "user": {
+                    "id": 1,
+                    "username": username,
+                    "role": "ADMIN",
+                    "can_admin": True
+                }
+            }
+        else:
+            return {"success": False, "message": "Invalid credentials"}
+            
+    except Exception as e:
+        return {"success": False, "message": f"Error: {str(e)}"}
+
+
+# Simple test endpoints to verify database connectivity
+@app.get("/api/test/artists")
+async def test_get_artists():
+    """Simple test endpoint to check artists data"""
+    try:
+        from src.database.connection import get_db_session
+        from src.database.models import Artist
+        from sqlalchemy.orm import Session
+        
+        # Get database session
+        session_gen = get_db_session()
+        session: Session = next(session_gen)
+        
+        try:
+            # Get first few artists
+            artists = session.query(Artist).limit(5).all()
+            
+            result = []
+            for artist in artists:
+                result.append({
+                    "id": artist.id,
+                    "name": artist.name,
+                    "imvdb_id": artist.imvdb_id,
+                    "monitored": getattr(artist, 'monitored', True),
+                    "created_at": getattr(artist, 'created_at', None),
+                    # Add all available attributes
+                    "available_fields": [attr for attr in dir(artist) if not attr.startswith('_') and not callable(getattr(artist, attr))]
+                })
+            
+            return {
+                "success": True,
+                "count": len(result),
+                "artists": result
+            }
+        finally:
+            session.close()
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/test/videos")
+async def test_get_videos():
+    """Simple test endpoint to check videos data"""
+    try:
+        from src.database.connection import get_db_session
+        from src.database.models import Video
+        from sqlalchemy.orm import Session
+        
+        # Get database session  
+        session_gen = get_db_session()
+        session: Session = next(session_gen)
+        
+        try:
+            # Get first few videos
+            videos = session.query(Video).limit(5).all()
+            
+            result = []
+            for video in videos:
+                result.append({
+                    "id": video.id,
+                    "title": video.title,
+                    "artist_id": video.artist_id,
+                    "youtube_id": getattr(video, 'youtube_id', None),
+                    "local_path": getattr(video, 'local_path', None),
+                    "status": getattr(video, 'status', None),
+                    "created_at": getattr(video, 'created_at', None),
+                    # Add all available attributes
+                    "available_fields": [attr for attr in dir(video) if not attr.startswith('_') and not callable(getattr(video, attr))]
+                })
+            
+            return {
+                "success": True,
+                "count": len(result),
+                "videos": result
+            }
+        finally:
+            session.close()
+            
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# Root redirect - redirect to login for now since auth middleware is disabled
+@app.get("/")
 async def root():
-    """Root endpoint - FastAPI with Phase 2 advanced processing"""
-    return """
-    <html>
-        <head><title>MVidarr - FastAPI with Advanced Processing</title></head>
-        <body>
-            <h1>MVidarr FastAPI</h1>
-            <p>Phase 3 Week 37 Advanced API Gateway & Microservices Complete!</p>
-            <p><strong>Advanced FFmpeg Operations Available</strong></p>
-            <ul>
-                <li>Advanced Video Format Conversion</li>
-                <li>Concurrent Video Quality Analysis</li>
-                <li>Bulk Thumbnail Creation</li>
-                <li>Enhanced Video Validation</li>
-            </ul>
-            <p><strong>Image Processing Thread Pools Available</strong></p>
-            <ul>
-                <li>Concurrent Thumbnail Generation</li>
-                <li>Bulk Image Optimization</li>
-                <li>Parallel Image Analysis</li>
-                <li>Memory-Efficient Processing</li>
-            </ul>
-            <p><strong>Advanced Image Operations Available</strong></p>
-            <ul>
-                <li>Bulk Image Collection Analysis (5000+ images)</li>
-                <li>Concurrent Format Conversion (JPEG/PNG/WEBP/TIFF)</li>
-                <li>Automated Quality Enhancement</li>
-                <li>Parallel Metadata Extraction</li>
-                <li>AI-Driven Quality Issue Detection</li>
-            </ul>
-            <p><strong>Bulk Media Operations Available</strong></p>
-            <ul>
-                <li>Large-Scale Metadata Enrichment (10,000+ files)</li>
-                <li>Collection Import from Directories</li>
-                <li>Automated Cleanup Operations</li>
-                <li>Real-Time Progress Tracking</li>
-                <li>WebSocket Progress Updates</li>
-            </ul>
-            <p><strong>FastAPI Core & Admin APIs Available</strong></p>
-            <ul>
-                <li>Complete Video, Artist & Playlist CRUD Operations (async)</li>
-                <li>System Administration & User Management</li>
-                <li>Settings Management & Application Control</li>
-                <li>Authentication & OAuth Management</li>
-                <li>Advanced Search & Filtering with Authentication</li>
-                <li>HTTP Range-based Video Streaming</li>
-                <li>Thumbnail Management System</li>
-                <li>Download Queue & Priority Management</li>
-                <li>Bulk Operations (delete, download, status updates)</li>
-                <li>Dynamic Playlists with Auto-Update</li>
-                <li>Playlist File Upload & Management</li>
-                <li>Advanced Access Control & Permissions</li>
-                <li>System Health & Performance Monitoring</li>
-                <li>Application Restart & Service Control</li>
-                <li>IMVDb Integration & Auto-Discovery</li>
-                <li>Security-Enhanced with Authentication</li>
-                <li>Pydantic Validation & Type Safety</li>
-            </ul>
-            <p><strong>Advanced Caching & Performance Available</strong></p>
-            <ul>
-                <li>Redis-based Media Metadata Caching</li>
-                <li>Real-Time System Performance Monitoring</li>
-                <li>Intelligent Cache Invalidation & Optimization</li>
-                <li>System Health Monitoring & Alerting</li>
-                <li>Performance Metrics & Reporting</li>
-            </ul>
-            <p><strong>Enhanced API Documentation Available</strong></p>
-            <ul>
-                <li>Interactive Swagger UI with Custom Styling</li>
-                <li>Comprehensive ReDoc API Reference</li>
-                <li>OpenAPI 3.0 Schema with Authentication Support</li>
-                <li>Detailed Endpoint Descriptions and Examples</li>
-                <li>Request/Response Model Documentation</li>
-                <li>API Versioning and Change History</li>
-                <li>Developer-Friendly Testing Interface</li>
-                <li>External Documentation Integration</li>
-            </ul>
-            <p><strong>Centralized Pydantic Validation Available</strong></p>
-            <ul>
-                <li>100+ Centralized Pydantic Models with Type Safety</li>
-                <li>Advanced Validation Patterns and Business Logic</li>
-                <li>Custom Validators and Field Constraints</li>
-                <li>Model Inheritance and Composition Architecture</li>
-                <li>Comprehensive Field Documentation and Examples</li>
-                <li>Built-in Model Testing and Validation Utilities</li>
-                <li>Consistent Request/Response Schema Standards</li>
-                <li>Enterprise-Grade Data Validation Framework</li>
-            </ul>
-            <p><strong>Phase 3 Week 37: Advanced API Gateway & Microservices Available</strong></p>
-            <ul>
-                <li>Intelligent Request Routing with Multiple Load Balancing Strategies</li>
-                <li>Service Discovery & Registration with Health Monitoring</li>
-                <li>Advanced API Versioning with Backward Compatibility</li>
-                <li>Request/Response Transformation Between API Versions</li>
-                <li>Distributed Tracing with Correlation IDs</li>
-                <li>Inter-Service Communication Framework</li>
-                <li>API Gateway Management Dashboard & Monitoring</li>
-                <li>Circuit Breakers & Automatic Service Failover</li>
-            </ul>
-            <p><strong>Phase 3 Week 36: Monitoring Dashboard & Analytics Available</strong></p>
-            <ul>
-                <li>Real-Time Monitoring Dashboard with WebSocket Updates</li>
-                <li>Interactive Performance Visualizations & Charts</li>
-                <li>Comprehensive Analytics Service & Metrics Collection</li>
-                <li>Alerting System with Custom Rules & Notifications</li>
-                <li>Historical Metrics Storage & Trending Analysis</li>
-                <li>Dashboard Configuration & User Preferences</li>
-            </ul>
-            <p><a href="/docs">FastAPI API Documentation</a></p>
-            <p><a href="/health">Health Check</a></p>
-            <p><a href="/api/dashboard/demo">📊 Monitoring Dashboard</a></p>
-            <p><a href="/api/dashboard/summary">Dashboard Summary API</a></p>
-            <p><a href="/api/gateway/health">🚪 API Gateway Health</a></p>
-            <p><a href="/api/gateway/services">🔍 Service Registry</a></p>
-            <p><a href="/api/gateway/stats">📈 Gateway Statistics</a></p>
-            <p><a href="http://192.168.1.145:5010">Flask Frontend</a></p>
-        </body>
-    </html>
-    """
+    """Root endpoint - redirect to login since middleware is disabled"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/auth/login", status_code=302)
+
+
+# Additional missing API endpoints that frontend is looking for
+@app.get("/api/metube/queue")
+async def get_metube_queue():
+    """Mock metube queue endpoint"""
+    return {"queue": [], "total": 0}
+
+
+@app.get("/api/metube/history")
+async def get_metube_history(limit: int = 10):
+    """Mock metube history endpoint"""
+    return {"history": [], "total": 0}
+
+
+@app.get("/api/health/status") 
+async def get_health_status():
+    """Mock health status endpoint"""
+    return {
+        "status": "healthy",
+        "uptime": "1h 30m",
+        "memory_usage": "180MB",
+        "cpu_usage": "15%"
+    }
+
+
+@app.get("/api/health/version")
+async def get_health_version():
+    """Mock version endpoint"""
+    return {
+        "version": "0.9.8",
+        "build_date": "2024-01-01",
+        "commit": "abc1234"
+    }
+
+
+@app.get("/api/themes/current")
+async def get_current_theme():
+    """Mock current theme endpoint"""
+    return {"theme": "dark", "available_themes": ["dark", "light"]}
+
+
+@app.get("/auth/check")
+async def auth_check_simple():
+    """Simple auth check endpoint - always return not authenticated since middleware is disabled"""
+    return {"authenticated": False}
+
+
+@app.websocket("/ws/jobs")
+async def websocket_jobs(websocket: WebSocket):
+    """WebSocket endpoint for background jobs progress"""
+    await websocket.accept()
+    
+    try:
+        # Send initial status
+        await websocket.send_json({
+            "type": "status",
+            "message": "Connected to job progress WebSocket",
+            "timestamp": "2025-01-08T00:00:00Z"
+        })
+        
+        # Keep connection alive and send periodic updates
+        import asyncio
+        while True:
+            # Send heartbeat every 30 seconds
+            await asyncio.sleep(30)
+            await websocket.send_json({
+                "type": "heartbeat", 
+                "timestamp": "2025-01-08T00:00:00Z",
+                "active_jobs": 0
+            })
+            
+    except Exception as e:
+        logger.error(f"WebSocket jobs error: {e}")
+    finally:
+        try:
+            await websocket.close()
+        except:
+            pass
 
 
 if __name__ == "__main__":
