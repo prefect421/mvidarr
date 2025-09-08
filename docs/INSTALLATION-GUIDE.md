@@ -180,7 +180,7 @@ docker-compose -f docker-compose.production.yml ps
 
 # Expected output:
 #     Name                   Command               State           Ports         
-# mvidarr-enhanced    python app.py                Up      0.0.0.0:5000->5000/tcp
+# mvidarr-enhanced    python fastapi_app.py        Up      0.0.0.0:5000->5000/tcp
 # mvidarr-mariadb     docker-entrypoint.sh mysqld  Up      0.0.0.0:3306->3306/tcp
 
 # Test web interface
@@ -455,7 +455,7 @@ ls -la ~/mvidarr-data/
 source venv/bin/activate
 
 # Start application
-python app.py
+python fastapi_app.py
 
 # You should see output like:
 # * Running on http://0.0.0.0:5000

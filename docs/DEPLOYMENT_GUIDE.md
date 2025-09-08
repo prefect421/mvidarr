@@ -35,7 +35,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - FLASK_ENV=production
+      - FASTAPI_ENV=production
       - DATABASE_URL=mysql://mvidarr:${DB_PASSWORD}@mvidarr-db:3306/mvidarr
       - SECRET_KEY=${SECRET_KEY}
       - IMVDB_API_KEY=${IMVDB_API_KEY}
@@ -139,7 +139,7 @@ networks:
 #### Environment Configuration (.env)
 ```bash
 # Production Environment Configuration
-FLASK_ENV=production
+FASTAPI_ENV=production
 SECRET_KEY=your-super-secret-key-min-32-chars-long
 TIMEZONE=America/New_York
 
@@ -344,7 +344,7 @@ metadata:
   name: mvidarr-config
   namespace: mvidarr
 data:
-  FLASK_ENV: "production"
+  FASTAPI_ENV: "production"
   TIMEZONE: "UTC"
   DATABASE_URL: "mysql://mvidarr:$(DB_PASSWORD)@mvidarr-db:3306/mvidarr"
 ```
@@ -415,11 +415,11 @@ spec:
         ports:
         - containerPort: 5000
         env:
-        - name: FLASK_ENV
+        - name: FASTAPI_ENV
           valueFrom:
             configMapKeyRef:
               name: mvidarr-config
-              key: FLASK_ENV
+              key: FASTAPI_ENV
         - name: SECRET_KEY
           valueFrom:
             secretKeyRef:
@@ -510,7 +510,7 @@ nano .env  # Edit configuration
 python -c "from src.database.connection import init_database; init_database()"
 
 # Test application
-python app.py  # Should start successfully
+python fastapi_app.py  # Should start successfully
 ```
 
 #### Systemd Service Configuration
@@ -527,7 +527,7 @@ User=mvidarr
 Group=mvidarr
 WorkingDirectory=/opt/mvidarr/app
 Environment=PATH=/opt/mvidarr/app/venv/bin
-ExecStart=/opt/mvidarr/app/venv/bin/python app.py
+ExecStart=/opt/mvidarr/app/venv/bin/python fastapi_app.py
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=mixed
 TimeoutStopSec=5
@@ -781,7 +781,7 @@ steps:
 ### Environment Variables
 ```bash
 # Core Application Settings
-FLASK_ENV=production
+FASTAPI_ENV=production
 SECRET_KEY=your-super-secret-key-minimum-32-characters
 DEBUG=false
 TESTING=false
@@ -1112,7 +1112,7 @@ ps aux --sort=-%mem | head
 sudo systemctl restart mvidarr
 
 # Check for memory leaks
-valgrind --tool=memcheck --leak-check=full python app.py
+valgrind --tool=memcheck --leak-check=full python fastapi_app.py
 ```
 
 #### Database Performance
