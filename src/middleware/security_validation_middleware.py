@@ -333,6 +333,14 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
     
     async def _validate_headers(self, request: Request):
         """Validate request headers"""
+        # Standard browser headers that should be exempt from strict validation
+        BROWSER_HEADERS = {
+            'user-agent', 'accept', 'accept-language', 'accept-encoding', 
+            'connection', 'cache-control', 'upgrade-insecure-requests',
+            'sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-user', 'sec-fetch-dest',
+            'referer', 'origin', 'host', 'content-type', 'content-length'
+        }
+        
         # Check header sizes
         for name, value in request.headers.items():
             if len(value) > self.config.MAX_HEADER_LENGTH:
@@ -341,7 +349,11 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
                     detail=f"Header '{name}' too large"
                 )
             
-            # Check for injection attempts in headers
+            # Skip validation for standard browser headers to avoid false positives
+            if name.lower() in BROWSER_HEADERS:
+                continue
+                
+            # Check for injection attempts in non-standard headers only
             if self.validator.detect_xss(value) or self.validator.detect_sql_injection(value):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
