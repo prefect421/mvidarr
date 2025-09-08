@@ -3654,10 +3654,10 @@ function loadArtistDetails() {
                 throw new Error(data.error);
             }
             currentArtistData = data;
-            renderArtistHeader(data);
-            renderOverviewTab(data);
+            renderArtistHeader(data.artist, data.statistics);
+            renderOverviewTab(data.artist);
             renderVideosTab(data.videos);
-            populateSettings(data);
+            populateSettings(data.artist);
         })
         .catch(error => {
             console.error('Error loading artist details:', error);
@@ -3695,7 +3695,7 @@ function loadArtistVideos() {
         });
 }
 
-function renderArtistHeader(artist) {
+function renderArtistHeader(artist, statistics) {
     const headerHtml = `
         <div class="artist-header-content">
             <div class="artist-thumbnail-large">
@@ -3705,7 +3705,7 @@ function renderArtistHeader(artist) {
                 <h1>${artist.name}</h1>
                 <div class="artist-header-stats">
                     <div class="stats-left">
-                        <span class="header-stat">${artist.statistics.total_videos} videos</span>
+                        <span class="header-stat">${statistics.total_videos} videos</span>
                         <span class="header-stat ${artist.monitored ? 'monitored' : 'not-monitored'}">
                             ${artist.monitored ? 'Monitored' : 'Not Monitored'}
                         </span>
@@ -6794,7 +6794,7 @@ function saveArtistSettings() {
             // Update the current artist data
             currentArtistData = { ...currentArtistData, ...data.artist };
             // Refresh the header to show updated information
-            renderArtistHeader(currentArtistData);
+            renderArtistHeader(currentArtistData.artist, currentArtistData.statistics);
         } else {
             showError('Error: ' + data.error);
         }
