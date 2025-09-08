@@ -18,9 +18,9 @@ from src.services.music_recommendations import (
     get_similar_artist_videos,
     get_trending_music_videos
 )
-from src.services.spotify_service import get_spotify_service
-from src.services.lastfm_service import get_lastfm_service
-from src.services.imvdb_service import get_imvdb_service
+from src.services.spotify_service import spotify_service
+from src.services.lastfm_service import lastfm_service
+from src.services.imvdb_service import imvdb_service
 from src.services.performance_monitor import track_media_processing_time
 from src.utils.logger import get_logger
 
@@ -137,7 +137,7 @@ async def generate_custom_spotify_recommendations(request: SpotifyRecommendation
         logger.info(f"🎵 Custom Spotify recommendations with seeds: {request.seed_artists}")
         
         # Get Spotify service for advanced recommendation generation
-        spotify_service = await get_spotify_service()
+        # Use the global spotify service instance
         
         # Prepare recommendation parameters
         recommendation_params = {
@@ -171,7 +171,7 @@ async def generate_custom_spotify_recommendations(request: SpotifyRecommendation
             
             # Use IMVDb to find music video
             try:
-                imvdb_service = await get_imvdb_service()
+                # Use the global imvdb service instance
                 videos = await asyncio.to_thread(imvdb_service.search_videos, artist_name, track_name)
                 
                 video_url = videos[0].get('url') if videos else None
@@ -241,7 +241,7 @@ async def get_spotify_artist_recommendations(
         logger.info(f"🎵 Spotify artist recommendations for: {artist_id}")
         
         # Get artist name from Spotify
-        spotify_service = await get_spotify_service()
+        # Use the global spotify service instance
         artist_info = await asyncio.to_thread(spotify_service.get_artist, artist_id)
         artist_name = artist_info.get('name', '') if artist_info else artist_id
         
@@ -492,9 +492,9 @@ async def recommendation_health_check():
         
         # Check external services
         for service_name, service_getter in [
-            ("spotify", get_spotify_service),
-            ("lastfm", get_lastfm_service),
-            ("imvdb", get_imvdb_service)
+            ("spotify", spotify_service),
+            ("lastfm", lastfm_service),
+            ("imvdb", imvdb_service)
         ]:
             try:
                 service = await service_getter()

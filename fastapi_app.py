@@ -255,7 +255,7 @@ from src.api.fastapi.performance import router as performance_router
 from src.api.fastapi.production_monitoring import router as monitoring_router
 from src.api.fastapi.monitoring_dashboard import router as dashboard_router
 from src.api.fastapi.api_gateway_management import router as gateway_router
-from src.api.fastapi.music_recommendations import recommendations_router
+# from src.api.fastapi.music_recommendations import recommendations_router  # Temporarily disabled
 # from src.api.system_health import router as system_health_router
 # from src.api.fastapi.model_demo import router as model_demo_router
 
@@ -275,7 +275,7 @@ app.include_router(performance_router)
 app.include_router(monitoring_router)
 app.include_router(dashboard_router)
 app.include_router(gateway_router)
-app.include_router(recommendations_router)
+# app.include_router(recommendations_router)  # Temporarily disabled
 # app.include_router(system_health_router)
 # app.include_router(model_demo_router)
 

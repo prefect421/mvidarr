@@ -16,7 +16,7 @@ from enum import Enum
 import hashlib
 
 from fastapi import Request, Response, FastAPI
-from fastapi.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import StreamingResponse
 import aiofiles
