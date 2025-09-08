@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from fastapi import Request, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 
 from src.utils.logger import get_logger
 
@@ -387,7 +387,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         self.public_paths = {
             "/health", "/docs", "/redoc", "/openapi.json",
             "/static/", "/css/", "/favicon.ico",
-            "/api/auth/login", "/api/auth/register", "/api/auth/refresh",
+            "/login", "/auth/login", "/api/auth/login", "/api/auth/register", "/api/auth/refresh",
             "/api/auth/reset-password", "/api/auth/verify-email"
         }
         
@@ -403,6 +403,11 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
     def _is_public_path(self, path: str) -> bool:
         """Check if path is public (doesn't require auth)"""
         return any(path.startswith(public) for public in self.public_paths)
+    
+    def _is_browser_request(self, request: Request) -> bool:
+        """Check if request is from a browser (expects HTML response)"""
+        accept_header = request.headers.get("accept", "").lower()
+        return "text/html" in accept_header or "application/xhtml+xml" in accept_header
     
     def _get_required_role(self, path: str) -> Optional[UserRole]:
         """Get required role for path"""
@@ -451,6 +456,10 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         # Extract token
         token = self._extract_token(request)
         if not token:
+            # Redirect browser requests to login page
+            if self._is_browser_request(request):
+                return RedirectResponse(url="/login", status_code=302)
+            # Return JSON for API requests
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={"detail": "Missing authentication token"},
@@ -463,6 +472,10 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         )
         
         if not is_valid:
+            # Redirect browser requests to login page
+            if self._is_browser_request(request):
+                return RedirectResponse(url="/login", status_code=302)
+            # Return JSON for API requests
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={"detail": error or "Invalid token"},
