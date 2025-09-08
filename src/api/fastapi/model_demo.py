@@ -6,25 +6,25 @@ Demonstrates the new centralized Pydantic model system
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 
-# Import centralized models
-from src.api.models import (
-    VideoCreateRequest,
-    VideoResponse,
-    ArtistCreateRequest,
-    ArtistResponse,
-    PlaylistCreateRequest,
-    PlaylistResponse,
-    LoginRequest,
-    LoginResponse,
-    SettingUpdateRequest,
-    SettingResponse,
-    JobRequest,
-    JobResponse,
-    HealthResponse,
-    ContentAnalysisRequest,
-    ContentAnalysisResponse
-)
-from src.api.models.validation import ModelValidator, ModelTester
+# Import centralized models - temporarily disabled for startup
+# from src.api.models import (
+#     VideoCreateRequest,
+#     VideoResponse,
+#     ArtistCreateRequest,
+#     ArtistResponse,
+#     PlaylistCreateRequest,
+#     PlaylistResponse,
+#     LoginRequest,
+#     LoginResponse,
+#     SettingUpdateRequest,
+#     SettingResponse,
+#     JobRequest,
+#     JobResponse,
+#     HealthResponse,
+#     ContentAnalysisRequest,
+#     ContentAnalysisResponse
+# )
+# from src.api.models.validation import ModelValidator, ModelTester
 
 router = APIRouter(
     prefix="/api/demo/models",

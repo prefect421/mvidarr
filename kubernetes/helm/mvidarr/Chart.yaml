@@ -1,0 +1,59 @@
+apiVersion: v2
+name: mvidarr
+description: MVidarr Music Video Management System - Complete Kubernetes Deployment
+type: application
+version: 0.9.8
+appVersion: "0.9.8"
+
+keywords:
+  - media
+  - video
+  - music
+  - management
+  - fastapi
+  - python
+
+home: https://github.com/prefect421/mvidarr
+sources:
+  - https://github.com/prefect421/mvidarr
+
+maintainers:
+  - name: MVidarr Team
+    email: admin@mvidarr.example.com
+    url: https://github.com/prefect421/mvidarr
+
+annotations:
+  category: Media Management
+  
+# Dependencies
+dependencies:
+  - name: mariadb
+    version: "11.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: mariadb.enabled
+    tags:
+      - database
+  - name: redis
+    version: "17.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+    tags:
+      - cache
+  - name: nginx-ingress
+    version: "4.x.x"
+    repository: "https://kubernetes.github.io/ingress-nginx"
+    condition: ingress.enabled
+    tags:
+      - ingress
+  - name: cert-manager
+    version: "v1.x.x"
+    repository: "https://charts.jetstack.io"
+    condition: certManager.enabled
+    tags:
+      - certificates
+  - name: prometheus
+    version: "15.x.x"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: monitoring.prometheus.enabled
+    tags:
+      - monitoring

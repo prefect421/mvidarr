@@ -7,7 +7,7 @@ Provides foundational classes and mixins for consistent model behavior across al
 
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from enum import Enum
 
 # Generic type for bulk operations
@@ -40,15 +40,16 @@ class TaskPriority(str, Enum):
 class BaseRequest(BaseModel):
     """Base class for all request models with common configuration"""
     
-    class Config:
+    model_config = ConfigDict(
         # Forbid extra fields to catch typos and enforce strict validation
-        extra = "forbid"
+        extra="forbid",
         # Use enum values instead of names in JSON
-        use_enum_values = True
+        use_enum_values=True,
         # Validate assignment when setting attributes
-        validate_assignment = True
+        validate_assignment=True,
         # Allow population by field name or alias
-        allow_population_by_field_name = True
+        populate_by_name=True
+    )
 
 
 class BaseResponse(BaseModel):
@@ -58,15 +59,12 @@ class BaseResponse(BaseModel):
     message: Optional[str] = Field(default=None, description="Optional message about the operation")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Response timestamp")
     
-    class Config:
+    model_config = ConfigDict(
         # Allow population from ORM objects
-        from_attributes = True
+        from_attributes=True,
         # Use enum values in JSON output
-        use_enum_values = True
-        # Serialize datetime as ISO format
-        json_encoders = {
-            datetime: lambda dt: dt.isoformat() if dt else None
-        }
+        use_enum_values=True
+    )
 
 
 class ErrorResponse(BaseResponse):
@@ -111,7 +109,8 @@ class PaginationRequest(BaseRequest):
         description="Sort order: 'asc' for ascending, 'desc' for descending"
     )
     
-    @validator('sort_by')
+    @field_validator('sort_by')
+    @classmethod
     def validate_sort_field(cls, v):
         """Ensure sort field contains only allowed characters"""
         if not v.replace('_', '').replace('.', '').isalnum():
@@ -163,7 +162,8 @@ class BulkOperationRequest(BaseRequest, Generic[T]):
         description="List of item IDs to operate on (1-1000 items)"
     )
     
-    @validator('ids')
+    @field_validator('ids')
+    @classmethod
     def validate_ids(cls, v):
         """Ensure all IDs are positive integers and unique"""
         if not all(isinstance(id_, int) and id_ > 0 for id_ in v):
@@ -190,7 +190,8 @@ class BulkOperationResponse(BaseResponse):
     processed_ids: List[int] = Field(default_factory=list, description="IDs of successfully processed items")
     failed_ids: List[int] = Field(default_factory=list, description="IDs of items that failed processing")
     
-    @validator('errors', 'processed_ids', 'failed_ids', pre=True)
+    @field_validator('errors', 'processed_ids', 'failed_ids', mode='before')
+    @classmethod
     def ensure_list(cls, v):
         """Ensure fields are always lists"""
         return v if isinstance(v, list) else []
@@ -205,11 +206,12 @@ class TaskSubmissionResponse(BaseResponse):
     estimated_duration: Optional[int] = Field(default=None, description="Estimated completion time in seconds")
     status_url: str = Field(description="URL to check task status")
     
-    @validator('status_url')
-    def validate_status_url(cls, v, values):
+    @field_validator('status_url')
+    @classmethod
+    def validate_status_url(cls, v, info):
         """Ensure status URL includes task ID"""
-        if 'task_id' in values and values['task_id'] not in v:
-            return f"/api/tasks/{values['task_id']}/status"
+        if info.data and 'task_id' in info.data and info.data['task_id'] not in v:
+            return f"/api/tasks/{info.data['task_id']}/status"
         return v
 
 
@@ -225,11 +227,12 @@ class TaskStatusResponse(BaseResponse):
     result: Optional[Dict[str, Any]] = Field(default=None, description="Task result data (if completed)")
     estimated_remaining: Optional[int] = Field(default=None, description="Estimated remaining seconds")
     
-    @validator('completed_at')
-    def validate_completion_time(cls, v, values):
+    @field_validator('completed_at')
+    @classmethod
+    def validate_completion_time(cls, v, info):
         """Ensure completed_at is only set for completed/failed tasks"""
         if v is not None:
-            status = values.get('status')
+            status = info.data.get('status') if info.data else None
             if status not in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]:
                 raise ValueError('completed_at can only be set for finished tasks')
         return v
@@ -245,7 +248,8 @@ class IdListRequest(BaseRequest):
         description="List of item IDs (1-1000 items)"
     )
     
-    @validator('ids')
+    @field_validator('ids')
+    @classmethod
     def validate_ids(cls, v):
         """Ensure all IDs are positive and unique"""
         if not all(isinstance(id_, int) and id_ > 0 for id_ in v):
@@ -265,7 +269,8 @@ class StatusUpdateRequest(BaseRequest):
         description="New status value"
     )
     
-    @validator('status')
+    @field_validator('status')
+    @classmethod
     def validate_status_format(cls, v):
         """Ensure status follows standard naming conventions"""
         if not v.replace('_', '').replace('-', '').isalnum():
@@ -283,7 +288,8 @@ class FilePathRequest(BaseRequest):
         description="File system path"
     )
     
-    @validator('file_path')
+    @field_validator('file_path')
+    @classmethod
     def validate_file_path(cls, v):
         """Basic file path validation"""
         import os

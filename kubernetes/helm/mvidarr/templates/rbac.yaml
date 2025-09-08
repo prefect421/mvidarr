@@ -1,0 +1,29 @@
+{{- if and .Values.rbac.create .Values.serviceAccount.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: {{ include "mvidarr.namespace" . }}
+  name: {{ include "mvidarr.fullname" . }}-role
+  labels:
+    {{- include "mvidarr.labels" . | nindent 4 }}
+    component: rbac
+rules:
+  {{- toYaml .Values.rbac.rules | nindent 2 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "mvidarr.fullname" . }}-role-binding
+  namespace: {{ include "mvidarr.namespace" . }}
+  labels:
+    {{- include "mvidarr.labels" . | nindent 4 }}
+    component: rbac
+subjects:
+- kind: ServiceAccount
+  name: {{ include "mvidarr.serviceAccountName" . }}
+  namespace: {{ include "mvidarr.namespace" . }}
+roleRef:
+  kind: Role
+  name: {{ include "mvidarr.fullname" . }}-role
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

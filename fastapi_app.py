@@ -158,25 +158,80 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
-# Add CORS middleware
+# Add CORS middleware with optimized configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=[
+        "http://192.168.1.145:5000",
+        "http://192.168.1.145:5010", 
+        "http://localhost:5000",
+        "http://localhost:5010",
+        "http://127.0.0.1:5000",
+        "http://127.0.0.1:5010"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    max_age=86400,  # Cache preflight requests for 24 hours
 )
 
-# Add performance monitoring middleware (temporarily disabled for startup)
-# from src.middleware.performance_middleware import (
-#     PerformanceTrackingMiddleware,
-#     CacheHeadersMiddleware, 
-#     ResourceMonitoringMiddleware
-# )
+# Add performance monitoring middleware
+from src.middleware.performance_middleware import (
+    PerformanceTrackingMiddleware,
+    CacheHeadersMiddleware, 
+    ResourceMonitoringMiddleware
+)
 
-# app.add_middleware(ResourceMonitoringMiddleware, track_memory=True)
-# app.add_middleware(CacheHeadersMiddleware, default_cache_ttl=300)
-# app.add_middleware(PerformanceTrackingMiddleware)
+# Add caching middleware
+from src.middleware.cache_middleware import (
+    APIResponseCacheMiddleware,
+    CacheInvalidationMiddleware
+)
+
+# Add security middleware - Phase 3 Week 34
+from src.middleware.security_validation_middleware import (
+    SecurityValidationMiddleware,
+    SecurityValidationConfig
+)
+from src.middleware.rate_limiting_middleware import (
+    RateLimitingMiddleware,
+    RateLimitingConfig
+)
+from src.middleware.jwt_auth_middleware import (
+    JWTAuthMiddleware,
+    TokenConfig
+)
+
+# Add production middleware - Phase 3 Week 35
+from src.middleware.auto_scaling_middleware import AutoScalingMiddleware
+from src.middleware.circuit_breaker_middleware import (
+    CircuitBreakerMiddleware,
+    CircuitBreakerConfig
+)
+# Add analytics middleware - Phase 3 Week 36
+from src.middleware.analytics_middleware import AnalyticsMiddleware
+# Add API Gateway middleware - Phase 3 Week 37
+from src.middleware.api_gateway_middleware import APIGatewayMiddleware, GatewayManagementMiddleware
+
+# Add middleware in correct order (last added = first executed)
+# Circuit breakers first for immediate failure handling
+app.add_middleware(CircuitBreakerMiddleware, config=CircuitBreakerConfig())
+app.add_middleware(AutoScalingMiddleware)
+# Security middleware
+app.add_middleware(JWTAuthMiddleware, config=TokenConfig())
+app.add_middleware(SecurityValidationMiddleware, config=SecurityValidationConfig())
+app.add_middleware(RateLimitingMiddleware, config=RateLimitingConfig())
+# Performance and caching middleware
+app.add_middleware(CacheInvalidationMiddleware)
+app.add_middleware(APIResponseCacheMiddleware, cache_ttl=300)
+app.add_middleware(ResourceMonitoringMiddleware, track_memory=True)
+app.add_middleware(CacheHeadersMiddleware, default_cache_ttl=300)
+app.add_middleware(PerformanceTrackingMiddleware)
+# Analytics middleware for monitoring dashboard
+app.add_middleware(AnalyticsMiddleware)
+# API Gateway middleware for microservices support
+app.add_middleware(GatewayManagementMiddleware)
+app.add_middleware(APIGatewayMiddleware, gateway_enabled=True)
 
 # Static files and templates
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
@@ -196,8 +251,13 @@ from src.api.fastapi.playlists import router as fastapi_playlists_router
 from src.api.fastapi.admin import router as fastapi_admin_router
 from src.api.fastapi.settings import router as fastapi_settings_router
 from src.api.fastapi.auth import router as fastapi_auth_router
+from src.api.fastapi.performance import router as performance_router
+from src.api.fastapi.production_monitoring import router as monitoring_router
+from src.api.fastapi.monitoring_dashboard import router as dashboard_router
+from src.api.fastapi.api_gateway_management import router as gateway_router
+from src.api.fastapi.music_recommendations import recommendations_router
 # from src.api.system_health import router as system_health_router
-from src.api.fastapi.model_demo import router as model_demo_router
+# from src.api.fastapi.model_demo import router as model_demo_router
 
 # app.include_router(jobs_router)
 # app.include_router(video_quality_router)
@@ -211,13 +271,18 @@ app.include_router(fastapi_playlists_router)
 app.include_router(fastapi_admin_router)
 app.include_router(fastapi_settings_router)
 app.include_router(fastapi_auth_router)
+app.include_router(performance_router)
+app.include_router(monitoring_router)
+app.include_router(dashboard_router)
+app.include_router(gateway_router)
+app.include_router(recommendations_router)
 # app.include_router(system_health_router)
-app.include_router(model_demo_router)
+# app.include_router(model_demo_router)
 
-# Setup enhanced OpenAPI documentation
-app.openapi = lambda: custom_openapi_schema(app)
-setup_custom_docs(app)
-add_openapi_metadata_to_routers(app)
+# Setup enhanced OpenAPI documentation - temporarily disabled for startup
+# app.openapi = lambda: custom_openapi_schema(app)
+# setup_custom_docs(app)
+# add_openapi_metadata_to_routers(app)
 
 
 # Basic health check
@@ -241,7 +306,7 @@ async def root():
         <head><title>MVidarr - FastAPI with Advanced Processing</title></head>
         <body>
             <h1>MVidarr FastAPI</h1>
-            <p>Phase 3 Week 32 Pydantic Validation Complete!</p>
+            <p>Phase 3 Week 37 Advanced API Gateway & Microservices Complete!</p>
             <p><strong>Advanced FFmpeg Operations Available</strong></p>
             <ul>
                 <li>Advanced Video Format Conversion</li>
@@ -322,8 +387,33 @@ async def root():
                 <li>Consistent Request/Response Schema Standards</li>
                 <li>Enterprise-Grade Data Validation Framework</li>
             </ul>
+            <p><strong>Phase 3 Week 37: Advanced API Gateway & Microservices Available</strong></p>
+            <ul>
+                <li>Intelligent Request Routing with Multiple Load Balancing Strategies</li>
+                <li>Service Discovery & Registration with Health Monitoring</li>
+                <li>Advanced API Versioning with Backward Compatibility</li>
+                <li>Request/Response Transformation Between API Versions</li>
+                <li>Distributed Tracing with Correlation IDs</li>
+                <li>Inter-Service Communication Framework</li>
+                <li>API Gateway Management Dashboard & Monitoring</li>
+                <li>Circuit Breakers & Automatic Service Failover</li>
+            </ul>
+            <p><strong>Phase 3 Week 36: Monitoring Dashboard & Analytics Available</strong></p>
+            <ul>
+                <li>Real-Time Monitoring Dashboard with WebSocket Updates</li>
+                <li>Interactive Performance Visualizations & Charts</li>
+                <li>Comprehensive Analytics Service & Metrics Collection</li>
+                <li>Alerting System with Custom Rules & Notifications</li>
+                <li>Historical Metrics Storage & Trending Analysis</li>
+                <li>Dashboard Configuration & User Preferences</li>
+            </ul>
             <p><a href="/docs">FastAPI API Documentation</a></p>
             <p><a href="/health">Health Check</a></p>
+            <p><a href="/api/dashboard/demo">📊 Monitoring Dashboard</a></p>
+            <p><a href="/api/dashboard/summary">Dashboard Summary API</a></p>
+            <p><a href="/api/gateway/health">🚪 API Gateway Health</a></p>
+            <p><a href="/api/gateway/services">🔍 Service Registry</a></p>
+            <p><a href="/api/gateway/stats">📈 Gateway Statistics</a></p>
             <p><a href="http://192.168.1.145:5010">Flask Frontend</a></p>
         </body>
     </html>

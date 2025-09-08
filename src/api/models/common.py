@@ -7,7 +7,7 @@ Provides commonly-used models that are shared across multiple API endpoints.
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
-from pydantic import BaseModel, Field, validator, HttpUrl
+from pydantic import BaseModel, Field, field_validator, HttpUrl
 from pathlib import Path
 from .base import BaseRequest, BaseResponse, SortOrder
 
@@ -144,10 +144,11 @@ class SortOptions(BaseModel):
 class UrlValidationMixin(BaseModel):
     """Mixin for validating URLs in models"""
     
-    @validator('*', pre=True)
-    def validate_urls(cls, v, field):
+    @field_validator('*', mode='before')
+    @classmethod
+    def validate_urls(cls, v, info):
         """Validate URL fields"""
-        if field.name.endswith('_url') or field.name == 'url':
+        if info.field_name and (info.field_name.endswith('_url') or info.field_name == 'url'):
             if v and isinstance(v, str):
                 if not v.startswith(('http://', 'https://', 'ftp://')):
                     raise ValueError(f'Invalid URL format: {v}')
@@ -167,10 +168,11 @@ class TimestampMixin(BaseModel):
         description="When the item was last updated"
     )
     
-    class Config:
-        json_encoders = {
+    model_config = {
+        "json_encoders": {
             datetime: lambda dt: dt.isoformat() if dt else None
         }
+    }
 
 
 class MetadataMixin(BaseModel):

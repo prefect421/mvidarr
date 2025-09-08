@@ -247,33 +247,45 @@ async def restart_application(admin_user = Depends(get_current_admin)):
         logger.info("Application restart requested via FastAPI interface")
         
         # Schedule restart in background to allow response to be sent
-        def restart_worker():
+        async def restart_worker():
             try:
                 # Give time for the response to be sent
-                time.sleep(1)
+                await asyncio.sleep(1)
                 
                 # Check if systemd service is available and prefer it
                 try:
-                    result = subprocess.run(
-                        ["systemctl", "is-active", "mvidarr.service"],
-                        capture_output=True,
-                        text=True,
-                        timeout=5
+                    process = await asyncio.create_subprocess_exec(
+                        "systemctl", "is-active", "mvidarr.service",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
                     )
+                    stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=5)
+                    result_returncode = process.returncode
+                    result_stdout = stdout.decode().strip()
                     
-                    if result.returncode == 0 and result.stdout.strip() == "active":
+                    if result_returncode == 0 and result_stdout == "active":
                         logger.info("Using systemd service restart")
                         
                         # Use management script which has sudo configured properly
                         script_path = os.path.join(os.getcwd(), "scripts", "manage_service.sh")
                         if os.path.exists(script_path):
                             logger.info("Using management script for systemd restart")
-                            subprocess.run([script_path, "restart"], check=True)
+                            process = await asyncio.create_subprocess_exec(
+                                script_path, "restart",
+                                stdout=asyncio.subprocess.PIPE,
+                                stderr=asyncio.subprocess.PIPE
+                            )
+                            await process.wait()
                             logger.info("Systemd service restart initiated successfully via management script")
                             return
                         else:
                             # Direct systemd call (may require sudo configuration)
-                            subprocess.run(["systemctl", "restart", "mvidarr.service"], check=True)
+                            process = await asyncio.create_subprocess_exec(
+                                "systemctl", "restart", "mvidarr.service",
+                                stdout=asyncio.subprocess.PIPE,
+                                stderr=asyncio.subprocess.PIPE
+                            )
+                            await process.wait()
                             logger.info("Systemd service restart initiated successfully")
                             return
                             
@@ -282,32 +294,42 @@ async def restart_application(admin_user = Depends(get_current_admin)):
                 except Exception as e:
                     logger.warning(f"Systemd check failed: {e}")
                 
-                # Fallback to management script
+                # Fallback to management script (async)
                 script_path = os.path.join(os.getcwd(), "scripts", "manage_service.sh")
                 if os.path.exists(script_path):
                     logger.info("Using management script to restart service")
-                    subprocess.run([script_path, "restart"], check=True)
+                    process = await asyncio.create_subprocess_exec(
+                        script_path, "restart",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    await process.wait()
                     return
                 
-                # Use the improved restart script
+                # Use the improved restart script (async)
                 script_path = os.path.join(os.getcwd(), "scripts", "improved_restart.py")
                 if os.path.exists(script_path):
                     logger.info("Using improved Python restart script")
-                    # Run the restart script in background with detailed logging
-                    with open("/tmp/mvidarr_restart_output.log", "w") as log_file:
-                        subprocess.Popen(
-                            ["python3", script_path],
-                            stdout=log_file,
-                            stderr=subprocess.STDOUT,
-                            start_new_session=True
-                        )
+                    # Run the restart script in background with detailed logging (async)
+                    process = await asyncio.create_subprocess_exec(
+                        "python3", script_path,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    # Don't wait for completion, let it run in background
+                    asyncio.create_task(process.wait())
                     return
                 
-                # Fallback to original restart script
+                # Fallback to original restart script (async)  
                 script_path = os.path.join(os.getcwd(), "scripts", "restart_app.py")
                 if os.path.exists(script_path):
                     logger.info("Using original Python restart script")
-                    subprocess.Popen(["python3", script_path], start_new_session=True)
+                    process = await asyncio.create_subprocess_exec(
+                        "python3", script_path,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    asyncio.create_task(process.wait())
                     return
                 
                 # Last resort: terminate current process
@@ -322,9 +344,8 @@ async def restart_application(admin_user = Depends(get_current_admin)):
                 except Exception as kill_error:
                     logger.error(f"Failed to terminate process: {kill_error}")
         
-        # Start restart in background thread
-        restart_thread = threading.Thread(target=restart_worker, daemon=True)
-        restart_thread.start()
+        # Start restart as async task
+        asyncio.create_task(restart_worker())
         
         return {
             "message": "Application restart initiated. Please wait 10-15 seconds and refresh the page."
@@ -344,15 +365,20 @@ async def restart_systemd_service(admin_user = Depends(get_current_admin)):
     try:
         logger.info("Emergency systemd restart requested via FastAPI")
         
-        def systemd_restart_worker():
+        async def systemd_restart_worker():
             try:
-                time.sleep(1)
+                await asyncio.sleep(1)
                 
                 # Use management script for systemd restart
                 script_path = os.path.join(os.getcwd(), "scripts", "manage_service.sh")
                 if os.path.exists(script_path):
                     logger.info("Using management script for emergency systemd restart")
-                    subprocess.run([script_path, "restart"], check=True)
+                    process = await asyncio.create_subprocess_exec(
+                        script_path, "restart",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    await process.wait()
                     logger.info("Emergency systemd restart completed successfully")
                 else:
                     logger.error("Management script not found for emergency restart")
@@ -360,9 +386,8 @@ async def restart_systemd_service(admin_user = Depends(get_current_admin)):
             except Exception as e:
                 logger.error(f"Emergency restart failed: {e}")
         
-        # Start restart in background thread
-        restart_thread = threading.Thread(target=systemd_restart_worker, daemon=True)
-        restart_thread.start()
+        # Start restart as async task
+        asyncio.create_task(systemd_restart_worker())
         
         return {
             "message": "Emergency systemd restart initiated. Service will restart shortly."

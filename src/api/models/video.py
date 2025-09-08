@@ -7,7 +7,7 @@ Centralized models for all video-related API operations.
 
 from datetime import datetime
 from typing import List, Optional, Union
-from pydantic import BaseModel, Field, validator, HttpUrl
+from pydantic import BaseModel, Field, field_validator, HttpUrl
 from pathlib import Path
 
 from .base import (
@@ -49,7 +49,8 @@ class VideoResponse(BaseResponse, TimestampMixin, MetadataMixin, GenresMixin):
     download_count: int = Field(default=0, ge=0, description="Number of times downloaded")
     view_count: int = Field(default=0, ge=0, description="Number of times viewed")
     
-    @validator('resolution')
+    @field_validator('resolution')
+    @classmethod
     def validate_resolution(cls, v):
         """Validate video resolution format"""
         if v and 'x' in v:
@@ -63,7 +64,8 @@ class VideoResponse(BaseResponse, TimestampMixin, MetadataMixin, GenresMixin):
             raise ValueError('Resolution must be in format "WIDTHxHEIGHT" (e.g., "1920x1080")')
         return v
     
-    @validator('codec')
+    @field_validator('codec')
+    @classmethod
     def validate_codec(cls, v):
         """Validate codec format"""
         if v:

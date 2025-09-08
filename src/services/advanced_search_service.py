@@ -1,7 +1,7 @@
 """
-Advanced Search Service for MVidarr 0.9.7 - Issue #73
-Provides comprehensive search and filtering capabilities with full-text search,
-saved presets, autocomplete, and advanced query building.
+Advanced Search Service - Phase 3 Week 30
+Music-specific search with advanced filters, faceted search, and smart suggestions
+Consumer-focused search for music video collections
 """
 
 import re

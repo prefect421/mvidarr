@@ -1,14 +1,17 @@
 """
 FastAPI Health Check API Endpoints
-Async version of health checks using non-blocking subprocess operations
+Enhanced for self-hosted production monitoring
 """
 
 import json
+import os
+import psutil
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from src.database.async_connection import async_db_manager
@@ -41,6 +44,24 @@ class ServiceHealthResponse(BaseModel):
     service: str
     message: Optional[str] = None
     error: Optional[str] = None
+
+class SystemMetricsResponse(BaseModel):
+    cpu_percent: float
+    memory_percent: float
+    memory_available_gb: float
+    disk_percent: float
+    disk_free_gb: float
+    load_average: Optional[list] = None
+    uptime_seconds: int
+
+class ProductionHealthResponse(BaseModel):
+    status: str
+    timestamp: str
+    application: Dict[str, Any]
+    database: Dict[str, Any] 
+    system: SystemMetricsResponse
+    services: Dict[str, Any]
+    alerts: list
 
 # Create router
 health_router = APIRouter(prefix="/health", tags=["health"])
@@ -252,3 +273,174 @@ async def get_performance_stats():
 
 # Add missing import
 import asyncio
+
+@health_router.get("/system", response_model=SystemMetricsResponse)
+async def get_system_metrics():
+    """Get system resource metrics for self-hosted monitoring"""
+    try:
+        # CPU usage
+        cpu_percent = psutil.cpu_percent(interval=1)
+        
+        # Memory usage  
+        memory = psutil.virtual_memory()
+        memory_percent = memory.percent
+        memory_available_gb = memory.available / (1024**3)
+        
+        # Disk usage
+        disk = psutil.disk_usage('/')
+        disk_percent = disk.percent
+        disk_free_gb = disk.free / (1024**3)
+        
+        # Load average (Unix only)
+        load_average = None
+        if hasattr(os, 'getloadavg'):
+            load_average = list(os.getloadavg())
+        
+        # System uptime
+        uptime_seconds = int(time.time() - psutil.boot_time())
+        
+        return SystemMetricsResponse(
+            cpu_percent=round(cpu_percent, 1),
+            memory_percent=round(memory_percent, 1), 
+            memory_available_gb=round(memory_available_gb, 1),
+            disk_percent=round(disk_percent, 1),
+            disk_free_gb=round(disk_free_gb, 1),
+            load_average=load_average,
+            uptime_seconds=uptime_seconds
+        )
+        
+    except Exception as e:
+        logger.error(f"System metrics retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+@health_router.get("/production", response_model=ProductionHealthResponse)
+async def get_production_health():
+    """Comprehensive health check for self-hosted production monitoring"""
+    try:
+        overall_status = "healthy"
+        alerts = []
+        
+        # Application health
+        app_health = {
+            "status": "healthy",
+            "version": "unknown",
+            "uptime": int(time.time() - psutil.Process().create_time()),
+            "workers": os.getenv("WORKERS", "unknown")
+        }
+        
+        try:
+            from src import __version__
+            app_health["version"] = __version__
+        except:
+            pass
+            
+        # Database health
+        db_health = {"status": "unhealthy", "error": "Not checked"}
+        try:
+            async with async_db_manager.session_scope() as session:
+                from sqlalchemy import text
+                result = await session.execute(text("SELECT COUNT(*) FROM information_schema.tables"))
+                table_count = result.scalar()
+                db_health = {
+                    "status": "healthy",
+                    "table_count": table_count,
+                    "connection": "active"
+                }
+        except Exception as e:
+            db_health = {"status": "unhealthy", "error": str(e)}
+            overall_status = "unhealthy"
+            alerts.append(f"Database connection failed: {str(e)}")
+            
+        # System metrics
+        system_metrics = await get_system_metrics()
+        
+        # Check for system alerts
+        if system_metrics.cpu_percent > 90:
+            alerts.append(f"High CPU usage: {system_metrics.cpu_percent}%")
+            overall_status = "warning" if overall_status == "healthy" else overall_status
+            
+        if system_metrics.memory_percent > 90:
+            alerts.append(f"High memory usage: {system_metrics.memory_percent}%")
+            overall_status = "warning" if overall_status == "healthy" else overall_status
+            
+        if system_metrics.disk_percent > 90:
+            alerts.append(f"Low disk space: {system_metrics.disk_free_gb:.1f}GB remaining")
+            overall_status = "warning" if overall_status == "healthy" else overall_status
+        
+        # Service health checks
+        services = {}
+        
+        # Check Redis if available
+        try:
+            import redis
+            redis_url = os.getenv('REDIS_URL')
+            if redis_url:
+                r = redis.from_url(redis_url, decode_responses=True, socket_timeout=5)
+                r.ping()
+                services["redis"] = {"status": "healthy", "connection": "active"}
+            else:
+                services["redis"] = {"status": "not_configured"}
+        except Exception as e:
+            services["redis"] = {"status": "unhealthy", "error": str(e)}
+            if "redis" in str(e).lower():
+                alerts.append(f"Redis connection failed: {str(e)}")
+        
+        # Check background job system
+        try:
+            from src.jobs.celery_app import celery_app
+            inspect = celery_app.control.inspect()
+            stats = inspect.stats()
+            if stats:
+                services["celery"] = {"status": "healthy", "workers": len(stats)}
+            else:
+                services["celery"] = {"status": "unhealthy", "error": "No workers available"}
+        except Exception as e:
+            services["celery"] = {"status": "not_configured"}
+            
+        return ProductionHealthResponse(
+            status=overall_status,
+            timestamp=datetime.utcnow().isoformat(),
+            application=app_health,
+            database=db_health,
+            system=system_metrics,
+            services=services,
+            alerts=alerts
+        )
+        
+    except Exception as e:
+        logger.error(f"Production health check failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+@health_router.get("/readiness")
+async def readiness_check():
+    """Kubernetes-style readiness check for load balancers"""
+    try:
+        # Check database connectivity
+        async with async_db_manager.session_scope() as session:
+            from sqlalchemy import text
+            await session.execute(text("SELECT 1"))
+            
+        return {"status": "ready", "timestamp": datetime.utcnow().isoformat()}
+        
+    except Exception as e:
+        logger.error(f"Readiness check failed: {e}")
+        raise HTTPException(status_code=503, detail={
+            "status": "not_ready",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+@health_router.get("/liveness")  
+async def liveness_check():
+    """Kubernetes-style liveness check for container health"""
+    try:
+        # Basic application health
+        return {"status": "alive", "timestamp": datetime.utcnow().isoformat()}
+        
+    except Exception as e:
+        logger.error(f"Liveness check failed: {e}")
+        raise HTTPException(status_code=503, detail={
+            "status": "not_alive", 
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        })

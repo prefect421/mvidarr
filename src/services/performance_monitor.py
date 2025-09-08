@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Any, Callable
 from collections import deque, defaultdict
 import threading
 
-from src.services.redis_manager import RedisManager
+from src.services.media_cache_manager import MediaCacheManager
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.performance_monitor")
@@ -126,7 +126,7 @@ class PerformanceMonitor:
     def __init__(self, config: Optional[MonitoringConfig] = None):
         """Initialize performance monitor"""
         self.config = config or MonitoringConfig()
-        self.redis_manager = RedisManager() if self.config.enable_redis_storage else None
+        self.cache_manager = MediaCacheManager() if self.config.enable_redis_storage else None
         
         # Metric storage - in-memory ring buffers for fast access
         self.metrics_buffer: Dict[MetricType, deque] = defaultdict(
@@ -281,16 +281,12 @@ class PerformanceMonitor:
         self.metrics_buffer[metric_type].append(metric)
         
         # Store in Redis if enabled
-        if self.redis_manager and self.config.enable_redis_storage:
+        if self.cache_manager and self.config.enable_redis_storage:
             try:
-                await self.redis_manager.lpush(
-                    f"performance:metrics:{metric_type.value}",
-                    json.dumps(metric.to_dict())
-                )
-                # Keep only recent metrics in Redis
-                await self.redis_manager.ltrim(
-                    f"performance:metrics:{metric_type.value}",
-                    0, int(self.config.metric_retention_minutes * 12)  # 5-second intervals
+                await self.cache_manager.set(
+                    f"performance:metrics:{metric_type.value}:{int(time.time())}",
+                    json.dumps(metric.to_dict()),
+                    ttl=int(self.config.metric_retention_minutes * 60)
                 )
             except Exception as e:
                 logger.error(f"❌ Failed to store metric in Redis: {e}")
@@ -358,17 +354,16 @@ class PerformanceMonitor:
         """Handle a new performance alert"""
         logger.warning(f"🚨 Performance Alert [{alert.alert_level.value.upper()}]: {alert.message}")
         
-        # Store alert in Redis
-        if self.redis_manager:
+        # Store alert in cache
+        if self.cache_manager:
             try:
-                await self.redis_manager.lpush(
-                    "performance:alerts",
-                    json.dumps(alert.to_dict())
+                await self.cache_manager.set(
+                    f"performance:alerts:{int(time.time())}",
+                    json.dumps(alert.to_dict()),
+                    ttl=86400  # 24 hours
                 )
-                # Keep last 100 alerts
-                await self.redis_manager.ltrim("performance:alerts", 0, 99)
             except Exception as e:
-                logger.error(f"❌ Failed to store alert in Redis: {e}")
+                logger.error(f"❌ Failed to store alert in cache: {e}")
         
         # Call registered alert callbacks
         for callback in self.alert_callbacks:
