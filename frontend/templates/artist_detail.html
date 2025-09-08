@@ -3655,7 +3655,7 @@ function loadArtistDetails() {
             }
             currentArtistData = data;
             renderArtistHeader(data.artist, data.statistics);
-            renderOverviewTab(data.artist);
+            renderOverviewTab(data.artist, data.statistics);
             renderVideosTab(data.videos);
             populateSettings(data.artist);
         })
@@ -3828,7 +3828,7 @@ function consolidateArtistMetadata(artist, enrichedMetadata) {
     return consolidated;
 }
 
-function renderOverviewTab(artist) {
+function renderOverviewTab(artist, statistics) {
     const metadata = artist.imvdb_metadata || {};
     
     // Debug logging to understand the data structure
@@ -3864,7 +3864,7 @@ function renderOverviewTab(artist) {
     renderMusicalInfo(artist, consolidatedMetadata);
     renderExternalLinks(artist, consolidatedMetadata);
     renderBiography(artist, consolidatedMetadata);
-    renderStatistics(artist);
+    renderStatistics(artist, statistics);
     renderRecentActivity(artist);
     
     // Display Spotify recommendations from enriched metadata if available
@@ -4517,34 +4517,34 @@ function renderBiography(artist, metadata) {
     document.getElementById('biographyQuality').textContent = '';
 }
 
-function renderStatistics(artist) {
+function renderStatistics(artist, statistics) {
     const statsHtml = `
         <div class="stat-item">
-            <span class="stat-value">${artist.statistics.total_videos}</span>
+            <span class="stat-value">${statistics.total_videos}</span>
             <span class="stat-label">Total Videos</span>
         </div>
         <div class="stat-item">
-            <span class="stat-value">${artist.statistics.downloaded_videos}</span>
+            <span class="stat-value">${statistics.downloaded}</span>
             <span class="stat-label">Downloaded</span>
         </div>
         <div class="stat-item">
-            <span class="stat-value">${artist.statistics.wanted_videos}</span>
+            <span class="stat-value">${statistics.wanted}</span>
             <span class="stat-label">Wanted</span>
         </div>
         <div class="stat-item">
-            <span class="stat-value">${artist.statistics.downloading_videos}</span>
+            <span class="stat-value">${statistics.downloading}</span>
             <span class="stat-label">Downloading</span>
         </div>
         <div class="stat-item">
-            <span class="stat-value">${artist.statistics.failed_videos}</span>
+            <span class="stat-value">${statistics.failed || 0}</span>
             <span class="stat-label">Failed</span>
         </div>
         <div class="stat-item">
-            <span class="stat-value">${artist.statistics.monitored_videos || 0}</span>
+            <span class="stat-value">${statistics.monitored || 0}</span>
             <span class="stat-label">Monitored</span>
         </div>
         <div class="stat-item">
-            <span class="stat-value">${artist.statistics.ignored_videos || 0}</span>
+            <span class="stat-value">${statistics.ignored || 0}</span>
             <span class="stat-label">Ignored</span>
         </div>
     `;
