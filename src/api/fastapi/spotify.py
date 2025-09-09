@@ -18,10 +18,12 @@ router = APIRouter(prefix="/api/spotify", tags=["spotify"])
 
 # Import Spotify service with error handling
 try:
-    from src.services.async_spotify_service import spotify_service
+    from src.services.async_spotify_service import get_async_spotify_service
+    spotify_available = True
 except ImportError:
     logger.warning("Spotify service not available")
-    spotify_service = None
+    spotify_available = False
+    get_async_spotify_service = None
 
 
 @router.get("/search/artists")
@@ -32,11 +34,12 @@ async def search_artists(
 ):
     """Search Spotify for artists"""
     try:
-        if not spotify_service:
+        if not spotify_available:
             raise HTTPException(status_code=503, detail="Spotify service not available")
             
         logger.info(f"Searching Spotify for artists: {q}")
-        result = await spotify_service.search_artists(q, limit=limit)
+        spotify_service = await get_async_spotify_service()
+        result = await spotify_service.search_artist(q, limit=limit)
         
         if not result or not result.get('artists', {}).get('items'):
             return {
@@ -62,10 +65,11 @@ async def get_artist(
 ):
     """Get detailed artist information from Spotify"""
     try:
-        if not spotify_service:
+        if not spotify_available:
             raise HTTPException(status_code=503, detail="Spotify service not available")
             
         logger.info(f"Getting Spotify artist details: {spotify_id}")
+        spotify_service = await get_async_spotify_service()
         result = await spotify_service.get_artist(spotify_id)
         
         if not result:
@@ -86,11 +90,12 @@ async def get_artist_albums(
 ):
     """Get artist's albums from Spotify"""
     try:
-        if not spotify_service:
+        if not spotify_available:
             raise HTTPException(status_code=503, detail="Spotify service not available")
             
         logger.info(f"Getting Spotify albums for artist: {spotify_id}")
-        result = await spotify_service.get_artist_albums(spotify_id, limit=limit)
+        spotify_service = await get_async_spotify_service()
+        result = await spotify_service.get_artist_albums(spotify_id, limit=limit, offset=0)
         
         if not result:
             return {"items": [], "total": 0}
@@ -110,11 +115,12 @@ async def get_artist_top_tracks(
 ):
     """Get artist's top tracks from Spotify"""
     try:
-        if not spotify_service:
+        if not spotify_available:
             raise HTTPException(status_code=503, detail="Spotify service not available")
             
         logger.info(f"Getting Spotify top tracks for artist: {spotify_id}")
-        result = await spotify_service.get_artist_top_tracks(spotify_id, market=market)
+        spotify_service = await get_async_spotify_service()
+        result = await spotify_service.get_artist_top_tracks(spotify_id, country=market)
         
         if not result:
             return {"tracks": []}
@@ -133,11 +139,12 @@ async def get_related_artists(
 ):
     """Get related artists from Spotify"""
     try:
-        if not spotify_service:
+        if not spotify_available:
             raise HTTPException(status_code=503, detail="Spotify service not available")
             
         logger.info(f"Getting Spotify related artists for: {spotify_id}")
-        result = await spotify_service.get_related_artists(spotify_id)
+        spotify_service = await get_async_spotify_service()
+        result = await spotify_service.get_artist_related_artists(spotify_id)
         
         if not result:
             return {"artists": []}
@@ -155,14 +162,15 @@ async def get_spotify_status(
 ):
     """Get Spotify service status"""
     try:
-        if not spotify_service:
+        if not spotify_available:
             return {
                 "available": False,
                 "error": "Spotify service not configured"
             }
         
         # Test if Spotify service is working
-        test_result = await spotify_service.search_artists("test", limit=1)
+        spotify_service = await get_async_spotify_service()
+        test_result = await spotify_service.search_artist("test", limit=1)
         
         return {
             "available": True,
