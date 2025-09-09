@@ -887,9 +887,9 @@ async function searchSpotify() {
     try {
         const response = await apiRequest(`/api/spotify/search/artists?q=${encodeURIComponent(artistName)}&limit=10`);
         
-        if (response.success && response.results.artists && response.results.artists.items) {
-            const artists = response.results.artists.items;
-            displaySpotifySearchResults(artists);
+        if (response && response.artists && response.artists.items) {
+            const artists = response.artists.items;
+            displayMetadataSearchResults('spotify', artists);
             showSuccess(`Found ${artists.length} Spotify artists`);
         } else {
             showWarning('No Spotify artists found');
@@ -1100,7 +1100,7 @@ async function searchMusicBrainz() {
         console.log('Making request to /api/musicbrainz/search-artist');
         const response = await apiRequest('/api/musicbrainz/search-artist', {
             method: 'POST',
-            body: JSON.stringify({ query: artistName })
+            body: JSON.stringify({ artist: artistName })
         });
         
         console.log('Full MusicBrainz API Response:', JSON.stringify(response, null, 2));
