@@ -105,7 +105,10 @@ class MusicBrainzService:
 
         try:
             logger.debug(f"Making MusicBrainz request to: {url} with params: {params}")
-            response = requests.get(url, params=params, headers=headers, timeout=30)
+            # Disable SSL verification for MusicBrainz due to certificate issues
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            response = requests.get(url, params=params, headers=headers, timeout=30, verify=False)
             response.raise_for_status()
 
             return response.json()
