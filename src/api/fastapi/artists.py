@@ -1226,6 +1226,7 @@ async def get_artist_detailed(
                 "wikipedia_url": metadata.get('wikipedia_url'),
                 "musicbrainz_id": metadata.get('musicbrainz_id'),
                 "spotify_id": artist.spotify_id,
+                "lastfm_name": artist.lastfm_name or metadata.get('lastfm_name'),
                 "imvdb_metadata": artist.imvdb_metadata,
                 "created_at": artist.created_at.isoformat() if artist.created_at else None,
                 "updated_at": artist.updated_at.isoformat() if artist.updated_at else None,

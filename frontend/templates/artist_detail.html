@@ -4349,6 +4349,26 @@ function renderExternalLinks(artist, metadata) {
     renderExternalServices(artist, metadata);
 }
 
+// Helper functions for Last.fm URL detection
+function checkLastFmBiographyLink(artist, metadata) {
+    const bio = artist.biography || metadata.biography || (artist.imvdb_metadata && artist.imvdb_metadata.biography);
+    if (!bio) return false;
+    return bio.includes('last.fm/music/') || bio.includes('Last.fm');
+}
+
+function extractLastFmNameFromBiography(artist, metadata) {
+    const bio = artist.biography || metadata.biography || (artist.imvdb_metadata && artist.imvdb_metadata.biography);
+    if (!bio) return null;
+    
+    // Look for Last.fm URLs in the biography
+    const lastfmMatch = bio.match(/https?:\/\/(?:www\.)?last\.fm\/music\/([^"'\s>]+)/);
+    if (lastfmMatch) {
+        return decodeURIComponent(lastfmMatch[1].replace(/\+/g, ' '));
+    }
+    
+    return null;
+}
+
 function renderExternalServices(artist, metadata) {
     const services = [
         {
@@ -4372,8 +4392,8 @@ function renderExternalServices(artist, metadata) {
             name: 'Last.fm',
             searchFunction: 'searchLastfm',
             syncFunction: 'enrichFromLastfm',
-            connected: !!artist.lastfm_name,
-            serviceId: artist.lastfm_name
+            connected: !!artist.lastfm_name || checkLastFmBiographyLink(artist, metadata),
+            serviceId: artist.lastfm_name || extractLastFmNameFromBiography(artist, metadata) || 'Not Linked'
         },
         {
             id: 'imvdb',
