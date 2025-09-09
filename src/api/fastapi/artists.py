@@ -1208,6 +1208,9 @@ async def get_artist_detailed(
         # Ensure folder path
         await ensure_artist_folder_path(artist, session)
         
+        # Extract metadata from imvdb_metadata JSON field
+        metadata = artist.imvdb_metadata or {}
+        
         return {
             "artist": {
                 "id": artist.id,
@@ -1216,12 +1219,12 @@ async def get_artist_detailed(
                 "folder_path": artist.folder_path,
                 "imvdb_id": artist.imvdb_id,
                 "imvdb_slug": getattr(artist, 'imvdb_slug', None),
-                "biography": getattr(artist, 'biography', None),
-                "formed_year": getattr(artist, "formed_year", None),
-                "location": getattr(artist, "location", None),
-                "website": getattr(artist, "website", None),
-                "wikipedia_url": getattr(artist, "wikipedia_url", None),
-                "musicbrainz_id": getattr(artist, "musicbrainz_id", None),
+                "biography": metadata.get('biography') or metadata.get('overview') or metadata.get('bio'),
+                "formed_year": metadata.get('formed_year'),
+                "location": metadata.get('location'),
+                "website": metadata.get('website'),
+                "wikipedia_url": metadata.get('wikipedia_url'),
+                "musicbrainz_id": metadata.get('musicbrainz_id'),
                 "spotify_id": artist.spotify_id,
                 "imvdb_metadata": artist.imvdb_metadata,
                 "created_at": artist.created_at.isoformat() if artist.created_at else None,
