@@ -213,6 +213,24 @@ def get_db():
         raise RuntimeError("Database not initialized")
 
 
+def get_db_session():
+    """Get database session for FastAPI dependency injection"""
+    if db_manager is None:
+        raise RuntimeError("Database not initialized")
+    
+    session_factory = db_manager.create_session_factory()
+    session = session_factory()
+    
+    try:
+        yield session
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Database session error: {e}")
+        raise
+    finally:
+        session.close()
+
+
 def get_engine():
     """Get database engine"""
     return engine

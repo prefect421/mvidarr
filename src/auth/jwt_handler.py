@@ -413,6 +413,20 @@ async def test_jwt_handler():
         return False
 
 
+# Global instance
+_jwt_handler = None
+
+async def get_jwt_handler() -> JWTHandler:
+    """Get global JWT handler instance"""
+    global _jwt_handler
+    
+    if _jwt_handler is None:
+        _jwt_handler = JWTHandler()
+        await _jwt_handler.initialize()
+    
+    return _jwt_handler
+
+
 if __name__ == "__main__":
     """Run tests if executed directly"""
     import asyncio

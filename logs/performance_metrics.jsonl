@@ -9292,3 +9292,570 @@
 {"metric_type": "concurrent_operations", "timestamp": 1757218953.3008833, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
 {"metric_type": "api_response_time", "timestamp": 1757218953.301417, "value": 7.948398590087891, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
 {"metric_type": "concurrent_operations", "timestamp": 1757218953.3016586, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337658.0812511, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757337658.081869, "value": 91.7, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757337658.0822117, "value": 56.5, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.66"}}
+{"metric_type": "process_count", "timestamp": 1757337658.0830364, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757337658.0872612, "value": 6.066322326660156, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337658.0875738, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337658.093023, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337658.0961795, "value": 3.1621456146240234, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337658.0965047, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337670.5387728, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757337670.5392945, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757337670.5396948, "value": 59.2, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.56"}}
+{"metric_type": "process_count", "timestamp": 1757337670.5404105, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757337670.5447907, "value": 6.0749053955078125, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337670.5450964, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337670.5549128, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337670.558392, "value": 3.484487533569336, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337670.5586913, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337705.4338484, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757337705.4344263, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757337705.4348712, "value": 59.2, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.56"}}
+{"metric_type": "process_count", "timestamp": 1757337705.4356058, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757337705.439905, "value": 6.111860275268555, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337705.4401715, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337705.4455478, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337705.4487784, "value": 3.2362937927246094, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337705.4490507, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337735.5301442, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337735.5316286, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337735.5496771, "value": 19.538402557373047, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337735.549969, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337735.5503535, "value": 18.716096878051758, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337735.5515835, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337765.6271124, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337765.627546, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337765.6378548, "value": 10.746240615844727, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337765.6381695, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337765.638565, "value": 11.026620864868164, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337765.6388304, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337795.7278311, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337795.7283103, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337795.7351778, "value": 7.358074188232422, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337795.7355523, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337795.7362041, "value": 7.899045944213867, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337795.736554, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337825.832111, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337825.8325796, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337825.8418207, "value": 9.721994400024414, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337825.8420994, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337825.8424573, "value": 9.884119033813477, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337825.842645, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337855.9319174, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337855.932279, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337855.9416218, "value": 9.70911979675293, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337855.941925, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337855.9422758, "value": 10.002851486206055, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337855.9425597, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337886.033953, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337886.0343916, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337886.0412254, "value": 7.2803497314453125, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337886.0415676, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337886.0422425, "value": 7.855415344238281, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337886.0425396, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337916.1353366, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337916.135844, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337916.1446745, "value": 9.345769882202148, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337916.1449594, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337916.1454544, "value": 9.614229202270508, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337916.1457286, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337946.2366812, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337946.2371385, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337946.2453995, "value": 8.736610412597656, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337946.2457256, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337946.2462444, "value": 9.110212326049805, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337946.2465322, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337981.4366617, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757337981.4376075, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757337981.437971, "value": 59.4, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.55"}}
+{"metric_type": "process_count", "timestamp": 1757337981.4389489, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757337981.4449022, "value": 8.301019668579102, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337981.4452436, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337981.4533877, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757337981.4598103, "value": 6.428718566894531, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757337981.4602258, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338011.5205634, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338011.5211732, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757338011.5302577, "value": 9.701251983642578, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338011.5307345, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757338011.5313067, "value": 10.139942169189453, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338011.5317466, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338041.62473, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338041.626569, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757338041.6400716, "value": 15.347480773925781, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338041.6404433, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757338041.6408956, "value": 14.33420181274414, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338041.641186, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338071.7252774, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338071.7257576, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757338071.7334764, "value": 8.203983306884766, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338071.7338622, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757338071.734308, "value": 8.556365966796875, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757338071.7346468, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339015.7941926, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757339015.7948334, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757339015.7951872, "value": 52.8, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.81"}}
+{"metric_type": "process_count", "timestamp": 1757339015.7959244, "value": 135, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757339015.8002195, "value": 6.086111068725586, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339015.8005285, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339015.8059149, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339015.8097088, "value": 3.798961639404297, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339015.8099902, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339021.2074533, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339021.21085, "value": 3.4089088439941406, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339021.2111433, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339033.3088107, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339033.3145833, "value": 5.780220031738281, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339033.3148868, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339039.7991946, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339039.8022954, "value": 3.108978271484375, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339039.8026023, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339045.8826563, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339045.883112, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339045.8904777, "value": 7.827281951904297, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339045.890778, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339045.8911514, "value": 8.046150207519531, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339045.8914, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339075.9846995, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339075.9851828, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339075.9928048, "value": 8.111953735351562, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339075.9930952, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339075.99367, "value": 8.491039276123047, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339075.9939256, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339106.0905638, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339106.0924232, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339106.1011531, "value": 10.59722900390625, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339106.1015003, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339106.1018496, "value": 9.438037872314453, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339106.1020877, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339136.1907697, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339136.1926541, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339136.208146, "value": 17.38452911376953, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339136.2095754, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339136.2100015, "value": 17.35687255859375, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339136.211507, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339166.2911732, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339166.2915573, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339166.298973, "value": 7.804632186889648, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339166.2993283, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339166.2998698, "value": 8.318424224853516, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339166.300152, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339192.5894904, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757339192.590034, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757339192.5904026, "value": 58.3, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.59"}}
+{"metric_type": "process_count", "timestamp": 1757339192.5911152, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757339192.595838, "value": 6.403207778930664, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339192.5961466, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339192.6024427, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339192.6063268, "value": 3.8909912109375, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339192.606618, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339195.6693263, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339195.6765473, "value": 7.229328155517578, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339195.6772814, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339196.8556583, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339196.8589947, "value": 3.345012664794922, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339196.8593068, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339278.7004213, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757339278.7009897, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757339278.70132, "value": 50.9, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.88"}}
+{"metric_type": "process_count", "timestamp": 1757339278.7020679, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757339278.7069225, "value": 6.591081619262695, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339278.7072046, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339278.712782, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339278.7172096, "value": 4.434347152709961, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339278.717505, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339283.2555375, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339283.2585442, "value": 3.0171871185302734, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339283.2587955, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339285.2501013, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339285.2544844, "value": 4.361629486083984, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339285.2549, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339286.1232758, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339286.1297488, "value": 6.4792633056640625, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339286.1300578, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339308.7773058, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339308.7795587, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339308.7934346, "value": 16.136646270751953, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339308.7937648, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339308.7941318, "value": 14.583349227905273, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339308.7943685, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339338.881069, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339338.8814697, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339338.892904, "value": 11.838674545288086, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339338.89321, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339338.893738, "value": 12.27426528930664, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339338.8939815, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339368.9864316, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339368.992551, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339369.0160441, "value": 29.628276824951172, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339369.0175128, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339369.0220091, "value": 29.461383819580078, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339369.0227203, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339399.08495, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339399.0852873, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339399.0981905, "value": 13.245582580566406, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339399.09852, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339399.0989943, "value": 13.711690902709961, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339399.0992208, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339409.5156846, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339409.5271072, "value": 11.430740356445312, "unit": "milliseconds", "tags": {"endpoint": "HEAD /", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339409.5285249, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339429.188713, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339429.189125, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339429.2213297, "value": 32.62042999267578, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339429.2230644, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339429.2234628, "value": 34.343719482421875, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339429.2254713, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339459.2857115, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339459.2862182, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339459.2979975, "value": 12.291431427001953, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339459.2984207, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339459.298954, "value": 12.739896774291992, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339459.2991831, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339489.3870227, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339489.3874862, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339489.454956, "value": 67.93808937072754, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339489.4553075, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339489.4558685, "value": 68.39990615844727, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339489.4560983, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339519.4887564, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339519.4891598, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339519.4992256, "value": 10.475397109985352, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339519.499589, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339519.5000246, "value": 10.868072509765625, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339519.5002503, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339549.5892634, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339549.5896242, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339549.5999775, "value": 10.716915130615234, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339549.6002908, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339549.6007266, "value": 11.107444763183594, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339549.600976, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339555.864273, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339555.8678856, "value": 3.620624542236328, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339555.8681412, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339557.1241343, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339557.1275067, "value": 3.381967544555664, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339557.1277514, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339558.9742856, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339558.9774272, "value": 3.149747848510742, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339558.9777029, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339559.4229581, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339559.4261549, "value": 3.2079219818115234, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339559.4264596, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339559.64145, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339559.6466153, "value": 5.174875259399414, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339559.6468832, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339559.8231132, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339559.8262644, "value": 3.1595230102539062, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "400"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339559.8265622, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339579.691554, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339579.6919065, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339579.702072, "value": 10.521411895751953, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339579.7024388, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339579.7027943, "value": 10.892868041992188, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339579.7030187, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339605.2441902, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757339605.2447855, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757339605.245116, "value": 54.5, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.74"}}
+{"metric_type": "process_count", "timestamp": 1757339605.2458055, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757339605.250378, "value": 6.2427520751953125, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339605.25064, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339605.2561083, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339605.264013, "value": 7.908821105957031, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339605.2643838, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339609.8498921, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339609.8563702, "value": 6.484270095825195, "unit": "milliseconds", "tags": {"endpoint": "HEAD /", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339609.8574395, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339635.3262875, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339635.328051, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339635.338174, "value": 11.891365051269531, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339635.3384995, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339635.3401675, "value": 12.121438980102539, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339635.3404546, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339665.428728, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339665.4290886, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339665.4413881, "value": 12.661933898925781, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339665.442474, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339665.442838, "value": 13.755083084106445, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339665.4430242, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339695.53018, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339695.530553, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339695.540864, "value": 10.689973831176758, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339695.5411887, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339695.5415933, "value": 11.046171188354492, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339695.5418177, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339725.631196, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339725.631568, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339725.642092, "value": 10.903358459472656, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339725.6424172, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339725.642769, "value": 11.20758056640625, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339725.6430142, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339739.067968, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339739.0739093, "value": 5.948305130004883, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339739.074303, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339755.7316682, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339755.7321763, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339755.7411754, "value": 9.513616561889648, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339755.7414787, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339755.7418997, "value": 9.72747802734375, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339755.7422435, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339785.833573, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339785.8340843, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339785.8462596, "value": 12.693405151367188, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339785.8475735, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339785.8479455, "value": 13.881683349609375, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339785.8481781, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339799.9843087, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339799.9898465, "value": 5.545139312744141, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339799.9901705, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339815.9382951, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339815.9386857, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339815.9476535, "value": 9.36436653137207, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339815.947965, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339815.9483385, "value": 9.659528732299805, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339815.9485786, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339845.4957225, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339845.559284, "value": 63.568830490112305, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339845.5596054, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339846.0373542, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339846.0377572, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339846.0473666, "value": 10.039567947387695, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339846.0476792, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339846.0481067, "value": 10.354042053222656, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339846.04833, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339846.9785488, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339846.9824746, "value": 3.934621810913086, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339846.982736, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339847.4874918, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339847.4910648, "value": 3.5822391510009766, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339847.491322, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339847.7085335, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339847.7123075, "value": 3.7827491760253906, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339847.7125883, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339870.9829125, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339871.0001147, "value": 17.20881462097168, "unit": "milliseconds", "tags": {"endpoint": "GET /api/docs/openapi.json", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339871.0024896, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339876.1410737, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339876.141516, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339876.1509814, "value": 9.914875030517578, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339876.151292, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339876.151839, "value": 10.327339172363281, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339876.1535497, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339877.1169305, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339877.1267128, "value": 9.788274765014648, "unit": "milliseconds", "tags": {"endpoint": "HEAD /auth/login", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339877.1270654, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339891.5567703, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339891.5644367, "value": 7.673501968383789, "unit": "milliseconds", "tags": {"endpoint": "GET /login", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339891.5647457, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339906.243514, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339906.2438927, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339906.255464, "value": 11.955738067626953, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339906.2557712, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339906.2562497, "value": 12.362957000732422, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339906.2565117, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339936.3448372, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339936.3452086, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339936.3558974, "value": 11.065244674682617, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339936.3561926, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339936.3565998, "value": 11.397123336791992, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339936.3568466, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339966.447736, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339966.4481363, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339966.4588716, "value": 11.14034652709961, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339966.4591763, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339966.45954, "value": 11.409282684326172, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339966.4597874, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339996.5481305, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339996.5485284, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339996.559538, "value": 11.41214370727539, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339996.559915, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757339996.560259, "value": 11.75069808959961, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757339996.5605867, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340012.7032015, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757340012.7037954, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757340012.7041235, "value": 59.9, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.53"}}
+{"metric_type": "process_count", "timestamp": 1757340012.704936, "value": 134, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757340012.7095068, "value": 6.372928619384766, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340012.7098153, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340012.715685, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340012.7196023, "value": 3.9234161376953125, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340012.7199392, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340020.2695572, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757340020.2701356, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757340020.270486, "value": 59.2, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.56"}}
+{"metric_type": "process_count", "timestamp": 1757340020.2712028, "value": 134, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757340020.275791, "value": 6.293535232543945, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340020.276055, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340020.2812998, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340020.2854803, "value": 4.186868667602539, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340020.2858412, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340028.5003095, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757340028.5022526, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757340028.5026166, "value": 59.2, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.56"}}
+{"metric_type": "process_count", "timestamp": 1757340028.5038264, "value": 135, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757340028.5084574, "value": 8.218050003051758, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340028.5087636, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340028.514036, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340028.5185978, "value": 4.566669464111328, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340028.5189302, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340042.7745643, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757340042.7751224, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757340042.7754655, "value": 59.7, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.54"}}
+{"metric_type": "process_count", "timestamp": 1757340042.7761958, "value": 135, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757340042.780731, "value": 6.237506866455078, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340042.7810085, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340042.7864, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340042.790712, "value": 4.3182373046875, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340042.7909863, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340056.0903935, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757340056.0909853, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757340056.0913138, "value": 58.7, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.58"}}
+{"metric_type": "process_count", "timestamp": 1757340056.0920367, "value": 135, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757340056.0966158, "value": 6.311893463134766, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340056.0969164, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340056.1023078, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340056.1064994, "value": 4.1980743408203125, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340056.1068068, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340068.4756885, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340068.4793625, "value": 3.6818981170654297, "unit": "milliseconds", "tags": {"endpoint": "HEAD /", "status_code": "302"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340068.4796748, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340086.1729193, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340086.1732802, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340086.184765, "value": 11.853694915771484, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340086.1850924, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340086.1854672, "value": 12.192726135253906, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340086.1857064, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340091.3264494, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340091.3361094, "value": 9.666919708251953, "unit": "milliseconds", "tags": {"endpoint": "GET /api/videos", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340091.337319, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340106.6896698, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340106.702083, "value": 12.420654296875, "unit": "milliseconds", "tags": {"endpoint": "HEAD /login", "status_code": "404"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340106.70247, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340116.2750175, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340116.275454, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340116.2866685, "value": 11.656761169433594, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340116.2869508, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340116.287346, "value": 11.903047561645508, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340116.287695, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340146.3800306, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340146.3804467, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340146.403657, "value": 23.632526397705078, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340146.4054837, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340146.4058776, "value": 25.437355041503906, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340146.4060955, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340176.4858565, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340176.4877832, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340176.5008917, "value": 15.041112899780273, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340176.5012047, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340176.5017176, "value": 13.939857482910156, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340176.5019433, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340197.1866548, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757340197.1871495, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757340197.1875114, "value": 62.1, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.45"}}
+{"metric_type": "process_count", "timestamp": 1757340197.1881995, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757340197.1929114, "value": 6.315469741821289, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340197.1932902, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340197.1988933, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340197.2035291, "value": 4.64177131652832, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340197.2038257, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340208.073942, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340208.0815496, "value": 7.613420486450195, "unit": "milliseconds", "tags": {"endpoint": "HEAD /", "status_code": "302"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340208.081875, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340215.0063746, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340215.0171747, "value": 10.839223861694336, "unit": "milliseconds", "tags": {"endpoint": "HEAD /auth/login", "status_code": "404"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340215.0175369, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340227.2795727, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340227.2816637, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340227.3041072, "value": 24.54090118408203, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340227.3053885, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340227.305839, "value": 24.18065071105957, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340227.3060563, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340257.3763216, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340257.3767867, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340257.3877883, "value": 11.473655700683594, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340257.3881013, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340257.3885484, "value": 11.765718460083008, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340257.388781, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340272.1476197, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757340272.1481335, "value": 96.2, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757340272.1485028, "value": 62.0, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.45"}}
+{"metric_type": "process_count", "timestamp": 1757340272.1491468, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757340272.1541688, "value": 6.60395622253418, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340272.1545799, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340272.1611307, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340272.1650085, "value": 3.885507583618164, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340272.1652749, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340302.2328944, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340302.233221, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340302.2443185, "value": 11.430025100708008, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340302.2446654, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340302.2450335, "value": 11.81793212890625, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340302.2452538, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340332.3334868, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340332.3339956, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340332.3439887, "value": 10.509014129638672, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340332.344264, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340332.3447516, "value": 10.760068893432617, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340332.3449764, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340341.6247609, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757340341.6253276, "value": 95.1, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757340341.625829, "value": 76.9, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "0.88"}}
+{"metric_type": "process_count", "timestamp": 1757340341.626525, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757340341.6320794, "value": 7.383108139038086, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340341.6324039, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340341.6379423, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340341.6414878, "value": 3.551006317138672, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340341.6417758, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340353.297847, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340353.3121836, "value": 14.343500137329102, "unit": "milliseconds", "tags": {"endpoint": "GET /", "status_code": "302"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340353.3145719, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340353.3338969, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340353.3713508, "value": 37.4598503112793, "unit": "milliseconds", "tags": {"endpoint": "GET /auth/login", "status_code": "200"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340353.3727875, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340353.5176077, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340353.5252995, "value": 7.698774337768555, "unit": "milliseconds", "tags": {"endpoint": "GET /api/settings/ui_theme", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340353.52673, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340359.9497905, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340359.96167, "value": 11.8865966796875, "unit": "milliseconds", "tags": {"endpoint": "POST /auth/login", "status_code": "405"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340359.9619765, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340371.7095468, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340371.7099898, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340371.7224526, "value": 12.913942337036133, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340371.7228377, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340371.723202, "value": 13.219833374023438, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340371.7234464, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340401.8207803, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340401.8236585, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340401.8660831, "value": 45.30692100524902, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340401.8685338, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340401.8691342, "value": 45.481204986572266, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340401.871415, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340431.9356062, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340431.9359674, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340431.9583209, "value": 22.720813751220703, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340431.9606686, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340431.9626238, "value": 26.661157608032227, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340431.9628198, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340462.0184326, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340462.018983, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340462.0317624, "value": 13.359785079956055, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340462.032092, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340462.0325863, "value": 13.607978820800781, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340462.0328155, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340488.4990835, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "cpu_usage", "timestamp": 1757340488.4996612, "value": 100.0, "unit": "percent", "tags": {"cpu_count": "1"}}
+{"metric_type": "memory_usage", "timestamp": 1757340488.4999886, "value": 63.2, "unit": "percent", "tags": {"total_gb": "3.82", "available_gb": "1.41"}}
+{"metric_type": "process_count", "timestamp": 1757340488.5007153, "value": 133, "unit": "count", "tags": {}}
+{"metric_type": "api_response_time", "timestamp": 1757340488.5061164, "value": 7.105588912963867, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340488.5064163, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340488.511904, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340488.515154, "value": 3.2575130462646484, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340488.5154252, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340518.5928955, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340518.594561, "value": 1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340518.6078064, "value": 14.918088912963867, "unit": "milliseconds", "tags": {"endpoint": "GET /api/monitoring/health", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340518.6081212, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}
+{"metric_type": "api_response_time", "timestamp": 1757340518.60847, "value": 13.916015625, "unit": "milliseconds", "tags": {"endpoint": "GET /api/dashboard/status", "status_code": "401"}}
+{"metric_type": "concurrent_operations", "timestamp": 1757340518.6086886, "value": -1, "unit": "count", "tags": {"operation_type": "api_requests"}}

@@ -15,7 +15,7 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from src.database.connection import get_db
+from src.database.connection import get_db_session
 from src.database.models import Artist, Playlist, PlaylistEntry, User, UserRole, Video
 from src.services.thumbnail_service import ThumbnailService
 from src.utils.logger import get_logger
@@ -233,7 +233,7 @@ async def get_playlists(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get paginated list of playlists accessible to current user"""
     try:
@@ -287,7 +287,7 @@ async def get_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     include_entries: bool = Query(True),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get specific playlist with optional entries"""
     try:
@@ -318,7 +318,7 @@ async def get_playlist(
 async def create_playlist(
     playlist_data: PlaylistCreateRequest = Body(...),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Create new playlist"""
     try:
@@ -379,7 +379,7 @@ async def update_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     update_data: PlaylistUpdateRequest = Body(...),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Update playlist details"""
     try:
@@ -434,7 +434,7 @@ async def update_playlist(
 async def delete_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Delete playlist"""
     try:
@@ -472,7 +472,7 @@ async def add_videos_to_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     request_data: AddVideoRequest = Body(...),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Add video(s) to playlist"""
     try:
@@ -560,7 +560,7 @@ async def remove_video_from_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     entry_id: int = FastAPIPath(..., ge=1),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Remove video from playlist"""
     try:
@@ -614,7 +614,7 @@ async def reorder_videos_in_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     reorder_data: ReorderVideoRequest = Body(...),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Reorder videos in playlist"""
     try:
@@ -689,7 +689,7 @@ async def reorder_videos_in_playlist(
 async def bulk_delete_playlists(
     request: BulkDeleteRequest = Body(...),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Delete multiple playlists"""
     try:
@@ -753,7 +753,7 @@ async def bulk_delete_playlists(
 async def create_dynamic_playlist(
     playlist_data: DynamicPlaylistRequest = Body(...),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Create dynamic playlist with filter criteria"""
     try:
@@ -840,7 +840,7 @@ async def create_dynamic_playlist(
 async def refresh_dynamic_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Manually refresh dynamic playlist"""
     try:
@@ -898,7 +898,7 @@ async def upload_playlist_thumbnail_url(
     playlist_id: int = FastAPIPath(..., ge=1),
     thumbnail_url: str = Body(..., embed=True),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Upload thumbnail from URL"""
     try:
@@ -943,7 +943,7 @@ async def upload_playlist_thumbnail_file(
     playlist_id: int = FastAPIPath(..., ge=1),
     file: UploadFile = File(...),
     user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Upload thumbnail file"""
     try:
@@ -1005,7 +1005,7 @@ async def get_user_playlists(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     current_user: UserInfo = Depends(get_current_user_from_session),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get playlists for specific user"""
     try:

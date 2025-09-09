@@ -10,6 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - push to dev after each update.
 - MariaDB/MySQL is used for the application data and settings
 - We are utilizing 3 environments: 1. Dev is running on local server port 5000. 2. Docker is running on local machine docker install on port 5001. 3. Prod is running on 192.168.1.132:5050 in a docker install.
+- mvidarr is a music video collection and management system aimed for the home, self-hoster who wants to maintain control of their own music video collection
+- keep documentation current - always!
+- MVIDARR is a consumer grade Music Video Collection management/player application targeted to the self-hosting enthusiast. It should be able to be ran as a service or a docker.
+- ask before planning anything enterpise grade, it may not be needed.
 
 ## Critical Thinking and Feedback
 
@@ -370,3 +374,4 @@ semgrep --config=p/security-audit --config=p/secrets --config=p/owasp-top-ten sr
 - Ensure documentation links remain current with repository structure
 - Monitor Pages deployment status and resolve any build failures
 - Keep release information and roadmap current with project development
+- keep documentation current

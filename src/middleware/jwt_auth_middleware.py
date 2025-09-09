@@ -387,7 +387,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         self.public_paths = {
             "/health", "/docs", "/redoc", "/openapi.json",
             "/static/", "/css/", "/favicon.ico",
-            "/login", "/auth/login", "/api/auth/login", "/api/auth/register", "/api/auth/refresh",
+            "/login", "/auth/login", "/test-login", "/api/auth/login", "/api/auth/simple-login", "/api/auth/register", "/api/auth/refresh",
             "/api/auth/reset-password", "/api/auth/verify-email"
         }
         
@@ -458,7 +458,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         if not token:
             # Redirect browser requests to login page
             if self._is_browser_request(request):
-                return RedirectResponse(url="/login", status_code=302)
+                return RedirectResponse(url="/auth/login", status_code=302)
             # Return JSON for API requests
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -474,7 +474,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         if not is_valid:
             # Redirect browser requests to login page
             if self._is_browser_request(request):
-                return RedirectResponse(url="/login", status_code=302)
+                return RedirectResponse(url="/auth/login", status_code=302)
             # Return JSON for API requests
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,

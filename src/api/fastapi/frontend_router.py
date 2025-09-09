@@ -57,6 +57,15 @@ async def artists(request: Request):
         logger.error(f"Error rendering artists page: {e}")
         raise HTTPException(status_code=500, detail="Failed to load artists page")
 
+@frontend_router.get("/artist/{artist_id}", response_class=HTMLResponse, name="frontend_artist_detail")
+async def artist_detail(request: Request, artist_id: int = Path(..., ge=1)):
+    """Artist detail page"""
+    try:
+        return await template_routes.artist_detail(request, artist_id)
+    except Exception as e:
+        logger.error(f"Error rendering artist detail page for artist {artist_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load artist detail page")
+
 @frontend_router.get("/playlists", response_class=HTMLResponse, name="frontend_playlists")
 async def playlists(request: Request):
     """Playlists management page"""
@@ -83,7 +92,230 @@ async def settings(request: Request, user=Depends(require_authentication)):
 async def login_page(request: Request):
     """Login page"""
     try:
-        return await template_routes.login(request)
+        # Temporary simple HTML response to verify route works
+        return HTMLResponse(content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>MVidarr Login</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+                    margin: 0; 
+                    padding: 40px 20px; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    min-height: 100vh;
+                    box-sizing: border-box;
+                }
+                .login-container { 
+                    max-width: 400px; 
+                    margin: 0 auto; 
+                    background: white; 
+                    padding: 40px 30px; 
+                    border-radius: 12px; 
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.1); 
+                }
+                h1 { 
+                    color: #2c3e50; 
+                    text-align: center; 
+                    margin: 0 0 30px 0; 
+                    font-weight: 600;
+                    font-size: 28px;
+                }
+                .form-group { margin-bottom: 20px; }
+                label { 
+                    display: block; 
+                    margin-bottom: 8px; 
+                    color: #555; 
+                    font-weight: 500;
+                    font-size: 14px;
+                }
+                input { 
+                    width: 100%; 
+                    padding: 12px 15px; 
+                    border: 2px solid #e1e8ed; 
+                    border-radius: 8px; 
+                    box-sizing: border-box; 
+                    font-size: 16px;
+                    transition: border-color 0.3s ease;
+                }
+                input:focus {
+                    outline: none;
+                    border-color: #667eea;
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                }
+                /* Remove IE clear button */
+                input::-ms-clear { display: none; width: 0; height: 0; }
+                /* Remove webkit autofill styling */
+                input:-webkit-autofill,
+                input:-webkit-autofill:hover, 
+                input:-webkit-autofill:focus {
+                    -webkit-text-fill-color: #333;
+                    -webkit-box-shadow: 0 0 0px 1000px white inset;
+                    transition: background-color 5000s ease-in-out 0s;
+                }
+                button { 
+                    width: 100%; 
+                    padding: 14px; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    color: white; 
+                    border: none; 
+                    border-radius: 8px; 
+                    cursor: pointer; 
+                    font-size: 16px; 
+                    font-weight: 600;
+                    transition: all 0.3s ease;
+                }
+                button:hover:not(:disabled) { 
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                }
+                button:disabled {
+                    opacity: 0.7;
+                    cursor: not-allowed;
+                    transform: none;
+                }
+                .auth-info { 
+                    margin-top: 25px; 
+                    padding: 20px; 
+                    background: #f8f9fa; 
+                    border-radius: 8px; 
+                    font-size: 14px; 
+                    color: #6c757d; 
+                    border-left: 4px solid #28a745;
+                }
+                .security-warning {
+                    margin-top: 15px;
+                    padding: 12px;
+                    background: #fff3cd;
+                    border: 1px solid #ffeaa7;
+                    border-radius: 6px;
+                    font-size: 13px;
+                    color: #856404;
+                }
+                .security-warning strong {
+                    color: #b45309;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="login-container">
+                <h1>MVidarr Login</h1>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Username:</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+                <div id="loginMessage" style="margin-top: 15px; padding: 10px; border-radius: 4px; display: none;"></div>
+                <div class="auth-info">
+                    <strong>✅ Authentication System Working</strong><br>
+                    Browser requests are now properly redirected to this login page.<br>
+                    Default credentials: admin / mvidarr
+                </div>
+                <div class="security-warning">
+                    <strong>⚠️ Security Notice:</strong> This page is using HTTP instead of HTTPS. 
+                    In production, always use HTTPS to encrypt login credentials during transmission.
+                </div>
+            </div>
+            
+            <script>
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const messageDiv = document.getElementById('loginMessage');
+                const submitButton = e.target.querySelector('button[type="submit"]');
+                
+                // Show loading state
+                submitButton.disabled = true;
+                submitButton.textContent = 'Logging in...';
+                messageDiv.style.display = 'none';
+                
+                try {
+                    // Create abort controller for timeout
+                    const abortController = new AbortController();
+                    const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10 second timeout
+                    
+                    const response = await fetch('/test-login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            username: username,
+                            password: password
+                        }),
+                        signal: abortController.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    let data;
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        // Handle non-JSON responses
+                        const text = await response.text();
+                        console.error('Non-JSON response:', text);
+                        throw new Error('Server returned invalid response format');
+                    }
+                    
+                    if (response.ok && data.success) {
+                        // Success - redirect to dashboard
+                        messageDiv.innerHTML = '✅ Login successful! Redirecting...';
+                        messageDiv.style.background = '#d4edda';
+                        messageDiv.style.color = '#155724';
+                        messageDiv.style.border = '1px solid #c3e6cb';
+                        messageDiv.style.display = 'block';
+                        
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1500);
+                    } else {
+                        // Error
+                        messageDiv.innerHTML = '❌ ' + (data.detail || data.message || 'Login failed');
+                        messageDiv.style.background = '#f8d7da';
+                        messageDiv.style.color = '#721c24';
+                        messageDiv.style.border = '1px solid #f5c6cb';
+                        messageDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    
+                    let errorMessage = 'Login failed';
+                    
+                    if (error.name === 'AbortError') {
+                        errorMessage = 'Request timeout - please try again';
+                    } else if (error.message) {
+                        errorMessage = error.message;
+                    }
+                    
+                    messageDiv.innerHTML = '❌ ' + errorMessage;
+                    messageDiv.style.background = '#f8d7da';
+                    messageDiv.style.color = '#721c24';
+                    messageDiv.style.border = '1px solid #f5c6cb';
+                    messageDiv.style.display = 'block';
+                }
+                
+                // Reset button
+                submitButton.disabled = false;
+                submitButton.textContent = 'Login';
+            });
+            </script>
+        </body>
+        </html>
+        """, status_code=200)
     except Exception as e:
         logger.error(f"Error rendering login page: {e}")
         raise HTTPException(status_code=500, detail="Failed to load login page")

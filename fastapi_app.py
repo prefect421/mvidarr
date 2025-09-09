@@ -145,8 +145,15 @@ app = FastAPI(
     - **Database Integration**: SQLAlchemy ORM with async database operations
     - **Background Jobs**: Native asyncio-based job system for long-running tasks
 
+    ### Week 29 Consumer Features (✅ Complete)
+    - **Personal Cloud Backup**: Google Drive, Dropbox, OneDrive integration for music video backup
+    - **YouTube Import**: Import playlists, channels, and individual videos with music detection
+    - **Local Network Sharing**: mDNS discovery, QR codes, home network device access
+    - **Mobile Access**: Mobile-optimized API endpoints and responsive web app
+    - **Sync Manager**: Automated file synchronization with personal cloud storage
+    
     ---
-    **Version**: 0.9.8 - Phase 3 Week 32 Pydantic Validation Complete
+    **Version**: 0.9.10 - Phase 3 Week 29 Consumer Features Complete
     """,
     version="0.9.8",
     contact={
@@ -203,6 +210,24 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json"
 )
+
+# Phase 3 Week 29 Integration - Personal Cloud Backup & Basic Integrations
+from src.api.fastapi.week29_integration import (
+    backup_router, 
+    youtube_router, 
+    network_router, 
+    sync_router
+)
+from src.api.fastapi.mobile_access import mobile_router
+
+# Include Week 29 API routers
+app.include_router(backup_router, prefix="/api")
+app.include_router(youtube_router, prefix="/api") 
+app.include_router(network_router, prefix="/api")
+app.include_router(sync_router, prefix="/api")
+app.include_router(mobile_router)
+
+logger.info("✅ Phase 3 Week 29 services integrated: Personal Cloud Backup, YouTube Import, Network Sharing, Sync Manager, Mobile Access")
 
 # Add CORS middleware with optimized configuration
 app.add_middleware(
@@ -286,9 +311,9 @@ templates = Jinja2Templates(directory="frontend/templates")
 # Include API routers (some temporarily disabled due to Redis dependencies)
 # from src.api.fastapi.jobs import router as jobs_router
 # from src.api.fastapi.video_quality import router as video_quality_router
-# from src.api.fastapi.media_processing import router as media_processing_router
-# from src.api.fastapi.image_processing import router as image_processing_router
-# from src.api.fastapi.advanced_image_processing import router as advanced_image_router
+from src.api.fastapi.media_processing import router as media_processing_router
+from src.api.fastapi.image_processing import router as image_processing_router
+from src.api.fastapi.advanced_image_processing import router as advanced_image_router
 # from src.api.fastapi.bulk_operations import router as bulk_operations_router
 from src.api.fastapi.videos import router as fastapi_videos_router
 from src.api.fastapi.artists import router as fastapi_artists_router
@@ -307,9 +332,9 @@ from src.api.fastapi.api_gateway_management import router as gateway_router
 
 # app.include_router(jobs_router)
 # app.include_router(video_quality_router)
-# app.include_router(media_processing_router)
-# app.include_router(image_processing_router)
-# app.include_router(advanced_image_router)
+app.include_router(media_processing_router)
+app.include_router(image_processing_router)
+app.include_router(advanced_image_router)
 # app.include_router(bulk_operations_router)
 # Re-enable real database routers after fixing database initialization
 app.include_router(fastapi_videos_router)

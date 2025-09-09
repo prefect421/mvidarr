@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.database.connection import get_db
+from src.database.connection import get_db_session
 from src.database.models import SessionStatus, User, UserRole, UserSession
 from src.services.audit_service import AuditEventType, AuditService
 from src.services.auth_service import AuthService
@@ -159,7 +159,7 @@ class LogsResponse(BaseModel):
 @router.get("/dashboard", response_model=DashboardResponse)
 async def get_dashboard(
     current_user: UserInfo = Depends(require_admin_access),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Admin dashboard with system overview"""
     try:
@@ -402,7 +402,7 @@ async def get_recent_logs(
 async def list_all_users(
     include_inactive: bool = True,
     current_user: UserInfo = Depends(require_admin_access),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """List all users (admin only)"""
     try:
@@ -446,7 +446,7 @@ async def list_all_users(
 async def create_new_user(
     user_data: UserCreateRequest,
     current_user: UserInfo = Depends(require_admin_access),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Create a new user (admin only)"""
     try:
@@ -502,7 +502,7 @@ async def create_new_user(
 async def get_user_details(
     user_id: int,
     current_user: UserInfo = Depends(require_admin_access),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get detailed user information"""
     try:
@@ -636,7 +636,7 @@ async def deactivate_user_account(
 async def activate_user_account(
     user_id: int,
     current_user: UserInfo = Depends(require_admin_access),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Activate user account (admin only)"""
     try:
@@ -677,7 +677,7 @@ async def activate_user_account(
 async def unlock_user_account(
     user_id: int,
     current_user: UserInfo = Depends(require_admin_access),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Unlock user account (admin only)"""
     try:
@@ -717,7 +717,7 @@ async def unlock_user_account(
 async def get_user_sessions(
     user_id: int,
     current_user: UserInfo = Depends(require_admin_access),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get user sessions (admin only)"""
     try:
@@ -767,7 +767,7 @@ async def revoke_user_session(
     user_id: int,
     session_id: int,
     current_user: UserInfo = Depends(require_admin_access),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Revoke a specific user session (admin only)"""
     try:

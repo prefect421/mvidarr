@@ -88,13 +88,34 @@ class AsyncTemplateSystem:
                 
                 # Static files
                 'static': '/static',
-                'frontend.css_files': '/static/css',
+                'frontend.static_files': '/static',
+                'frontend.css_files': '/static/css', 
                 'frontend.js_files': '/static/js'
             }
             
             base_url = endpoint_mapping.get(endpoint, endpoint)
             
-            # Handle query parameters
+            # Special handling for static files
+            if endpoint in ('static', 'frontend.static_files'):
+                filename = kwargs.get('filename', '')
+                if filename:
+                    return f"/static/{filename}"
+                return "/static/"
+            
+            # Handle CSS and JS file endpoints
+            if endpoint == 'frontend.css_files':
+                filename = kwargs.get('filename', '')
+                if filename:
+                    return f"/css/{filename}"
+                return "/css/"
+                
+            if endpoint == 'frontend.js_files':
+                filename = kwargs.get('filename', '')
+                if filename:
+                    return f"/static/js/{filename}"
+                return "/static/js/"
+            
+            # Handle query parameters for non-static routes
             if kwargs:
                 params = []
                 for key, value in kwargs.items():
@@ -406,6 +427,15 @@ class FastAPITemplateRoutes:
             'page_description': 'Browse and manage artists'
         }
         return await self.template_system.render_response('artists.html', request, context)
+    
+    async def artist_detail(self, request: Request, artist_id: int) -> HTMLResponse:
+        """Artist detail page"""
+        context = {
+            'page_title': f'Artist Details',
+            'page_description': f'View artist information and videos',
+            'artist_id': artist_id
+        }
+        return await self.template_system.render_response('artist_detail.html', request, context)
     
     async def playlists(self, request: Request) -> HTMLResponse:
         """Playlists management page"""

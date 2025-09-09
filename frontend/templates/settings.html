@@ -126,11 +126,11 @@ input:checked + .slider:before {
                 Job Management
             </a>
             <button onclick="saveSettings()" class="btn btn-primary" aria-label="Save current settings">
-                <iconify-icon icon="mdi:content-save" aria-hidden="true"></iconify-icon>
+                <iconify-icon icon="tabler:device-floppy" aria-hidden="true"></iconify-icon>
                 Save Settings
             </button>
             <button onclick="restartApp()" class="btn btn-warning" aria-label="Restart application to apply changes">
-                <iconify-icon icon="mdi:restart" aria-hidden="true"></iconify-icon>
+                <iconify-icon icon="tabler:refresh" aria-hidden="true"></iconify-icon>
                 Restart Application
             </button>
         </div>
@@ -149,49 +149,49 @@ input:checked + .slider:before {
                 <li>
                     <button class="settings-tab-btn active" onclick="switchTab(event, 'general-tab')" 
                             role="tab" aria-selected="true" aria-controls="general-tab" id="tab-general">
-                        <iconify-icon icon="mdi:cog" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:settings" class="tab-icon" aria-hidden="true"></iconify-icon> 
                         <span>General</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'security-tab')"
                             role="tab" aria-selected="false" aria-controls="security-tab" id="tab-security">
-                        <iconify-icon icon="mdi:shield-lock" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:shield-lock" class="tab-icon" aria-hidden="true"></iconify-icon> 
                         <span>Security</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'services-tab')"
                             role="tab" aria-selected="false" aria-controls="services-tab" id="tab-services">
-                        <iconify-icon icon="mdi:link" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:link" class="tab-icon" aria-hidden="true"></iconify-icon> 
                         <span>Services</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'downloads-tab')"
                             role="tab" aria-selected="false" aria-controls="downloads-tab" id="tab-downloads">
-                        <iconify-icon icon="mdi:download" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:download" class="tab-icon" aria-hidden="true"></iconify-icon> 
                         <span>Downloads</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'database-tab')"
                             role="tab" aria-selected="false" aria-controls="database-tab" id="tab-database">
-                        <iconify-icon icon="mdi:database" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:database" class="tab-icon" aria-hidden="true"></iconify-icon> 
                         <span>Database</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'system-tab')"
                             role="tab" aria-selected="false" aria-controls="system-tab" id="tab-system">
-                        <iconify-icon icon="mdi:tools" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:tools" class="tab-icon" aria-hidden="true"></iconify-icon> 
                         <span>System</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'themes-tab')"
                             role="tab" aria-selected="false" aria-controls="themes-tab" id="tab-themes">
-                        <iconify-icon icon="mdi:palette" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:palette" class="tab-icon" aria-hidden="true"></iconify-icon> 
                         <span>Themes</span>
                     </button>
                 </li>
@@ -402,19 +402,19 @@ input:checked + .slider:before {
             <!-- Certificate Actions -->
             <div class="certificate-actions">
                 <button onclick="uploadCertificates()" class="btn btn-primary" id="upload-cert-btn">
-                    <iconify-icon icon="mdi:upload" aria-hidden="true"></iconify-icon>
+                    <iconify-icon icon="tabler:upload" aria-hidden="true"></iconify-icon>
                     Upload Certificates
                 </button>
                 <button onclick="validateCertificate()" class="btn btn-info" id="validate-cert-btn">
-                    <iconify-icon icon="mdi:certificate" aria-hidden="true"></iconify-icon>
+                    <iconify-icon icon="tabler:certificate" aria-hidden="true"></iconify-icon>
                     Validate Certificate
                 </button>
                 <button onclick="downloadCertificate()" class="btn btn-secondary" id="download-cert-btn" style="display: none;">
-                    <iconify-icon icon="mdi:download" aria-hidden="true"></iconify-icon>
+                    <iconify-icon icon="tabler:download" aria-hidden="true"></iconify-icon>
                     Download Current Certificate
                 </button>
                 <button onclick="removeCertificates()" class="btn btn-danger" id="remove-cert-btn" style="display: none;">
-                    <iconify-icon icon="mdi:delete" aria-hidden="true"></iconify-icon>
+                    <iconify-icon icon="tabler:trash" aria-hidden="true"></iconify-icon>
                     Remove Certificates
                 </button>
             </div>
@@ -908,7 +908,7 @@ input:checked + .slider:before {
                     <span class="status-loading">Checking...</span>
                 </div>
                 <button onclick="checkCookieStatus()" class="btn btn-secondary btn-sm">
-                    <iconify-icon icon="mdi:refresh"></iconify-icon> Check Status
+                    <iconify-icon icon="tabler:refresh"></iconify-icon> Check Status
                 </button>
                 <small class="help-text">Browser cookies from logged-in YouTube sessions can significantly improve format availability</small>
             </div>
@@ -956,16 +956,16 @@ input:checked + .slider:before {
                     </div>
                 </div>
                 <button onclick="loadQualityStatistics()" class="btn btn-secondary btn-sm">
-                    <iconify-icon icon="mdi:refresh"></iconify-icon> Refresh Stats
+                    <iconify-icon icon="tabler:refresh"></iconify-icon> Refresh Stats
                 </button>
             </div>
             
             <div class="quality-actions">
                 <button onclick="showUpgradeableVideos()" class="btn btn-primary">
-                    <iconify-icon icon="mdi:arrow-up-bold"></iconify-icon> Find Upgradeable Videos
+                    <iconify-icon icon="tabler:arrow-up"></iconify-icon> Find Upgradeable Videos
                 </button>
                 <button onclick="showQualityAnalysis()" class="btn btn-info">
-                    <iconify-icon icon="mdi:chart-line"></iconify-icon> Quality Analysis
+                    <iconify-icon icon="tabler:chart-line"></iconify-icon> Quality Analysis
                 </button>
             </div>
             
@@ -977,7 +977,7 @@ input:checked + .slider:before {
                 </div>
                 <div class="upgrade-actions">
                     <button onclick="bulkUpgradeSelected()" class="btn btn-success" id="bulkUpgradeBtn" style="display: none;">
-                        <iconify-icon icon="mdi:download-multiple"></iconify-icon> Upgrade Selected Videos
+                        <iconify-icon icon="tabler:download"></iconify-icon> Upgrade Selected Videos
                     </button>
                     <button onclick="hideUpgradeableVideos()" class="btn btn-secondary">
                         Close

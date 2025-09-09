@@ -22,7 +22,7 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from src.database.connection import get_db
+from src.database.connection import get_db_session
 from src.database.models import Artist, Download, Video, VideoStatus
 from src.services.imvdb_service import imvdb_service
 from src.services.metadata_enrichment_service import metadata_enrichment_service
@@ -200,10 +200,10 @@ async def resolve_video_url(video: Video, session: Session) -> Optional[str]:
 
 async def find_relocated_video(video: Video) -> Optional[Path]:
     """Find video file if it has been relocated"""
-    if not video.file_path:
+    if not getattr(video, 'file_path', video.local_path):
         return None
         
-    original_path = Path(video.file_path)
+    original_path = Path(getattr(video, 'file_path', video.local_path))
     if original_path.exists():
         return original_path
         
@@ -237,7 +237,7 @@ async def list_videos(
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     status: Optional[str] = Query(None),
     artist_id: Optional[int] = Query(None),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """List all videos with pagination and sorting"""
     try:
@@ -276,16 +276,16 @@ async def list_videos(
                 "url": video.url,
                 "youtube_url": video.youtube_url,
                 "status": video.status,
-                "file_path": video.file_path,
-                "file_size": video.file_size,
+                "file_path": getattr(video, "file_path", video.local_path),
+                "file_size": getattr(video, "file_size", None),
                 "duration": video.duration,
-                "resolution": video.resolution,
-                "fps": video.fps,
-                "codec": video.codec,
-                "bitrate": video.bitrate,
+                "resolution": getattr(video, "resolution", None),
+                "fps": getattr(video, "fps", None),
+                "codec": getattr(video, "codec", None),
+                "bitrate": getattr(video, "bitrate", None),
                 "created_at": video.created_at.isoformat() if video.created_at else None,
                 "updated_at": video.updated_at.isoformat() if video.updated_at else None,
-                "genres": _safe_parse_genres(video.genres),
+                "genres": _safe_parse_genres(getattr(video, "genres", [])),
                 "thumbnail_url": f"/api/videos/{video.id}/thumbnail" if video.id else None
             }
             video_responses.append(video_dict)
@@ -307,7 +307,7 @@ async def list_videos(
 @router.get("/{video_id}", response_model=VideoResponse)
 async def get_video(
     video_id: int = FastAPIPath(..., ge=1),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get single video details"""
     try:
@@ -326,16 +326,16 @@ async def get_video(
             url=video.url,
             youtube_url=video.youtube_url,
             status=video.status,
-            file_path=video.file_path,
-            file_size=video.file_size,
+            file_path=getattr(video, 'file_path', video.local_path),
+            file_size=getattr(video, "file_size", None),
             duration=video.duration,
-            resolution=video.resolution,
-            fps=video.fps,
-            codec=video.codec,
-            bitrate=video.bitrate,
+            resolution=getattr(video, "resolution", None),
+            fps=getattr(video, "fps", None),
+            codec=getattr(video, "codec", None),
+            bitrate=getattr(video, "bitrate", None),
             created_at=video.created_at,
             updated_at=video.updated_at,
-            genres=_safe_parse_genres(video.genres),
+            genres=_safe_parse_genres(getattr(video, "genres", [])),
             thumbnail_url=f"/api/videos/{video.id}/thumbnail"
         )
         
@@ -349,7 +349,7 @@ async def get_video(
 async def update_video(
     video_id: int = FastAPIPath(..., ge=1),
     update_data: VideoUpdateRequest = Body(...),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Update video information"""
     try:
@@ -386,16 +386,16 @@ async def update_video(
             url=video.url,
             youtube_url=video.youtube_url,
             status=video.status,
-            file_path=video.file_path,
-            file_size=video.file_size,
+            file_path=getattr(video, 'file_path', video.local_path),
+            file_size=getattr(video, "file_size", None),
             duration=video.duration,
-            resolution=video.resolution,
-            fps=video.fps,
-            codec=video.codec,
-            bitrate=video.bitrate,
+            resolution=getattr(video, "resolution", None),
+            fps=getattr(video, "fps", None),
+            codec=getattr(video, "codec", None),
+            bitrate=getattr(video, "bitrate", None),
             created_at=video.created_at,
             updated_at=video.updated_at,
-            genres=_safe_parse_genres(video.genres),
+            genres=_safe_parse_genres(getattr(video, "genres", [])),
             thumbnail_url=f"/api/videos/{video.id}/thumbnail"
         )
         
@@ -409,7 +409,7 @@ async def update_video(
 @router.delete("/{video_id}")
 async def delete_video(
     video_id: int = FastAPIPath(..., ge=1),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Delete single video"""
     try:
@@ -419,12 +419,12 @@ async def delete_video(
             raise HTTPException(status_code=404, detail="Video not found")
             
         # Delete associated files if they exist
-        if video.file_path and Path(video.file_path).exists():
+        if getattr(video, "file_path", video.local_path) and Path(getattr(video, "file_path", video.local_path)).exists():
             try:
-                Path(video.file_path).unlink()
-                logger.info(f"Deleted video file: {video.file_path}")
+                Path(getattr(video, "file_path", video.local_path)).unlink()
+                logger.info(f"Deleted video file: {getattr(video, 'file_path', video.local_path)}")
             except Exception as e:
-                logger.warning(f"Failed to delete video file {video.file_path}: {e}")
+                logger.warning(f"Failed to delete video file {getattr(video, 'file_path', video.local_path)}: {e}")
                 
         # Delete from database
         session.delete(video)
@@ -445,7 +445,7 @@ async def delete_video(
 async def update_video_status(
     video_id: int = FastAPIPath(..., ge=1),
     status_data: VideoStatusUpdateRequest = Body(...),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Update video status"""
     try:
@@ -484,7 +484,7 @@ async def search_videos(
     offset: int = Query(0, ge=0),
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Search videos with filters"""
     try:
@@ -541,9 +541,9 @@ async def search_videos(
                 "url": video.url,
                 "youtube_url": video.youtube_url,
                 "status": video.status,
-                "file_path": video.file_path,
+                "file_path": getattr(video, "file_path", video.local_path),
                 "created_at": video.created_at.isoformat() if video.created_at else None,
-                "genres": _safe_parse_genres(video.genres),
+                "genres": _safe_parse_genres(getattr(video, "genres", [])),
                 "thumbnail_url": f"/api/videos/{video.id}/thumbnail"
             }
             video_responses.append(video_dict)
@@ -579,7 +579,7 @@ async def search_videos(
 async def stream_video(
     request: Request,
     video_id: int = FastAPIPath(..., ge=1),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Stream video with HTTP range support"""
     try:
@@ -590,8 +590,8 @@ async def stream_video(
             
         # Find the video file
         video_path = None
-        if video.file_path and Path(video.file_path).exists():
-            video_path = Path(video.file_path)
+        if getattr(video, "file_path", video.local_path) and Path(getattr(video, "file_path", video.local_path)).exists():
+            video_path = Path(getattr(video, "file_path", video.local_path))
         else:
             # Try to find relocated file
             video_path = await find_relocated_video(video)
@@ -672,7 +672,7 @@ async def stream_video(
 async def get_video_thumbnail(
     video_id: int = FastAPIPath(..., ge=1),
     size: Optional[str] = Query(None, pattern="^(small|medium|large)$"),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Get video thumbnail"""
     try:
@@ -724,7 +724,7 @@ async def get_video_thumbnail(
 async def update_video_thumbnail(
     video_id: int = FastAPIPath(..., ge=1),
     thumbnail_url: str = Body(..., embed=True),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Update video thumbnail from URL"""
     try:
@@ -755,7 +755,7 @@ async def update_video_thumbnail(
 async def queue_video_download(
     video_id: int = FastAPIPath(..., ge=1),
     download_request: DownloadRequest = Body(...),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Queue video download"""
     try:
@@ -834,7 +834,7 @@ async def queue_video_download(
 @router.post("/bulk/delete")
 async def bulk_delete_videos(
     request: BulkDeleteRequest = Body(...),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Bulk delete videos"""
     try:
@@ -855,8 +855,8 @@ async def bulk_delete_videos(
         for video in videos:
             try:
                 # Delete associated files if they exist
-                if video.file_path and Path(video.file_path).exists():
-                    Path(video.file_path).unlink()
+                if getattr(video, "file_path", video.local_path) and Path(getattr(video, "file_path", video.local_path)).exists():
+                    Path(getattr(video, "file_path", video.local_path)).unlink()
                     
                 session.delete(video)
                 deleted_count += 1
@@ -890,7 +890,7 @@ async def bulk_delete_videos(
 @router.post("/bulk/download")
 async def bulk_download_videos(
     request: BulkDownloadRequest = Body(...),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Bulk download videos"""
     try:
@@ -973,7 +973,7 @@ async def bulk_download_videos(
 @router.post("/bulk/status")
 async def bulk_update_status(
     request: BulkStatusUpdateRequest = Body(...),
-    session: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ):
     """Bulk update video status"""
     try:
