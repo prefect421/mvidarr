@@ -16,9 +16,8 @@ from src.utils.logger import get_logger
 from src.services.redis_service import get_redis_client
 from src.services.music_video_detector import get_music_video_detector
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
-from src.database import get_async_session
-from src.models.video import Video
-from src.models.artist import Artist
+from src.database.async_connection import get_async_session
+from src.database.models import Video, Artist
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc, asc, text
 from sqlalchemy.orm import selectinload

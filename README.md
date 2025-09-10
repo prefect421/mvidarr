@@ -81,10 +81,24 @@ docker pull ghcr.io/prefect421/mvidarr:v1.0.0
 # Clone and setup
 git clone https://github.com/prefect421/mvidarr.git
 cd mvidarr
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Start application
-python app.py
+# Start FastAPI application
+python fastapi_app.py
+```
+
+**Production Service:**
+```bash
+# Install as systemd service (recommended)
+sudo cp mvidarr.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable mvidarr.service
+sudo systemctl start mvidarr.service
+
+# Check service status
+sudo systemctl status mvidarr.service
 ```
 
 **Access:** `http://localhost:5000`

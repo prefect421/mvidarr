@@ -1151,3 +1151,13 @@ class EnhancedArtistDiscoveryService:
 
 # Initialize service instance
 enhanced_artist_discovery_service = EnhancedArtistDiscoveryService()
+
+
+async def get_enhanced_artist_discovery() -> EnhancedArtistDiscoveryService:
+    """
+    Get the enhanced artist discovery service instance
+    
+    Returns:
+        EnhancedArtistDiscoveryService: Configured service instance
+    """
+    return enhanced_artist_discovery_service

@@ -19,9 +19,8 @@ from src.services.redis_service import get_redis_client
 from src.services.music_video_detector import get_music_video_detector, MusicVideoDetectionResult
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
 from src.services.genre_service import get_genre_service
-from src.models.video import Video
-from src.models.artist import Artist
-from src.database import get_async_session
+from src.database.models import Video, Artist
+from src.database.async_connection import get_async_session
 
 logger = get_logger("mvidarr.collection_organizer")
 

@@ -13,7 +13,7 @@ WorkingDirectory=/home/mike/mvidarr
 
 # Create required directories and start application
 ExecStartPre=/usr/bin/mkdir -p /home/mike/mvidarr/data/logs /home/mike/mvidarr/data/downloads /home/mike/mvidarr/data/thumbnails /home/mike/mvidarr/data/cache /home/mike/mvidarr/data/backups /home/mike/mvidarr/data/processing
-ExecStart=/home/mike/mvidarr/venv/bin/python /home/mike/mvidarr/app_launcher_v2.py fastapi_hybrid
+ExecStart=/home/mike/mvidarr/venv/bin/python /home/mike/mvidarr/fastapi_app.py
 ExecReload=/bin/kill -HUP $MAINPID
 
 # Enhanced restart and failure handling

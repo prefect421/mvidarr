@@ -361,7 +361,7 @@ async def get_session_info(session: MockSession = Depends(get_current_session)):
             )
         
         # Get session from database
-        from src.database.connection import get_db_session
+        from src.database.connection import get_db
         
         with get_db() as db_session:
             user_session = (
@@ -609,10 +609,11 @@ async def reset_credentials():
 async def auth_health():
     """Check authentication system health"""
     try:
-        from src.database.connection import get_db_session
+        from src.database.connection import get_db
+        from sqlalchemy import text
         
         with get_db() as db_session:
-            db_session.execute("SELECT 1").fetchone()
+            db_session.execute(text("SELECT 1")).fetchone()
         
         oauth_status = "disabled"
         try:

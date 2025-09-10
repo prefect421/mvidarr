@@ -17,9 +17,8 @@ import aiohttp
 
 from src.utils.logger import get_logger
 from src.services.redis_service import get_redis_client
-from src.database import get_async_session
-from src.models.video import Video
-from src.models.artist import Artist
+from src.database.async_connection import get_async_session
+from src.database.models import Video, Artist
 from sqlalchemy import select
 
 logger = get_logger("mvidarr.smart_home")

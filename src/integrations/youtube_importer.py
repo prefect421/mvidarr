@@ -22,9 +22,8 @@ from src.services.youtube_service import get_youtube_service
 from src.services.music_video_detector import get_music_video_detector
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
 from src.jobs.base_task import BaseTask
-from src.models.video import Video
-from src.models.artist import Artist
-from src.database import get_async_session
+from src.database.models import Video, Artist
+from src.database.async_connection import get_async_session
 
 logger = get_logger("mvidarr.youtube_importer")
 

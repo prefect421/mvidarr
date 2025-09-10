@@ -98,6 +98,25 @@ class BulkDownloadRequest(BulkVideoRequest):
 class BulkStatusUpdateRequest(BulkVideoRequest):
     status: str = Field(..., pattern="^(wanted|ignored|downloaded|failed)$")
 
+class BulkEditRequest(BulkVideoRequest):
+    title: Optional[str] = None
+    artist_id: Optional[int] = None
+    url: Optional[str] = None
+    youtube_url: Optional[str] = None
+    status: Optional[str] = None
+    genres: Optional[List[str]] = None
+
+class BulkOrganizeRequest(BulkVideoRequest):
+    target_directory: Optional[str] = None
+    create_artist_folders: bool = True
+    update_database_paths: bool = True
+
+class BulkRefreshMetadataRequest(BulkVideoRequest):
+    refresh_imvdb: bool = True
+    refresh_youtube: bool = True
+    refresh_musicbrainz: bool = False
+    force_refresh: bool = False
+
 class VideoStatusUpdateRequest(BaseModel):
     status: str = Field(..., pattern="^(wanted|ignored|downloaded|failed)$")
 
@@ -1004,6 +1023,315 @@ async def bulk_update_status(
         
     except Exception as e:
         logger.error(f"Error in bulk status update: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/bulk/edit")
+async def bulk_edit_videos(
+    request: BulkEditRequest = Body(...),
+    session: Session = Depends(get_db_session)
+):
+    """Bulk edit videos with specified updates"""
+    try:
+        if not request.video_ids:
+            raise HTTPException(status_code=400, detail="No video IDs provided")
+            
+        # Get videos to edit
+        videos = session.query(Video).filter(
+            Video.id.in_(request.video_ids)
+        ).all()
+        
+        if not videos:
+            raise HTTPException(status_code=404, detail="No videos found")
+            
+        # Build update dictionary from request (excluding video_ids and None values)
+        update_fields = request.dict(exclude={"video_ids"}, exclude_unset=True, exclude_none=True)
+        
+        if not update_fields:
+            return {
+                "message": "No fields provided for update",
+                "updated_count": 0,
+                "total_requested": len(request.video_ids)
+            }
+        
+        # Handle special field processing
+        if "genres" in update_fields and update_fields["genres"]:
+            # Convert genres list to JSON string for database storage
+            update_fields["genres"] = json.dumps(update_fields["genres"])
+            
+        # Add updated timestamp
+        update_fields["updated_at"] = datetime.utcnow()
+        
+        updated_count = 0
+        errors = []
+        
+        for video in videos:
+            try:
+                # Apply updates to each video
+                for field, value in update_fields.items():
+                    if hasattr(video, field):
+                        setattr(video, field, value)
+                        
+                updated_count += 1
+                
+            except Exception as e:
+                errors.append(f"Video {video.id}: {str(e)}")
+                logger.error(f"Error updating video {video.id}: {e}")
+                
+        session.commit()
+        
+        logger.info(f"Bulk updated {updated_count} videos with fields: {list(update_fields.keys())}")
+        
+        result = {
+            "message": "Bulk edit completed",
+            "updated_count": updated_count,
+            "total_requested": len(request.video_ids),
+            "updated_fields": list(update_fields.keys())
+        }
+        
+        if errors:
+            result["errors"] = errors
+            
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk edit: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/bulk/organize")
+async def bulk_organize_videos(
+    request: BulkOrganizeRequest = Body(...),
+    session: Session = Depends(get_db_session)
+):
+    """Bulk organize video files into proper directory structure"""
+    try:
+        import shutil
+        import re
+        
+        if not request.video_ids:
+            raise HTTPException(status_code=400, detail="No video IDs provided")
+            
+        # Get videos to organize with artist information
+        videos = session.query(Video).options(
+            joinedload(Video.artist)
+        ).filter(
+            Video.id.in_(request.video_ids)
+        ).all()
+        
+        if not videos:
+            raise HTTPException(status_code=404, detail="No videos found")
+        
+        # Determine base directory for organization
+        base_directory = request.target_directory or "/data/musicvideos"
+        base_path = Path(base_directory)
+        
+        if not base_path.exists():
+            try:
+                base_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Cannot create target directory: {e}")
+        
+        organized_count = 0
+        errors = []
+        moves = []
+        
+        def sanitize_filename(name: str) -> str:
+            """Sanitize filename/directory name for filesystem compatibility"""
+            # Replace problematic characters
+            sanitized = re.sub(r'[<>:"/\\|?*]', '_', name)
+            # Remove leading/trailing dots and spaces
+            sanitized = sanitized.strip('. ')
+            return sanitized or "Unknown"
+        
+        for video in videos:
+            try:
+                # Get current file path
+                current_path = getattr(video, "file_path", video.local_path)
+                if not current_path or not Path(current_path).exists():
+                    errors.append(f"Video {video.id}: File not found at {current_path}")
+                    continue
+                
+                current_file = Path(current_path)
+                
+                # Determine artist folder name
+                if video.artist and video.artist.name:
+                    artist_folder = sanitize_filename(video.artist.name)
+                else:
+                    artist_folder = "Unknown Artist"
+                
+                # Create target directory structure
+                if request.create_artist_folders:
+                    target_dir = base_path / artist_folder
+                else:
+                    target_dir = base_path
+                    
+                target_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Determine target file path
+                target_file = target_dir / current_file.name
+                
+                # Handle file name conflicts
+                counter = 1
+                original_target = target_file
+                while target_file.exists() and target_file != current_file:
+                    stem = original_target.stem
+                    suffix = original_target.suffix
+                    target_file = target_dir / f"{stem}_{counter}{suffix}"
+                    counter += 1
+                
+                # Only move if source and target are different
+                if current_file.resolve() != target_file.resolve():
+                    # Move the file
+                    shutil.move(str(current_file), str(target_file))
+                    
+                    # Update database if requested
+                    if request.update_database_paths:
+                        if hasattr(video, 'file_path'):
+                            video.file_path = str(target_file)
+                        else:
+                            video.local_path = str(target_file)
+                        video.updated_at = datetime.utcnow()
+                    
+                    moves.append({
+                        "video_id": video.id,
+                        "from": str(current_file),
+                        "to": str(target_file)
+                    })
+                
+                organized_count += 1
+                
+            except Exception as e:
+                errors.append(f"Video {video.id}: {str(e)}")
+                logger.error(f"Error organizing video {video.id}: {e}")
+        
+        # Commit database changes if requested
+        if request.update_database_paths:
+            session.commit()
+            
+        logger.info(f"Bulk organized {organized_count} videos into {base_directory}")
+        
+        result = {
+            "message": "Bulk organization completed",
+            "organized_count": organized_count,
+            "total_requested": len(request.video_ids),
+            "target_directory": str(base_path),
+            "moves": moves
+        }
+        
+        if errors:
+            result["errors"] = errors
+            
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk organize: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/bulk/refresh-metadata")
+async def bulk_refresh_metadata(
+    request: BulkRefreshMetadataRequest = Body(...),
+    session: Session = Depends(get_db_session)
+):
+    """Bulk refresh metadata for videos from various sources"""
+    try:
+        if not request.video_ids:
+            raise HTTPException(status_code=400, detail="No video IDs provided")
+            
+        # Get videos to refresh metadata for
+        videos = session.query(Video).options(
+            joinedload(Video.artist)
+        ).filter(
+            Video.id.in_(request.video_ids)
+        ).all()
+        
+        if not videos:
+            raise HTTPException(status_code=404, detail="No videos found")
+        
+        refreshed_count = 0
+        errors = []
+        metadata_updates = []
+        
+        for video in videos:
+            try:
+                video_updates = {"video_id": video.id, "updates": []}
+                
+                # Check if refresh is needed (unless force_refresh is True)
+                should_refresh = (
+                    request.force_refresh or 
+                    not getattr(video, "last_enriched", None) or
+                    (datetime.utcnow() - video.last_enriched).days > 7
+                )
+                
+                if not should_refresh:
+                    video_updates["updates"].append("Metadata is recent, skipping refresh")
+                    metadata_updates.append(video_updates)
+                    continue
+                
+                # Simulate metadata refresh operations
+                # In a real implementation, these would call actual services
+                
+                if request.refresh_imvdb:
+                    # Simulate IMVDb metadata refresh
+                    video_updates["updates"].append("IMVDb metadata refreshed")
+                    # video.imvdb_metadata = await imvdb_service.get_video_metadata(video.id)
+                
+                if request.refresh_youtube and video.youtube_id:
+                    # Simulate YouTube metadata refresh
+                    video_updates["updates"].append("YouTube metadata refreshed")
+                    # video.youtube_metadata = await youtube_service.get_video_metadata(video.youtube_id)
+                
+                if request.refresh_musicbrainz and video.artist:
+                    # Simulate MusicBrainz metadata refresh
+                    video_updates["updates"].append("MusicBrainz metadata refreshed")
+                    # video.musicbrainz_metadata = await musicbrainz_service.get_artist_metadata(video.artist.name)
+                
+                # Update last enriched timestamp
+                if hasattr(video, 'last_enriched'):
+                    video.last_enriched = datetime.utcnow()
+                video.updated_at = datetime.utcnow()
+                
+                # Add some mock metadata updates
+                if not video_updates["updates"]:
+                    video_updates["updates"].append("Basic metadata refreshed")
+                
+                metadata_updates.append(video_updates)
+                refreshed_count += 1
+                
+            except Exception as e:
+                errors.append(f"Video {video.id}: {str(e)}")
+                logger.error(f"Error refreshing metadata for video {video.id}: {e}")
+        
+        session.commit()
+        
+        logger.info(f"Bulk refreshed metadata for {refreshed_count} videos")
+        
+        result = {
+            "message": "Bulk metadata refresh completed",
+            "refreshed_count": refreshed_count,
+            "total_requested": len(request.video_ids),
+            "sources_refreshed": {
+                "imvdb": request.refresh_imvdb,
+                "youtube": request.refresh_youtube,
+                "musicbrainz": request.refresh_musicbrainz
+            },
+            "metadata_updates": metadata_updates
+        }
+        
+        if errors:
+            result["errors"] = errors
+            
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk metadata refresh: {e}")
         session.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 

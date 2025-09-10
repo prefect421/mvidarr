@@ -514,37 +514,75 @@ python fastapi_app.py  # Should start successfully
 ```
 
 #### Systemd Service Configuration
+
+**Current Production Service File:**
 ```ini
 # /etc/systemd/system/mvidarr.service
 [Unit]
-Description=MVidarr Music Video Manager
-After=network.target mysql.service redis.service
-Requires=mysql.service redis.service
+Description=MVidarr Enhanced - Professional Music Video Management System with Advanced Processing
+Documentation=file:///home/mike/mvidarr/README.md file:///home/mike/mvidarr/MILESTONE_ROADMAP.md
+After=network-online.target mysql.service mariadb.service
+Wants=network-online.target
+RequiresMountsFor=/home/mike/mvidarr
 
 [Service]
-Type=simple
-User=mvidarr
-Group=mvidarr
-WorkingDirectory=/opt/mvidarr/app
-Environment=PATH=/opt/mvidarr/app/venv/bin
-ExecStart=/opt/mvidarr/app/venv/bin/python fastapi_app.py
-ExecReload=/bin/kill -HUP $MAINPID
-KillMode=mixed
-TimeoutStopSec=5
-PrivateTmp=true
-Restart=on-failure
-RestartSec=10
+Type=exec
+User=mike
+Group=mike
+WorkingDirectory=/home/mike/mvidarr
 
-# Resource limits
-LimitNOFILE=65536
-LimitNPROC=4096
+# Create required directories and start application
+ExecStartPre=/usr/bin/mkdir -p /home/mike/mvidarr/data/logs /home/mike/mvidarr/data/downloads /home/mike/mvidarr/data/thumbnails /home/mike/mvidarr/data/cache /home/mike/mvidarr/data/backups /home/mike/mvidarr/data/processing
+ExecStart=/home/mike/mvidarr/venv/bin/python /home/mike/mvidarr/fastapi_app.py
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Enhanced restart and failure handling
+Restart=always
+RestartSec=20
+StartLimitInterval=600
+StartLimitBurst=3
+TimeoutStartSec=120
+TimeoutStopSec=60
+KillMode=mixed
+KillSignal=SIGTERM
 
 # Logging
-StandardOutput=append:/opt/mvidarr/logs/mvidarr.log
-StandardError=append:/opt/mvidarr/logs/mvidarr.error.log
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mvidarr
+
+# Environment variables for FastAPI Application
+Environment=PATH=/home/mike/mvidarr/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/home/mike/mvidarr
+Environment=FLASK_ENV=production
+Environment=FASTAPI_ENV=production
+Environment=PYTHONUNBUFFERED=1
+Environment=ASYNC_MODE=enabled
+Environment=PHASE_2_ADVANCED_PROCESSING=enabled
+Environment=FFMPEG_ADVANCED_TASKS=enabled
+Environment=CONCURRENT_VIDEO_PROCESSING=enabled
+Environment=QUALITY_ANALYSIS_ENABLED=enabled
+Environment=BULK_OPERATIONS_ENABLED=enabled
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+# Enhanced resource limits for advanced processing
+LimitNOFILE=131072
+LimitNPROC=8192
 
 [Install]
 WantedBy=multi-user.target
+```
+
+**Installation Commands:**
+```bash
+# Copy and install the service
+sudo cp /home/mike/mvidarr/mvidarr.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable mvidarr.service
+sudo systemctl start mvidarr.service
 ```
 
 #### Service Management

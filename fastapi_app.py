@@ -81,16 +81,11 @@ async def lifespan(app: FastAPI):
         await init_database_for_fastapi()
         logger.info("✅ Database initialized successfully")
         
-        # Initialize job system
-        logger.info("Initializing job queue...")
-        job_queue = await get_job_queue()
-        
-        # Start background workers
-        worker_count = 3  # TODO: make configurable
-        logger.info(f"Starting {worker_count} background workers...")
-        await start_background_workers(worker_count)
-        
-        logger.info("✅ Background job system started successfully")
+        # Temporarily disable background job system to fix timeout issues
+        logger.info("⚠️ Background job system disabled for debugging")
+        # TODO: Re-enable when background worker timeout issues are resolved
+        # job_queue = await get_job_queue()
+        # await start_background_workers(worker_count)
         
         yield  # Application is running
         
@@ -103,8 +98,9 @@ async def lifespan(app: FastAPI):
         logger.info("Shutting down application services...")
         
         try:
-            await stop_background_workers()
-            await cleanup_job_queue()
+            # Temporarily disabled background worker cleanup
+            # await stop_background_workers()
+            # await cleanup_job_queue()
             
             # Close database connections
             import src.database.connection as db_conn
@@ -318,6 +314,7 @@ from src.api.fastapi.advanced_image_processing import router as advanced_image_r
 from src.api.fastapi.videos import router as fastapi_videos_router
 from src.api.fastapi.artists import router as fastapi_artists_router
 from src.api.fastapi.playlists import router as fastapi_playlists_router
+from src.api.fastapi.genres import router as fastapi_genres_router
 from src.api.fastapi.admin import router as fastapi_admin_router
 from src.api.fastapi.settings import router as fastapi_settings_router
 from src.api.fastapi.auth import router as fastapi_auth_router
@@ -340,6 +337,7 @@ app.include_router(advanced_image_router)
 app.include_router(fastapi_videos_router)
 app.include_router(fastapi_artists_router) 
 app.include_router(fastapi_playlists_router)
+app.include_router(fastapi_genres_router)
 app.include_router(fastapi_admin_router)
 app.include_router(fastapi_settings_router)
 app.include_router(fastapi_auth_router)
@@ -349,9 +347,11 @@ app.include_router(frontend_router)
 from src.api.fastapi.metadata_enrichment import router as metadata_enrichment_router
 from src.api.fastapi.spotify import router as spotify_router
 from src.api.fastapi.musicbrainz import router as musicbrainz_router
+from src.api.fastapi.lastfm import router as lastfm_router
 app.include_router(metadata_enrichment_router)
 app.include_router(spotify_router)
 app.include_router(musicbrainz_router)
+app.include_router(lastfm_router)
 app.include_router(performance_router)
 app.include_router(monitoring_router)
 app.include_router(dashboard_router)
@@ -580,11 +580,11 @@ if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(level=logging.INFO)
     
-    # Run the application
+    # Run the application without reload to prevent file watching issues
     uvicorn.run(
         "fastapi_app:app", 
         host="0.0.0.0", 
         port=5000,  # Standard MVidarr port
-        reload=True,
+        reload=False,  # Disabled to prevent continuous reload loops
         log_level="info"
     )
