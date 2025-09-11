@@ -624,21 +624,27 @@ async def test_get_videos():
 
 @app.get("/discover")
 async def discover_search(q: str = Query(...)):
-    """Discover/search endpoint for videos and artists"""
+    """Universal search endpoint for videos, artists, and external sources (IMVDb, YouTube)"""
     try:
-        # This should call the same logic as universal search
         from sqlalchemy.orm import Session
 
         from src.database.connection import get_db_session
         from src.database.models import Artist, Video
 
+        # Initialize result containers
+        local_videos = []
+        local_artists = []
+        imvdb_results = []
+        youtube_results = []
+
+        # Search local database
         session_gen = get_db_session()
         session: Session = next(session_gen)
 
         try:
             query = q.lower()
 
-            # Search videos
+            # Search local videos
             videos = (
                 session.query(Video)
                 .filter(Video.title.ilike(f"%{query}%"))
@@ -646,7 +652,7 @@ async def discover_search(q: str = Query(...)):
                 .all()
             )
 
-            # Search artists
+            # Search local artists
             artists = (
                 session.query(Artist)
                 .filter(Artist.name.ilike(f"%{query}%"))
@@ -654,9 +660,9 @@ async def discover_search(q: str = Query(...)):
                 .all()
             )
 
-            video_results = []
+            # Format local video results
             for video in videos:
-                video_results.append(
+                local_videos.append(
                     {
                         "id": video.id,
                         "title": video.title,
@@ -667,28 +673,130 @@ async def discover_search(q: str = Query(...)):
                             else str(video.status)
                         ),
                         "youtube_id": getattr(video, "youtube_id", None),
+                        "source": "local",
+                        "type": "video",
                     }
                 )
 
-            artist_results = []
+            # Format local artist results
             for artist in artists:
-                artist_results.append(
+                local_artists.append(
                     {
                         "id": artist.id,
                         "name": artist.name,
                         "video_count": len(artist.videos) if artist.videos else 0,
+                        "source": "local",
+                        "type": "artist",
                     }
                 )
 
-            return {
-                "success": True,
-                "query": q,
-                "results": {"videos": video_results, "artists": artist_results},
-                "total": len(video_results) + len(artist_results),
-            }
-
         finally:
             session.close()
+
+        # Search external sources in parallel
+        external_search_tasks = []
+
+        # Search IMVDb
+        try:
+            from src.services.imvdb_service import imvdb_service
+
+            if imvdb_service:
+                import asyncio
+
+                imvdb_task = asyncio.create_task(
+                    asyncio.to_thread(imvdb_service.search_artist, q)
+                )
+                external_search_tasks.append(("imvdb", imvdb_task))
+        except Exception as e:
+            logger.warning(f"Failed to initialize IMVDb search: {e}")
+
+        # Search YouTube
+        try:
+            from src.services.youtube_search_service import youtube_search_service
+
+            if youtube_search_service and youtube_search_service.api_key:
+                import asyncio
+
+                youtube_task = asyncio.create_task(
+                    asyncio.to_thread(youtube_search_service.search_artist_videos, q, 5)
+                )
+                external_search_tasks.append(("youtube", youtube_task))
+        except Exception as e:
+            logger.warning(f"Failed to initialize YouTube search: {e}")
+
+        # Wait for external search results
+        if external_search_tasks:
+            import asyncio
+
+            for source, task in external_search_tasks:
+                try:
+                    result = await asyncio.wait_for(
+                        task, timeout=3.0
+                    )  # 3 second timeout
+
+                    if source == "imvdb" and result:
+                        if isinstance(result, list):
+                            for item in result[:5]:  # Limit to 5 results
+                                imvdb_results.append(
+                                    {
+                                        "id": item.get("id"),
+                                        "name": item.get("name"),
+                                        "url": item.get("url"),
+                                        "source": "imvdb",
+                                        "type": "artist",
+                                    }
+                                )
+                        else:
+                            imvdb_results.append(
+                                {
+                                    "id": result.get("id"),
+                                    "name": result.get("name"),
+                                    "url": result.get("url"),
+                                    "source": "imvdb",
+                                    "type": "artist",
+                                }
+                            )
+
+                    elif source == "youtube" and result and result.get("videos"):
+                        for video in result["videos"][:5]:  # Limit to 5 results
+                            youtube_results.append(
+                                {
+                                    "id": video.get("id"),
+                                    "title": video.get("title"),
+                                    "channel": video.get("channel_title"),
+                                    "thumbnail": video.get("thumbnail_url"),
+                                    "url": f"https://youtube.com/watch?v={video.get('id')}",
+                                    "source": "youtube",
+                                    "type": "video",
+                                }
+                            )
+
+                except asyncio.TimeoutError:
+                    logger.warning(f"{source} search timed out")
+                except Exception as e:
+                    logger.warning(f"{source} search failed: {e}")
+
+        # Combine all results
+        all_results = {
+            "videos": local_videos,
+            "artists": local_artists,
+            "external": {"imvdb": imvdb_results, "youtube": youtube_results},
+        }
+
+        total_count = (
+            len(local_videos)
+            + len(local_artists)
+            + len(imvdb_results)
+            + len(youtube_results)
+        )
+
+        return {
+            "success": True,
+            "query": q,
+            "results": all_results,
+            "total": total_count,
+            "external_enabled": len(external_search_tasks) > 0,
+        }
 
     except Exception as e:
         logger.error(f"Discover search error: {e}")

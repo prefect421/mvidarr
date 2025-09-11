@@ -3,29 +3,33 @@ Phase 3 Week 29 Integration API - Personal Cloud Backup & Basic Integrations
 FastAPI routes for consumer-focused cloud backup and YouTube import functionality
 """
 
-from fastapi import APIRouter, HTTPException, Request, BackgroundTasks, Depends
-from fastapi.responses import JSONResponse
-from typing import Dict, List, Optional, Any
-from datetime import datetime
 import asyncio
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from src.utils.logger import get_logger
-from src.services.personal_backup import (
-    get_personal_backup_service,
-    CloudProvider,
-    BackupType,
-)
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
+
 from src.integrations.youtube_importer import (
-    get_youtube_importer,
     ImportType,
     VideoQuality,
+    get_youtube_importer,
 )
 from src.services.local_network_share import get_local_network_share
-from src.services.sync_manager import get_sync_manager, SyncDirection
+from src.services.personal_backup import (
+    BackupType,
+    CloudProvider,
+    get_personal_backup_service,
+)
+from src.services.sync_manager import SyncDirection, get_sync_manager
+from src.utils.logger import get_logger
+
+
 # Simple auth function for consistency with other API modules
 async def require_auth():
     """Simple auth dependency - placeholder for now since Week 29 services are basic"""
     return {"user_id": "admin", "username": "admin", "role": "admin"}
+
 
 logger = get_logger("mvidarr.api.week29")
 
@@ -180,6 +184,82 @@ async def get_backup_job_status(job_id: str, user=Depends(require_auth)):
 
 
 # YouTube Import API
+
+
+@youtube_router.post("/search")
+async def search_youtube_videos(
+    search_request: Dict[str, Any], user=Depends(require_auth)
+):
+    """Search YouTube for videos"""
+    try:
+        # Extract search parameters
+        query = search_request.get("q", "")
+        max_results = search_request.get("maxResults", 10)
+        video_category_id = search_request.get(
+            "videoCategoryId", "10"
+        )  # Music category
+
+        if not query:
+            raise HTTPException(status_code=400, detail="Search query is required")
+
+        # Use real YouTube search service instead of mock data
+        try:
+            from src.services.youtube_search_service import youtube_search_service
+
+            if not youtube_search_service or not youtube_search_service.api_key:
+                return {
+                    "success": False,
+                    "error": "YouTube API key not configured",
+                    "results": [],
+                }
+
+            # Call real YouTube search
+            search_result = youtube_search_service.search_artist_videos(
+                query, max_results
+            )
+
+            if search_result.get("error"):
+                return {
+                    "success": False,
+                    "error": search_result["error"],
+                    "results": [],
+                }
+
+            # Format results for frontend
+            formatted_results = []
+            for video in search_result.get("videos", []):
+                formatted_results.append(
+                    {
+                        "videoId": video.get("id"),
+                        "title": video.get("title"),
+                        "channelTitle": video.get("channel_title"),
+                        "thumbnails": {
+                            "default": {"url": video.get("thumbnail_url", "")}
+                        },
+                        "duration": video.get("duration", "PT3M30S"),
+                        "publishedAt": video.get(
+                            "published_at", "2024-01-01T00:00:00Z"
+                        ),
+                    }
+                )
+
+            return {
+                "success": True,
+                "results": formatted_results,
+                "total": len(formatted_results),
+            }
+
+        except Exception as e:
+            logger.error(f"YouTube search failed: {e}")
+            return {
+                "success": False,
+                "error": f"YouTube search failed: {str(e)}",
+                "results": [],
+            }
+
+    except Exception as e:
+        logger.error(f"YouTube search error: {e}")
+        return {"success": False, "error": str(e), "results": []}
 
 
 @youtube_router.get("/status")
