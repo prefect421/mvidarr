@@ -503,7 +503,14 @@ async def test_login(request: Request):
         password = body.get("password", "")
 
         if username == "admin" and password == "mvidarr":
-            return {
+            # Create session token and set cookie
+            import secrets
+
+            session_token = secrets.token_urlsafe(32)
+
+            from fastapi.responses import JSONResponse
+
+            response_data = {
                 "success": True,
                 "message": "Login successful",
                 "user": {
@@ -512,7 +519,18 @@ async def test_login(request: Request):
                     "role": "ADMIN",
                     "can_admin": True,
                 },
+                "redirect_url": "/dashboard",
             }
+
+            response = JSONResponse(content=response_data)
+            response.set_cookie(
+                key="session_token",
+                value=session_token,
+                max_age=86400,  # 24 hours
+                httponly=True,
+                samesite="lax",
+            )
+            return response
         else:
             return {"success": False, "message": "Invalid credentials"}
 
@@ -808,13 +826,40 @@ async def discover_search(q: str = Query(...)):
         }
 
 
-# Root redirect - redirect to login for now since auth middleware is disabled
+# Root endpoint with authentication checking
 @app.get("/")
-async def root():
-    """Root endpoint - redirect to login since middleware is disabled"""
+async def root(request: Request):
+    """Root endpoint - redirect to dashboard if authenticated, otherwise to login"""
     from fastapi.responses import RedirectResponse
 
-    return RedirectResponse(url="/auth/login", status_code=302)
+    try:
+        # Check if user is authenticated via session or other means
+        # For now, since we have simplified auth, check for basic auth indicators
+
+        # Try to get authentication from headers/cookies
+        auth_header = request.headers.get("authorization")
+        cookie_auth = request.cookies.get("session_token") or request.cookies.get(
+            "auth_token"
+        )
+
+        # Simple check - if we have any auth indicators, assume authenticated
+        # In a real system, this would validate the token/session properly
+        if auth_header or cookie_auth:
+            return RedirectResponse(url="/dashboard", status_code=302)
+
+        # Check if this is coming from a successful login (check referer)
+        referer = request.headers.get("referer", "")
+        if "auth/login" in referer or "test-login" in referer:
+            # If coming from login page, redirect to dashboard
+            return RedirectResponse(url="/dashboard", status_code=302)
+
+        # Otherwise redirect to login
+        return RedirectResponse(url="/auth/login", status_code=302)
+
+    except Exception as e:
+        logger.error(f"Root endpoint error: {e}")
+        # Fallback to login on any error
+        return RedirectResponse(url="/auth/login", status_code=302)
 
 
 # Additional missing API endpoints that frontend is looking for
@@ -1230,9 +1275,36 @@ async def get_current_theme():
 
 
 @app.get("/auth/check")
-async def auth_check_simple():
-    """Simple auth check endpoint - always return not authenticated since middleware is disabled"""
-    return {"authenticated": False}
+async def auth_check_simple(request: Request):
+    """Check authentication status based on session cookie"""
+    try:
+        session_token = request.cookies.get("session_token")
+        if session_token:
+            return {
+                "authenticated": True,
+                "user": {"id": 1, "username": "admin", "role": "ADMIN"},
+            }
+        else:
+            return {"authenticated": False}
+    except Exception as e:
+        logger.error(f"Auth check error: {e}")
+        return {"authenticated": False}
+
+
+@app.post("/auth/logout")
+async def logout():
+    """Logout endpoint - clears session cookie"""
+    from fastapi.responses import JSONResponse
+
+    response = JSONResponse(
+        content={
+            "success": True,
+            "message": "Logged out successfully",
+            "redirect_url": "/auth/login",
+        }
+    )
+    response.delete_cookie(key="session_token")
+    return response
 
 
 @app.websocket("/ws/jobs")
