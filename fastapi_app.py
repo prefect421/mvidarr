@@ -8,60 +8,72 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+
+# OpenAPI documentation configuration
+from src.api.openapi_config import (
+    add_openapi_metadata_to_routers,
+    custom_openapi_schema,
+    setup_custom_docs,
+)
+from src.config.config import Config
 
 # Database and services
-from src.database.connection import get_db
-from src.services.settings_service import SettingsService
-from src.utils.logger import get_logger
+from src.database.connection import DatabaseManager, get_db
 
 # Database initialization
 from src.database.init_db import initialize_database
-from src.config.config import Config
-from src.database.connection import DatabaseManager
+from src.services.background_workers import (
+    start_background_workers,
+    stop_background_workers,
+)
+from src.services.fastapi_job_integration import (
+    initialize_fastapi_job_system,
+    shutdown_fastapi_job_system,
+)
 
 # Background job system
-from src.services.job_queue import get_job_queue, cleanup_job_queue
-from src.services.background_workers import start_background_workers, stop_background_workers
-
-# OpenAPI documentation configuration
-from src.api.openapi_config import custom_openapi_schema, setup_custom_docs, add_openapi_metadata_to_routers
+from src.services.job_queue import cleanup_job_queue, get_job_queue
+from src.services.settings_service import SettingsService
+from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.fastapi")
+
 
 # FastAPI-specific database initialization
 async def init_database_for_fastapi():
     """Initialize database for FastAPI application"""
     import src.database.connection as db_conn
-    
+
     # Initialize database manager
     config = Config()
     db_conn.db_manager = DatabaseManager(config)
-    
+
     # Create database if it doesn't exist
     if not db_conn.db_manager.create_database_if_not_exists():
         logger.error("Failed to create database")
         raise RuntimeError("Database creation failed")
-    
+
     # Test connection
     if not db_conn.db_manager.test_connection():
         logger.error("Database connection test failed")
         raise RuntimeError("Database connection failed")
-    
+
     # Create engine and session factory
     db_conn.engine = db_conn.db_manager.create_engine()
     db_conn.SessionLocal = db_conn.db_manager.create_session_factory()
-    
+
     # Initialize database tables and data
     if not initialize_database():
         logger.error("Failed to initialize database tables")
         raise RuntimeError("Database initialization failed")
-    
+
     logger.info("Database initialization completed successfully")
+
 
 # Global references for cleanup
 job_queue = None
@@ -72,41 +84,61 @@ worker_tasks = []
 async def lifespan(app: FastAPI):
     """Application lifespan handler - starts/stops background services and initializes database"""
     global job_queue, worker_tasks
-    
+
     logger.info("FastAPI MVidarr application starting up...")
-    
+
     try:
         # Initialize database first
         logger.info("Initializing database...")
         await init_database_for_fastapi()
         logger.info("✅ Database initialized successfully")
-        
-        # Temporarily disable background job system to fix timeout issues
-        logger.info("⚠️ Background job system disabled for debugging")
-        # TODO: Re-enable when background worker timeout issues are resolved
-        # job_queue = await get_job_queue()
-        # await start_background_workers(worker_count)
-        
+
+        # Initialize background job system with minimal configuration
+        logger.info("🔄 Initializing background job system...")
+        try:
+            job_queue = await get_job_queue()
+            logger.info("✅ Job queue initialized")
+
+            # Start with just 2 workers for stability
+            worker_count = 2
+            await start_background_workers(worker_count)
+            logger.info(f"✅ Started {worker_count} background workers")
+
+            # Initialize FastAPI job system integration
+            await initialize_fastapi_job_system(worker_count)
+            logger.info("✅ FastAPI job system integration initialized")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize background job system: {e}")
+            # Continue startup even if background jobs fail
+            pass
+
         yield  # Application is running
-        
+
     except Exception as e:
         logger.error(f"Failed to start application services: {e}")
         raise
-    
+
     finally:
         # Cleanup on shutdown
         logger.info("Shutting down application services...")
-        
+
         try:
-            # Temporarily disabled background worker cleanup
-            # await stop_background_workers()
-            # await cleanup_job_queue()
-            
+            # Stop background job system
+            try:
+                await shutdown_fastapi_job_system()
+                await stop_background_workers()
+                await cleanup_job_queue()
+                logger.info("✅ Background job system stopped cleanly")
+            except Exception as e:
+                logger.error(f"Error stopping background job system: {e}")
+
             # Close database connections
             import src.database.connection as db_conn
+
             if db_conn.db_manager:
                 db_conn.db_manager.close_connections()
-                
+
             logger.info("✅ Application services stopped cleanly")
         except Exception as e:
             logger.error(f"Error during shutdown: {e}")
@@ -155,86 +187,79 @@ app = FastAPI(
     contact={
         "name": "MVidarr Development Team",
         "url": "https://github.com/prefect421/mvidarr",
-        "email": "support@mvidarr.local"
+        "email": "support@mvidarr.local",
     },
-    license_info={
-        "name": "MIT License",
-        "url": "https://opensource.org/licenses/MIT"
-    },
+    license_info={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},
     servers=[
-        {
-            "url": "http://192.168.1.145:5000",
-            "description": "Development server"
-        },
-        {
-            "url": "http://localhost:5000", 
-            "description": "Local development server"
-        }
+        {"url": "http://192.168.1.145:5000", "description": "Development server"},
+        {"url": "http://localhost:5000", "description": "Local development server"},
     ],
     openapi_tags=[
         {
             "name": "videos",
-            "description": "Video management operations including CRUD, streaming, thumbnails, and bulk operations"
+            "description": "Video management operations including CRUD, streaming, thumbnails, and bulk operations",
         },
         {
-            "name": "artists", 
-            "description": "Artist management with metadata enrichment, IMVDb integration, and video associations"
+            "name": "artists",
+            "description": "Artist management with metadata enrichment, IMVDb integration, and video associations",
         },
         {
             "name": "playlists",
-            "description": "Playlist management with dynamic filtering, file uploads, and advanced access control"
+            "description": "Playlist management with dynamic filtering, file uploads, and advanced access control",
         },
         {
             "name": "admin",
-            "description": "System administration including user management, audit logs, and system control"
+            "description": "System administration including user management, audit logs, and system control",
         },
         {
             "name": "settings",
-            "description": "Application settings management, scheduler control, and database configuration"
+            "description": "Application settings management, scheduler control, and database configuration",
         },
         {
             "name": "authentication",
-            "description": "Authentication, OAuth, session management, and credential handling"
+            "description": "Authentication, OAuth, session management, and credential handling",
         },
         {
             "name": "system",
-            "description": "System health monitoring, performance metrics, and application status"
-        }
+            "description": "System health monitoring, performance metrics, and application status",
+        },
     ],
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
-# Phase 3 Week 29 Integration - Personal Cloud Backup & Basic Integrations
-from src.api.fastapi.week29_integration import (
-    backup_router, 
-    youtube_router, 
-    network_router, 
-    sync_router
-)
 from src.api.fastapi.mobile_access import mobile_router
+
+# Phase 3 Week 29 Integration - Personal Cloud Backup & Basic Integrations
+from src.api.fastapi.week29_integration import (  # youtube_router,  # Temporarily disabled
+    backup_router,
+    network_router,
+    sync_router,
+)
 
 # Include Week 29 API routers
 app.include_router(backup_router, prefix="/api")
-app.include_router(youtube_router, prefix="/api") 
+# app.include_router(youtube_router, prefix="/api")  # Temporarily disabled
 app.include_router(network_router, prefix="/api")
 app.include_router(sync_router, prefix="/api")
 app.include_router(mobile_router)
 
-logger.info("✅ Phase 3 Week 29 services integrated: Personal Cloud Backup, YouTube Import, Network Sharing, Sync Manager, Mobile Access")
+logger.info(
+    "✅ Phase 3 Week 29 services integrated: Personal Cloud Backup, YouTube Import, Network Sharing, Sync Manager, Mobile Access"
+)
 
 # Add CORS middleware with optimized configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://192.168.1.145:5000",
-        "http://192.168.1.145:5010", 
+        "http://192.168.1.145:5010",
         "http://localhost:5000",
         "http://localhost:5010",
         "http://127.0.0.1:5000",
-        "http://127.0.0.1:5010"
+        "http://127.0.0.1:5010",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -242,49 +267,63 @@ app.add_middleware(
     max_age=86400,  # Cache preflight requests for 24 hours
 )
 
-# Add performance monitoring middleware
-from src.middleware.performance_middleware import (
-    PerformanceTrackingMiddleware,
-    CacheHeadersMiddleware, 
-    ResourceMonitoringMiddleware
-)
+# Add analytics middleware - Phase 3 Week 36
+from src.middleware.analytics_middleware import AnalyticsMiddleware
 
-# Add caching middleware
-from src.middleware.cache_middleware import (
-    APIResponseCacheMiddleware,
-    CacheInvalidationMiddleware
-)
-
-# Add security middleware - Phase 3 Week 34
-from src.middleware.security_validation_middleware import (
-    SecurityValidationMiddleware,
-    SecurityValidationConfig
-)
-from src.middleware.rate_limiting_middleware import (
-    RateLimitingMiddleware,
-    RateLimitingConfig
-)
-from src.middleware.jwt_auth_middleware import (
-    JWTAuthMiddleware,
-    TokenConfig
+# Add API Gateway middleware - Phase 3 Week 37
+from src.middleware.api_gateway_middleware import (
+    APIGatewayMiddleware,
+    GatewayManagementMiddleware,
 )
 
 # Add production middleware - Phase 3 Week 35
 from src.middleware.auto_scaling_middleware import AutoScalingMiddleware
-from src.middleware.circuit_breaker_middleware import (
-    CircuitBreakerMiddleware,
-    CircuitBreakerConfig
+
+# Add caching middleware
+from src.middleware.cache_middleware import (
+    APIResponseCacheMiddleware,
+    CacheInvalidationMiddleware,
 )
-# Add analytics middleware - Phase 3 Week 36
-from src.middleware.analytics_middleware import AnalyticsMiddleware
-# Add API Gateway middleware - Phase 3 Week 37
-from src.middleware.api_gateway_middleware import APIGatewayMiddleware, GatewayManagementMiddleware
+from src.middleware.circuit_breaker_middleware import (
+    CircuitBreakerConfig,
+    CircuitBreakerMiddleware,
+)
+from src.middleware.jwt_auth_middleware import JWTAuthMiddleware, TokenConfig
+
+# Add performance monitoring middleware
+from src.middleware.performance_middleware import (
+    CacheHeadersMiddleware,
+    PerformanceTrackingMiddleware,
+    ResourceMonitoringMiddleware,
+)
+from src.middleware.rate_limiting_middleware import (
+    RateLimitingConfig,
+    RateLimitingMiddleware,
+)
+
+# Add security middleware - Phase 3 Week 34
+from src.middleware.security_validation_middleware import (
+    SecurityValidationConfig,
+    SecurityValidationMiddleware,
+)
 
 # Add middleware in correct order (last added = first executed)
-# Temporarily disabled ALL middleware to isolate authentication timeout issue
-# TODO: Re-enable middleware one by one after fixing the core issue
-# app.add_middleware(JWTAuthMiddleware, config=TokenConfig())
-# app.add_middleware(SecurityValidationMiddleware, config=SecurityValidationConfig())
+# Re-enabling basic authentication middleware with safe configuration
+try:
+    from src.middleware.jwt_auth_middleware import JWTAuthMiddleware, TokenConfig
+
+    # Use basic token config to prevent timeout issues
+    basic_token_config = TokenConfig(
+        access_token_expire_minutes=60,  # Longer timeout
+        refresh_token_expire_days=7,  # Shorter refresh period
+        algorithm="HS256",
+    )
+    app.add_middleware(JWTAuthMiddleware, config=basic_token_config)
+    logger.info("✅ JWT Authentication middleware enabled with safe configuration")
+except Exception as e:
+    logger.warning(
+        f"⚠️ Failed to load JWT middleware: {e}, continuing without authentication middleware"
+    )
 
 # TODO: Re-enable other middleware after fixing MediaCacheManager and Redis issues
 # app.add_middleware(CircuitBreakerMiddleware, config=CircuitBreakerConfig())
@@ -304,38 +343,62 @@ app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 app.mount("/css", StaticFiles(directory="frontend/CSS"), name="css")
 templates = Jinja2Templates(directory="frontend/templates")
 
-# Include API routers (some temporarily disabled due to Redis dependencies)
-# from src.api.fastapi.jobs import router as jobs_router
-# from src.api.fastapi.video_quality import router as video_quality_router
-from src.api.fastapi.media_processing import router as media_processing_router
-from src.api.fastapi.image_processing import router as image_processing_router
 from src.api.fastapi.advanced_image_processing import router as advanced_image_router
-# from src.api.fastapi.bulk_operations import router as bulk_operations_router
-from src.api.fastapi.videos import router as fastapi_videos_router
-from src.api.fastapi.artists import router as fastapi_artists_router
-from src.api.fastapi.playlists import router as fastapi_playlists_router
-from src.api.fastapi.genres import router as fastapi_genres_router
+from src.api.fastapi.image_processing import router as image_processing_router
+
+# Include API routers - Re-enabling critical endpoints
+from src.api.fastapi.jobs import router as jobs_router
+from src.api.fastapi.media_processing import router as media_processing_router
+
+# Re-enable critical missing routers
+try:
+    from src.api.fastapi.video_quality import router as video_quality_router
+
+    logger.info("✅ Video quality router loaded successfully")
+except Exception as e:
+    logger.warning(f"⚠️ Failed to load video quality router: {e}")
+    video_quality_router = None
+
+try:
+    from src.api.fastapi.bulk_operations import router as bulk_operations_router
+
+    logger.info("✅ Bulk operations router loaded successfully")
+except Exception as e:
+    logger.warning(f"⚠️ Failed to load bulk operations router: {e}")
+    bulk_operations_router = None
 from src.api.fastapi.admin import router as fastapi_admin_router
-from src.api.fastapi.settings import router as fastapi_settings_router
+from src.api.fastapi.api_gateway_management import router as gateway_router
+from src.api.fastapi.artists import router as fastapi_artists_router
 from src.api.fastapi.auth import router as fastapi_auth_router
 from src.api.fastapi.frontend_router import frontend_router
-from src.api.fastapi.performance import router as performance_router
-from src.api.fastapi.production_monitoring import router as monitoring_router
+from src.api.fastapi.genres import router as fastapi_genres_router
 from src.api.fastapi.monitoring_dashboard import router as dashboard_router
-from src.api.fastapi.api_gateway_management import router as gateway_router
+from src.api.fastapi.performance import router as performance_router
+from src.api.fastapi.playlists import router as fastapi_playlists_router
+from src.api.fastapi.production_monitoring import router as monitoring_router
+from src.api.fastapi.settings import router as fastapi_settings_router
+from src.api.fastapi.videos import router as fastapi_videos_router
+
 # from src.api.fastapi.music_recommendations import recommendations_router  # Temporarily disabled
 # from src.api.system_health import router as system_health_router
 # from src.api.fastapi.model_demo import router as model_demo_router
 
-# app.include_router(jobs_router)
-# app.include_router(video_quality_router)
+app.include_router(jobs_router)
 app.include_router(media_processing_router)
 app.include_router(image_processing_router)
 app.include_router(advanced_image_router)
-# app.include_router(bulk_operations_router)
+
+# Include critical routers if they loaded successfully
+if video_quality_router:
+    app.include_router(video_quality_router)
+    logger.info("✅ Video quality router included")
+
+if bulk_operations_router:
+    app.include_router(bulk_operations_router)
+    logger.info("✅ Bulk operations router included")
 # Re-enable real database routers after fixing database initialization
 app.include_router(fastapi_videos_router)
-app.include_router(fastapi_artists_router) 
+app.include_router(fastapi_artists_router)
 app.include_router(fastapi_playlists_router)
 app.include_router(fastapi_genres_router)
 app.include_router(fastapi_admin_router)
@@ -343,11 +406,13 @@ app.include_router(fastapi_settings_router)
 app.include_router(fastapi_auth_router)
 app.include_router(frontend_router)
 
+from src.api.fastapi.lastfm import router as lastfm_router
+
 # Metadata enrichment routers
 from src.api.fastapi.metadata_enrichment import router as metadata_enrichment_router
-from src.api.fastapi.spotify import router as spotify_router
 from src.api.fastapi.musicbrainz import router as musicbrainz_router
-from src.api.fastapi.lastfm import router as lastfm_router
+from src.api.fastapi.spotify import router as spotify_router
+
 app.include_router(metadata_enrichment_router)
 app.include_router(spotify_router)
 app.include_router(musicbrainz_router)
@@ -356,6 +421,56 @@ app.include_router(performance_router)
 app.include_router(monitoring_router)
 app.include_router(dashboard_router)
 app.include_router(gateway_router)
+
+# Add Week 29 Integration Router - Personal Cloud & YouTube Import
+try:
+    from src.api.fastapi.week29_integration import (
+        backup_router,
+        network_router,
+        sync_router,
+        youtube_router,
+    )
+
+    app.include_router(backup_router, prefix="/api")
+    app.include_router(youtube_router, prefix="/api")
+    app.include_router(network_router, prefix="/api")
+    app.include_router(sync_router, prefix="/api")
+    logger.info("✅ Week 29 integration routers included")
+except Exception as e:
+    logger.warning(f"⚠️ Failed to load Week 29 integration routers: {e}")
+
+# Add critical missing integration endpoints temporarily using simple FastAPI routers
+# These provide basic compatibility with existing frontend templates
+
+
+@app.get("/api/lidarr/status", tags=["lidarr"])
+async def get_lidarr_status():
+    """Basic Lidarr status endpoint for template compatibility"""
+    return {
+        "status": "not_configured",
+        "message": "Lidarr integration not yet migrated to FastAPI",
+    }
+
+
+@app.post("/api/lidarr/test", tags=["lidarr"])
+async def test_lidarr_connection():
+    """Basic Lidarr test endpoint for template compatibility"""
+    return {
+        "success": False,
+        "message": "Lidarr integration not yet migrated to FastAPI",
+    }
+
+
+@app.get("/api/plex/status", tags=["plex"])
+async def get_plex_status():
+    """Basic Plex status endpoint for template compatibility"""
+    return {
+        "configured": False,
+        "connected": False,
+        "message": "Plex integration not yet migrated to FastAPI",
+    }
+
+
 # app.include_router(recommendations_router)  # Temporarily disabled
 # app.include_router(system_health_router)
 # app.include_router(model_demo_router)
@@ -371,10 +486,10 @@ app.include_router(gateway_router)
 async def health_check():
     """Health check endpoint"""
     return {
-        "status": "healthy", 
+        "status": "healthy",
         "version": "0.9.8",
         "framework": "FastAPI",
-        "job_system": "native_asyncio"
+        "job_system": "native_asyncio",
     }
 
 
@@ -386,7 +501,7 @@ async def test_login(request: Request):
         body = await request.json()
         username = body.get("username", "")
         password = body.get("password", "")
-        
+
         if username == "admin" and password == "mvidarr":
             return {
                 "success": True,
@@ -395,12 +510,12 @@ async def test_login(request: Request):
                     "id": 1,
                     "username": username,
                     "role": "ADMIN",
-                    "can_admin": True
-                }
+                    "can_admin": True,
+                },
             }
         else:
             return {"success": False, "message": "Invalid credentials"}
-            
+
     except Exception as e:
         return {"success": False, "message": f"Error: {str(e)}"}
 
@@ -410,81 +525,179 @@ async def test_login(request: Request):
 async def test_get_artists():
     """Simple test endpoint to check artists data"""
     try:
+        from sqlalchemy.orm import Session
+
         from src.database.connection import get_db_session
         from src.database.models import Artist
-        from sqlalchemy.orm import Session
-        
+
         # Get database session
         session_gen = get_db_session()
         session: Session = next(session_gen)
-        
+
         try:
             # Get first few artists
             artists = session.query(Artist).limit(5).all()
-            
+
             result = []
             for artist in artists:
-                result.append({
-                    "id": artist.id,
-                    "name": artist.name,
-                    "imvdb_id": artist.imvdb_id,
-                    "monitored": getattr(artist, 'monitored', True),
-                    "created_at": getattr(artist, 'created_at', None),
-                    # Add all available attributes
-                    "available_fields": [attr for attr in dir(artist) if not attr.startswith('_') and not callable(getattr(artist, attr))]
-                })
-            
-            return {
-                "success": True,
-                "count": len(result),
-                "artists": result
-            }
+                result.append(
+                    {
+                        "id": artist.id,
+                        "name": artist.name,
+                        "imvdb_id": artist.imvdb_id,
+                        "monitored": getattr(artist, "monitored", True),
+                        "created_at": getattr(artist, "created_at", None),
+                        # Add all available attributes
+                        "available_fields": [
+                            attr
+                            for attr in dir(artist)
+                            if not attr.startswith("_")
+                            and not callable(getattr(artist, attr))
+                        ],
+                    }
+                )
+
+            return {"success": True, "count": len(result), "artists": result}
         finally:
             session.close()
-            
+
     except Exception as e:
         return {"success": False, "error": str(e)}
+
 
 @app.get("/api/test/videos")
 async def test_get_videos():
     """Simple test endpoint to check videos data"""
     try:
+        from sqlalchemy.orm import Session
+
         from src.database.connection import get_db_session
         from src.database.models import Video
-        from sqlalchemy.orm import Session
-        
-        # Get database session  
+
+        # Get database session
         session_gen = get_db_session()
         session: Session = next(session_gen)
-        
+
         try:
             # Get first few videos
             videos = session.query(Video).limit(5).all()
-            
+
             result = []
             for video in videos:
-                result.append({
-                    "id": video.id,
-                    "title": video.title,
-                    "artist_id": video.artist_id,
-                    "youtube_id": getattr(video, 'youtube_id', None),
-                    "local_path": getattr(video, 'local_path', None),
-                    "status": getattr(video, 'status', None),
-                    "created_at": getattr(video, 'created_at', None),
-                    # Add all available attributes
-                    "available_fields": [attr for attr in dir(video) if not attr.startswith('_') and not callable(getattr(video, attr))]
-                })
-            
-            return {
-                "success": True,
-                "count": len(result),
-                "videos": result
-            }
+                # Handle enum status safely
+                status_value = None
+                try:
+                    status_value = (
+                        video.status.value
+                        if hasattr(video.status, "value")
+                        else str(video.status)
+                    )
+                except Exception as e:
+                    status_value = f"enum_error: {e}"
+
+                result.append(
+                    {
+                        "id": video.id,
+                        "title": video.title,
+                        "artist_id": video.artist_id,
+                        "youtube_id": getattr(video, "youtube_id", None),
+                        "local_path": getattr(video, "local_path", None),
+                        "status": status_value,
+                        "created_at": getattr(video, "created_at", None),
+                        # Add all available attributes
+                        "available_fields": [
+                            attr
+                            for attr in dir(video)
+                            if not attr.startswith("_")
+                            and not callable(getattr(video, attr))
+                        ],
+                    }
+                )
+
+            return {"success": True, "count": len(result), "videos": result}
         finally:
             session.close()
-            
+
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@app.get("/discover")
+async def discover_search(q: str = Query(...)):
+    """Discover/search endpoint for videos and artists"""
+    try:
+        # This should call the same logic as universal search
+        from sqlalchemy.orm import Session
+
+        from src.database.connection import get_db_session
+        from src.database.models import Artist, Video
+
+        session_gen = get_db_session()
+        session: Session = next(session_gen)
+
+        try:
+            query = q.lower()
+
+            # Search videos
+            videos = (
+                session.query(Video)
+                .filter(Video.title.ilike(f"%{query}%"))
+                .limit(10)
+                .all()
+            )
+
+            # Search artists
+            artists = (
+                session.query(Artist)
+                .filter(Artist.name.ilike(f"%{query}%"))
+                .limit(5)
+                .all()
+            )
+
+            video_results = []
+            for video in videos:
+                video_results.append(
+                    {
+                        "id": video.id,
+                        "title": video.title,
+                        "artist": video.artist.name if video.artist else "Unknown",
+                        "status": (
+                            video.status.value
+                            if hasattr(video.status, "value")
+                            else str(video.status)
+                        ),
+                        "youtube_id": getattr(video, "youtube_id", None),
+                    }
+                )
+
+            artist_results = []
+            for artist in artists:
+                artist_results.append(
+                    {
+                        "id": artist.id,
+                        "name": artist.name,
+                        "video_count": len(artist.videos) if artist.videos else 0,
+                    }
+                )
+
+            return {
+                "success": True,
+                "query": q,
+                "results": {"videos": video_results, "artists": artist_results},
+                "total": len(video_results) + len(artist_results),
+            }
+
+        finally:
+            session.close()
+
+    except Exception as e:
+        logger.error(f"Discover search error: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "results": {"videos": [], "artists": []},
+            "total": 0,
+        }
 
 
 # Root redirect - redirect to login for now since auth middleware is disabled
@@ -492,41 +705,414 @@ async def test_get_videos():
 async def root():
     """Root endpoint - redirect to login since middleware is disabled"""
     from fastapi.responses import RedirectResponse
+
     return RedirectResponse(url="/auth/login", status_code=302)
 
 
 # Additional missing API endpoints that frontend is looking for
 @app.get("/api/metube/queue")
 async def get_metube_queue():
-    """Mock metube queue endpoint"""
-    return {"queue": [], "total": 0}
+    """Get download queue from database"""
+    try:
+        from sqlalchemy.orm import Session, joinedload
+
+        from src.database.connection import get_db_session
+        from src.database.models import Download
+
+        session_gen = get_db_session()
+        session: Session = next(session_gen)
+
+        try:
+            # Get downloads with queued or downloading status
+            downloads = (
+                session.query(Download)
+                .options(joinedload(Download.video), joinedload(Download.artist))
+                .filter(Download.status.in_(["queued", "downloading"]))
+                .order_by(Download.created_at.desc())
+                .all()
+            )
+
+            queue_items = []
+            for download in downloads:
+                queue_items.append(
+                    {
+                        "id": download.id,
+                        "title": download.title,
+                        "url": download.original_url,
+                        "status": download.status,
+                        "progress": download.progress or 0,
+                        "priority": download.priority,
+                        "created_at": (
+                            download.created_at.isoformat()
+                            if download.created_at
+                            else None
+                        ),
+                        "artist": (
+                            download.artist.name
+                            if download.artist
+                            else "Unknown Artist"
+                        ),
+                        "video_id": download.video_id,
+                    }
+                )
+
+            return {"queue": queue_items, "total": len(queue_items)}
+
+        finally:
+            session.close()
+
+    except Exception as e:
+        logger.error(f"Error getting download queue: {e}")
+        return {"queue": [], "total": 0}
 
 
 @app.get("/api/metube/history")
 async def get_metube_history(limit: int = 10):
-    """Mock metube history endpoint"""
-    return {"history": [], "total": 0}
+    """Get download history from database"""
+    try:
+        from sqlalchemy.orm import Session, joinedload
+
+        from src.database.connection import get_db_session
+        from src.database.models import Download
+
+        session_gen = get_db_session()
+        session: Session = next(session_gen)
+
+        try:
+            # Get downloads with completed, failed, or cancelled status
+            downloads = (
+                session.query(Download)
+                .options(joinedload(Download.video), joinedload(Download.artist))
+                .filter(Download.status.in_(["completed", "failed", "cancelled"]))
+                .order_by(Download.updated_at.desc())
+                .limit(limit)
+                .all()
+            )
+
+            history_items = []
+            for download in downloads:
+                history_items.append(
+                    {
+                        "id": download.id,
+                        "title": download.title,
+                        "url": download.original_url,
+                        "status": download.status,
+                        "progress": download.progress or 0,
+                        "priority": download.priority,
+                        "created_at": (
+                            download.created_at.isoformat()
+                            if download.created_at
+                            else None
+                        ),
+                        "updated_at": (
+                            download.updated_at.isoformat()
+                            if download.updated_at
+                            else None
+                        ),
+                        "artist": (
+                            download.artist.name
+                            if download.artist
+                            else "Unknown Artist"
+                        ),
+                        "video_id": download.video_id,
+                        "file_path": download.file_path,
+                        "file_size": download.file_size,
+                        "error_message": download.error_message,
+                    }
+                )
+
+            return {"history": history_items, "total": len(history_items)}
+
+        finally:
+            session.close()
+
+    except Exception as e:
+        logger.error(f"Error getting download history: {e}")
+        return {"history": [], "total": 0}
 
 
-@app.get("/api/health/status") 
+@app.post("/api/metube/clear-stuck")
+async def clear_stuck_downloads():
+    """Clear downloads stuck in processing state"""
+    try:
+        from datetime import datetime, timedelta
+
+        from sqlalchemy.orm import Session
+
+        from src.database.connection import get_db_session
+        from src.database.models import Download
+
+        session_gen = get_db_session()
+        session: Session = next(session_gen)
+
+        try:
+            # Find downloads that have been stuck for more than 1 hour
+            # This includes downloads stuck in downloading/processing AND queued state
+            cutoff_time = datetime.utcnow() - timedelta(hours=1)
+
+            stuck_downloads = (
+                session.query(Download)
+                .filter(
+                    Download.status.in_(["queued", "downloading", "processing"]),
+                    Download.updated_at < cutoff_time,
+                )
+                .all()
+            )
+
+            cleared_count = 0
+            for download in stuck_downloads:
+                # Reset stuck downloads - set to queued to retry processing
+                download.status = "queued"
+                download.progress = 0
+                download.updated_at = datetime.utcnow()
+                download.error_message = (
+                    "Reset from stuck state - will retry processing"
+                )
+                cleared_count += 1
+
+            session.commit()
+
+            logger.info(f"Cleared {cleared_count} stuck downloads")
+
+            # After clearing stuck downloads, also submit any queued downloads to job queue
+            try:
+                from src.services.job_queue import BackgroundJob, JobType, get_job_queue
+
+                # Get all queued downloads
+                queued_downloads = (
+                    session.query(Download).filter(Download.status == "queued").all()
+                )
+
+                if queued_downloads:
+                    # Submit them to the background job queue
+                    job_queue = await get_job_queue()
+                    submitted_count = 0
+
+                    for download in queued_downloads:
+                        try:
+                            # Create a video download job
+                            download_job = BackgroundJob(
+                                type=JobType.VIDEO_DOWNLOAD,
+                                payload={
+                                    "video_id": download.video_id,  # Required by video download worker
+                                    "download_id": download.id,
+                                    "url": download.original_url,
+                                    "title": download.title,
+                                    "artist": (
+                                        download.artist.name
+                                        if download.artist
+                                        else "Unknown"
+                                    ),
+                                    "quality": "best",
+                                    "priority": download.priority,
+                                },
+                            )
+
+                            job_id = await job_queue.enqueue(download_job)
+                            submitted_count += 1
+                            logger.info(
+                                f"Submitted download {download.id} to job queue as job {job_id}"
+                            )
+
+                        except Exception as job_error:
+                            logger.error(
+                                f"Failed to submit download {download.id} to job queue: {job_error}"
+                            )
+
+                    logger.info(
+                        f"Submitted {submitted_count} queued downloads to job queue"
+                    )
+
+                    return {
+                        "success": True,
+                        "cleared_count": cleared_count,
+                        "submitted_count": submitted_count,
+                        "message": f"Cleared {cleared_count} stuck downloads and submitted {submitted_count} to job queue",
+                    }
+            except Exception as job_submit_error:
+                logger.error(
+                    f"Error submitting downloads to job queue: {job_submit_error}"
+                )
+
+            return {
+                "success": True,
+                "cleared_count": cleared_count,
+                "message": f"Cleared {cleared_count} stuck downloads",
+            }
+
+        finally:
+            session.close()
+
+    except Exception as e:
+        logger.error(f"Error clearing stuck downloads: {e}")
+        return {"success": False, "error": str(e), "cleared_count": 0}
+
+
+@app.delete("/api/metube/history/clear")
+async def clear_metube_history():
+    """Clear all completed/failed downloads from history"""
+    try:
+        from sqlalchemy.orm import Session
+
+        from src.database.connection import get_db_session
+        from src.database.models import Download
+
+        session_gen = get_db_session()
+        session: Session = next(session_gen)
+
+        try:
+            # Delete all completed and failed downloads
+            deleted_count = (
+                session.query(Download)
+                .filter(Download.status.in_(["completed", "failed"]))
+                .delete()
+            )
+
+            session.commit()
+
+            logger.info(f"Cleared {deleted_count} downloads from history")
+            return {
+                "success": True,
+                "cleared_count": deleted_count,
+                "message": f"Cleared {deleted_count} downloads from history",
+            }
+
+        finally:
+            session.close()
+
+    except Exception as e:
+        logger.error(f"Error clearing download history: {e}")
+        return {"success": False, "error": str(e), "cleared_count": 0}
+
+
+# Temporarily disabled - causing startup issues
+# @app.get("/api/imvdb/search-videos")
+# async def search_imvdb_videos(q: str = Query(...)):
+#     """Search IMVDb for videos"""
+#     try:
+#         # Mock IMVDb search results for now
+#         query = q.lower()
+#
+#         mock_results = [
+#             {
+#                 "id": f"imvdb_{i}",
+#                 "title": f"{q} - IMVDb Result {i+1}",
+#                 "artist": f"Artist {i+1}",
+#                 "year": 2020 + i,
+#                 "director": f"Director {i+1}",
+#                 "imvdb_url": f"https://imvdb.com/video/mock_{i}"
+#             }
+#             for i in range(3)
+#         ]
+#
+#         return {
+#             "success": True,
+#             "query": q,
+#             "results": mock_results,
+#             "total": len(mock_results)
+#         }
+#
+#     except Exception as e:
+#         logger.error(f"IMVDb search failed: {e}")
+#         return {
+#             "success": False,
+#             "error": str(e),
+#             "results": [],
+#             "total": 0
+#         }
+
+
+@app.post("/api/metube/process-queue")
+async def process_queued_downloads():
+    """Process all queued downloads by submitting them to the job queue"""
+    try:
+        from sqlalchemy.orm import Session
+
+        from src.database.connection import get_db_session
+        from src.database.models import Download
+        from src.services.job_queue import BackgroundJob, JobType, get_job_queue
+
+        session_gen = get_db_session()
+        session: Session = next(session_gen)
+
+        try:
+            # Get all queued downloads
+            queued_downloads = (
+                session.query(Download).filter(Download.status == "queued").all()
+            )
+
+            if not queued_downloads:
+                return {
+                    "success": True,
+                    "message": "No queued downloads to process",
+                    "submitted_count": 0,
+                }
+
+            # Submit them to the background job queue
+            job_queue = await get_job_queue()
+            submitted_count = 0
+
+            for download in queued_downloads:
+                try:
+                    # Create a video download job
+                    download_job = BackgroundJob(
+                        type=JobType.VIDEO_DOWNLOAD,
+                        payload={
+                            "video_id": download.video_id,  # Required by video download worker
+                            "download_id": download.id,
+                            "url": download.original_url,
+                            "title": download.title,
+                            "artist": (
+                                download.artist.name if download.artist else "Unknown"
+                            ),
+                            "quality": "best",
+                            "priority": download.priority,
+                        },
+                    )
+
+                    job_id = await job_queue.enqueue(download_job)
+                    submitted_count += 1
+                    logger.info(
+                        f"Submitted download {download.id} to job queue as job {job_id}"
+                    )
+
+                except Exception as job_error:
+                    logger.error(
+                        f"Failed to submit download {download.id} to job queue: {job_error}"
+                    )
+
+            logger.info(f"Submitted {submitted_count} queued downloads to job queue")
+
+            return {
+                "success": True,
+                "submitted_count": submitted_count,
+                "total_queued": len(queued_downloads),
+                "message": f"Submitted {submitted_count} queued downloads to job queue",
+            }
+
+        finally:
+            session.close()
+
+    except Exception as e:
+        logger.error(f"Error processing queued downloads: {e}")
+        return {"success": False, "error": str(e), "submitted_count": 0}
+
+
+@app.get("/api/health/status")
 async def get_health_status():
     """Mock health status endpoint"""
     return {
         "status": "healthy",
         "uptime": "1h 30m",
         "memory_usage": "180MB",
-        "cpu_usage": "15%"
+        "cpu_usage": "15%",
     }
 
 
 @app.get("/api/health/version")
 async def get_health_version():
     """Mock version endpoint"""
-    return {
-        "version": "0.9.8",
-        "build_date": "2024-01-01",
-        "commit": "abc1234"
-    }
+    return {"version": "0.9.8", "build_date": "2024-01-01", "commit": "abc1234"}
 
 
 @app.get("/api/themes/current")
@@ -545,26 +1131,31 @@ async def auth_check_simple():
 async def websocket_jobs(websocket: WebSocket):
     """WebSocket endpoint for background jobs progress"""
     await websocket.accept()
-    
+
     try:
         # Send initial status
-        await websocket.send_json({
-            "type": "status",
-            "message": "Connected to job progress WebSocket",
-            "timestamp": "2025-01-08T00:00:00Z"
-        })
-        
+        await websocket.send_json(
+            {
+                "type": "status",
+                "message": "Connected to job progress WebSocket",
+                "timestamp": "2025-01-08T00:00:00Z",
+            }
+        )
+
         # Keep connection alive and send periodic updates
         import asyncio
+
         while True:
             # Send heartbeat every 30 seconds
             await asyncio.sleep(30)
-            await websocket.send_json({
-                "type": "heartbeat", 
-                "timestamp": "2025-01-08T00:00:00Z",
-                "active_jobs": 0
-            })
-            
+            await websocket.send_json(
+                {
+                    "type": "heartbeat",
+                    "timestamp": "2025-01-08T00:00:00Z",
+                    "active_jobs": 0,
+                }
+            )
+
     except Exception as e:
         logger.error(f"WebSocket jobs error: {e}")
     finally:
@@ -576,15 +1167,15 @@ async def websocket_jobs(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Configure logging
     logging.basicConfig(level=logging.INFO)
-    
+
     # Run the application without reload to prevent file watching issues
     uvicorn.run(
-        "fastapi_app:app", 
-        host="0.0.0.0", 
+        "fastapi_app:app",
+        host="0.0.0.0",
         port=5000,  # Standard MVidarr port
         reload=False,  # Disabled to prevent continuous reload loops
-        log_level="info"
+        log_level="info",
     )
