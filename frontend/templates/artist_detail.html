@@ -4501,6 +4501,22 @@ function renderBiography(artist, metadata) {
         const imvdbKeys = Object.keys(artist.imvdb_metadata);
         console.log('IMVDb metadata keys:', imvdbKeys);
         console.log('IMVDb metadata content:', artist.imvdb_metadata);
+        
+        // Debug service connection logic
+        console.log('🔍 Service connection debugging:');
+        console.log('  metadata.musicbrainz_id:', metadata.musicbrainz_id);
+        console.log('  artist.imvdb_metadata:', artist.imvdb_metadata);
+        console.log('  artist.imvdb_metadata?.musicbrainz_id:', artist.imvdb_metadata?.musicbrainz_id);
+        
+        const mbConnected = !!(metadata.musicbrainz_id || (artist.imvdb_metadata && artist.imvdb_metadata.musicbrainz_id));
+        const mbServiceId = metadata.musicbrainz_id || (artist.imvdb_metadata && artist.imvdb_metadata.musicbrainz_id);
+        console.log('  MusicBrainz connected:', mbConnected);
+        console.log('  MusicBrainz serviceId:', mbServiceId);
+        
+        const amConnected = !!(metadata.allmusic_id || (artist.imvdb_metadata && artist.imvdb_metadata.allmusic_id));
+        const amServiceId = metadata.allmusic_id || (artist.imvdb_metadata && artist.imvdb_metadata.allmusic_id);
+        console.log('  AllMusic connected:', amConnected);
+        console.log('  AllMusic serviceId:', amServiceId);
     }
     
     if (bio) {
@@ -6966,42 +6982,6 @@ function importFromImvdb() {
     });
 }
 
-async function autoMatchServices() {
-    if (!currentArtistId) {
-        showError('No artist selected');
-        return;
-    }
-    
-    if (!confirm('Auto-match this artist across all connected services? This will attempt to find and link corresponding profiles on IMVDb, MusicBrainz, Spotify, and other services.')) {
-        return;
-    }
-    
-    try {
-        showInfo('Starting auto-match process...');
-        
-        const response = await fetch(`/api/artists/${currentArtistId}/auto-match`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showSuccess(`Auto-match completed: ${data.message}`);
-            // Refresh artist data to show updated links
-            loadArtistDetails();
-        } else {
-            showError('Auto-match failed: ' + (data.error || 'Unknown error'));
-        }
-        
-    } catch (error) {
-        console.error('Auto-match error:', error);
-        showError('Auto-match failed: ' + error.message);
-    }
-}
 
 async function enrichMetadataAllSources(event) {
     if (!currentArtistId) {
