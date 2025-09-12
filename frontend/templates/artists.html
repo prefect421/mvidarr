@@ -1640,7 +1640,7 @@ function deleteArtist(id) {
     const artistCard = document.querySelector(`[data-artist-id="${id}"]`);
     const artistName = artistCard ? artistCard.querySelector('h3').textContent : 'this artist';
     
-    if (confirm(`Are you sure you want to delete "${artistName}"? This action cannot be undone and will also delete all associated videos.`)) {
+    if (confirm(`Are you sure you want to delete "${artistName}"? This action cannot be undone.`)) {
         // Show loading state
         const deleteBtn = event.target.closest('button');
         const originalContent = deleteBtn.innerHTML;
@@ -1650,9 +1650,10 @@ function deleteArtist(id) {
         fetch(`/api/artists/${id}`, {
             method: 'DELETE'
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+        .then(async response => {
+            const data = await response.json();
+            
+            if (response.ok) {
                 showSuccess(`Artist "${artistName}" deleted successfully`);
                 
                 // Remove the artist card from the grid with animation
@@ -1665,8 +1666,54 @@ function deleteArtist(id) {
                     // Update the results count
                     updateResultsAfterDelete();
                 }, 300);
+            } else if (response.status === 400 && data.message && data.message.includes('associated videos')) {
+                // Artist has videos, ask if user wants to delete videos too
+                const confirmWithVideos = confirm(
+                    `${data.message}\n\nWould you like to delete the artist along with all their videos? This action cannot be undone.`
+                );
+                
+                if (confirmWithVideos) {
+                    // Retry deletion with delete_videos=true
+                    fetch(`/api/artists/${id}?delete_videos=true`, {
+                        method: 'DELETE'
+                    })
+                    .then(async retryResponse => {
+                        const retryData = await retryResponse.json();
+                        
+                        if (retryResponse.ok) {
+                            showSuccess(`Artist "${artistName}" and all associated videos deleted successfully`);
+                            
+                            // Remove the artist card from the grid with animation
+                            artistCard.style.transition = 'all 0.3s ease';
+                            artistCard.style.transform = 'scale(0)';
+                            artistCard.style.opacity = '0';
+                            
+                            setTimeout(() => {
+                                artistCard.remove();
+                                updateResultsAfterDelete();
+                            }, 300);
+                        } else {
+                            showError(retryData.message || retryData.error || 'Failed to delete artist with videos');
+                            // Restore button
+                            deleteBtn.innerHTML = originalContent;
+                            deleteBtn.disabled = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting artist with videos:', error);
+                        showError('Error deleting artist with videos');
+                        // Restore button
+                        deleteBtn.innerHTML = originalContent;
+                        deleteBtn.disabled = false;
+                    });
+                } else {
+                    // User chose not to delete videos, restore button
+                    deleteBtn.innerHTML = originalContent;
+                    deleteBtn.disabled = false;
+                }
             } else {
-                showError(data.error || 'Failed to delete artist');
+                // Other error
+                showError(data.message || data.error || 'Failed to delete artist');
                 // Restore button
                 deleteBtn.innerHTML = originalContent;
                 deleteBtn.disabled = false;
@@ -1871,15 +1918,16 @@ function bulkDeleteArtists() {
             artist_ids: artistIds
         })
     })
-    .then(response => response.json())
-    .then(result => {
-        if (result.error) {
-            showError('Error: ' + result.error);
-        } else {
+    .then(async response => {
+        const result = await response.json();
+        
+        if (response.ok) {
             showSuccess(`Successfully deleted ${result.deleted_count} artist${result.deleted_count > 1 ? 's' : ''}`);
             selectedArtists.clear();
             updateSelectionDisplay();
             loadArtists(currentPage);
+        } else {
+            showError(result.message || result.error || 'Failed to delete selected artists');
         }
     })
     .catch(error => {
@@ -2572,15 +2620,16 @@ function bulkArchive() {
                 artist_ids: artistIds
             })
         })
-        .then(response => response.json())
-        .then(result => {
+        .then(async response => {
+            const result = await response.json();
             hideBulkProgress();
-            if (result.error) {
-                showError('Error: ' + result.error);
-            } else {
+            
+            if (response.ok) {
                 showSuccess(`Successfully archived ${result.archived_count} artist${result.archived_count > 1 ? 's' : ''}`);
                 selectedArtists.clear();
                 loadArtists(currentPage);
+            } else {
+                showError(result.message || result.error || 'Failed to archive selected artists');
             }
         })
         .catch(error => {

@@ -174,16 +174,30 @@ function getStatusDisplay(status, progress) {
 function loadDashboardStats() {
     // Load artists count
     fetch('/api/artists/')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
         .then(data => {
-            document.getElementById('artists-count').textContent = data.total || 0;
+            document.getElementById('artists-count').textContent = data.pagination.total || 0;
+        })
+        .catch(error => {
+            console.error('Error loading artists count:', error);
+            document.getElementById('artists-count').textContent = 'Error';
         });
 
     // Load videos count
     fetch('/api/videos/')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
         .then(data => {
-            document.getElementById('videos-count').textContent = data.count || 0;
+            document.getElementById('videos-count').textContent = data.pagination.total || 0;
+        })
+        .catch(error => {
+            console.error('Error loading videos count:', error);
+            document.getElementById('videos-count').textContent = 'Error';
         });
 }
 
@@ -651,7 +665,7 @@ function addArtist() {
             hideAddArtistModal();
             
             // Refresh artist count
-            loadStats();
+            loadDashboardStats();
             
             // Optionally redirect to artists page after a delay
             setTimeout(() => {
