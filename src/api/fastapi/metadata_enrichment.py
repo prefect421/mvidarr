@@ -520,11 +520,22 @@ async def auto_match_services(
         # Save changes to database if any matches were found
         if updated_fields:
             try:
+                # Log the changes before saving
+                logger.info(f"About to save {len(updated_fields)} auto-match changes for {artist.name}: {updated_fields}")
+                logger.info(f"Artist imvdb_metadata before save: {artist.imvdb_metadata}")
+                logger.info(f"Artist spotify_id: {getattr(artist, 'spotify_id', 'N/A')}")
+                logger.info(f"Artist lastfm_name: {getattr(artist, 'lastfm_name', 'N/A')}")
+                
+                # Mark the JSON field as modified to ensure SQLAlchemy detects the change
+                from sqlalchemy.orm import attributes
+                attributes.flag_modified(artist, 'imvdb_metadata')
+                
                 artist.updated_at = datetime.utcnow()
                 session.commit()
                 logger.info(
                     f"Auto-match saved {len(updated_fields)} matches for {artist.name}: {updated_fields}"
                 )
+                logger.info(f"Artist imvdb_metadata after save: {artist.imvdb_metadata}")
             except Exception as e:
                 logger.error(
                     f"Failed to save auto-match results for {artist.name}: {e}"
@@ -546,6 +557,14 @@ async def auto_match_services(
                         matches_found[service_name] = False
 
         total_matches = sum(matches_found.values())
+        
+        # Log final match results
+        logger.info(f"Auto-match completed for {artist.name}:")
+        logger.info(f"  Matches found: {matches_found}")
+        logger.info(f"  Total matches: {total_matches}")
+        logger.info(f"  Updated fields: {updated_fields}")
+        if updated_fields:
+            logger.info(f"  Final imvdb_metadata: {artist.imvdb_metadata}")
 
         # Return job-style response for background jobs system
         return {
