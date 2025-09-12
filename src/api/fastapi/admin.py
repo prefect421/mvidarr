@@ -305,10 +305,14 @@ async def restart_application(
                         timeout=5
                     )
                     if result.returncode == 0:
-                        # Service is managed by systemd
+                        # Service is managed by systemd - try sudo restart
                         logger.info("Restarting via systemctl...")
-                        subprocess.run(["sudo", "systemctl", "restart", "mvidarr"], timeout=10)
-                        return
+                        try:
+                            subprocess.run(["sudo", "systemctl", "restart", "mvidarr"], timeout=10, check=True)
+                            return
+                        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                            # Sudo failed, fall through to SIGTERM method
+                            logger.warning("Systemctl restart failed, using process termination method")
                 except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
                     pass
                 

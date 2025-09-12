@@ -4,8 +4,8 @@
 
 {% block content %}
 <!-- Performance Enhancement CSS - DISABLED: Causing loading issues
-<link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='ui-enhancements.css') }}">
-<link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='virtualization.css') }}">
+<link rel="stylesheet" href="/css/ui-enhancements.css ">
+<link rel="stylesheet" href="/css/virtualization.css ">
 -->
 <div class="videos-container">
     
@@ -1012,6 +1012,14 @@ function viewVideo(id) {
 
 
 function playVideo(videoId, title, localPath, videoUrl) {
+    // Debug logging to help diagnose the issue
+    console.log('playVideo called with:', {
+        videoId: videoId,
+        title: title,
+        localPath: localPath,
+        videoUrl: videoUrl
+    });
+    
     // Set modal title
     document.getElementById('videoModalTitle').textContent = title || 'Playing Video';
     
@@ -1157,6 +1165,13 @@ function playVideo(videoId, title, localPath, videoUrl) {
             `;
         }
     } else {
+        // Enhanced error reporting
+        console.error('No video file available for playback. Debug info:', {
+            localPath: localPath,
+            videoUrl: videoUrl,
+            localPathType: typeof localPath,
+            videoUrlType: typeof videoUrl
+        });
         showWarning('No video file available for playback');
         return;
     }
@@ -4227,6 +4242,7 @@ async function playVideoById(videoId) {
         }
         
         const video = await response.json();
+        console.log('API returned video data:', video);
         playVideo(video.id, video.title, video.local_path, video.video_url);
     } catch (error) {
         console.error('Error fetching video for playback:', error);
@@ -4769,10 +4785,10 @@ function enhanceSearchResults(videos, searchQuery) {
 {% include 'components/add_video_modal.html' %}
 
 <!-- UI Enhancement Scripts - ENABLED for playlist functionality -->
-<script src="{{ url_for('frontend.js_files', filename='video-management-enhanced.js') }}?v=20241213-1620"></script>
+<script src="/static/js/video-management-enhanced.js?v=20250911-1900"></script>
 <!-- Temporarily disabled virtualization to debug loading issue
-<script src="{{ url_for('frontend.js_files', filename='virtualization-engine.js') }}?v=20250813-1447"></script>
-<script src="{{ url_for('frontend.js_files', filename='video-virtualization-integration.js') }}"></script>
+<script src="/static/js/virtualization-engine.js?v=20250813-1447"></script>
+<script src="/static/js/video-virtualization-integration.js"></script>
 -->
 
 <script>

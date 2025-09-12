@@ -6,20 +6,20 @@
     <title>{% block title %}MVidarr{% endblock %}</title>
     
     <!-- Favicon and App Icons -->
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='favicon-96x96.png') }}">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/static/favicon-96x96.png">
     
     <!-- Apple Touch Icon -->
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
     
     <!-- Android Chrome Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='android-chrome-192x192.png') }}">
-    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='android-chrome-512x512.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/android-chrome-512x512.png">
     
     <!-- Microsoft Tile -->
-    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='mstile-150x150.png') }}">
+    <meta name="msapplication-TileImage" content="/static/mstile-150x150.png">
     <meta name="msapplication-TileColor" content="#1e3a8a">
     <meta name="msapplication-config" content="{{ url_for('static', filename='browserconfig.xml') }}">
     
@@ -37,16 +37,16 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='main.css') }}" id="main-theme">
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='themes.css') }}" id="themes-stylesheet">
+    <link rel="stylesheet" href="/css/main.css" id="main-theme">
+    <link rel="stylesheet" href="/css/themes.css" id="themes-stylesheet">
     
     <!-- UI/UX Enhancement System -->
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='typography.css') }}">
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='buttons.css') }}">
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='layout.css') }}">
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='accessibility.css') }}">
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='loading-feedback.css') }}">
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='ux-enhancements.css') }}">
+    <link rel="stylesheet" href="/css/typography.css">
+    <link rel="stylesheet" href="/css/buttons.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/accessibility.css">
+    <link rel="stylesheet" href="/css/loading-feedback.css">
+    <link rel="stylesheet" href="/css/ux-enhancements.css">
     
     <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js"></script>
     <!-- Test if Iconify works at all -->

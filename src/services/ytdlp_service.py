@@ -186,6 +186,22 @@ class YtDlpService:
                 )
                 quality_format_string = "bestvideo[height<=2160]+bestaudio/best[height<=2160]/bestvideo[height<=1440]+bestaudio/best[height<=1440]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
 
+            # Check for existing active downloads for this video
+            if video_id:
+                existing_active = None
+                for existing_id, existing_entry in self.active_downloads.items():
+                    if existing_entry.get("video_id") == video_id:
+                        existing_active = existing_entry
+                        break
+                
+                if existing_active:
+                    return {
+                        "success": True,
+                        "id": existing_active["id"],
+                        "message": f"Download already in progress: {artist} - {title}",
+                        "status": "already_active"
+                    }
+
             # Create download entry
             download_id = self._get_next_id()
             download_entry = {
@@ -355,8 +371,10 @@ class YtDlpService:
                 enable_sabr_workarounds = settings.get("enable_sabr_workarounds", True)
                 if enable_sabr_workarounds:
                     youtube_extractor_args = [
-                        "youtube:player_client=web,mweb",  # Avoid android client that requires PO Token
-                        "youtube:formats=missing_pot",  # Enable formats that might be missing PO Token
+                        "youtube:player_client=web,ios",  # Try web first, fallback to iOS client
+                        "youtube:formats=missing_pot",  # Enable formats that might be missing PO Token  
+                        "youtube:innertube_host=studio.youtube.com",  # Alternative host to avoid restrictions
+                        "youtube:bypass_age_gate=True",  # Bypass age restrictions
                         # Removed skip=hls,dash to allow higher quality formats (issue #11)
                     ]
                     cmd.extend([

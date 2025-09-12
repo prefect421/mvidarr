@@ -48,6 +48,32 @@ async def videos(request: Request):
         logger.error(f"Error rendering videos page: {e}")
         raise HTTPException(status_code=500, detail="Failed to load videos page")
 
+@frontend_router.get("/videos/{video_id}", response_class=HTMLResponse, name="frontend_video_detail")
+async def video_detail(request: Request, video_id: int):
+    """Video detail page (plural URL)"""
+    try:
+        context = {
+            'video_id': video_id,
+            'page_title': 'Video Details'
+        }
+        return await template_system.render_response('video_detail.html', request, context)
+    except Exception as e:
+        logger.error(f"Error rendering video detail page: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load video detail page")
+
+@frontend_router.get("/video/{video_id}", response_class=HTMLResponse, name="frontend_video_detail_singular")
+async def video_detail_singular(request: Request, video_id: int):
+    """Video detail page (singular URL)"""
+    try:
+        context = {
+            'video_id': video_id,
+            'page_title': 'Video Details'
+        }
+        return await template_system.render_response('video_detail.html', request, context)
+    except Exception as e:
+        logger.error(f"Error rendering video detail page: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load video detail page")
+
 @frontend_router.get("/artists", response_class=HTMLResponse, name="frontend_artists")
 async def artists(request: Request):
     """Artists management page"""
@@ -74,6 +100,43 @@ async def playlists(request: Request):
     except Exception as e:
         logger.error(f"Error rendering playlists page: {e}")
         raise HTTPException(status_code=500, detail="Failed to load playlists page")
+
+@frontend_router.get("/discover", response_class=HTMLResponse, name="frontend_discover")
+async def discover(request: Request, q: Optional[str] = Query(None)):
+    """Universal search/discover page"""
+    try:
+        context = {
+            'page_title': 'Discover Music Videos',
+            'search_query': q or ''
+        }
+        return await template_system.render_response('discover.html', request, context)
+    except Exception as e:
+        logger.error(f"Error rendering discover page: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load discover page")
+
+@frontend_router.get("/frontend.mvtv", response_class=HTMLResponse, name="frontend_mvtv")
+async def mvtv(request: Request):
+    """MvTV continuous video player page"""
+    try:
+        context = {
+            'page_title': 'MvTV - Continuous Video Player'
+        }
+        return await template_system.render_response('mvtv.html', request, context)
+    except Exception as e:
+        logger.error(f"Error rendering MvTV page: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load MvTV page")
+
+@frontend_router.get("/frontend.jobs", response_class=HTMLResponse, name="frontend_jobs")
+async def jobs(request: Request):
+    """Background Jobs Dashboard"""
+    try:
+        context = {
+            'page_title': 'Background Jobs'
+        }
+        return await template_system.render_response('jobs.html', request, context)
+    except Exception as e:
+        logger.error(f"Error rendering jobs page: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load jobs page")
 
 @frontend_router.get("/settings", response_class=HTMLResponse, name="frontend_settings")
 async def settings(request: Request, user=Depends(require_authentication)):

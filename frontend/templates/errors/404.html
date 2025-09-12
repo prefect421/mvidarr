@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - MVidarr{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-container">
+                <div class="error-icon mb-4">
+                    <iconify-icon icon="mdi:file-search-outline" style="font-size: 4rem; color: var(--text-secondary);"></iconify-icon>
+                </div>
+                <h1 class="error-title">404 - Page Not Found</h1>
+                <p class="error-message">{{ error_message or "The page you're looking for doesn't exist." }}</p>
+                <div class="error-details mt-3">
+                    <p class="text-muted">
+                        Requested path: <code>{{ path or request.url.path }}</code>
+                    </p>
+                </div>
+                <div class="error-actions mt-4">
+                    <a href="{{ back_url or '/' }}" class="btn btn-primary me-2">
+                        <iconify-icon icon="mdi:home" class="me-1"></iconify-icon>
+                        Go Home
+                    </a>
+                    <button onclick="history.back()" class="btn btn-secondary">
+                        <iconify-icon icon="mdi:arrow-left" class="me-1"></iconify-icon>
+                        Go Back
+                    </button>
+                </div>
+                
+                <!-- Quick navigation suggestions -->
+                <div class="quick-links mt-5">
+                    <h5>Try these instead:</h5>
+                    <div class="d-flex justify-content-center flex-wrap gap-2 mt-3">
+                        <a href="/videos" class="btn btn-outline-primary btn-sm">
+                            <iconify-icon icon="mdi:video" class="me-1"></iconify-icon>
+                            Videos
+                        </a>
+                        <a href="/artists" class="btn btn-outline-primary btn-sm">
+                            <iconify-icon icon="mdi:account-music" class="me-1"></iconify-icon>
+                            Artists
+                        </a>
+                        <a href="/playlists" class="btn btn-outline-primary btn-sm">
+                            <iconify-icon icon="mdi:playlist-play" class="me-1"></iconify-icon>
+                            Playlists
+                        </a>
+                        <a href="/settings" class="btn btn-outline-primary btn-sm">
+                            <iconify-icon icon="mdi:cog" class="me-1"></iconify-icon>
+                            Settings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-container {
+    padding: 2rem;
+    background: var(--bg-secondary, #f8f9fa);
+    border-radius: 0.75rem;
+    border: 1px solid var(--border, #e9ecef);
+    box-shadow: 0 4px 6px var(--shadow, rgba(0, 0, 0, 0.1));
+}
+
+.error-title {
+    color: var(--text-primary, #212529);
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    color: var(--text-secondary, #6c757d);
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+}
+
+.error-details code {
+    background: var(--bg-tertiary, #e9ecef);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--text-accent, #495057);
+}
+
+.quick-links {
+    border-top: 1px solid var(--border, #e9ecef);
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.quick-links h5 {
+    color: var(--text-secondary, #6c757d);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}

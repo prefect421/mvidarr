@@ -711,23 +711,22 @@ async def advanced_search(
 
 @router.get("/search/suggestions")
 async def get_search_suggestions(
-    query: str = Query(..., min_length=1, description="Search query"),
+    q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session)
 ):
     """Get search suggestions for artist names"""
     try:
         # Search for artists matching the query
         suggestions = session.query(Artist.name).filter(
-            Artist.name.ilike(f"%{query}%")
+            Artist.name.ilike(f"%{q}%")
         ).limit(limit).all()
         
         # Extract just the names
         suggestion_list = [s[0] for s in suggestions]
         
         return {
-            "query": query,
+            "query": q,
             "suggestions": suggestion_list
         }
         
@@ -1200,10 +1199,13 @@ async def get_artist_detailed(
             func.avg(Video.duration).label("avg_duration")
         ).filter(Video.artist_id == artist_id).first()
         
-        # Get recent videos
-        recent_videos = session.query(Video).filter(
+        # Get all videos for the artist (for artist detail page)
+        videos = session.query(Video).filter(
             Video.artist_id == artist_id
-        ).order_by(Video.created_at.desc()).limit(5).all()
+        ).order_by(Video.created_at.desc()).all()
+        
+        # Also get recent videos (first 5) for backward compatibility
+        recent_videos = videos[:5]
         
         # Ensure folder path
         await ensure_artist_folder_path(artist, session)
@@ -1240,6 +1242,25 @@ async def get_artist_detailed(
                 "total_size_bytes": 0,  # File size info moved to Downloads table
                 "average_duration_seconds": float(video_stats.avg_duration or 0)
             },
+            "videos": [
+                {
+                    "id": video.id,
+                    "title": video.title,
+                    "artist_id": video.artist_id,
+                    "artist_name": artist.name,
+                    "url": video.url,
+                    "youtube_url": video.youtube_url,
+                    "video_url": video.url or video.youtube_url,
+                    "status": video.status,
+                    "file_path": getattr(video, "file_path", video.local_path),
+                    "local_path": video.local_path,
+                    "duration": video.duration,
+                    "created_at": video.created_at.isoformat() if video.created_at else None,
+                    "updated_at": video.updated_at.isoformat() if video.updated_at else None,
+                    "thumbnail_url": f"/api/videos/{video.id}/thumbnail"
+                }
+                for video in videos
+            ],
             "recent_videos": [
                 {
                     "id": video.id,

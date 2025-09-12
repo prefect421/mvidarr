@@ -563,9 +563,7 @@ class VideoManagementUI {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    video_ids: videoIds,
-                    quality: 'best',
-                    force_redownload: false 
+                    video_ids: videoIds
                 })
             });
             
@@ -812,7 +810,7 @@ class VideoManagementUI {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                quality: 'best',
+                priority: 5,  // High priority (1-10 scale)
                 force_redownload: false 
             })
         });

@@ -21,7 +21,7 @@
     </div>
 
     <div class="dashboard-actions">
-        <button onclick="window.location.href='{{ url_for('frontend.artists') }}'" class="btn btn-primary">
+        <button onclick="showAddArtistModal()" class="btn btn-primary">
             Add Artist
         </button>
         <button onclick="showAddVideoModal()" class="btn btn-primary">
@@ -58,6 +58,64 @@
         </div>
         <div id="download-history-list">
             <p>Loading download history...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Add Artist Modal -->
+<div id="addArtistModal" class="modal" role="dialog" aria-labelledby="addArtistModalTitle" aria-hidden="true">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="addArtistModalTitle" class="modal-title">🎤 Add New Artist</h3>
+            <span class="close" onclick="hideAddArtistModal()" aria-label="Close modal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <!-- Search Section -->
+            <div style="margin-bottom: 2rem;">
+                <h4 style="margin-bottom: 1rem;">Search IMVDb</h4>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input type="text" id="addArtistSearchInput" placeholder="Search for artists on IMVDb..." 
+                           style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);"
+                           onkeyup="searchImvdbForAdd(event)">
+                    <button onclick="searchImvdbForAdd()" class="btn btn-primary">Search</button>
+                </div>
+                <div id="addArtistSearchResults" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); padding: 1rem; background: var(--bg-secondary);">
+                    <p>Enter a search term to find artists from IMVDb</p>
+                </div>
+            </div>
+            
+            <!-- Manual Entry Section -->
+            <div>
+                <h4 style="margin-bottom: 1rem;">Or Add Manually</h4>
+                <form id="addArtistForm">
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">Artist Name:</label>
+                        <input type="text" id="artistName" name="name" required 
+                               style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">IMVDB ID (optional):</label>
+                        <input type="text" id="imvdbId" name="imvdb_id" 
+                               style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                            <input type="checkbox" id="autoDownload" name="auto_download">
+                            Auto-download new videos
+                        </label>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                            <input type="checkbox" id="monitored" name="monitored" checked>
+                            Monitor for new videos
+                        </label>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button type="button" onclick="hideAddArtistModal()" class="btn btn-secondary">Cancel</button>
+            <button type="button" onclick="addArtist()" class="btn btn-primary">Add Artist</button>
         </div>
     </div>
 </div>
@@ -491,6 +549,179 @@ function proceedDownloadWantedVideos() {
 }
 
 // Add Video Modal functionality is now handled by the shared component
+
+// Add Artist Modal Functions
+function showAddArtistModal() {
+    const modal = document.getElementById('addArtistModal');
+    modal.style.display = 'block';
+    modal.setAttribute('aria-hidden', 'false');
+    
+    // Focus on first input for accessibility
+    setTimeout(() => {
+        document.getElementById('addArtistSearchInput').focus();
+    }, 100);
+}
+
+function hideAddArtistModal() {
+    const modal = document.getElementById('addArtistModal');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    
+    // Reset form content
+    document.getElementById('addArtistForm').reset();
+    document.getElementById('addArtistSearchInput').value = '';
+    document.getElementById('addArtistSearchResults').innerHTML = '<p>Enter a search term to find artists from IMVDb</p>';
+}
+
+function searchImvdbForAdd(event) {
+    // Handle Enter key press
+    if (event && event.key && event.key !== 'Enter') {
+        return;
+    }
+    
+    const searchTerm = document.getElementById('addArtistSearchInput').value.trim();
+    if (!searchTerm) {
+        return;
+    }
+    
+    const resultsDiv = document.getElementById('addArtistSearchResults');
+    resultsDiv.innerHTML = '<p>Searching database and IMVDb...</p>';
+    
+    // Search IMVDb
+    fetch(`/api/metadata-enrichment/search/imvdb?artist=${encodeURIComponent(searchTerm)}`)
+        .then(response => response.json())
+        .then(result => {
+            if (result.results && result.results.length > 0) {
+                resultsDiv.innerHTML = `
+                    <div style="margin-bottom: 1rem;">
+                        <h5>Found ${result.results.length} artists on IMVDb:</h5>
+                    </div>
+                    ${result.results.map(artist => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border: 1px solid #333; margin-bottom: 0.5rem; border-radius: 4px; background: #1a1a1a;">
+                            <div>
+                                <strong style="color: #fff;">${artist.name}</strong>
+                                ${artist.artist_video_count ? `<div style="font-size: 0.875rem; color: #ccc;">${artist.artist_video_count} videos on IMVDb</div>` : ''}
+                                ${artist.byline ? `<div style="font-size: 0.8rem; color: #999;">${artist.byline}</div>` : ''}
+                            </div>
+                            <button onclick="addArtistFromImvdb('${artist.id}', '${artist.name.replace(/'/g, '\\\'')}')" 
+                                    class="btn btn-primary btn-sm">
+                                Add This Artist
+                            </button>
+                        </div>
+                    `).join('')}
+                `;
+            } else {
+                resultsDiv.innerHTML = '<p style="color: #ccc;">No artists found on IMVDb. Try a different search term or add manually.</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error searching IMVDb:', error);
+            resultsDiv.innerHTML = '<p style="color: #ff6b6b;">Error searching IMVDb. Try adding manually instead.</p>';
+        });
+}
+
+function addArtist() {
+    const formData = new FormData(document.getElementById('addArtistForm'));
+    const data = {
+        name: formData.get('name'),
+        imvdb_id: formData.get('imvdb_id'),
+        auto_download: formData.get('auto_download') === 'on',
+        monitored: formData.get('monitored') === 'on'
+    };
+    
+    // Validate required fields
+    if (!data.name.trim()) {
+        showError('Please enter an artist name');
+        return;
+    }
+    
+    fetch('/api/artists/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.error) {
+            showError('Error: ' + result.error);
+        } else {
+            showSuccess('Artist added successfully!');
+            hideAddArtistModal();
+            
+            // Refresh artist count
+            loadStats();
+            
+            // Optionally redirect to artists page after a delay
+            setTimeout(() => {
+                if (confirm('Would you like to view the artists page to see your new artist?')) {
+                    window.location.href = '/artists';
+                }
+            }, 1500);
+        }
+    })
+    .catch(error => {
+        console.error('Error adding artist:', error);
+        showError('Error adding artist');
+    });
+}
+
+function addArtistFromImvdb(imvdbId, artistName) {
+    if (confirm(`Add "${artistName}" from IMVDb?`)) {
+        fetch('/api/artists/import-from-imvdb', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                imvdb_id: imvdbId,
+                monitored: true,
+                auto_download: false
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                showError('Error: ' + result.error);
+            } else {
+                showSuccess(`Artist "${result.name}" added successfully!`);
+                hideAddArtistModal();
+                
+                // Refresh artist count
+                loadStats();
+                
+                // Optionally redirect to artists page after a delay
+                setTimeout(() => {
+                    if (confirm('Would you like to view the artists page to see your new artist?')) {
+                        window.location.href = '/artists';
+                    }
+                }, 1500);
+            }
+        })
+        .catch(error => {
+            console.error('Error importing artist:', error);
+            showError('Error importing artist from IMVDb');
+        });
+    }
+}
+
+// Close modal when clicking outside or pressing Escape
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('addArtistModal');
+    if (event.target === modal) {
+        hideAddArtistModal();
+    }
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('addArtistModal');
+        if (modal.style.display === 'block') {
+            hideAddArtistModal();
+        }
+    }
+});
 </script>
 
 <style>
@@ -738,6 +969,115 @@ function proceedDownloadWantedVideos() {
 
 .video-title-link:visited {
     color: #00a8cc !important;
+}
+
+/* Add Artist Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+}
+
+.modal-content {
+    background-color: #1a1a1a;
+    color: #fff;
+    margin: 5% auto;
+    padding: 0;
+    border: 1px solid #333;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #333;
+    background-color: #222;
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-title {
+    margin: 0;
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.close {
+    color: #ccc;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.close:hover,
+.close:focus {
+    color: #fff;
+    background-color: #333;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding: 1.5rem;
+    border-top: 1px solid #333;
+    background-color: #222;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Responsive modal */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+    
+    .modal-buttons {
+        flex-direction: column-reverse;
+    }
+    
+    .modal-buttons button {
+        width: 100%;
+    }
 }
 </style>
 

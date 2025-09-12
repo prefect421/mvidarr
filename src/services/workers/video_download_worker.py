@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ..background_worker_base import BaseWorker
 from ...database.connection import get_db
-from ...database.models import Video, VideoDownload
+from ...database.models import Video, Download, VideoStatus
 from ...services.ytdlp_service import ytdlp_service
 from ...utils.logger import get_logger
 
@@ -37,7 +37,10 @@ class VideoDownloadWorker(BaseWorker):
             await self.update_progress(5, f"Initializing download for video {video_id}")
             
             # Get video from database
-            with get_db() as session:
+            from ...database.connection import get_db_session
+            session_gen = get_db_session()
+            session = next(session_gen)
+            try:
                 video = session.query(Video).filter(Video.id == video_id).first()
                 if not video:
                     raise ValueError(f"Video {video_id} not found")
@@ -45,6 +48,8 @@ class VideoDownloadWorker(BaseWorker):
                 video_title = video.title or f"Video {video_id}"
                 video_url = video.url
                 artist_name = video.artist.name if video.artist else "Unknown Artist"
+            finally:
+                session.close()
             
             await self.update_progress(10, f"Starting download: {video_title}")
             
@@ -52,14 +57,14 @@ class VideoDownloadWorker(BaseWorker):
             if not force_redownload:
                 with get_db() as session:
                     video = session.query(Video).filter(Video.id == video_id).first()
-                    if video and video.file_path and hasattr(video, 'downloaded') and video.downloaded:
+                    if video and video.local_path and video.status == VideoStatus.DOWNLOADED:
                         # Check if file actually exists
                         import os
-                        if os.path.exists(video.file_path):
+                        if os.path.exists(video.local_path):
                             await self.complete({
                                 'video_id': video_id,
                                 'message': f"Video already downloaded: {video_title}",
-                                'file_path': video.file_path,
+                                'file_path': video.local_path,
                                 'skipped': True
                             })
                             return
@@ -68,12 +73,12 @@ class VideoDownloadWorker(BaseWorker):
             
             # Create or update download record
             with get_db() as session:
-                download = session.query(VideoDownload).filter(
-                    VideoDownload.video_id == video_id
+                download = session.query(Download).filter(
+                    Download.video_id == video_id
                 ).first()
                 
                 if not download:
-                    download = VideoDownload(
+                    download = Download(
                         video_id=video_id,
                         status='downloading',
                         progress=0
@@ -106,8 +111,8 @@ class VideoDownloadWorker(BaseWorker):
                         
                         # Update download record
                         with get_db() as session:
-                            download = session.query(VideoDownload).filter(
-                                VideoDownload.id == download_id
+                            download = session.query(Download).filter(
+                                Download.id == download_id
                             ).first()
                             if download:
                                 download.progress = download_progress
@@ -131,32 +136,55 @@ class VideoDownloadWorker(BaseWorker):
                 if not download_result or not download_result.get('success'):
                     raise Exception(download_result.get('error', 'Download failed'))
                 
-                file_path = download_result.get('file_path')
+                # The ytdlp service runs asynchronously, so we need to wait for completion
+                # and then get the result from the database
+                file_path = None
+                download_completed = False
+                max_wait_time = 300  # 5 minutes max wait
+                wait_interval = 2    # Check every 2 seconds
+                elapsed_time = 0
+                
+                while not download_completed and elapsed_time < max_wait_time:
+                    await asyncio.sleep(wait_interval)
+                    elapsed_time += wait_interval
+                    
+                    # Check if download completed by checking video status in database
+                    with get_db() as session:
+                        updated_video = session.query(Video).filter(Video.id == video_id).first()
+                        if updated_video and updated_video.local_path and updated_video.status == VideoStatus.DOWNLOADED:
+                            file_path = updated_video.local_path
+                            download_completed = True
+                            # Get additional info for return value
+                            download_result = {
+                                'success': True,
+                                'file_path': file_path,
+                                'duration': updated_video.duration,
+                                'file_size': updated_video.video_metadata.get('file_size') if updated_video.video_metadata else None,
+                                'technical_metadata': updated_video.video_metadata or {}
+                            }
+                            break
+                        elif updated_video and updated_video.status == VideoStatus.FAILED:
+                            raise Exception("Download failed - video status is FAILED")
+                    
+                    # Update progress during wait
+                    progress_percent = min(90, 20 + int((elapsed_time / max_wait_time) * 70))
+                    await self.update_progress(progress_percent, f"Downloading {video_title}... ({elapsed_time}s)")
+                
+                if not download_completed:
+                    raise Exception(f"Download timed out after {max_wait_time} seconds")
+                
                 if not file_path:
-                    raise Exception("No file path returned from download")
+                    raise Exception("No file path found after download completion")
                 
                 await self.update_progress(95, f"Download completed: {video_title}")
                 
-                # Update video record with download info
-                with get_db() as session:
-                    video = session.query(Video).filter(Video.id == video_id).first()
-                    if video:
-                        video.file_path = file_path
-                        video.downloaded = True
-                        video.file_size = download_result.get('file_size')
-                        video.duration = download_result.get('duration')
-                        
-                        # Update technical metadata if available
-                        if 'technical_metadata' in download_result:
-                            video.technical_metadata = download_result['technical_metadata']
-                        
-                        session.commit()
-                        logger.info(f"Updated video {video_id} with download info")
+                # Note: Video record is already updated by ytdlp service
+                logger.info(f"Video {video_id} download completed, file saved to: {file_path}")
                 
                 # Update download record as completed
                 with get_db() as session:
-                    download = session.query(VideoDownload).filter(
-                        VideoDownload.id == download_id
+                    download = session.query(Download).filter(
+                        Download.id == download_id
                     ).first()
                     if download:
                         download.status = 'completed'
@@ -178,8 +206,8 @@ class VideoDownloadWorker(BaseWorker):
                 
                 # Update download record as failed
                 with get_db() as session:
-                    download = session.query(VideoDownload).filter(
-                        VideoDownload.id == download_id
+                    download = session.query(Download).filter(
+                        Download.id == download_id
                     ).first()
                     if download:
                         download.status = 'failed'
@@ -198,15 +226,43 @@ class VideoDownloadWorker(BaseWorker):
         This runs in a thread pool to avoid blocking the async event loop
         """
         try:
-            # Use the existing ytdlp_service
-            result = ytdlp_service.download_video(
+            # Get video info from database to get artist and title
+            from ...database.connection import get_db_session
+            session_gen = get_db_session()
+            session = next(session_gen)
+            try:
+                video = session.query(Video).filter(Video.id == video_id).first()
+                if not video:
+                    raise ValueError(f"Video {video_id} not found")
+                
+                artist_name = video.artist.name if video.artist else "Unknown Artist"
+                video_title = video.title or f"Video {video_id}"
+            finally:
+                session.close()
+            
+            # Use the existing ytdlp_service with correct method
+            result = ytdlp_service.add_music_video_download(
+                artist=artist_name,
+                title=video_title,
                 url=video_url,
-                video_id=video_id,
                 quality=quality,
-                progress_callback=progress_callback
+                video_id=video_id
             )
             
-            return result
+            # Convert ytdlp service response to expected format
+            if result.get('success'):
+                return {
+                    'success': True,
+                    'file_path': result.get('file_path'),
+                    'file_size': result.get('file_size'),
+                    'duration': result.get('duration'),
+                    'technical_metadata': result.get('metadata', {})
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': result.get('error', 'Download failed')
+                }
             
         except Exception as e:
             logger.error(f"Sync download failed for video {video_id}: {e}")

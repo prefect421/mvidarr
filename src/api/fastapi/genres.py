@@ -98,20 +98,80 @@ async def get_all_genres(
     session: Session = Depends(get_db_session)
 ):
     """Get all genres used in the system"""
-    # Temporarily return a simple working response until we fix the parsing issue
-    return {
-        'genres': [
-            {'genre': 'rock', 'video_count': 25, 'artist_count': 8, 'total_count': 33},
-            {'genre': 'pop', 'video_count': 18, 'artist_count': 12, 'total_count': 30},
-            {'genre': 'alternative', 'video_count': 15, 'artist_count': 6, 'total_count': 21},
-            {'genre': 'punk', 'video_count': 12, 'artist_count': 4, 'total_count': 16},
-            {'genre': 'metal', 'video_count': 10, 'artist_count': 3, 'total_count': 13}
-        ],
-        'total_count': 5,
-        'limit': limit,
-        'include_counts': include_counts,
-        'note': 'Temporary static response - genre parsing needs to be fixed'
-    }
+    try:
+        genre_stats = {}
+        
+        # Get video genres
+        videos = session.query(Video.genres).filter(
+            Video.genres.isnot(None), Video.genres != ''
+        ).all()
+        
+        for (genre_string,) in videos:
+            try:
+                genre_list = parse_genre_string(genre_string)
+                for genre in genre_list:
+                    if genre and genre.strip():
+                        genre_clean = genre.strip().lower()
+                        if genre_clean not in genre_stats:
+                            genre_stats[genre_clean] = {'video_count': 0, 'artist_count': 0, 'original_case': genre.strip()}
+                        genre_stats[genre_clean]['video_count'] += 1
+            except Exception as e:
+                logger.warning(f"Failed to parse video genres: {genre_string}, error: {e}")
+        
+        # Get artist genres
+        artists = session.query(Artist.genres).filter(
+            Artist.genres.isnot(None), Artist.genres != ''
+        ).all()
+        
+        for (genre_string,) in artists:
+            try:
+                genre_list = parse_genre_string(genre_string)
+                for genre in genre_list:
+                    if genre and genre.strip():
+                        genre_clean = genre.strip().lower()
+                        if genre_clean not in genre_stats:
+                            genre_stats[genre_clean] = {'video_count': 0, 'artist_count': 0, 'original_case': genre.strip()}
+                        genre_stats[genre_clean]['artist_count'] += 1
+            except Exception as e:
+                logger.warning(f"Failed to parse artist genres: {genre_string}, error: {e}")
+        
+        # Convert to response format and sort by total usage
+        genre_list = []
+        for genre_key, stats in genre_stats.items():
+            total_count = stats['video_count'] + stats['artist_count']
+            genre_list.append({
+                'genre': stats['original_case'],
+                'video_count': stats['video_count'],
+                'artist_count': stats['artist_count'],
+                'total_count': total_count
+            })
+        
+        # Sort by total usage (descending)
+        genre_list.sort(key=lambda x: x['total_count'], reverse=True)
+        
+        # Apply limit
+        if len(genre_list) > limit:
+            genre_list = genre_list[:limit]
+        
+        return {
+            'genres': genre_list,
+            'total_count': len(genre_list),
+            'limit': limit,
+            'include_counts': include_counts
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting genres: {e}")
+        # Fallback to simple static response on error
+        return {
+            'genres': [
+                {'genre': 'Error loading genres', 'video_count': 0, 'artist_count': 0, 'total_count': 0}
+            ],
+            'total_count': 1,
+            'limit': limit,
+            'include_counts': include_counts,
+            'error': str(e)
+        }
 
 
 @router.get("/simple")

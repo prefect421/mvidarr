@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - MVidarr{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-container">
+                <div class="error-icon mb-4">
+                    <iconify-icon icon="mdi:server-network-off" style="font-size: 4rem; color: var(--error-color, #dc3545);"></iconify-icon>
+                </div>
+                <h1 class="error-title">500 - Internal Server Error</h1>
+                <p class="error-message">{{ error_message or "Something went wrong on our end. Please try again later." }}</p>
+                
+                <div class="error-actions mt-4">
+                    <button onclick="location.reload()" class="btn btn-primary me-2">
+                        <iconify-icon icon="mdi:refresh" class="me-1"></iconify-icon>
+                        Try Again
+                    </button>
+                    <a href="{{ back_url or '/' }}" class="btn btn-secondary">
+                        <iconify-icon icon="mdi:home" class="me-1"></iconify-icon>
+                        Go Home
+                    </a>
+                </div>
+                
+                <!-- Technical details (only show in development) -->
+                {% if config and config.get('DEBUG') %}
+                <div class="error-details mt-4">
+                    <h5>Technical Details</h5>
+                    <div class="alert alert-warning text-start">
+                        <p><strong>Path:</strong> <code>{{ path or request.url.path }}</code></p>
+                        <p><strong>Method:</strong> <code>{{ method or request.method }}</code></p>
+                        <p><strong>Time:</strong> <code>{{ current_time }}</code></p>
+                        {% if error_code %}
+                        <p><strong>Error Code:</strong> <code>{{ error_code }}</code></p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Support information -->
+                <div class="support-info mt-5">
+                    <div class="alert alert-info">
+                        <h6><iconify-icon icon="mdi:information" class="me-1"></iconify-icon>Need Help?</h6>
+                        <p class="mb-1">If this problem persists, you can:</p>
+                        <ul class="list-unstyled mb-0">
+                            <li>• Check the <a href="/admin" class="alert-link">admin dashboard</a> for system status</li>
+                            <li>• Review application logs for more details</li>
+                            <li>• Contact your system administrator</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Quick navigation -->
+                <div class="quick-links mt-4">
+                    <h6>Navigate to:</h6>
+                    <div class="d-flex justify-content-center flex-wrap gap-2 mt-2">
+                        <a href="/videos" class="btn btn-outline-secondary btn-sm">Videos</a>
+                        <a href="/artists" class="btn btn-outline-secondary btn-sm">Artists</a>
+                        <a href="/playlists" class="btn btn-outline-secondary btn-sm">Playlists</a>
+                        <a href="/settings" class="btn btn-outline-secondary btn-sm">Settings</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-container {
+    padding: 2.5rem;
+    background: var(--bg-secondary, #f8f9fa);
+    border-radius: 0.75rem;
+    border: 1px solid var(--border, #e9ecef);
+    box-shadow: 0 4px 12px var(--shadow, rgba(0, 0, 0, 0.1));
+}
+
+.error-title {
+    color: var(--error-color, #dc3545);
+    font-size: 2.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    color: var(--text-secondary, #6c757d);
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.error-details {
+    border-top: 1px solid var(--border, #e9ecef);
+    padding-top: 1.5rem;
+}
+
+.error-details h5 {
+    color: var(--text-primary, #212529);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.support-info .alert {
+    text-align: left;
+    border-radius: 0.5rem;
+}
+
+.support-info h6 {
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.support-info ul li {
+    margin-bottom: 0.25rem;
+}
+
+.quick-links {
+    border-top: 1px solid var(--border, #e9ecef);
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.quick-links h6 {
+    color: var(--text-secondary, #6c757d);
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+}
+</style>
+{% endblock %}

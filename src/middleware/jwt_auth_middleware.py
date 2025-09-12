@@ -388,7 +388,8 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
             "/health", "/docs", "/redoc", "/openapi.json",
             "/static/", "/css/", "/favicon.ico",
             "/login", "/auth/login", "/test-login", "/api/auth/login", "/api/auth/simple-login", "/api/auth/register", "/api/auth/refresh",
-            "/api/auth/reset-password", "/api/auth/verify-email"
+            "/api/auth/reset-password", "/api/auth/verify-email",
+            "/", "/dashboard"  # Allow root and dashboard to handle their own authentication
         }
         
         # Paths that require specific roles

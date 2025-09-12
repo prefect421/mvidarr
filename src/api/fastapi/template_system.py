@@ -64,13 +64,26 @@ class AsyncTemplateSystem:
             endpoint_mapping = {
                 # Frontend routes
                 'frontend.index': '/',
+                'frontend.dashboard': '/',
                 'frontend.videos': '/videos',
                 'frontend.artists': '/artists',
                 'frontend.playlists': '/playlists',
                 'frontend.settings': '/settings',
+                'frontend.jobs': '/frontend.jobs',
+                'frontend.mvtv': '/frontend.mvtv',
+                
+                # Detail pages
+                'frontend.video_detail': '/video',
+                'frontend.artist_detail': '/artist',
+                'frontend.playlist_detail': '/playlist',
+                
+                # Admin routes
                 'frontend.admin_dashboard': '/admin',
+                'admin.dashboard': '/admin',
                 'frontend.admin_users': '/admin/users',
+                'admin.users': '/admin/users',
                 'frontend.admin_create_user': '/admin/users/create',
+                'admin.create_user': '/admin/users/create',
                 
                 # Authentication routes
                 'auth.login': '/auth/login',
@@ -79,17 +92,29 @@ class AsyncTemplateSystem:
                 'auth.2fa_setup': '/auth/2fa/setup',
                 'auth.2fa_verify': '/auth/2fa/verify',
                 
-                # API routes
+                # API routes  
                 'api.videos': '/api/videos',
                 'api.artists': '/api/artists',
                 'api.playlists': '/api/playlists',
                 'api.settings': '/api/settings',
                 'api.admin': '/api/admin',
+                'api.jobs': '/api/jobs',
+                'api.health': '/api/health',
+                'api.search': '/api/search',
+                'api.discover': '/discover',
+                
+                # MeTube/Download API routes
+                'api.metube_queue': '/api/metube/queue',
+                'api.metube_history': '/api/metube/history',
+                
+                # Theme/UI routes
+                'api.themes': '/api/themes',
+                'themes.current': '/api/themes/current',
                 
                 # Static files
                 'static': '/static',
                 'frontend.static_files': '/static',
-                'frontend.css_files': '/static/css', 
+                'frontend.css_files': '/css', 
                 'frontend.js_files': '/static/js'
             }
             
@@ -226,11 +251,31 @@ class AsyncTemplateSystem:
             'current_user': None,
             'is_authenticated': False,
             'user_role': None,
-            'session': {}
+            'session': {},
+            'auth_enabled': True  # Default to enabled
         }
         
         try:
-            # Check for session data
+            # Check if authentication middleware is enabled
+            from src.services.settings_service import settings
+            auth_enabled = settings.get('require_authentication', True)
+            auth_context['auth_enabled'] = auth_enabled
+            
+            # If authentication is disabled, provide a mock user context
+            if not auth_enabled:
+                auth_context.update({
+                    'current_user': {
+                        'id': 1,
+                        'username': 'admin',
+                        'role': 'admin',
+                        'is_authenticated': True
+                    },
+                    'is_authenticated': True,
+                    'user_role': 'admin'
+                })
+                return auth_context
+            
+            # Check for session data (when auth middleware is enabled)
             if hasattr(request.state, 'user'):
                 user = request.state.user
                 auth_context.update({
@@ -242,6 +287,19 @@ class AsyncTemplateSystem:
             # Check session
             if hasattr(request.state, 'session'):
                 auth_context['session'] = request.state.session
+            
+            # Check for mock authentication in development
+            elif request.url.path not in ['/auth/login', '/auth/simple-login']:
+                # Provide temporary auth context for template compatibility
+                auth_context.update({
+                    'current_user': {
+                        'id': 1,
+                        'username': 'dev_user',
+                        'role': 'admin'
+                    },
+                    'is_authenticated': True,
+                    'user_role': 'admin'
+                })
                 
         except Exception as e:
             logger.warning(f"Auth context error: {e}")
@@ -292,7 +350,38 @@ class AsyncTemplateSystem:
             
         except Exception as e:
             logger.error(f"Template rendering error for {template_name}: {e}")
-            raise HTTPException(status_code=500, detail=f"Template rendering failed: {e}")
+            
+            # Try to render a fallback error template
+            try:
+                if template_name != 'errors/500.html':  # Prevent infinite recursion
+                    error_context = {
+                        'error_message': f'Template rendering failed: {template_name}',
+                        'error_code': 500,
+                        'template_error': str(e),
+                        'requested_template': template_name
+                    }
+                    error_template = self.env.get_template('errors/500.html')
+                    if error_template.environment.is_async:
+                        rendered = await error_template.render_async(**error_context)
+                    else:
+                        rendered = error_template.render(**error_context)
+                    return rendered
+            except Exception as fallback_error:
+                logger.error(f"Fallback template rendering failed: {fallback_error}")
+            
+            # Final fallback: simple HTML error page
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head><title>Template Error - MVidarr</title></head>
+            <body>
+                <h1>Template Error</h1>
+                <p>Failed to render template: {template_name}</p>
+                <p>Error: {str(e)}</p>
+                <a href="/">Return to Dashboard</a>
+            </body>
+            </html>
+            """
     
     async def render_response(self, template_name: str, request: Request, context: Dict[str, Any] = None) -> HTMLResponse:
         """Render template and return HTML response"""

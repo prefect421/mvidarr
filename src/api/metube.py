@@ -334,3 +334,16 @@ def delete_cookies():
     except Exception as e:
         logger.error(f"Failed to delete cookies: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@metube_bp.route("/download/<int:download_id>/retry", methods=["POST"])
+def retry_download(download_id):
+    """Retry a failed download"""
+    try:
+        result = ytdlp_service.retry_download(download_id)
+        status_code = 200 if result.get("success") else 400
+        return jsonify(result), status_code
+
+    except Exception as e:
+        logger.error(f"Failed to retry download {download_id}: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500

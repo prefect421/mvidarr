@@ -199,7 +199,7 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.9.3
+- **Current Release**: Version 0.9.8
 - **Versioning**: Milestones correlate directly to version numbers
 - Releases are now utilized for version management and deployment
 

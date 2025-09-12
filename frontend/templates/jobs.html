@@ -2,7 +2,7 @@
 {% set page_title = "Background Jobs" %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('frontend.static_files', filename='css/jobs.css') }}">
+<link rel="stylesheet" href="/css/jobs.css">
 <style>
 .page-header {
     display: flex;
@@ -370,7 +370,7 @@
 
 <script>
 let jobRefreshInterval = null;
-let autoRefreshEnabled = true;
+let jobsPageAutoRefreshEnabled = true;
 let allJobs = [];
 
 // Initialize page
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function() {
     refreshActiveJobs();
     refreshJobHistory();
     
-    if (autoRefreshEnabled) {
+    if (jobsPageAutoRefreshEnabled) {
         startAutoRefresh();
     }
 });
@@ -404,9 +404,9 @@ function stopAutoRefresh() {
 
 function toggleAutoRefresh() {
     const toggle = document.getElementById('autoRefreshToggle');
-    autoRefreshEnabled = toggle.checked;
+    jobsPageAutoRefreshEnabled = toggle.checked;
     
-    if (autoRefreshEnabled) {
+    if (jobsPageAutoRefreshEnabled) {
         startAutoRefresh();
     } else {
         stopAutoRefresh();

@@ -28,7 +28,9 @@ class BackgroundJobManager {
     connectWebSocket() {
         try {
             // Use FastAPI WebSocket for real-time job progress
-            const wsUrl = `ws://${window.location.host}/ws/jobs`;
+            // Auto-detect protocol: use wss:// for https://, ws:// for http://
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/jobs`;
             this.socket = new WebSocket(wsUrl);
             this.setupWebSocketListeners();
         } catch (error) {
@@ -238,6 +240,12 @@ class BackgroundJobManager {
                 break;
             case 'active_jobs':
                 console.log('📊 Active jobs:', data.data);
+                break;
+            case 'status':
+                console.log('📡 Status message:', data.message);
+                break;
+            case 'heartbeat':
+                console.log('💓 Heartbeat received, active jobs:', data.active_jobs);
                 break;
             case 'error':
                 console.error('📡 WebSocket error:', data.message);

@@ -9,7 +9,12 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
 from src.services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
-from src.services.job_system_integration import get_job_system_status, get_job_system_health, is_job_system_enabled
+from src.services.fastapi_job_integration import (
+    get_fastapi_job_system_status, 
+    get_fastapi_job_system_health, 
+    is_fastapi_job_system_enabled,
+    get_fastapi_job_queue
+)
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.fastapi.jobs")
@@ -60,7 +65,7 @@ async def get_current_user():
 async def health_check():
     """Get job system health status"""
     try:
-        if not is_job_system_enabled():
+        if not is_fastapi_job_system_enabled():
             return {
                 'status': 'starting',
                 'message': 'Job system is starting up',
@@ -72,7 +77,7 @@ async def health_check():
             }
         
         # Get detailed health data
-        health_data = await get_job_system_health()
+        health_data = await get_fastapi_job_system_health()
         return health_data
         
     except Exception as e:
@@ -88,7 +93,7 @@ async def health_check():
 async def system_status():
     """Get job system status and statistics"""
     try:
-        status = get_job_system_status()
+        status = get_fastapi_job_system_status()
         return status
         
     except Exception as e:
@@ -149,7 +154,9 @@ async def enqueue_job(
         )
         
         # Enqueue job
-        job_queue = await get_job_queue()
+        job_queue = await get_fastapi_job_queue()
+        if not job_queue:
+            job_queue = await get_job_queue()
         job_id = await job_queue.enqueue(job)
         
         logger.info(f"Enqueued job {job_id} ({job_type.value}) for user {current_user}")
@@ -175,7 +182,9 @@ async def get_job_status(
 ):
     """Get status and progress of a specific job"""
     try:
-        job_queue = await get_job_queue()
+        job_queue = await get_fastapi_job_queue()
+        if not job_queue:
+            job_queue = await get_job_queue()
         job = job_queue.get_job(job_id)
         
         if not job:
@@ -191,7 +200,7 @@ async def get_job_status(
             job_id=job.id,
             type=job.type.value,
             status=job.status.value,
-            priority=job.priority.value,
+            priority=job.priority.name.lower(),
             progress=job.progress,
             message=job.message or "",
             created_at=job.created_at.isoformat(),
@@ -228,7 +237,9 @@ async def list_user_jobs(
 ):
     """List recent jobs for current user"""
     try:        
-        job_queue = await get_job_queue()
+        job_queue = await get_fastapi_job_queue()
+        if not job_queue:
+            job_queue = await get_job_queue()
         user_jobs = job_queue.get_user_jobs(current_user, limit)
         
         # Apply filters
@@ -245,7 +256,7 @@ async def list_user_jobs(
                 job_id=job.id,
                 type=job.type.value,
                 status=job.status.value,
-                priority=job.priority.value,
+                priority=job.priority.name.lower(),
                 progress=job.progress,
                 message=job.message or "",
                 created_at=job.created_at.isoformat(),
@@ -279,7 +290,9 @@ async def cancel_job(
 ):
     """Cancel a queued job"""
     try:
-        job_queue = await get_job_queue()
+        job_queue = await get_fastapi_job_queue()
+        if not job_queue:
+            job_queue = await get_job_queue()
         job = job_queue.get_job(job_id)
         
         if not job:
