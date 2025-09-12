@@ -314,27 +314,43 @@ async def auto_match_services(
         # Try to match with available services and save results
         updated_fields = []
 
+        logger.info(f"🔍 Checking artist current service IDs:")
+        logger.info(f"  - Spotify ID: {artist.spotify_id}")
+        logger.info(f"  - Last.fm name: {artist.lastfm_name}")
+        logger.info(f"  - IMVDb ID: {artist.imvdb_id}")
+        logger.info(f"  - imvdb_metadata: {artist.imvdb_metadata}")
+        
         if spotify_service and not artist.spotify_id:
             try:
+                logger.info(f"🎵 Attempting Spotify search for: {artist.name}")
                 # Add timeout to prevent hanging
                 spotify_results = await asyncio.wait_for(
                     spotify_service.search_artist(artist.name, limit=1),
                     timeout=10.0,  # 10 second timeout
                 )
+                logger.info(f"🎵 Spotify API response type: {type(spotify_results)}")
+                logger.info(f"🎵 Spotify API response: {spotify_results}")
+                
                 if spotify_results and spotify_results.get("artists", {}).get("items"):
                     spotify_artist = spotify_results["artists"]["items"][0]
+                    logger.info(f"🎵 Found Spotify artist: {spotify_artist}")
                     artist.spotify_id = spotify_artist["id"]
                     matches_found["spotify"] = True
                     updated_fields.append("spotify_id")
                     logger.info(
-                        f"Found and saved Spotify match for {artist.name}: {spotify_artist['id']}"
+                        f"🎵 ✅ Found and saved Spotify match for {artist.name}: {spotify_artist['id']}"
                     )
+                else:
+                    logger.info(f"🎵 ❌ No Spotify results found for {artist.name}")
+                    
             except asyncio.TimeoutError:
                 logger.warning(
-                    f"Spotify auto-match timed out for {artist.name} (likely missing API credentials)"
+                    f"🎵 ⏰ Spotify auto-match timed out for {artist.name} (likely missing API credentials)"
                 )
             except Exception as e:
-                logger.warning(f"Spotify auto-match failed for {artist.name}: {e}")
+                logger.warning(f"🎵 ❌ Spotify auto-match failed for {artist.name}: {e}")
+                import traceback
+                traceback.print_exc()
 
         if lastfm_service and not artist.lastfm_name:
             try:
@@ -498,12 +514,15 @@ async def auto_match_services(
 
         if wikipedia_service:
             try:
+                logger.info(f"📖 Attempting Wikipedia search for: {artist.name}")
                 # Wikipedia doesn't have specific artist IDs for matching
                 # but we can check if we can find a Wikipedia page for the artist
                 # and potentially store the page title for future reference
                 wikipedia_result = await asyncio.to_thread(
                     wikipedia_service._search_artist_page, artist.name
                 )
+                logger.info(f"📖 Wikipedia search result: {wikipedia_result}")
+                
                 if wikipedia_result:
                     # Initialize imvdb_metadata if it doesn't exist
                     if not artist.imvdb_metadata:
@@ -512,10 +531,15 @@ async def auto_match_services(
                     matches_found["wikipedia"] = True
                     updated_fields.append("wikipedia_page")
                     logger.info(
-                        f"Found and saved Wikipedia page for {artist.name}: {wikipedia_result}"
+                        f"📖 ✅ Found and saved Wikipedia page for {artist.name}: {wikipedia_result}"
                     )
+                else:
+                    logger.info(f"📖 ❌ No Wikipedia page found for {artist.name}")
+                    
             except Exception as e:
-                logger.warning(f"Wikipedia auto-match failed for {artist.name}: {e}")
+                logger.warning(f"📖 ❌ Wikipedia auto-match failed for {artist.name}: {e}")
+                import traceback
+                traceback.print_exc()
 
         # Save changes to database if any matches were found
         if updated_fields:
@@ -532,10 +556,18 @@ async def auto_match_services(
                 
                 artist.updated_at = datetime.utcnow()
                 session.commit()
+                
+                # Verify the commit worked by refreshing from database
+                session.refresh(artist)
                 logger.info(
                     f"Auto-match saved {len(updated_fields)} matches for {artist.name}: {updated_fields}"
                 )
                 logger.info(f"Artist imvdb_metadata after save: {artist.imvdb_metadata}")
+                logger.info(f"Artist updated_at after save: {artist.updated_at}")
+                
+                # Force a flush to ensure data is written to database
+                session.flush()
+                
             except Exception as e:
                 logger.error(
                     f"Failed to save auto-match results for {artist.name}: {e}"
