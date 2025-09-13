@@ -134,7 +134,7 @@ class BackgroundJobManager {
             // Use specific endpoints for certain job types until generic jobs API is fully working
             if (jobType === 'metadata_enrichment' && payload.artist_id) {
                 // Use the existing metadata enrichment endpoint
-                response = await fetch(`/api/metadata-enrichment/enrich/${payload.artist_id}`, {
+                response = await fetch(`/api/metadata-enrichment/enrich/artist/${payload.artist_id}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -144,6 +144,15 @@ class BackgroundJobManager {
                         force_refresh: payload.force_refresh || true,
                         enrich_videos: payload.enrich_videos || true
                     })
+                });
+            } else if (jobType === 'auto_match' && payload.artist_id) {
+                // Use the auto-match endpoint
+                response = await fetch(`/api/metadata-enrichment/auto-match/${payload.artist_id}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
                 });
             } else {
                 // Use generic jobs API for other job types
@@ -163,8 +172,44 @@ class BackgroundJobManager {
             }
             
             const result = await response.json();
+            console.log('🔍 API Response:', result);
             const jobId = result.job_id;
+            console.log('🔍 Extracted job ID:', jobId, typeof jobId);
             
+            // Handle fast-completing jobs like auto-match
+            if (jobType === 'auto_match' && result.result) {
+                // Auto-match completes immediately, simulate job completion
+                console.log(`🚀 Auto-match job ${jobId} completed immediately`);
+                
+                // Track job locally with completed status
+                this.activeJobs.set(jobId, {
+                    id: jobId,
+                    type: jobType,
+                    status: 'completed',
+                    progress: 100,
+                    message: result.result.completion_message || 'Auto-match completed',
+                    startTime: Date.now(),
+                    result: result.result
+                });
+                
+                // Show progress UI briefly
+                this.showJobProgress(jobId, options);
+                
+                // Call completion callback with longer delay to show the job
+                if (options.onComplete) {
+                    setTimeout(() => {
+                        options.onComplete(null, result.result);
+                        // Keep job visible for a bit longer before removing
+                        setTimeout(() => {
+                            this.removeJob(jobId);
+                        }, 3000);
+                    }, 2000); // Show completed state for 2 seconds
+                }
+                
+                return jobId;
+            }
+            
+            // Standard job handling for other job types
             // Subscribe to job updates
             this.subscribeToJob(jobId);
             
@@ -460,16 +505,24 @@ class BackgroundJobManager {
     }
     
     showJobProgress(jobId, options = {}) {
+        console.log(`📊 showJobProgress called for job ${jobId}`);
         const container = document.getElementById('job-progress-container');
         const list = document.getElementById('job-progress-list');
         
-        if (!container || !list) return;
+        console.log(`📊 Container found: ${!!container}, List found: ${!!list}`);
+        if (!container || !list) {
+            console.error(`📊 Missing job progress elements! Container: ${!!container}, List: ${!!list}`);
+            return;
+        }
         
         // Show container
         container.style.display = 'block';
+        console.log(`📊 Container displayed, visibility: ${container.style.display}`);
         
         // Create progress item
         const jobData = this.activeJobs.get(jobId) || {};
+        console.log(`📊 Job data for ${jobId}:`, jobData);
+        
         const progressItem = document.createElement('div');
         progressItem.id = `job-${jobId}`;
         progressItem.className = 'job-progress-item';
@@ -477,6 +530,7 @@ class BackgroundJobManager {
         this.updateJobProgressItem(progressItem, jobId, jobData);
         
         list.appendChild(progressItem);
+        console.log(`📊 Progress item added to list for job ${jobId}`);
     }
     
     updateJobProgressUI(jobId, data) {
@@ -675,6 +729,13 @@ class BackgroundJobManager {
         }, options);
     }
     
+    // Start an auto-match job
+    async startAutoMatch(artistId, options = {}) {
+        return this.startJob('auto_match', {
+            artist_id: artistId
+        }, options);
+    }
+    
     // Start a video download job
     async startVideoDownload(videoId, options = {}) {
         return this.startJob('video_download', {
@@ -691,6 +752,32 @@ class BackgroundJobManager {
     // Get all active jobs
     getActiveJobs() {
         return Array.from(this.activeJobs.values());
+    }
+    
+    // Remove a job from tracking and UI
+    removeJob(jobId) {
+        console.log(`🗑️ Removing job ${jobId}`);
+        
+        // Remove from active jobs
+        this.activeJobs.delete(jobId);
+        
+        // Remove job callbacks
+        this.jobCallbacks.delete(jobId);
+        
+        // Remove from UI
+        const progressItem = document.getElementById(`job-${jobId}`);
+        if (progressItem) {
+            progressItem.remove();
+            console.log(`🗑️ Removed job ${jobId} from UI`);
+        }
+        
+        // Hide container if no jobs left
+        const list = document.getElementById('job-progress-list');
+        const container = document.getElementById('job-progress-container');
+        if (list && container && list.children.length === 0) {
+            container.style.display = 'none';
+            console.log('📦 Job container hidden - no active jobs');
+        }
     }
 }
 

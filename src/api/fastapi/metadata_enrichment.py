@@ -28,10 +28,11 @@ except ImportError:
     lastfm_service = None
 
 try:
-    from src.services.async_spotify_service import spotify_service
+    from src.services.async_spotify_service import get_async_spotify_service
+    spotify_service = None  # Will be instantiated when needed
 except ImportError:
     logger.warning("Spotify service not available")
-    spotify_service = None
+    get_async_spotify_service = None
 
 try:
     from src.services.musicbrainz_service import musicbrainz_service
@@ -255,14 +256,39 @@ async def enrich_artist_metadata(
 
         logger.info(f"Enriching metadata for artist {artist_id}: {artist.name}")
 
-        # TEMPORARY WORKAROUND: Service method has signature issues
-        # Return successful response to make UI functional
-        logger.info(
-            f"Metadata enrichment request received for {artist.name} (force_refresh={force_refresh})"
+        # Import job system components
+        from src.services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
         )
 
+        # Create metadata enrichment job
+        job = BackgroundJob(
+            type=JobType.METADATA_ENRICHMENT,
+            priority=JobPriority.NORMAL,
+            payload={
+                "artist_id": artist_id,
+                "force_refresh": force_refresh,
+                "enrich_videos": enrich_videos,
+                "enrichment_type": "artist",
+            },
+        )
+        
+        logger.info(f"Created job with ID: {job.id}")
+
+        # Enqueue the job
+        job_queue = await get_job_queue()
+        logger.info(f"Got job queue instance: {job_queue}")
+        job_id = await job_queue.enqueue(job)
+        
+        logger.info(f"Enqueue returned job_id: {job_id} (type: {type(job_id)})")
+        logger.info(f"Queued metadata enrichment job {job_id} for artist {artist.name}")
+
         return {
-            "message": f"Metadata enrichment request received for {artist.name}",
+            "job_id": job_id,
+            "message": f"Metadata enrichment job started for {artist.name}",
             "artist_id": artist_id,
             "status": "queued",
             "force_refresh": force_refresh,
@@ -320,20 +346,70 @@ async def auto_match_services(
         logger.info(f"  - IMVDb ID: {artist.imvdb_id}")
         logger.info(f"  - imvdb_metadata: {artist.imvdb_metadata}")
         
-        if spotify_service and not artist.spotify_id:
+        if get_async_spotify_service and not artist.spotify_id:
             try:
                 logger.info(f"🎵 Attempting Spotify search for: {artist.name}")
-                # Add timeout to prevent hanging
-                spotify_results = await asyncio.wait_for(
-                    spotify_service.search_artist(artist.name, limit=1),
-                    timeout=10.0,  # 10 second timeout
-                )
-                logger.info(f"🎵 Spotify API response type: {type(spotify_results)}")
-                logger.info(f"🎵 Spotify API response: {spotify_results}")
                 
-                if spotify_results and spotify_results.get("artists", {}).get("items"):
-                    spotify_artist = spotify_results["artists"]["items"][0]
-                    logger.info(f"🎵 Found Spotify artist: {spotify_artist}")
+                # Use direct HTTP request instead of the complex service for auto-match
+                from src.services.settings_service import settings
+                from src.utils.async_http_client import get_global_http_client
+                import base64
+                
+                # Get credentials directly
+                client_id = settings.get("spotify_client_id")
+                client_secret = settings.get("spotify_client_secret")
+                
+                if not client_id or not client_secret:
+                    logger.warning(f"🎵 ❌ Spotify credentials not configured")
+                    raise ValueError("Spotify client credentials not configured")
+                
+                logger.info(f"🎵 Getting Spotify access token...")
+                
+                # Get access token using client credentials flow
+                credentials = f"{client_id}:{client_secret}"
+                encoded_credentials = base64.b64encode(credentials.encode()).decode()
+                
+                http_client = await get_global_http_client()
+                
+                # Get access token
+                token_response = await asyncio.wait_for(
+                    http_client.post(
+                        "https://accounts.spotify.com/api/token",
+                        headers={
+                            "Authorization": f"Basic {encoded_credentials}",
+                            "Content-Type": "application/x-www-form-urlencoded",
+                        },
+                        data={"grant_type": "client_credentials"}
+                    ),
+                    timeout=15.0
+                )
+                
+                access_token = token_response.get("access_token")
+                if not access_token:
+                    logger.warning(f"🎵 ❌ Failed to get Spotify access token")
+                    raise ValueError("Failed to get Spotify access token")
+                
+                logger.info(f"🎵 Got access token, searching for artist...")
+                
+                # Search for artist
+                search_response = await asyncio.wait_for(
+                    http_client.get(
+                        "https://api.spotify.com/v1/search",
+                        headers={"Authorization": f"Bearer {access_token}"},
+                        params={
+                            "q": artist.name,
+                            "type": "artist",
+                            "limit": 1
+                        }
+                    ),
+                    timeout=15.0
+                )
+                
+                logger.info(f"🎵 Search completed successfully")
+                
+                if search_response and search_response.get("artists", {}).get("items"):
+                    spotify_artist = search_response["artists"]["items"][0]
+                    logger.info(f"🎵 Found Spotify artist: {spotify_artist.get('name')} (ID: {spotify_artist.get('id')})")
                     artist.spotify_id = spotify_artist["id"]
                     matches_found["spotify"] = True
                     updated_fields.append("spotify_id")
@@ -345,8 +421,15 @@ async def auto_match_services(
                     
             except asyncio.TimeoutError:
                 logger.warning(
-                    f"🎵 ⏰ Spotify auto-match timed out for {artist.name} (likely missing API credentials)"
+                    f"🎵 ⏰ Spotify auto-match timed out for {artist.name} (API request timeout)"
                 )
+            except ValueError as e:
+                if "client credentials" in str(e).lower():
+                    logger.warning(
+                        f"🎵 ❌ Spotify auto-match failed for {artist.name}: Missing API credentials. Please configure spotify_client_id and spotify_client_secret in settings."
+                    )
+                else:
+                    logger.warning(f"🎵 ❌ Spotify auto-match failed for {artist.name}: {e}")
             except Exception as e:
                 logger.warning(f"🎵 ❌ Spotify auto-match failed for {artist.name}: {e}")
                 import traceback
@@ -515,26 +598,40 @@ async def auto_match_services(
         if wikipedia_service:
             try:
                 logger.info(f"📖 Attempting Wikipedia search for: {artist.name}")
-                # Wikipedia doesn't have specific artist IDs for matching
-                # but we can check if we can find a Wikipedia page for the artist
-                # and potentially store the page title for future reference
-                wikipedia_result = await asyncio.to_thread(
-                    wikipedia_service._search_artist_page, artist.name
-                )
-                logger.info(f"📖 Wikipedia search result: {wikipedia_result}")
                 
-                if wikipedia_result:
-                    # Initialize imvdb_metadata if it doesn't exist
-                    if not artist.imvdb_metadata:
-                        artist.imvdb_metadata = {}
-                    artist.imvdb_metadata["wikipedia_page"] = wikipedia_result
-                    matches_found["wikipedia"] = True
-                    updated_fields.append("wikipedia_page")
-                    logger.info(
-                        f"📖 ✅ Found and saved Wikipedia page for {artist.name}: {wikipedia_result}"
+                # Check if Wikipedia URL already exists
+                existing_wikipedia_url = None
+                if artist.imvdb_metadata and isinstance(artist.imvdb_metadata, dict):
+                    existing_wikipedia_url = artist.imvdb_metadata.get("wikipedia_url")
+                
+                if not existing_wikipedia_url:
+                    # Use the same method as Flask implementation
+                    wikipedia_result = await asyncio.to_thread(
+                        wikipedia_service._search_artist_page, artist.name
                     )
+                    logger.info(f"📖 Wikipedia search result: {wikipedia_result}")
+                    
+                    if wikipedia_result:
+                        # Construct Wikipedia URL like Flask implementation did
+                        artist_name_clean = wikipedia_result.replace(" ", "_")
+                        wikipedia_url = f"https://en.wikipedia.org/wiki/{artist_name_clean}"
+                        
+                        # Initialize imvdb_metadata if it doesn't exist
+                        if not artist.imvdb_metadata:
+                            artist.imvdb_metadata = {}
+                        
+                        # Store Wikipedia data like Flask implementation
+                        artist.imvdb_metadata["wikipedia_url"] = wikipedia_url
+                        artist.imvdb_metadata["wikipedia_page"] = wikipedia_result
+                        matches_found["wikipedia"] = True
+                        updated_fields.append("wikipedia_url")
+                        logger.info(
+                            f"📖 ✅ Found and saved Wikipedia match for {artist.name}: {wikipedia_url}"
+                        )
+                    else:
+                        logger.info(f"📖 ❌ No Wikipedia page found for {artist.name}")
                 else:
-                    logger.info(f"📖 ❌ No Wikipedia page found for {artist.name}")
+                    logger.info(f"📖 Wikipedia URL already exists for {artist.name}: {existing_wikipedia_url}")
                     
             except Exception as e:
                 logger.warning(f"📖 ❌ Wikipedia auto-match failed for {artist.name}: {e}")
@@ -582,7 +679,8 @@ async def auto_match_services(
                         "musicbrainz_id": "musicbrainz",
                         "imvdb_id": "imvdb",
                         "allmusic_id": "allmusic",
-                        "wikipedia_page": "wikipedia"
+                        "wikipedia_page": "wikipedia",
+                        "wikipedia_url": "wikipedia"
                     }
                     service_name = field_to_service.get(field)
                     if service_name:
