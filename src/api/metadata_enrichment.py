@@ -25,7 +25,7 @@ logger = get_logger("mvidarr.api.metadata_enrichment")
 @metadata_enrichment_bp.route("/enrich/<int:artist_id>", methods=["POST"])
 @auth_required
 def enrich_artist_metadata(artist_id: int):
-    """Enrich metadata for a specific artist using background job"""
+    """Enrich metadata for a specific artist using Celery background task"""
     try:
         force_refresh = (
             request.json.get("force_refresh", False) if request.is_json else False
@@ -34,92 +34,84 @@ def enrich_artist_metadata(artist_id: int):
             request.json.get("enrich_videos", True) if request.is_json else True
         )
 
-        # Import job system and asyncio
-        import asyncio
-        from ..services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
+        # Import Celery task
+        from src.jobs.metadata_tasks import enrich_artist_metadata_task
 
-        # Create background job for artist metadata enrichment
-        job = BackgroundJob(
-            type=JobType.METADATA_ENRICHMENT,
-            priority=JobPriority.NORMAL,
-            payload={
-                'artist_id': artist_id,
-                'force_refresh': force_refresh,
-                'enrich_videos': enrich_videos,
-                'enrichment_type': 'artist'
-            }
+        # Queue the Celery task
+        task = enrich_artist_metadata_task.delay(
+            artist_id=artist_id,
+            force_refresh=force_refresh,
+            enrich_videos=enrich_videos,
         )
 
-        # Queue the job using asyncio.run to handle the async function
-        async def queue_job():
-            job_queue = await get_job_queue()
-            return await job_queue.enqueue(job)
-        
-        job_id = asyncio.run(queue_job())
+        logger.info(
+            f"Queued Celery metadata enrichment task {task.id} for artist {artist_id}"
+        )
 
-        logger.info(f"Queued artist metadata enrichment job {job_id} for artist {artist_id}")
-
-        return jsonify({
-            "success": True,
-            "job_id": job_id,
-            "artist_id": artist_id,
-            "message": f"Artist metadata enrichment job queued. Job ID: {job_id}"
-        }), 202  # 202 Accepted - processing started
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": task.id,
+                    "artist_id": artist_id,
+                    "status": "queued",
+                    "message": f"Metadata enrichment job started for artist {artist_id}",
+                    "task_state": task.state,
+                    "note": "Background processing initiated",
+                }
+            ),
+            202,
+        )  # 202 Accepted - processing started
 
     except Exception as e:
-        logger.error(f"Failed to queue artist metadata enrichment job: {e}")
+        logger.error(f"Failed to queue Celery metadata enrichment task: {e}")
         return jsonify({"error": str(e)}), 500
 
 
 @metadata_enrichment_bp.route("/enrich/video/<int:video_id>", methods=["POST"])
 @auth_required
 def enrich_video_metadata(video_id: int):
-    """Enrich metadata for a specific video using background job"""
+    """Enrich metadata for a specific video using Celery background task"""
     try:
         force_refresh = (
             request.json.get("force_refresh", False) if request.is_json else False
         )
 
-        # Import job system
-        from ..services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
+        # Import Celery task
+        from src.jobs.metadata_tasks import enrich_video_metadata_task
 
-        # Create background job for video metadata enrichment
-        job = BackgroundJob(
-            type=JobType.METADATA_ENRICHMENT,
-            priority=JobPriority.NORMAL,
-            payload={
-                'video_id': video_id,
-                'force_refresh': force_refresh,
-                'enrichment_type': 'video'
-            }
+        # Queue the Celery task
+        task = enrich_video_metadata_task.delay(
+            video_id=video_id, force_refresh=force_refresh
         )
 
-        # Queue the job using asyncio.run to handle the async function
-        import asyncio
-        async def queue_job():
-            job_queue = await get_job_queue()
-            return await job_queue.enqueue(job)
-        
-        job_id = asyncio.run(queue_job())
+        logger.info(
+            f"Queued Celery video metadata enrichment task {task.id} for video {video_id}"
+        )
 
-        logger.info(f"Queued video metadata enrichment job {job_id} for video {video_id}")
-
-        return jsonify({
-            "success": True,
-            "job_id": job_id,
-            "video_id": video_id,
-            "message": f"Video metadata enrichment job queued. Job ID: {job_id}"
-        }), 202  # 202 Accepted - processing started
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": task.id,
+                    "video_id": video_id,
+                    "status": "queued",
+                    "message": f"Video metadata enrichment job started for video {video_id}",
+                    "task_state": task.state,
+                }
+            ),
+            202,
+        )  # 202 Accepted - processing started
 
     except Exception as e:
-        logger.error(f"Failed to queue video metadata enrichment job: {e}")
+        logger.error(f"Failed to queue Celery video metadata enrichment task: {e}")
         return jsonify({"error": str(e)}), 500
 
 
 @metadata_enrichment_bp.route("/enrich/batch", methods=["POST"])
 @auth_required
 def enrich_multiple_artists():
-    """Enrich metadata for multiple artists using background jobs"""
+    """Enrich metadata for multiple artists using Celery batch task"""
     try:
         if not request.is_json:
             return jsonify({"error": "JSON payload required"}), 400
@@ -141,46 +133,137 @@ def enrich_multiple_artists():
         except (ValueError, TypeError):
             return jsonify({"error": "All artist_ids must be valid integers"}), 400
 
-        # Import job system and asyncio
-        import asyncio
-        from ..services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
+        # Import Celery task
+        from src.jobs.metadata_tasks import batch_enrich_artists_task
 
-        # Queue all jobs using asyncio.run
-        async def queue_jobs():
-            job_queue = await get_job_queue()
-            job_ids = []
-            
-            # Create individual jobs for each artist
-            for artist_id in artist_ids:
-                job = BackgroundJob(
-                    type=JobType.METADATA_ENRICHMENT,
-                    priority=JobPriority.NORMAL,
-                    payload={
-                        'artist_id': artist_id,
-                        'force_refresh': force_refresh,
-                        'enrich_videos': enrich_videos,
-                        'enrichment_type': 'artist'
-                    },
-                    tags={'batch_operation': True}
-                )
-                
-                job_id = await job_queue.enqueue(job)
-                job_ids.append(job_id)
-            
-            return job_ids
+        # Queue the Celery batch task
+        task = batch_enrich_artists_task.delay(
+            artist_ids=artist_ids,
+            force_refresh=force_refresh,
+            enrich_videos=enrich_videos,
+        )
 
-        job_ids = asyncio.run(queue_jobs())
-        logger.info(f"Queued {len(job_ids)} artist metadata enrichment jobs: {job_ids}")
+        logger.info(
+            f"Queued Celery batch metadata enrichment task {task.id} for {len(artist_ids)} artists"
+        )
 
-        return jsonify({
-            "success": True,
-            "job_ids": job_ids,
-            "total_artists": len(artist_ids),
-            "message": f"Queued {len(job_ids)} metadata enrichment jobs for batch processing"
-        }), 202  # 202 Accepted - processing started
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": task.id,
+                    "task_ids": [task.id],  # For backward compatibility
+                    "total_artists": len(artist_ids),
+                    "status": "queued",
+                    "message": f"Queued batch metadata enrichment for {len(artist_ids)} artists",
+                    "task_state": task.state,
+                }
+            ),
+            202,
+        )  # 202 Accepted - processing started
 
     except Exception as e:
-        logger.error(f"Failed to queue batch metadata enrichment jobs: {e}")
+        logger.error(f"Failed to queue Celery batch metadata enrichment task: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@metadata_enrichment_bp.route("/job/<task_id>/status", methods=["GET"])
+@auth_required
+def get_job_status(task_id: str):
+    """Get the status of a Celery metadata enrichment job"""
+    try:
+        from src.jobs.celery_app import celery_app
+
+        # Get task result object
+        result = celery_app.AsyncResult(task_id)
+
+        # Build response based on task state
+        if result.state == "PENDING":
+            response = {
+                "job_id": task_id,
+                "status": "pending",
+                "progress": 0,
+                "message": "Task is waiting to be processed...",
+                "state": result.state,
+            }
+        elif result.state == "PROGRESS":
+            response = {
+                "job_id": task_id,
+                "status": "progress",
+                "progress": result.info.get("progress", 0),
+                "message": result.info.get("message", "Processing..."),
+                "state": result.state,
+                "timestamp": result.info.get("timestamp"),
+            }
+        elif result.state == "SUCCESS":
+            response = {
+                "job_id": task_id,
+                "status": "completed",
+                "progress": 100,
+                "message": "Task completed successfully",
+                "state": result.state,
+                "result": result.result,
+            }
+        elif result.state == "FAILURE":
+            response = {
+                "job_id": task_id,
+                "status": "failed",
+                "progress": 0,
+                "message": f"Task failed: {str(result.info)}",
+                "state": result.state,
+                "error": str(result.info),
+                "traceback": result.traceback,
+            }
+        else:
+            response = {
+                "job_id": task_id,
+                "status": result.state.lower(),
+                "progress": 0,
+                "message": f"Task state: {result.state}",
+                "state": result.state,
+            }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        logger.error(f"Failed to get job status for {task_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@metadata_enrichment_bp.route("/job/<task_id>/cancel", methods=["POST"])
+@auth_required
+def cancel_job(task_id: str):
+    """Cancel a running Celery metadata enrichment job"""
+    try:
+        from src.jobs.celery_app import job_manager
+
+        success = job_manager.cancel_job(task_id)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "job_id": task_id,
+                        "message": f"Job {task_id} has been cancelled",
+                    }
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "job_id": task_id,
+                        "message": f"Failed to cancel job {task_id}",
+                    }
+                ),
+                400,
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to cancel job {task_id}: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -380,7 +463,7 @@ def auto_enrich_candidates():
 
         # Run batch enrichment with Flask app context
         from flask import current_app
-        
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
@@ -1207,7 +1290,9 @@ def auto_match_services(artist_id: int):
                     best_match = mb_results[0]
                     matches["musicbrainz"] = {
                         "id": best_match.get("mbid"),
-                        "mbid": best_match.get("mbid"),  # Include both for compatibility
+                        "mbid": best_match.get(
+                            "mbid"
+                        ),  # Include both for compatibility
                         "name": best_match.get("name"),
                         "score": best_match.get("confidence", 0),
                         "country": best_match.get("country"),
@@ -1226,8 +1311,9 @@ def auto_match_services(artist_id: int):
 
             # Search AllMusic (basic web scraping approach)
             try:
-                import requests
                 from urllib.parse import quote
+
+                import requests
 
                 logger.debug(f"AllMusic searching for: {artist_name}")
                 search_url = (
