@@ -72,19 +72,18 @@ class BaseWorker(ABC):
                 result = session.query(Model).filter(...).first()
                 session.commit()
         """
-        session = None
+        # get_db() returns a context manager, so we need to use it properly
+        db_context = get_db()
+        session = db_context.__enter__()
         try:
-            session = get_db()
             yield session
-            session.commit()
+            # Note: session.commit() and session.close() are handled by get_db()'s context manager
         except Exception as e:
-            if session:
-                session.rollback()
             self.logger.error(f"Database error in job {self.job.id}: {e}")
+            db_context.__exit__(type(e), e, e.__traceback__)
             raise
-        finally:
-            if session:
-                session.close()
+        else:
+            db_context.__exit__(None, None, None)
 
     def validate_payload(self, required_fields: list) -> bool:
         """
