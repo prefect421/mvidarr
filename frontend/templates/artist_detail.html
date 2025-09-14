@@ -3746,6 +3746,16 @@ function consolidateArtistMetadata(artist, enrichedMetadata) {
     const lastfmData = imvdbData.lastfm_metadata || {};
     const wikipediaData = imvdbData.wikipedia_metadata || {};
     
+    // DEBUG: Log the data structure for top_tracks investigation
+    console.log('🔍 DEBUG: Raw metadata structure for', artist.name, ':', {
+        'imvdbData.top_tracks': imvdbData.top_tracks,
+        'spotifyData.top_tracks': spotifyData.top_tracks,
+        'lastfmData.top_tracks': lastfmData.top_tracks,
+        'imvdbData keys': Object.keys(imvdbData),
+        'spotifyData keys': Object.keys(spotifyData),
+        'lastfmData keys': Object.keys(lastfmData)
+    });
+    
     // Prepare consolidated metadata structure
     
     const consolidated = {
@@ -3777,9 +3787,8 @@ function consolidateArtistMetadata(artist, enrichedMetadata) {
         playcount: imvdbData.playcount || lastfmData.playcount || null,
         
         // Musical info - check both direct and nested sources
-        related_artists: imvdbData.related_artists || lastfmData.related_artists || spotifyData.related_artists || [],
+        // Note: related_artists and top_tracks are reassigned below, similar_artists is final here
         similar_artists: imvdbData.similar_artists || lastfmData.similar_artists || allmusicData.similar_artists || [],
-        top_tracks: imvdbData.top_tracks || lastfmData.top_tracks || spotifyData.top_tracks || [],
         
         // Extended info - check both direct and nested sources
         formed_year: imvdbData.formed_year || allmusicData.formed_year || wikipediaData.formed_year || null,
@@ -3815,12 +3824,24 @@ function consolidateArtistMetadata(artist, enrichedMetadata) {
         allmusic_id: imvdbData.allmusic_id || null,
         
         // Spotify recommendations from enrichment service (stored directly in imvdbData)
+        // Note: This overwrites the previous assignments, so we need to check ALL sources again
         related_artists: (() => {
-            const result = imvdbData.related_artists || [];
+            console.log('🔍 DEBUG: Checking related_artists sources:', {
+                imvdbData: imvdbData.related_artists,
+                lastfmData: lastfmData.related_artists,
+                spotifyData: spotifyData.related_artists
+            });
+            const result = imvdbData.related_artists || lastfmData.related_artists || spotifyData.related_artists || [];
             return result;
         })(),
         top_tracks: (() => {
-            const result = imvdbData.top_tracks || [];
+            console.log('🔍 DEBUG: Checking top_tracks sources:', {
+                imvdbData: imvdbData.top_tracks,
+                lastfmData: lastfmData.top_tracks,
+                spotifyData: spotifyData.top_tracks
+            });
+            const result = imvdbData.top_tracks || lastfmData.top_tracks || spotifyData.top_tracks || [];
+            console.log('🔍 DEBUG: Final top_tracks result:', result);
             return result;
         })(),
     };
