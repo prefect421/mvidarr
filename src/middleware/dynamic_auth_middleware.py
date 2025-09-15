@@ -313,7 +313,9 @@ class DynamicAuthMiddleware:
                     return redirect(url_for("simple_login_page", next=request.url))
 
             # User is authenticated, allow access
-            logger.debug(f"User {username} authenticated, allowing access to {request.path}")
+            logger.debug(
+                f"User {username} authenticated, allowing access to {request.path}"
+            )
             return None
 
         except Exception as e:

@@ -1,8 +1,9 @@
 [Unit]
 Description=MVidarr Enhanced - Professional Music Video Management System with Advanced Processing
 Documentation=file:///home/mike/mvidarr/README.md file:///home/mike/mvidarr/MILESTONE_ROADMAP.md file:///home/mike/mvidarr/PHASE_2_WEEKS18-24_ROADMAP.md
-After=network-online.target mysql.service mariadb.service
+After=network-online.target mysql.service mariadb.service redis.service
 Wants=network-online.target
+Requires=redis.service
 RequiresMountsFor=/home/mike/mvidarr
 
 [Service]
@@ -43,6 +44,13 @@ Environment=FFMPEG_ADVANCED_TASKS=enabled
 Environment=CONCURRENT_VIDEO_PROCESSING=enabled
 Environment=QUALITY_ANALYSIS_ENABLED=enabled
 Environment=BULK_OPERATIONS_ENABLED=enabled
+Environment=REDIS_URL=redis://localhost:6379/0
+Environment=CELERY_BROKER_URL=redis://localhost:6379/0
+Environment=CELERY_RESULT_BACKEND=redis://localhost:6379/0
+Environment=BACKGROUND_JOBS_ENABLED=true
+Environment=JOB_SYSTEM_ENABLED=true
+Environment=JOB_WORKER_COUNT=3
+Environment=JOB_WEBSOCKET_ENABLED=true
 
 # Security settings for home directory access
 NoNewPrivileges=yes

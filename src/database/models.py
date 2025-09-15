@@ -395,15 +395,21 @@ class Video(Base):
     imvdb_metadata = Column(JSON, nullable=True)  # Full IMVDB metadata
     search_keywords = Column(Text, nullable=True)  # Keywords for matching
     discovered_date = Column(DateTime, nullable=True)  # When video was first discovered
-    last_enriched = Column(DateTime, nullable=True)  # Last metadata enrichment timestamp
+    last_enriched = Column(
+        DateTime, nullable=True
+    )  # Last metadata enrichment timestamp
     lyrics = Column(Text, nullable=True)  # Song lyrics
-    
+
     # Quality checking fields
     available_qualities = Column(JSON, nullable=True)  # Available formats from YouTube
     quality_check_date = Column(DateTime, nullable=True)  # Last quality check date
-    max_available_quality = Column(String(50), nullable=True)  # Highest available quality
-    quality_check_status = Column(String(50), nullable=True)  # Check status: success/failed/pending
-    
+    max_available_quality = Column(
+        String(50), nullable=True
+    )  # Highest available quality
+    quality_check_status = Column(
+        String(50), nullable=True
+    )  # Check status: success/failed/pending
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

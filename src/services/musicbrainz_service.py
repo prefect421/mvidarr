@@ -107,8 +107,11 @@ class MusicBrainzService:
             logger.debug(f"Making MusicBrainz request to: {url} with params: {params}")
             # Disable SSL verification for MusicBrainz due to certificate issues
             import urllib3
+
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-            response = requests.get(url, params=params, headers=headers, timeout=30, verify=False)
+            response = requests.get(
+                url, params=params, headers=headers, timeout=30, verify=False
+            )
             response.raise_for_status()
 
             return response.json()
@@ -191,7 +194,7 @@ class MusicBrainzService:
             for relation in relations_data:
                 try:
                     rel_type = relation.get("type")
-                    
+
                     # Extract URL relationships
                     if rel_type in [
                         "official homepage",
@@ -215,11 +218,14 @@ class MusicBrainzService:
                                     urls["facebook"] = url
                                 elif "instagram.com" in url:
                                     urls["instagram"] = url
-                                elif "music.apple.com" in url or "itunes.apple.com" in url:
+                                elif (
+                                    "music.apple.com" in url
+                                    or "itunes.apple.com" in url
+                                ):
                                     urls["apple_music"] = url
                                 elif rel_type == "official homepage":
                                     urls["homepage"] = url
-                    
+
                     # Extract label relationships
                     elif relation.get("target-type") == "label":
                         label_info = relation.get("label")
@@ -227,7 +233,7 @@ class MusicBrainzService:
                             label_name = label_info.get("name")
                             if label_name and label_name not in labels:
                                 labels.append(label_name)
-                                
+
                 except Exception as e:
                     # Skip problematic relations
                     continue

@@ -3,8 +3,9 @@ Model Demo FastAPI Router - Phase 3 Week 32
 Demonstrates the new centralized Pydantic model system
 """
 
+from typing import Any, Dict
+
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
 
 # Import centralized models - temporarily disabled for startup
 # from src.api.models import (
@@ -31,9 +32,10 @@ router = APIRouter(
     tags=["model-demo"],
     responses={
         404: {"description": "Demo endpoint not found"},
-        422: {"description": "Validation error in demo"}
-    }
+        422: {"description": "Validation error in demo"},
+    },
 )
+
 
 @router.get("/", response_model=Dict[str, Any])
 async def model_system_overview():
@@ -44,7 +46,7 @@ async def model_system_overview():
         "total_models": "100+",
         "categories": [
             "Video Management",
-            "Artist Management", 
+            "Artist Management",
             "Playlist Management",
             "Authentication & Authorization",
             "System Administration",
@@ -52,7 +54,7 @@ async def model_system_overview():
             "Background Jobs",
             "Media Processing",
             "AI Services",
-            "Health Monitoring"
+            "Health Monitoring",
         ],
         "features": [
             "Type-safe request/response validation",
@@ -61,15 +63,16 @@ async def model_system_overview():
             "Comprehensive field documentation",
             "Built-in testing utilities",
             "Consistent validation patterns",
-            "Enterprise-grade data validation"
+            "Enterprise-grade data validation",
         ],
         "examples": {
             "video_creation": "/api/demo/models/video/create",
-            "artist_management": "/api/demo/models/artist/create", 
+            "artist_management": "/api/demo/models/artist/create",
             "validation_testing": "/api/demo/models/validate",
-            "model_documentation": "/api/demo/models/docs"
-        }
+            "model_documentation": "/api/demo/models/docs",
+        },
     }
+
 
 @router.post("/video/create", response_model=VideoResponse)
 async def demo_video_creation(video_data: VideoCreateRequest):
@@ -85,8 +88,9 @@ async def demo_video_creation(video_data: VideoCreateRequest):
         youtube_url=video_data.youtube_url,
         status=video_data.status,
         genres=video_data.genres or [],
-        thumbnail_url="/api/videos/123/thumbnail"
+        thumbnail_url="/api/videos/123/thumbnail",
     )
+
 
 @router.post("/artist/create", response_model=ArtistResponse)
 async def demo_artist_creation(artist_data: ArtistCreateRequest):
@@ -102,8 +106,9 @@ async def demo_artist_creation(artist_data: ArtistCreateRequest):
         twitter_handle=artist_data.twitter_handle,
         instagram_handle=artist_data.instagram_handle,
         video_count=0,
-        thumbnail_url="/api/artists/456/thumbnail"
+        thumbnail_url="/api/artists/456/thumbnail",
     )
+
 
 @router.post("/playlist/create", response_model=PlaylistResponse)
 async def demo_playlist_creation(playlist_data: PlaylistCreateRequest):
@@ -120,8 +125,9 @@ async def demo_playlist_creation(playlist_data: PlaylistCreateRequest):
         video_count=0,
         filters=playlist_data.filters,
         auto_update=playlist_data.auto_update,
-        max_videos=playlist_data.max_videos
+        max_videos=playlist_data.max_videos,
     )
+
 
 @router.post("/auth/login", response_model=LoginResponse)
 async def demo_login(login_data: LoginRequest):
@@ -133,8 +139,9 @@ async def demo_login(login_data: LoginRequest):
         role="USER",
         session_id="demo_session_123",
         expires_at="2024-12-31T23:59:59Z",
-        permissions=["videos:read", "videos:download"]
+        permissions=["videos:read", "videos:download"],
     )
+
 
 @router.post("/job/submit", response_model=JobResponse)
 async def demo_job_submission(job_data: JobRequest):
@@ -149,15 +156,16 @@ async def demo_job_submission(job_data: JobRequest):
         scheduled_for=job_data.scheduled_for,
         parameters=job_data.parameters,
         retry_count=0,
-        max_retries=job_data.retry_count
+        max_retries=job_data.retry_count,
     )
+
 
 @router.post("/validate")
 async def demo_model_validation(request: Dict[str, Any]):
     """Demo endpoint for testing model validation"""
     model_name = request.get("model")
     test_data = request.get("data", {})
-    
+
     # Map of available models for testing
     model_classes = {
         "video_create": VideoCreateRequest,
@@ -166,59 +174,65 @@ async def demo_model_validation(request: Dict[str, Any]):
         "login": LoginRequest,
         "setting_update": SettingUpdateRequest,
         "job": JobRequest,
-        "content_analysis": ContentAnalysisRequest
+        "content_analysis": ContentAnalysisRequest,
     }
-    
+
     if model_name not in model_classes:
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown model '{model_name}'. Available models: {list(model_classes.keys())}"
+            detail=f"Unknown model '{model_name}'. Available models: {list(model_classes.keys())}",
         )
-    
+
     model_class = model_classes[model_name]
     validation_result = ModelValidator.validate_model(model_class, test_data)
-    
+
     return {
         "model_tested": model_name,
         "validation_result": validation_result,
-        "example_data": ModelValidator.generate_example_data(model_class)
+        "example_data": ModelValidator.generate_example_data(model_class),
     }
+
 
 @router.get("/docs")
 async def model_documentation():
     """Generate documentation for all centralized models"""
     from src.api.models.validation import ModelDocumenter
-    
+
     model_classes = [
-        VideoCreateRequest, VideoResponse,
-        ArtistCreateRequest, ArtistResponse,
-        PlaylistCreateRequest, PlaylistResponse,
-        LoginRequest, LoginResponse,
-        SettingUpdateRequest, SettingResponse,
-        JobRequest, JobResponse,
-        HealthResponse
+        VideoCreateRequest,
+        VideoResponse,
+        ArtistCreateRequest,
+        ArtistResponse,
+        PlaylistCreateRequest,
+        PlaylistResponse,
+        LoginRequest,
+        LoginResponse,
+        SettingUpdateRequest,
+        SettingResponse,
+        JobRequest,
+        JobResponse,
+        HealthResponse,
     ]
-    
+
     docs = {}
     for model_class in model_classes:
         docs[model_class.__name__] = ModelDocumenter.generate_model_docs(model_class)
-    
+
     return {
         "message": "Centralized Model Documentation",
         "total_models_documented": len(docs),
-        "model_documentation": docs
+        "model_documentation": docs,
     }
+
 
 @router.get("/test/comprehensive")
 async def run_comprehensive_tests():
     """Run comprehensive validation tests on centralized models"""
     tester = ModelTester()
     results = tester.run_comprehensive_tests()
-    
-    return {
-        "message": "Comprehensive Model Validation Tests",
-        "test_results": results
-    }
+
+    return {"message": "Comprehensive Model Validation Tests", "test_results": results}
+
 
 @router.get("/health", response_model=HealthResponse)
 async def demo_health_check():
@@ -232,17 +246,26 @@ async def demo_health_check():
         jobs_running=True,
         active_connections=5,
         pending_jobs=3,
-        memory_usage_mb=256.7
+        memory_usage_mb=256.7,
     )
+
 
 @router.get("/examples")
 async def model_examples():
     """Show examples of all major model types"""
     return {
-        "video_create_example": ModelValidator.generate_example_data(VideoCreateRequest),
-        "artist_create_example": ModelValidator.generate_example_data(ArtistCreateRequest),
-        "playlist_create_example": ModelValidator.generate_example_data(PlaylistCreateRequest),
+        "video_create_example": ModelValidator.generate_example_data(
+            VideoCreateRequest
+        ),
+        "artist_create_example": ModelValidator.generate_example_data(
+            ArtistCreateRequest
+        ),
+        "playlist_create_example": ModelValidator.generate_example_data(
+            PlaylistCreateRequest
+        ),
         "login_example": ModelValidator.generate_example_data(LoginRequest),
         "job_example": ModelValidator.generate_example_data(JobRequest),
-        "content_analysis_example": ModelValidator.generate_example_data(ContentAnalysisRequest)
+        "content_analysis_example": ModelValidator.generate_example_data(
+            ContentAnalysisRequest
+        ),
     }

@@ -6,135 +6,127 @@ This module provides a centralized, well-organized collection of Pydantic models
 for all FastAPI endpoints, eliminating duplication and ensuring consistent validation.
 """
 
+from .admin import (
+    AuditLogResponse,
+    DashboardResponse,
+    SystemHealthResponse,
+    SystemStatusResponse,
+    UserCreateRequest,
+    UserResponse,
+    UserRoleUpdateRequest,
+    UserUpdateRequest,
+)
+from .ai import (
+    BatchAnalysisRequest,
+    BatchAnalysisResponse,
+    ContentAnalysisRequest,
+    ContentAnalysisResponse,
+    RecommendationRequest,
+    RecommendationResponse,
+    TaggingRequest,
+    TaggingResponse,
+)
+from .artist import (
+    ArtistBulkRequest,
+    ArtistCreateRequest,
+    ArtistIMVDbImportRequest,
+    ArtistResponse,
+    ArtistSearchRequest,
+    ArtistStatsResponse,
+    ArtistUpdateRequest,
+)
+from .auth import (
+    CredentialsRequest,
+    LoginRequest,
+    LoginResponse,
+    OAuth2CallbackRequest,
+    TokenResponse,
+    UserSessionResponse,
+)
+
 # Base classes and mixins
 from .base import (
     BaseRequest,
     BaseResponse,
-    PaginationRequest,
-    PaginationResponse,
     BulkOperationRequest,
     BulkOperationResponse,
-    TaskSubmissionResponse,
+    ErrorResponse,
+    PaginationRequest,
+    PaginationResponse,
     TaskStatusResponse,
-    ErrorResponse
+    TaskSubmissionResponse,
 )
 
 # Common shared models
 from .common import (
+    FileUploadResponse,
     IdRequest,
+    SearchFilters,
+    SortOptions,
     StatusUpdateRequest,
     ThumbnailSearchRequest,
-    FileUploadResponse,
-    SearchFilters,
-    SortOptions
+)
+from .health import (
+    DatabaseHealthResponse,
+    DetailedHealthResponse,
+    HealthResponse,
+    ServiceHealthResponse,
+    VersionInfoResponse,
+)
+from .jobs import (
+    JobCancellationRequest,
+    JobListResponse,
+    JobProgressResponse,
+    JobRequest,
+    JobResponse,
+    JobStatusUpdateRequest,
+)
+from .media import (
+    BulkMediaRequest,
+    BulkMediaResponse,
+    VideoConversionRequest,
+    VideoConversionResponse,
+    VideoMetadataExtractionRequest,
+    VideoMetadataResponse,
+    VideoValidationRequest,
+    VideoValidationResponse,
+)
+from .playlist import (
+    DynamicPlaylistRequest,
+    PlaylistAddVideoRequest,
+    PlaylistCreateRequest,
+    PlaylistEntryResponse,
+    PlaylistFilterUpdateRequest,
+    PlaylistReorderRequest,
+    PlaylistResponse,
+    PlaylistUpdateRequest,
+)
+from .settings import (
+    AllSettingsResponse,
+    BulkSettingsUpdateRequest,
+    DatabaseConfigResponse,
+    SchedulerStatusResponse,
+    SettingResponse,
+    SettingUpdateRequest,
 )
 
 # Domain-specific models
 from .video import (
-    VideoResponse,
-    VideoCreateRequest,
-    VideoUpdateRequest,
-    VideoSearchRequest,
     VideoBulkDeleteRequest,
     VideoBulkDownloadRequest,
     VideoBulkStatusUpdateRequest,
+    VideoCreateRequest,
     VideoDownloadRequest,
-    VideoStreamingResponse
-)
-
-from .artist import (
-    ArtistResponse,
-    ArtistCreateRequest,
-    ArtistUpdateRequest,
-    ArtistSearchRequest,
-    ArtistBulkRequest,
-    ArtistIMVDbImportRequest,
-    ArtistStatsResponse
-)
-
-from .playlist import (
-    PlaylistResponse,
-    PlaylistEntryResponse,
-    PlaylistCreateRequest,
-    PlaylistUpdateRequest,
-    PlaylistAddVideoRequest,
-    PlaylistReorderRequest,
-    DynamicPlaylistRequest,
-    PlaylistFilterUpdateRequest
-)
-
-from .auth import (
-    LoginRequest,
-    LoginResponse,
-    CredentialsRequest,
-    UserSessionResponse,
-    TokenResponse,
-    OAuth2CallbackRequest
-)
-
-from .admin import (
-    UserResponse,
-    UserCreateRequest,
-    UserUpdateRequest,
-    UserRoleUpdateRequest,
-    SystemStatusResponse,
-    DashboardResponse,
-    AuditLogResponse,
-    SystemHealthResponse
-)
-
-from .settings import (
-    SettingResponse,
-    SettingUpdateRequest,
-    BulkSettingsUpdateRequest,
-    AllSettingsResponse,
-    SchedulerStatusResponse,
-    DatabaseConfigResponse
-)
-
-from .jobs import (
-    JobRequest,
-    JobResponse,
-    JobProgressResponse,
-    JobListResponse,
-    JobStatusUpdateRequest,
-    JobCancellationRequest
-)
-
-from .media import (
-    VideoMetadataExtractionRequest,
-    VideoMetadataResponse,
-    VideoConversionRequest,
-    VideoConversionResponse,
-    VideoValidationRequest,
-    VideoValidationResponse,
-    BulkMediaRequest,
-    BulkMediaResponse
-)
-
-from .ai import (
-    ContentAnalysisRequest,
-    ContentAnalysisResponse,
-    TaggingRequest,
-    TaggingResponse,
-    BatchAnalysisRequest,
-    BatchAnalysisResponse,
-    RecommendationRequest,
-    RecommendationResponse
-)
-
-from .health import (
-    HealthResponse,
-    DetailedHealthResponse,
-    ServiceHealthResponse,
-    DatabaseHealthResponse,
-    VersionInfoResponse
+    VideoResponse,
+    VideoSearchRequest,
+    VideoStreamingResponse,
+    VideoUpdateRequest,
 )
 
 __all__ = [
     # Base classes
     "BaseRequest",
-    "BaseResponse", 
+    "BaseResponse",
     "PaginationRequest",
     "PaginationResponse",
     "BulkOperationRequest",
@@ -142,7 +134,6 @@ __all__ = [
     "TaskSubmissionResponse",
     "TaskStatusResponse",
     "ErrorResponse",
-    
     # Common models
     "IdRequest",
     "StatusUpdateRequest",
@@ -150,7 +141,6 @@ __all__ = [
     "FileUploadResponse",
     "SearchFilters",
     "SortOptions",
-    
     # Video models
     "VideoResponse",
     "VideoCreateRequest",
@@ -161,7 +151,6 @@ __all__ = [
     "VideoBulkStatusUpdateRequest",
     "VideoDownloadRequest",
     "VideoStreamingResponse",
-    
     # Artist models
     "ArtistResponse",
     "ArtistCreateRequest",
@@ -170,7 +159,6 @@ __all__ = [
     "ArtistBulkRequest",
     "ArtistIMVDbImportRequest",
     "ArtistStatsResponse",
-    
     # Playlist models
     "PlaylistResponse",
     "PlaylistEntryResponse",
@@ -180,7 +168,6 @@ __all__ = [
     "PlaylistReorderRequest",
     "DynamicPlaylistRequest",
     "PlaylistFilterUpdateRequest",
-    
     # Auth models
     "LoginRequest",
     "LoginResponse",
@@ -188,7 +175,6 @@ __all__ = [
     "UserSessionResponse",
     "TokenResponse",
     "OAuth2CallbackRequest",
-    
     # Admin models
     "UserResponse",
     "UserCreateRequest",
@@ -198,7 +184,6 @@ __all__ = [
     "DashboardResponse",
     "AuditLogResponse",
     "SystemHealthResponse",
-    
     # Settings models
     "SettingResponse",
     "SettingUpdateRequest",
@@ -206,7 +191,6 @@ __all__ = [
     "AllSettingsResponse",
     "SchedulerStatusResponse",
     "DatabaseConfigResponse",
-    
     # Job models
     "JobRequest",
     "JobResponse",
@@ -214,7 +198,6 @@ __all__ = [
     "JobListResponse",
     "JobStatusUpdateRequest",
     "JobCancellationRequest",
-    
     # Media models
     "VideoMetadataExtractionRequest",
     "VideoMetadataResponse",
@@ -224,7 +207,6 @@ __all__ = [
     "VideoValidationResponse",
     "BulkMediaRequest",
     "BulkMediaResponse",
-    
     # AI models
     "ContentAnalysisRequest",
     "ContentAnalysisResponse",
@@ -234,11 +216,10 @@ __all__ = [
     "BatchAnalysisResponse",
     "RecommendationRequest",
     "RecommendationResponse",
-    
     # Health models
     "HealthResponse",
     "DetailedHealthResponse",
     "ServiceHealthResponse",
     "DatabaseHealthResponse",
-    "VersionInfoResponse"
+    "VersionInfoResponse",
 ]

@@ -14,6 +14,7 @@ from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.async_youtube")
 
+
 class AsyncYouTubeService(AsyncBaseService):
     """Async YouTube API service for video search and metadata"""
 
@@ -30,18 +31,18 @@ class AsyncYouTubeService(AsyncBaseService):
 
         try:
             self.logger.debug("Loading YouTube API key from database")
-            
+
             # Get API key from settings table
             query = "SELECT setting_value FROM settings WHERE setting_key = 'youtube_api_key'"
             result = await self.execute_query(query)
-            
+
             if result:
-                self._api_key = result[0]['setting_value']
+                self._api_key = result[0]["setting_value"]
                 self.logger.debug("YouTube API key loaded successfully")
             else:
                 self._api_key = None
                 self.logger.warning("YouTube API key not found in settings")
-                
+
             self._settings_loaded = True
 
         except Exception as e:
@@ -97,7 +98,7 @@ class AsyncYouTubeService(AsyncBaseService):
             # Make API request
             url = f"{self.base_url}/search"
             client = await get_global_httpx_client()
-            
+
             response = await client.get(url, params=params, timeout=30)
 
             if response.status_code == 200:
@@ -114,7 +115,9 @@ class AsyncYouTubeService(AsyncBaseService):
                         "query": query,
                     }
                 else:
-                    self.logger.warning(f"YouTube search returned no items for '{query}'")
+                    self.logger.warning(
+                        f"YouTube search returned no items for '{query}'"
+                    )
                     return {"success": True, "results": [], "total": 0, "query": query}
 
             elif response.status_code == 403:
@@ -183,8 +186,8 @@ class AsyncYouTubeService(AsyncBaseService):
             all_results = []
 
             for i in range(0, len(video_ids), batch_size):
-                batch_ids = video_ids[i:i + batch_size]
-                
+                batch_ids = video_ids[i : i + batch_size]
+
                 # Prepare API parameters
                 params = {
                     "part": "snippet,statistics,contentDetails",
@@ -195,7 +198,7 @@ class AsyncYouTubeService(AsyncBaseService):
                 # Make API request
                 url = f"{self.base_url}/videos"
                 client = await get_global_httpx_client()
-                
+
                 response = await client.get(url, params=params, timeout=30)
 
                 if response.status_code == 200:
@@ -203,7 +206,9 @@ class AsyncYouTubeService(AsyncBaseService):
                     if "items" in data:
                         all_results.extend(data["items"])
                 else:
-                    self.logger.error(f"Failed to get video details: HTTP {response.status_code}")
+                    self.logger.error(
+                        f"Failed to get video details: HTTP {response.status_code}"
+                    )
                     return {
                         "success": False,
                         "error": f"YouTube API returned status {response.status_code}",
@@ -225,25 +230,27 @@ class AsyncYouTubeService(AsyncBaseService):
                 "results": [],
             }
 
-    async def search_artist_videos(self, artist_name: str, max_results: int = 25) -> Dict[str, Any]:
+    async def search_artist_videos(
+        self, artist_name: str, max_results: int = 25
+    ) -> Dict[str, Any]:
         """Search for videos by a specific artist"""
         # Enhanced search query for better artist-specific results
         search_queries = [
             f"{artist_name} official",
             f"{artist_name} music video",
             f"{artist_name} official music video",
-            artist_name  # Fallback to basic search
+            artist_name,  # Fallback to basic search
         ]
 
         best_result = {"success": True, "results": [], "total": 0, "query": artist_name}
 
         for query in search_queries:
             result = await self.search_videos(query, max_results)
-            
+
             if result["success"] and result["total"] > best_result["total"]:
                 best_result = result
                 best_result["query"] = artist_name  # Keep original artist name
-                
+
             # If we get good results, use them
             if result["success"] and result["total"] >= max_results // 2:
                 break
@@ -269,7 +276,7 @@ class AsyncYouTubeService(AsyncBaseService):
 
             url = f"{self.base_url}/channels"
             client = await get_global_httpx_client()
-            
+
             response = await client.get(url, params=params, timeout=30)
 
             if response.status_code == 200:
@@ -299,68 +306,67 @@ class AsyncYouTubeService(AsyncBaseService):
                 "error": f"Failed to get channel info: {str(e)}",
             }
 
-    async def search_music_videos(self, query: str, max_results: int = 25) -> Dict[str, Any]:
+    async def search_music_videos(
+        self, query: str, max_results: int = 25
+    ) -> Dict[str, Any]:
         """Search specifically for music videos"""
         # Enhanced query for music videos
         music_video_query = f"{query} music video"
-        
+
         result = await self.search_videos(music_video_query, max_results)
-        
+
         if result["success"]:
             # Filter results to prioritize music videos
             filtered_results = []
-            
+
             for item in result["results"]:
                 title = item.get("snippet", {}).get("title", "").lower()
                 description = item.get("snippet", {}).get("description", "").lower()
-                
+
                 # Prioritize items that mention music video, official, etc.
                 music_keywords = ["music video", "official", "mv", "clip", "video"]
-                
+
                 score = 0
                 for keyword in music_keywords:
                     if keyword in title or keyword in description:
                         score += 1
-                
-                filtered_results.append({
-                    "item": item,
-                    "score": score
-                })
-            
+
+                filtered_results.append({"item": item, "score": score})
+
             # Sort by score (descending) and return items
             filtered_results.sort(key=lambda x: x["score"], reverse=True)
             result["results"] = [item["item"] for item in filtered_results]
-        
+
         return result
 
     async def get_api_status(self) -> Dict[str, Any]:
         """Get YouTube API status and quota information"""
         try:
             configured = await self.is_configured()
-            
+
             if not configured:
                 return {
                     "status": "not_configured",
                     "message": "YouTube API key not configured",
-                    "configured": False
+                    "configured": False,
                 }
 
             # Test API with a simple search
             test_result = await self.search_videos("test", max_results=1)
-            
+
             if test_result["success"]:
                 return {
                     "status": "working",
                     "message": "YouTube API is working properly",
                     "configured": True,
-                    "test_result": "success"
+                    "test_result": "success",
                 }
             else:
                 return {
                     "status": "error",
                     "message": test_result.get("error", "Unknown error"),
                     "configured": True,
-                    "test_result": "failed"
+                    "test_result": "failed",
                 }
 
         except Exception as e:
@@ -369,7 +375,7 @@ class AsyncYouTubeService(AsyncBaseService):
                 "status": "error",
                 "message": str(e),
                 "configured": False,
-                "test_result": "failed"
+                "test_result": "failed",
             }
 
 
@@ -378,31 +384,32 @@ async def test_async_youtube_service():
     """Test the async YouTube service functionality"""
     try:
         from src.database.async_connection import initialize_async_database
-        
+
         print("🔄 Initializing async database...")
         await initialize_async_database()
-        
+
         print("🔄 Creating AsyncYouTubeService...")
         service = AsyncYouTubeService()
-        
+
         print("🔄 Testing service configuration...")
         configured = await service.is_configured()
         print(f"YouTube configured: {configured}")
-        
+
         print("🔄 Testing API status...")
         status = await service.get_api_status()
         print(f"API status: {status}")
-        
-        if status.get('status') != 'error':
+
+        if status.get("status") != "error":
             print("✅ AsyncYouTubeService basic functionality working!")
             return True
         else:
             print("✅ AsyncYouTubeService created but needs API key configuration")
             return True  # This is expected without API key
-        
+
     except Exception as e:
         print(f"❌ AsyncYouTubeService test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -410,25 +417,27 @@ async def test_async_youtube_service():
 if __name__ == "__main__":
     """Run tests if executed directly"""
     import asyncio
-    import sys
     import os
-    
+    import sys
+
     # Add project root to path
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    
+    sys.path.insert(
+        0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
+
     async def main():
         print("🧪 Testing AsyncYouTubeService")
         print("=" * 40)
-        
+
         success = await test_async_youtube_service()
-        
+
         print("=" * 40)
         if success:
             print("🎉 AsyncYouTubeService tests passed!")
         else:
             print("💥 AsyncYouTubeService tests failed!")
-            
+
         return success
-    
+
     success = asyncio.run(main())
     exit(0 if success else 1)

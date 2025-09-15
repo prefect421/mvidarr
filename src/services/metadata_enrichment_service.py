@@ -6,10 +6,13 @@ Multi-source artist discovery and metadata aggregation system with intelligent c
 import asyncio
 import json
 import time
+import urllib.parse
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple, Union
 
+# Lyrics search functionality
+import requests
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -17,19 +20,15 @@ from sqlalchemy.orm.attributes import flag_modified
 from src.database.connection import get_db
 from src.database.models import Artist, Video
 from src.services.allmusic_service import allmusic_service
+from src.services.async_spotify_service import get_async_spotify_service
 from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 from src.services.musicbrainz_service import musicbrainz_service
 from src.services.settings_service import settings
 from src.services.spotify_service import spotify_service
-from src.services.async_spotify_service import get_async_spotify_service
 from src.services.video_indexing_service import VideoIndexingService
 from src.services.wikipedia_service import WikipediaService
 from src.utils.logger import get_logger
-
-# Lyrics search functionality
-import requests
-import urllib.parse
 
 logger = get_logger("mvidarr.services.metadata_enrichment")
 
@@ -40,33 +39,36 @@ def search_lyrics_azlyrics(artist, title):
         # Clean artist and title for API request
         artist_clean = artist.strip()
         title_clean = title.strip()
-        
+
         # URL encode the parameters to handle special characters
         import urllib.parse
+
         artist_encoded = urllib.parse.quote(artist_clean)
         title_encoded = urllib.parse.quote(title_clean)
-        
+
         # Use the free Lyrics.ovh API
         url = f"https://api.lyrics.ovh/v1/{artist_encoded}/{title_encoded}"
-        
+
         response = requests.get(url, timeout=10)
-        
+
         if response.status_code == 200:
             data = response.json()
-            lyrics = data.get('lyrics', '')
-            
+            lyrics = data.get("lyrics", "")
+
             # Clean up the lyrics
             if lyrics:
                 lyrics = lyrics.strip()
                 # Remove excessive whitespace and normalize line breaks
-                lyrics = '\n'.join(line.strip() for line in lyrics.split('\n') if line.strip())
-                
+                lyrics = "\n".join(
+                    line.strip() for line in lyrics.split("\n") if line.strip()
+                )
+
                 # Check if we got substantial content (more than just a few words)
                 if len(lyrics) > 50:
                     return lyrics
-                    
+
         return None
-        
+
     except Exception as e:
         logger.warning(f"Lyrics.ovh search failed for {artist} - {title}: {e}")
         return None
@@ -153,34 +155,38 @@ class MetadataEnrichmentService:
     def _get_source_priorities(self) -> Dict[str, float]:
         """Get user-configured source priorities/weights from database"""
         from src.services.settings_service import SettingsService as settings
-        
+
         # Get user-configured source priorities from database settings
         # Higher priority number = higher importance, convert to 0-1 weight scale
         try:
             priority_settings = {
                 "musicbrainz": settings.get_int("musicbrainz_priority", 3),
-                "allmusic": settings.get_int("allmusic_priority", 4), 
+                "allmusic": settings.get_int("allmusic_priority", 4),
                 "lastfm": settings.get_int("lastfm_metadata_priority", 2),
                 "wikipedia": settings.get_int("wikipedia_priority", 5),
                 "spotify": 4,  # Default for Spotify since not in current settings
             }
-            
+
             # Convert priority rankings to weights (0.5-0.95 scale)
-            # Priority 1 = 0.5, Priority 5 = 0.95  
+            # Priority 1 = 0.5, Priority 5 = 0.95
             max_priority = max(priority_settings.values())
             user_priorities = {}
-            
+
             for source, priority in priority_settings.items():
                 if priority > 0:  # Only include enabled sources
                     # Convert priority rank to weight: higher priority = higher weight
                     weight = 0.5 + (priority / max_priority) * 0.45
                     user_priorities[source] = round(weight, 2)
-                    
-            logger.debug(f"Using user-configured metadata source priorities: {user_priorities}")
+
+            logger.debug(
+                f"Using user-configured metadata source priorities: {user_priorities}"
+            )
             return user_priorities
-            
+
         except Exception as e:
-            logger.warning(f"Error reading user metadata priorities, using defaults: {e}")
+            logger.warning(
+                f"Error reading user metadata priorities, using defaults: {e}"
+            )
             return self.default_source_weights
 
     @property
@@ -260,30 +266,46 @@ class MetadataEnrichmentService:
                     session, artist, unified_metadata
                 )
 
-                logger.info(f"Committing enriched metadata for {artist_name}: {updated_fields}")
-                
+                logger.info(
+                    f"Committing enriched metadata for {artist_name}: {updated_fields}"
+                )
+
                 # Flush changes to database before verification
                 session.flush()
-                
+
                 # Verify the data was actually saved BEFORE final commit
-                verification = session.query(Artist).filter(Artist.id == artist_id).first()
+                verification = (
+                    session.query(Artist).filter(Artist.id == artist_id).first()
+                )
                 if verification and verification.imvdb_metadata:
-                    logger.info(f"Pre-commit verification: Artist {artist_name} has metadata with enrichment_date: {verification.imvdb_metadata.get('enrichment_date')}")
+                    logger.info(
+                        f"Pre-commit verification: Artist {artist_name} has metadata with enrichment_date: {verification.imvdb_metadata.get('enrichment_date')}"
+                    )
                 else:
-                    logger.error(f"Pre-commit verification failed: Artist {artist_name} metadata was not updated properly")
-                
+                    logger.error(
+                        f"Pre-commit verification failed: Artist {artist_name} metadata was not updated properly"
+                    )
+
                 # Commit changes
                 session.commit()
-                
-                logger.info(f"Successfully committed enriched metadata for {artist_name}")
-                
+
+                logger.info(
+                    f"Successfully committed enriched metadata for {artist_name}"
+                )
+
                 # Verify the data was actually saved AFTER commit
                 session.refresh(verification)
-                verification = session.query(Artist).filter(Artist.id == artist_id).first()
+                verification = (
+                    session.query(Artist).filter(Artist.id == artist_id).first()
+                )
                 if verification and verification.imvdb_metadata:
-                    logger.info(f"Verification: Artist {artist_name} now has metadata with enrichment_date: {verification.imvdb_metadata.get('enrichment_date')}")
+                    logger.info(
+                        f"Verification: Artist {artist_name} now has metadata with enrichment_date: {verification.imvdb_metadata.get('enrichment_date')}"
+                    )
                 else:
-                    logger.error(f"Verification failed: Artist {artist_name} metadata was not saved properly")
+                    logger.error(
+                        f"Verification failed: Artist {artist_name} metadata was not saved properly"
+                    )
 
                 # Validate that meaningful enrichment data was actually gathered
                 meaningful_fields = [
@@ -300,9 +322,13 @@ class MetadataEnrichmentService:
                 ]
 
                 has_meaningful_data = any(field for field in meaningful_fields)
-                
-                logger.info(f"Meaningful data check for {artist_name}: {has_meaningful_data}")
-                logger.info(f"Meaningful fields content: {[(i, bool(field)) for i, field in enumerate(meaningful_fields)]}")
+
+                logger.info(
+                    f"Meaningful data check for {artist_name}: {has_meaningful_data}"
+                )
+                logger.info(
+                    f"Meaningful fields content: {[(i, bool(field)) for i, field in enumerate(meaningful_fields)]}"
+                )
 
                 if not has_meaningful_data:
                     result.errors.append(
@@ -350,19 +376,29 @@ class MetadataEnrichmentService:
 
         # Spotify metadata - using async service (always enabled if configured)
         try:
-            logger.debug(f"🎵 ASYNC SPOTIFY ENRICHMENT: Starting for {artist_data['name']}")
-            
+            logger.debug(
+                f"🎵 ASYNC SPOTIFY ENRICHMENT: Starting for {artist_data['name']}"
+            )
+
             spotify_metadata = await self._get_spotify_metadata(artist_data)
             if spotify_metadata:
-                logger.debug(f"🎵 ASYNC SPOTIFY ENRICHMENT: Got metadata: {spotify_metadata}")
-                logger.debug(f"🎵 ASYNC SPOTIFY ENRICHMENT: Related artists: {spotify_metadata.related_artists}")
-                logger.debug(f"🎵 ASYNC SPOTIFY ENRICHMENT: Top tracks: {spotify_metadata.top_tracks}")
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY ENRICHMENT: Got metadata: {spotify_metadata}"
+                )
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY ENRICHMENT: Related artists: {spotify_metadata.related_artists}"
+                )
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY ENRICHMENT: Top tracks: {spotify_metadata.top_tracks}"
+                )
                 metadata_sources["spotify"] = spotify_metadata
                 logger.debug(
                     f"Successfully gathered async Spotify metadata for {artist_data['name']}"
                 )
             else:
-                logger.debug(f"🎵 ASYNC SPOTIFY ENRICHMENT: No metadata returned for {artist_data['name']}")
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY ENRICHMENT: No metadata returned for {artist_data['name']}"
+                )
         except Exception as e:
             logger.warning(
                 f"Failed to get async Spotify metadata for {artist_data['name']}: {e}"
@@ -411,7 +447,9 @@ class MetadataEnrichmentService:
             )
 
         # AllMusic metadata - check if enabled
-        logger.debug(f"Checking AllMusic for {artist_data['name']}: hasattr={hasattr(self.allmusic, 'enabled')}, enabled={getattr(self.allmusic, 'enabled', None)}")
+        logger.debug(
+            f"Checking AllMusic for {artist_data['name']}: hasattr={hasattr(self.allmusic, 'enabled')}, enabled={getattr(self.allmusic, 'enabled', None)}"
+        )
         if hasattr(self.allmusic, "enabled") and self.allmusic.enabled:
             try:
                 logger.info(f"Calling AllMusic for {artist_data['name']}")
@@ -422,7 +460,9 @@ class MetadataEnrichmentService:
                         f"Successfully gathered AllMusic metadata for {artist_data['name']}"
                     )
                 else:
-                    logger.warning(f"AllMusic returned no metadata for {artist_data['name']}")
+                    logger.warning(
+                        f"AllMusic returned no metadata for {artist_data['name']}"
+                    )
             except Exception as e:
                 logger.error(
                     f"Failed to get AllMusic metadata for {artist_data['name']}: {e}"
@@ -442,7 +482,9 @@ class MetadataEnrichmentService:
                     f"Successfully gathered Wikipedia metadata for {artist_data['name']}"
                 )
             else:
-                logger.debug(f"Wikipedia returned no metadata for {artist_data['name']}")
+                logger.debug(
+                    f"Wikipedia returned no metadata for {artist_data['name']}"
+                )
         except Exception as e:
             logger.warning(
                 f"Failed to get Wikipedia metadata for {artist_data['name']}: {e}"
@@ -462,24 +504,36 @@ class MetadataEnrichmentService:
         try:
             # Get async Spotify service
             async_spotify = await get_async_spotify_service()
-            
+
             # Search for artist if we don't have Spotify ID
             spotify_artist = None
-            logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Processing {artist_data['name']}, spotify_id: {artist_data.get('spotify_id')}")
+            logger.debug(
+                f"🎵 ASYNC SPOTIFY METADATA: Processing {artist_data['name']}, spotify_id: {artist_data.get('spotify_id')}"
+            )
 
             if artist_data.get("spotify_id"):
                 # Get artist by ID
-                logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Getting artist by ID {artist_data['spotify_id']}")
-                spotify_artist = await async_spotify.get_artist(artist_data['spotify_id'])
-                logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Got artist by ID: {spotify_artist is not None}")
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY METADATA: Getting artist by ID {artist_data['spotify_id']}"
+                )
+                spotify_artist = await async_spotify.get_artist(
+                    artist_data["spotify_id"]
+                )
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY METADATA: Got artist by ID: {spotify_artist is not None}"
+                )
             else:
                 # Search for artist
-                logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Searching for artist {artist_data['name']}")
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY METADATA: Searching for artist {artist_data['name']}"
+                )
                 search_results = await async_spotify.search_artist(
                     artist_data["name"], limit=5
                 )
                 artists = search_results.get("artists", {}).get("items", [])
-                logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Search returned {len(artists)} artists")
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY METADATA: Search returned {len(artists)} artists"
+                )
 
                 # Find best match
                 for candidate in artists:
@@ -490,44 +544,68 @@ class MetadataEnrichmentService:
                         break
 
             if not spotify_artist:
-                logger.debug(f"🎵 ASYNC SPOTIFY METADATA: No matching artist found for {artist_data['name']}")
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY METADATA: No matching artist found for {artist_data['name']}"
+                )
                 return None
 
-            logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Found artist: {spotify_artist.get('name')} (ID: {spotify_artist['id']})")
+            logger.debug(
+                f"🎵 ASYNC SPOTIFY METADATA: Found artist: {spotify_artist.get('name')} (ID: {spotify_artist['id']})"
+            )
 
             # Get related artists
             related_artists = []
             try:
-                logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Getting related artists for {spotify_artist['id']}")
-                related_data = await async_spotify.get_artist_related_artists(
-                    spotify_artist['id']
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY METADATA: Getting related artists for {spotify_artist['id']}"
                 )
-                logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Raw related artists response: {related_data}")
-                
+                related_data = await async_spotify.get_artist_related_artists(
+                    spotify_artist["id"]
+                )
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY METADATA: Raw related artists response: {related_data}"
+                )
+
                 if related_data and "artists" in related_data:
                     related_artists = [
                         a.get("name") for a in related_data.get("artists", [])[:5]
                     ]
-                    logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Processed {len(related_artists)} related artists: {related_artists}")
+                    logger.debug(
+                        f"🎵 ASYNC SPOTIFY METADATA: Processed {len(related_artists)} related artists: {related_artists}"
+                    )
                 else:
-                    logger.warning(f"🎵 ASYNC SPOTIFY METADATA: No 'artists' key in related artists response: {related_data}")
-                    
+                    logger.warning(
+                        f"🎵 ASYNC SPOTIFY METADATA: No 'artists' key in related artists response: {related_data}"
+                    )
+
             except Exception as e:
-                logger.warning(f"🎵 ASYNC SPOTIFY METADATA: Could not get related artists: {e}")
+                logger.warning(
+                    f"🎵 ASYNC SPOTIFY METADATA: Could not get related artists: {e}"
+                )
                 logger.exception(f"🎵 ASYNC SPOTIFY METADATA: Full exception details:")
 
             # Get top tracks
             top_tracks = []
             try:
-                logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Getting top tracks for {spotify_artist['id']}")
-                tracks_data = await async_spotify.get_artist_top_tracks(spotify_artist["id"])
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY METADATA: Getting top tracks for {spotify_artist['id']}"
+                )
+                tracks_data = await async_spotify.get_artist_top_tracks(
+                    spotify_artist["id"]
+                )
                 top_tracks = [t.get("name") for t in tracks_data.get("tracks", [])[:5]]
-                logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Got {len(top_tracks)} top tracks: {top_tracks}")
+                logger.debug(
+                    f"🎵 ASYNC SPOTIFY METADATA: Got {len(top_tracks)} top tracks: {top_tracks}"
+                )
             except Exception as e:
-                logger.warning(f"🎵 ASYNC SPOTIFY METADATA: Could not get top tracks: {e}")
+                logger.warning(
+                    f"🎵 ASYNC SPOTIFY METADATA: Could not get top tracks: {e}"
+                )
 
             # Create metadata object
-            logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Creating ArtistMetadata with related_artists: {related_artists}, top_tracks: {top_tracks}")
+            logger.debug(
+                f"🎵 ASYNC SPOTIFY METADATA: Creating ArtistMetadata with related_artists: {related_artists}, top_tracks: {top_tracks}"
+            )
             metadata = ArtistMetadata(
                 name=spotify_artist.get("name", artist_data["name"]),
                 source="spotify",
@@ -543,7 +621,9 @@ class MetadataEnrichmentService:
                 top_tracks=top_tracks,
                 raw_data=spotify_artist,
             )
-            logger.debug(f"🎵 ASYNC SPOTIFY METADATA: Final metadata object - related_artists: {metadata.related_artists}, top_tracks: {metadata.top_tracks}")
+            logger.debug(
+                f"🎵 ASYNC SPOTIFY METADATA: Final metadata object - related_artists: {metadata.related_artists}, top_tracks: {metadata.top_tracks}"
+            )
 
             return metadata
 
@@ -569,7 +649,9 @@ class MetadataEnrichmentService:
                 similar_artists = self.lastfm.get_similar_artists(
                     artist_name, self.similar_artists_limit
                 )
-                logger.debug(f"🎵 LAST.FM METADATA: Got {len(similar_artists)} similar artists: {similar_artists}")
+                logger.debug(
+                    f"🎵 LAST.FM METADATA: Got {len(similar_artists)} similar artists: {similar_artists}"
+                )
             except Exception as e:
                 logger.debug(f"🎵 LAST.FM METADATA: Could not get similar artists: {e}")
 
@@ -768,12 +850,12 @@ class MetadataEnrichmentService:
             # For now, Wikipedia service only provides thumbnails
             # This is a placeholder for future Wikipedia biography integration
             thumbnail_url = self.wikipedia.search_artist_thumbnail(artist_data["name"])
-            
+
             if thumbnail_url:
                 # Construct Wikipedia article URL for the artist
                 artist_name_clean = artist_data["name"].replace(" ", "_")
                 wikipedia_url = f"https://en.wikipedia.org/wiki/{artist_name_clean}"
-                
+
                 # Create minimal metadata with thumbnail and URL
                 metadata = ArtistMetadata(
                     name=artist_data["name"],
@@ -782,11 +864,11 @@ class MetadataEnrichmentService:
                     images=[{"url": thumbnail_url, "source": "wikipedia"}],
                     raw_data={
                         "wikipedia_thumbnail": thumbnail_url,
-                        "wikipedia_url": wikipedia_url
-                    }
+                        "wikipedia_url": wikipedia_url,
+                    },
                 )
                 return metadata
-            
+
             return None
 
         except Exception as e:
@@ -890,17 +972,25 @@ class MetadataEnrichmentService:
         # Priority: Spotify related_artists > Last.fm similar_artists > MusicBrainz > aggregate
         spotify_related = sources.get("spotify", ArtistMetadata("", "")).related_artists
         lastfm_similar = sources.get("lastfm", ArtistMetadata("", "")).similar_artists
-        musicbrainz_related = sources.get("musicbrainz", ArtistMetadata("", "")).related_artists
-        
+        musicbrainz_related = sources.get(
+            "musicbrainz", ArtistMetadata("", "")
+        ).related_artists
+
         if spotify_related:
             unified.related_artists = spotify_related[: self.similar_artists_limit]
-            logger.debug(f"🎵 AGGREGATION: Using Spotify related artists: {unified.related_artists}")
+            logger.debug(
+                f"🎵 AGGREGATION: Using Spotify related artists: {unified.related_artists}"
+            )
         elif lastfm_similar:
             unified.related_artists = lastfm_similar[: self.similar_artists_limit]
-            logger.debug(f"🎵 AGGREGATION: Using Last.fm similar artists as fallback: {unified.related_artists}")
+            logger.debug(
+                f"🎵 AGGREGATION: Using Last.fm similar artists as fallback: {unified.related_artists}"
+            )
         elif musicbrainz_related:
             unified.related_artists = musicbrainz_related[: self.similar_artists_limit]
-            logger.debug(f"🎵 AGGREGATION: Using MusicBrainz related artists as fallback: {unified.related_artists}")
+            logger.debug(
+                f"🎵 AGGREGATION: Using MusicBrainz related artists as fallback: {unified.related_artists}"
+            )
         else:
             # Final fallback: aggregate from all sources
             all_related = set()
@@ -908,7 +998,9 @@ class MetadataEnrichmentService:
                 all_related.update(metadata.related_artists)
                 all_related.update(metadata.similar_artists)
             unified.related_artists = list(all_related)[: self.similar_artists_limit]
-            logger.debug(f"🎵 AGGREGATION: Using aggregated related/similar artists: {unified.related_artists}")
+            logger.debug(
+                f"🎵 AGGREGATION: Using aggregated related/similar artists: {unified.related_artists}"
+            )
 
         # Top tracks (prefer Spotify, then Last.fm for track recommendations)
         if sources.get("spotify", ArtistMetadata("", "")).top_tracks:
@@ -949,13 +1041,17 @@ class MetadataEnrichmentService:
             if allmusic_data.raw_data.get("allmusic_id"):
                 unified.raw_data["allmusic_id"] = allmusic_data.raw_data["allmusic_id"]
             if allmusic_data.raw_data.get("allmusic_url"):
-                unified.raw_data["allmusic_url"] = allmusic_data.raw_data["allmusic_url"]
-        
+                unified.raw_data["allmusic_url"] = allmusic_data.raw_data[
+                    "allmusic_url"
+                ]
+
         # Extract Wikipedia URL from Wikipedia source
         if "wikipedia" in sources:
             wikipedia_data = sources["wikipedia"]
             if wikipedia_data.raw_data.get("wikipedia_url"):
-                unified.raw_data["wikipedia_url"] = wikipedia_data.raw_data["wikipedia_url"]
+                unified.raw_data["wikipedia_url"] = wikipedia_data.raw_data[
+                    "wikipedia_url"
+                ]
 
     def _calculate_overall_confidence(
         self, sources: Dict[str, ArtistMetadata]
@@ -1005,25 +1101,37 @@ class MetadataEnrichmentService:
         if metadata.raw_data.get("allmusic_id"):
             if not artist.imvdb_metadata:
                 artist.imvdb_metadata = {}
-            if artist.imvdb_metadata.get("allmusic_id") != metadata.raw_data["allmusic_id"]:
+            if (
+                artist.imvdb_metadata.get("allmusic_id")
+                != metadata.raw_data["allmusic_id"]
+            ):
                 artist.imvdb_metadata["allmusic_id"] = metadata.raw_data["allmusic_id"]
                 updated_fields["allmusic_id"] = metadata.raw_data["allmusic_id"]
-        
+
         if metadata.raw_data.get("allmusic_url"):
             if not artist.imvdb_metadata:
                 artist.imvdb_metadata = {}
-            if artist.imvdb_metadata.get("allmusic_url") != metadata.raw_data["allmusic_url"]:
-                artist.imvdb_metadata["allmusic_url"] = metadata.raw_data["allmusic_url"]
+            if (
+                artist.imvdb_metadata.get("allmusic_url")
+                != metadata.raw_data["allmusic_url"]
+            ):
+                artist.imvdb_metadata["allmusic_url"] = metadata.raw_data[
+                    "allmusic_url"
+                ]
                 updated_fields["allmusic_url"] = metadata.raw_data["allmusic_url"]
 
         # Store Wikipedia URL from enriched metadata
         if metadata.raw_data.get("wikipedia_url"):
             if not artist.imvdb_metadata:
                 artist.imvdb_metadata = {}
-            if artist.imvdb_metadata.get("wikipedia_url") != metadata.raw_data["wikipedia_url"]:
-                artist.imvdb_metadata["wikipedia_url"] = metadata.raw_data["wikipedia_url"]
+            if (
+                artist.imvdb_metadata.get("wikipedia_url")
+                != metadata.raw_data["wikipedia_url"]
+            ):
+                artist.imvdb_metadata["wikipedia_url"] = metadata.raw_data[
+                    "wikipedia_url"
+                ]
                 updated_fields["wikipedia_url"] = metadata.raw_data["wikipedia_url"]
-
 
         # Update genres
         if metadata.genres:
@@ -1034,7 +1142,7 @@ class MetadataEnrichmentService:
 
         # Extract extended information from raw data
         extended_info = self._extract_extended_information(metadata)
-        
+
         # Update labels from enriched metadata
         if extended_info.get("labels"):
             labels_list = extended_info["labels"]
@@ -1043,8 +1151,8 @@ class MetadataEnrichmentService:
             if artist.labels != labels_list:
                 artist.labels = labels_list
                 updated_fields["labels"] = labels_list
-                
-        # Update members from enriched metadata  
+
+        # Update members from enriched metadata
         if extended_info.get("members"):
             members_str = extended_info["members"]
             if isinstance(members_str, list):
@@ -1053,7 +1161,7 @@ class MetadataEnrichmentService:
                 artist.members = members_str
                 updated_fields["members"] = members_str
 
-        # Extract external links from metadata  
+        # Extract external links from metadata
         external_links = self._extract_external_links(metadata)
 
         # Update metadata JSON
@@ -1090,29 +1198,35 @@ class MetadataEnrichmentService:
         existing_metadata = (
             artist.imvdb_metadata if isinstance(artist.imvdb_metadata, dict) else {}
         )
-        
+
         # Merge enriched metadata, ensuring enriched data takes precedence over existing null values
         for key, value in enriched_metadata.items():
             # Only update if the enriched value is meaningful (not None, not empty)
             if value is not None and value != "" and value != []:
                 existing_metadata[key] = value
             # If existing field is null/empty and we have a meaningful enriched value, use it
-            elif key not in existing_metadata or existing_metadata[key] in [None, "", []]:
+            elif key not in existing_metadata or existing_metadata[key] in [
+                None,
+                "",
+                [],
+            ]:
                 existing_metadata[key] = value
-                
+
         # Ensure enrichment_date is always updated to show fresh data
         existing_metadata["enrichment_date"] = datetime.now().isoformat()
-        existing_metadata["sources_used"] = list(metadata.raw_data.get("sources", {}).keys())
+        existing_metadata["sources_used"] = list(
+            metadata.raw_data.get("sources", {}).keys()
+        )
         existing_metadata["confidence_score"] = metadata.confidence
-        
+
         logger.info(f"Setting artist.imvdb_metadata to: {existing_metadata}")
         logger.info(f"Artist.imvdb_metadata before assignment: {artist.imvdb_metadata}")
-        
+
         artist.imvdb_metadata = existing_metadata
-        
+
         # CRITICAL: Mark the JSON field as modified so SQLAlchemy knows to save it
-        flag_modified(artist, 'imvdb_metadata')
-        
+        flag_modified(artist, "imvdb_metadata")
+
         logger.info(f"Artist.imvdb_metadata after assignment: {artist.imvdb_metadata}")
         logger.info(f"Marked imvdb_metadata as modified for SQLAlchemy tracking")
         updated_fields["metadata"] = enriched_metadata
@@ -1146,15 +1260,17 @@ class MetadataEnrichmentService:
             metadata.get("genres"),
             metadata.get("similar_artists"),
         ]
-        
+
         # Only consider metadata "fresh" if it has meaningful data
         has_meaningful_data = any(
-            field and field != [] and field != {} and field != "" 
+            field and field != [] and field != {} and field != ""
             for field in meaningful_fields
         )
-        
+
         if not has_meaningful_data:
-            logger.debug(f"Artist {artist.name} has enrichment_date but no meaningful data - forcing refresh")
+            logger.debug(
+                f"Artist {artist.name} has enrichment_date but no meaningful data - forcing refresh"
+            )
             return False
 
         try:
@@ -1163,7 +1279,9 @@ class MetadataEnrichmentService:
                 hours=self.cache_duration_hours
             )
             if is_fresh:
-                logger.debug(f"Artist {artist.name} metadata is fresh with meaningful data - using cache")
+                logger.debug(
+                    f"Artist {artist.name} metadata is fresh with meaningful data - using cache"
+                )
             return is_fresh
         except (ValueError, TypeError):
             return False
@@ -1263,7 +1381,7 @@ class MetadataEnrichmentService:
             # Extract from MusicBrainz data (most authoritative source)
             if "musicbrainz" in sources:
                 musicbrainz_data = sources["musicbrainz"]
-                
+
                 # Formation/disbanded years from life_span (most reliable)
                 life_span = musicbrainz_data.get("life_span", {})
                 if isinstance(life_span, dict):
@@ -1271,72 +1389,88 @@ class MetadataEnrichmentService:
                         try:
                             # Parse YYYY-MM-DD or YYYY format
                             begin_date = life_span["begin"]
-                            formed_year = int(begin_date.split("-")[0]) if begin_date else None
+                            formed_year = (
+                                int(begin_date.split("-")[0]) if begin_date else None
+                            )
                             if formed_year and not extended_info.get("formed_year"):
                                 extended_info["formed_year"] = formed_year
                         except (ValueError, AttributeError, IndexError):
                             pass
-                    
+
                     if life_span.get("end"):
                         try:
                             # Parse YYYY-MM-DD or YYYY format
                             end_date = life_span["end"]
-                            disbanded_year = int(end_date.split("-")[0]) if end_date else None
-                            if disbanded_year and not extended_info.get("disbanded_year"):
+                            disbanded_year = (
+                                int(end_date.split("-")[0]) if end_date else None
+                            )
+                            if disbanded_year and not extended_info.get(
+                                "disbanded_year"
+                            ):
                                 extended_info["disbanded_year"] = disbanded_year
                         except (ValueError, AttributeError, IndexError):
                             pass
-                
+
                 # Origin country/area (most authoritative)
-                if musicbrainz_data.get("country") and not extended_info.get("origin_country"):
+                if musicbrainz_data.get("country") and not extended_info.get(
+                    "origin_country"
+                ):
                     extended_info["origin_country"] = musicbrainz_data["country"]
-                elif musicbrainz_data.get("area") and not extended_info.get("origin_country"):
+                elif musicbrainz_data.get("area") and not extended_info.get(
+                    "origin_country"
+                ):
                     extended_info["origin_country"] = musicbrainz_data["area"]
-                
+
                 # Artist type information
                 if musicbrainz_data.get("type"):
                     extended_info["artist_type"] = musicbrainz_data["type"]
-                
+
                 # Aliases (alternative names)
                 if musicbrainz_data.get("aliases"):
                     aliases = musicbrainz_data["aliases"]
                     if isinstance(aliases, list) and aliases:
                         extended_info["aliases"] = [alias for alias in aliases if alias]
-                
+
                 # Record labels (most authoritative)
                 if musicbrainz_data.get("labels"):
                     labels = musicbrainz_data["labels"]
                     if isinstance(labels, list) and labels:
                         extended_info["labels"] = [label for label in labels if label]
-                
+
                 # Sort name (for proper alphabetization)
                 if musicbrainz_data.get("sort_name"):
                     extended_info["sort_name"] = musicbrainz_data["sort_name"]
-                
+
                 # Begin area (where artist was formed, more specific than country)
-                if musicbrainz_data.get("begin_area") and not extended_info.get("origin_area"):
+                if musicbrainz_data.get("begin_area") and not extended_info.get(
+                    "origin_area"
+                ):
                     extended_info["origin_area"] = musicbrainz_data["begin_area"]
-                
+
                 # Disambiguation (helps identify the specific artist)
                 if musicbrainz_data.get("disambiguation"):
                     extended_info["disambiguation"] = musicbrainz_data["disambiguation"]
-                
+
                 # Additional genres from MusicBrainz tags (supplement existing genres)
                 mb_tags = musicbrainz_data.get("tags", [])
                 mb_genres = musicbrainz_data.get("genres", [])
-                
+
                 if mb_tags or mb_genres:
                     all_mb_genres = []
                     if isinstance(mb_tags, list):
                         all_mb_genres.extend(mb_tags)
                     if isinstance(mb_genres, list):
                         all_mb_genres.extend(mb_genres)
-                    
+
                     if all_mb_genres:
                         # Filter to music-related genres only
-                        music_genres = [g for g in all_mb_genres if self._is_music_genre(g)]
+                        music_genres = [
+                            g for g in all_mb_genres if self._is_music_genre(g)
+                        ]
                         if music_genres and not extended_info.get("additional_genres"):
-                            extended_info["additional_genres"] = music_genres[:10]  # Limit to avoid clutter
+                            extended_info["additional_genres"] = music_genres[
+                                :10
+                            ]  # Limit to avoid clutter
 
         return extended_info
 
@@ -1344,30 +1478,70 @@ class MetadataEnrichmentService:
         """Check if a tag/genre is music-related and not a general descriptor"""
         if not genre or not isinstance(genre, str):
             return False
-        
+
         genre_lower = genre.lower().strip()
-        
+
         # Skip very general or non-musical tags
         skip_tags = {
-            "seen live", "favorite", "favourites", "awesome", "great", "good", "bad", 
-            "love", "hate", "cool", "hot", "new", "old", "best", "worst", "top",
-            "albums i own", "artists i've seen live", "male", "female", "american", 
-            "british", "english", "canadian", "australian", "instrumental", "vocal",
-            "solo", "group", "band", "artist", "singer", "musician", "composer"
+            "seen live",
+            "favorite",
+            "favourites",
+            "awesome",
+            "great",
+            "good",
+            "bad",
+            "love",
+            "hate",
+            "cool",
+            "hot",
+            "new",
+            "old",
+            "best",
+            "worst",
+            "top",
+            "albums i own",
+            "artists i've seen live",
+            "male",
+            "female",
+            "american",
+            "british",
+            "english",
+            "canadian",
+            "australian",
+            "instrumental",
+            "vocal",
+            "solo",
+            "group",
+            "band",
+            "artist",
+            "singer",
+            "musician",
+            "composer",
         }
-        
+
         if genre_lower in skip_tags:
             return False
-            
+
         # Skip country names (these should go in origin_country)
-        country_indicators = ["american", "british", "canadian", "australian", "german", "french", "japanese"]
+        country_indicators = [
+            "american",
+            "british",
+            "canadian",
+            "australian",
+            "german",
+            "french",
+            "japanese",
+        ]
         if any(country in genre_lower for country in country_indicators):
             return False
-        
+
         # Skip decades (these are time periods, not genres)
-        if any(decade in genre_lower for decade in ["60s", "70s", "80s", "90s", "00s", "10s", "20s"]):
+        if any(
+            decade in genre_lower
+            for decade in ["60s", "70s", "80s", "90s", "00s", "10s", "20s"]
+        ):
             return False
-            
+
         # Accept anything that looks like a legitimate music genre
         return len(genre_lower) > 2
 
@@ -1428,22 +1602,22 @@ class MetadataEnrichmentService:
             # Extract from MusicBrainz data
             if "musicbrainz" in sources:
                 musicbrainz_data = sources["musicbrainz"]
-                
+
                 # MusicBrainz external URLs (most authoritative source)
                 if "external_urls" in musicbrainz_data:
                     mb_urls = musicbrainz_data["external_urls"]
-                    
+
                     # Map MusicBrainz URLs to our standard format
                     url_mapping = {
                         "homepage": "website_url",
-                        "spotify": "spotify_url", 
+                        "spotify": "spotify_url",
                         "youtube": "youtube_url",
                         "twitter": "twitter_url",
                         "facebook": "facebook_url",
                         "instagram": "instagram_url",
-                        "apple_music": "apple_music_url"
+                        "apple_music": "apple_music_url",
                     }
-                    
+
                     for mb_key, our_key in url_mapping.items():
                         if mb_key in mb_urls and mb_urls[mb_key]:
                             # MusicBrainz is authoritative, only override if we don't have it
@@ -1636,7 +1810,9 @@ class MetadataEnrichmentService:
 
         for artist_id in artist_ids:
             try:
-                result = await self.enrich_artist_metadata(artist_id, force_refresh, app_context)
+                result = await self.enrich_artist_metadata(
+                    artist_id, force_refresh, app_context
+                )
                 results.append(result)
 
                 # Rate limiting between requests
@@ -1660,7 +1836,13 @@ class MetadataEnrichmentService:
             with get_db() as session:
                 # Eagerly load the video with its artist relationship to avoid lazy loading issues
                 from sqlalchemy.orm import joinedload
-                video = session.query(Video).options(joinedload(Video.artist)).filter(Video.id == video_id).first()
+
+                video = (
+                    session.query(Video)
+                    .options(joinedload(Video.artist))
+                    .filter(Video.id == video_id)
+                    .first()
+                )
 
                 if not video:
                     return EnrichmentResult(
@@ -1679,7 +1861,9 @@ class MetadataEnrichmentService:
                 video_title = video.title
                 current_imvdb_id = video.imvdb_id
 
-                logger.info(f"Enhanced enrichment for video: {video_title} by {artist_name}")
+                logger.info(
+                    f"Enhanced enrichment for video: {video_title} by {artist_name}"
+                )
 
                 # Collect metadata from multiple sources
                 metadata_sources = {}
@@ -1690,49 +1874,81 @@ class MetadataEnrichmentService:
                 try:
                     if not current_imvdb_id or force_refresh:
                         # Search for video on IMVDb if not already linked
-                        imvdb_videos = imvdb_service.search_videos(artist_name, video_title)
-                        
+                        imvdb_videos = imvdb_service.search_videos(
+                            artist_name, video_title
+                        )
+
                         if imvdb_videos:
-                            best_match = imvdb_service.find_best_video_match(artist_name, video_title)
-                            
+                            best_match = imvdb_service.find_best_video_match(
+                                artist_name, video_title
+                            )
+
                             if best_match:
                                 metadata_sources["imvdb"] = best_match
-                                imvdb_metadata = imvdb_service.extract_metadata(best_match)
-                                
+                                imvdb_metadata = imvdb_service.extract_metadata(
+                                    best_match
+                                )
+
                                 # Apply IMVDb metadata with conflict resolution
-                                if not video.imvdb_id and imvdb_metadata.get("imvdb_id"):
+                                if not video.imvdb_id and imvdb_metadata.get(
+                                    "imvdb_id"
+                                ):
                                     video.imvdb_id = str(imvdb_metadata["imvdb_id"])
                                     updated_fields.append("imvdb_id")
-                                
+
                                 if not video.year and imvdb_metadata.get("year"):
                                     video.year = imvdb_metadata["year"]
                                     updated_fields.append("year")
-                                
-                                if not video.directors and imvdb_metadata.get("directors"):
+
+                                if not video.directors and imvdb_metadata.get(
+                                    "directors"
+                                ):
                                     video.directors = imvdb_metadata["directors"]
                                     updated_fields.append("directors")
-                                
-                                if not video.producers and imvdb_metadata.get("producers"):
+
+                                if not video.producers and imvdb_metadata.get(
+                                    "producers"
+                                ):
                                     video.producers = imvdb_metadata["producers"]
                                     updated_fields.append("producers")
-                                
+
                                 # Handle thumbnail extraction with validation and force refresh support
                                 thumbnail_url = imvdb_metadata.get("thumbnail_url")
-                                if thumbnail_url and thumbnail_url != "https://imvdb.com/" and len(thumbnail_url) > 20:
-                                    if (not video.thumbnail_url or force_refresh or not video.thumbnail_source):
+                                if (
+                                    thumbnail_url
+                                    and thumbnail_url != "https://imvdb.com/"
+                                    and len(thumbnail_url) > 20
+                                ):
+                                    if (
+                                        not video.thumbnail_url
+                                        or force_refresh
+                                        or not video.thumbnail_source
+                                    ):
                                         video.thumbnail_url = thumbnail_url
                                         video.thumbnail_source = "imvdb"
-                                        updated_fields.extend(["thumbnail_url", "thumbnail_source"])
-                                        logger.info(f"Added thumbnail from IMVDb for video {video_id}: {video.thumbnail_url}")
+                                        updated_fields.extend(
+                                            ["thumbnail_url", "thumbnail_source"]
+                                        )
+                                        logger.info(
+                                            f"Added thumbnail from IMVDb for video {video_id}: {video.thumbnail_url}"
+                                        )
                                 elif video.thumbnail_url:
-                                    logger.debug(f"Video {video_id} already has thumbnail: {video.thumbnail_url}")
+                                    logger.debug(
+                                        f"Video {video_id} already has thumbnail: {video.thumbnail_url}"
+                                    )
                                 elif not thumbnail_url:
-                                    logger.debug(f"No valid thumbnail available in IMVDb metadata for video {video_id}")
+                                    logger.debug(
+                                        f"No valid thumbnail available in IMVDb metadata for video {video_id}"
+                                    )
                                 else:
-                                    logger.debug(f"Rejected invalid IMVDb thumbnail for video {video_id}: {thumbnail_url}")
-                                
+                                    logger.debug(
+                                        f"Rejected invalid IMVDb thumbnail for video {video_id}: {thumbnail_url}"
+                                    )
+
                                 # Store raw IMVDb metadata
-                                video.imvdb_metadata = imvdb_metadata.get("raw_metadata")
+                                video.imvdb_metadata = imvdb_metadata.get(
+                                    "raw_metadata"
+                                )
                                 updated_fields.append("imvdb_metadata")
 
                 except Exception as e:
@@ -1746,8 +1962,10 @@ class MetadataEnrichmentService:
                         track_search = spotify_service.search_tracks(
                             f'track:"{video_title}" artist:"{artist_name}"'
                         )
-                        
-                        if not track_search or not track_search.get("tracks", {}).get("items"):
+
+                        if not track_search or not track_search.get("tracks", {}).get(
+                            "items"
+                        ):
                             # Fallback to broader search
                             track_search = spotify_service.search_tracks(
                                 f"{video_title} {artist_name}"
@@ -1759,14 +1977,16 @@ class MetadataEnrichmentService:
 
                             # Enhanced Spotify metadata extraction
                             album_data = best_track.get("album", {})
-                            
+
                             if not video.album and album_data.get("name"):
                                 video.album = album_data["name"]
                                 updated_fields.append("album")
 
                             if not video.year and album_data.get("release_date"):
                                 try:
-                                    release_year = album_data["release_date"].split("-")[0]
+                                    release_year = album_data["release_date"].split(
+                                        "-"
+                                    )[0]
                                     video.year = int(release_year)
                                     updated_fields.append("year")
                                 except (ValueError, IndexError):
@@ -1774,23 +1994,31 @@ class MetadataEnrichmentService:
 
                             # Extract track duration
                             if not video.duration and best_track.get("duration_ms"):
-                                video.duration = best_track["duration_ms"] // 1000  # Convert to seconds
+                                video.duration = (
+                                    best_track["duration_ms"] // 1000
+                                )  # Convert to seconds
                                 updated_fields.append("duration")
 
-                            # Get genres from artist or album  
+                            # Get genres from artist or album
                             if not video.genres:
                                 # Try to get genres from artist
                                 if video.artist.spotify_id:
                                     try:
-                                        artist_data = spotify_service.get_artist(video.artist.spotify_id)
+                                        artist_data = spotify_service.get_artist(
+                                            video.artist.spotify_id
+                                        )
                                         if artist_data and artist_data.get("genres"):
-                                            video.genres = artist_data["genres"][:3]  # Top 3 genres
+                                            video.genres = artist_data["genres"][
+                                                :3
+                                            ]  # Top 3 genres
                                             updated_fields.append("genres")
                                     except Exception:
                                         pass
 
                             # Extract Spotify album artwork as thumbnail if needed
-                            if (not video.thumbnail_url or force_refresh) and album_data.get("images"):
+                            if (
+                                not video.thumbnail_url or force_refresh
+                            ) and album_data.get("images"):
                                 # Get the highest quality image (first one is usually the best)
                                 album_images = album_data["images"]
                                 if album_images and len(album_images) > 0:
@@ -1798,25 +2026,39 @@ class MetadataEnrichmentService:
                                     if spotify_thumbnail_url:
                                         video.thumbnail_url = spotify_thumbnail_url
                                         video.thumbnail_source = "spotify"
-                                        updated_fields.extend(["thumbnail_url", "thumbnail_source"])
-                                        metadata_sources["Spotify Album Art"] = "Thumbnail extraction"
-                                        logger.info(f"Added Spotify album art thumbnail for video {video_id}: {spotify_thumbnail_url}")
+                                        updated_fields.extend(
+                                            ["thumbnail_url", "thumbnail_source"]
+                                        )
+                                        metadata_sources["Spotify Album Art"] = (
+                                            "Thumbnail extraction"
+                                        )
+                                        logger.info(
+                                            f"Added Spotify album art thumbnail for video {video_id}: {spotify_thumbnail_url}"
+                                        )
 
                             # Store additional metadata
                             video_metadata = video.video_metadata or {}
-                            video_metadata.update({
-                                "spotify_track_id": best_track.get("id"),
-                                "spotify_popularity": best_track.get("popularity"),
-                                "spotify_preview_url": best_track.get("preview_url"),
-                                "spotify_album_type": album_data.get("album_type"),
-                                "spotify_album_images": album_data.get("images", []),
-                            })
+                            video_metadata.update(
+                                {
+                                    "spotify_track_id": best_track.get("id"),
+                                    "spotify_popularity": best_track.get("popularity"),
+                                    "spotify_preview_url": best_track.get(
+                                        "preview_url"
+                                    ),
+                                    "spotify_album_type": album_data.get("album_type"),
+                                    "spotify_album_images": album_data.get(
+                                        "images", []
+                                    ),
+                                }
+                            )
                             video.video_metadata = video_metadata
                             updated_fields.append("video_metadata")
 
                 except Exception as e:
                     errors.append(f"Spotify enrichment failed: {str(e)}")
-                    logger.warning(f"Spotify enrichment failed for video {video_id}: {e}")
+                    logger.warning(
+                        f"Spotify enrichment failed for video {video_id}: {e}"
+                    )
 
                 # 3. Enhanced Last.fm enrichment
                 try:
@@ -1838,13 +2080,17 @@ class MetadataEnrichmentService:
                             # Track duration
                             if not video.duration and track_info.get("duration"):
                                 try:
-                                    video.duration = int(track_info["duration"]) // 1000  # Convert from ms
+                                    video.duration = (
+                                        int(track_info["duration"]) // 1000
+                                    )  # Convert from ms
                                     updated_fields.append("duration")
                                 except (ValueError, TypeError):
                                     pass
 
                             # Genres from tags
-                            if not video.genres and track_info.get("toptags", {}).get("tag"):
+                            if not video.genres and track_info.get("toptags", {}).get(
+                                "tag"
+                            ):
                                 tags = track_info["toptags"]["tag"]
                                 if isinstance(tags, list):
                                     genre_tags = [tag["name"] for tag in tags[:3]]
@@ -1853,30 +2099,38 @@ class MetadataEnrichmentService:
 
                             # Additional metadata
                             video_metadata = video.video_metadata or {}
-                            video_metadata.update({
-                                "lastfm_play_count": track_info.get("playcount"),
-                                "lastfm_listeners": track_info.get("listeners"),
-                                "lastfm_url": track_info.get("url"),
-                            })
+                            video_metadata.update(
+                                {
+                                    "lastfm_play_count": track_info.get("playcount"),
+                                    "lastfm_listeners": track_info.get("listeners"),
+                                    "lastfm_url": track_info.get("url"),
+                                }
+                            )
                             video.video_metadata = video_metadata
                             if "video_metadata" not in updated_fields:
                                 updated_fields.append("video_metadata")
 
                 except Exception as e:
                     errors.append(f"Last.fm enrichment failed: {str(e)}")
-                    logger.warning(f"Last.fm enrichment failed for video {video_id}: {e}")
+                    logger.warning(
+                        f"Last.fm enrichment failed for video {video_id}: {e}"
+                    )
 
                 # 4. MusicBrainz enrichment (for authoritative metadata)
                 try:
                     if video.artist.mbid or not video.album:
                         # Search for recording in MusicBrainz
                         # Note: This is a basic implementation - MusicBrainz recording search would need to be added to the service
-                        logger.debug(f"MusicBrainz recording enrichment not yet implemented for video {video_id}")
+                        logger.debug(
+                            f"MusicBrainz recording enrichment not yet implemented for video {video_id}"
+                        )
                         # TODO: Implement MusicBrainz recording search when service supports it
 
                 except Exception as e:
                     errors.append(f"MusicBrainz enrichment failed: {str(e)}")
-                    logger.warning(f"MusicBrainz enrichment failed for video {video_id}: {e}")
+                    logger.warning(
+                        f"MusicBrainz enrichment failed for video {video_id}: {e}"
+                    )
 
                 # 5. YouTube metadata enhancement (if we have YouTube ID)
                 try:
@@ -1885,100 +2139,155 @@ class MetadataEnrichmentService:
                         if not video.thumbnail_url or force_refresh:
                             # YouTube thumbnail URLs follow a standard pattern
                             youtube_thumbnail_url = f"https://img.youtube.com/vi/{video.youtube_id}/maxresdefault.jpg"
-                            
+
                             # Verify the thumbnail exists by making a HEAD request
                             try:
-                                response = requests.head(youtube_thumbnail_url, timeout=5)
+                                response = requests.head(
+                                    youtube_thumbnail_url, timeout=5
+                                )
                                 if response.status_code == 200:
                                     video.thumbnail_url = youtube_thumbnail_url
                                     video.thumbnail_source = "youtube"
-                                    updated_fields.extend(["thumbnail_url", "thumbnail_source"])
+                                    updated_fields.extend(
+                                        ["thumbnail_url", "thumbnail_source"]
+                                    )
                                     metadata_sources["YouTube"] = "Thumbnail extraction"
-                                    logger.info(f"Added YouTube thumbnail for video {video_id}: {youtube_thumbnail_url}")
+                                    logger.info(
+                                        f"Added YouTube thumbnail for video {video_id}: {youtube_thumbnail_url}"
+                                    )
                                 else:
                                     # Try medium quality if maxres doesn't exist
                                     youtube_thumbnail_url = f"https://img.youtube.com/vi/{video.youtube_id}/mqdefault.jpg"
-                                    response = requests.head(youtube_thumbnail_url, timeout=5)
+                                    response = requests.head(
+                                        youtube_thumbnail_url, timeout=5
+                                    )
                                     if response.status_code == 200:
                                         video.thumbnail_url = youtube_thumbnail_url
                                         video.thumbnail_source = "youtube"
-                                        updated_fields.extend(["thumbnail_url", "thumbnail_source"])
-                                        metadata_sources["YouTube"] = "Thumbnail extraction"
-                                        logger.info(f"Added YouTube thumbnail (medium) for video {video_id}: {youtube_thumbnail_url}")
+                                        updated_fields.extend(
+                                            ["thumbnail_url", "thumbnail_source"]
+                                        )
+                                        metadata_sources["YouTube"] = (
+                                            "Thumbnail extraction"
+                                        )
+                                        logger.info(
+                                            f"Added YouTube thumbnail (medium) for video {video_id}: {youtube_thumbnail_url}"
+                                        )
                             except Exception as thumb_error:
-                                logger.debug(f"YouTube thumbnail verification failed for video {video_id}: {thumb_error}")
-                        
+                                logger.debug(
+                                    f"YouTube thumbnail verification failed for video {video_id}: {thumb_error}"
+                                )
+
                         # TODO: Implement YouTube video metadata extraction
-                        logger.debug(f"YouTube metadata enrichment not yet implemented for video {video_id}")
+                        logger.debug(
+                            f"YouTube metadata enrichment not yet implemented for video {video_id}"
+                        )
 
                 except Exception as e:
                     errors.append(f"YouTube enrichment failed: {str(e)}")
-                    logger.warning(f"YouTube enrichment failed for video {video_id}: {e}")
+                    logger.warning(
+                        f"YouTube enrichment failed for video {video_id}: {e}"
+                    )
 
                 # 6. FFmpeg metadata extraction (if local file exists)
                 try:
-                    if video.local_path and (force_refresh or not video.video_metadata or 
-                                           not video.video_metadata.get('ffmpeg_extracted')):
+                    if video.local_path and (
+                        force_refresh
+                        or not video.video_metadata
+                        or not video.video_metadata.get("ffmpeg_extracted")
+                    ):
                         import os
                         from pathlib import Path
+
                         if os.path.exists(video.local_path):
                             video_indexing_service = VideoIndexingService()
-                            ffmpeg_metadata = video_indexing_service.extract_ffmpeg_metadata(video.local_path)
-                            
+                            ffmpeg_metadata = (
+                                video_indexing_service.extract_ffmpeg_metadata(
+                                    video.local_path
+                                )
+                            )
+
                             if ffmpeg_metadata:
                                 # Update direct fields
-                                if ffmpeg_metadata.get('duration') and not video.duration:
-                                    video.duration = ffmpeg_metadata['duration']
+                                if (
+                                    ffmpeg_metadata.get("duration")
+                                    and not video.duration
+                                ):
+                                    video.duration = ffmpeg_metadata["duration"]
                                     updated_fields.append("duration")
-                                
-                                if ffmpeg_metadata.get('quality') and not video.quality:
-                                    video.quality = ffmpeg_metadata['quality']
+
+                                if ffmpeg_metadata.get("quality") and not video.quality:
+                                    video.quality = ffmpeg_metadata["quality"]
                                     updated_fields.append("quality")
-                                
+
                                 # Update metadata JSON
                                 if not video.video_metadata:
                                     video.video_metadata = {}
-                                
-                                video.video_metadata.update({
-                                    'width': ffmpeg_metadata.get('width'),
-                                    'height': ffmpeg_metadata.get('height'),
-                                    'video_codec': ffmpeg_metadata.get('video_codec'),
-                                    'audio_codec': ffmpeg_metadata.get('audio_codec'),
-                                    'fps': ffmpeg_metadata.get('fps'),
-                                    'bitrate': ffmpeg_metadata.get('bitrate'),
-                                    'file_size': ffmpeg_metadata.get('file_size'),
-                                    'ffmpeg_extracted': True,
-                                    'ffmpeg_extraction_date': datetime.utcnow().isoformat()
-                                })
-                                flag_modified(video, 'video_metadata')
+
+                                video.video_metadata.update(
+                                    {
+                                        "width": ffmpeg_metadata.get("width"),
+                                        "height": ffmpeg_metadata.get("height"),
+                                        "video_codec": ffmpeg_metadata.get(
+                                            "video_codec"
+                                        ),
+                                        "audio_codec": ffmpeg_metadata.get(
+                                            "audio_codec"
+                                        ),
+                                        "fps": ffmpeg_metadata.get("fps"),
+                                        "bitrate": ffmpeg_metadata.get("bitrate"),
+                                        "file_size": ffmpeg_metadata.get("file_size"),
+                                        "ffmpeg_extracted": True,
+                                        "ffmpeg_extraction_date": datetime.utcnow().isoformat(),
+                                    }
+                                )
+                                flag_modified(video, "video_metadata")
                                 updated_fields.append("video_metadata")
                                 metadata_sources["FFmpeg"] = "Video file analysis"
-                                logger.info(f"FFmpeg metadata extracted for video {video_id}")
+                                logger.info(
+                                    f"FFmpeg metadata extracted for video {video_id}"
+                                )
 
                 except Exception as e:
                     errors.append(f"FFmpeg extraction failed: {str(e)}")
-                    logger.warning(f"FFmpeg extraction failed for video {video_id}: {e}")
+                    logger.warning(
+                        f"FFmpeg extraction failed for video {video_id}: {e}"
+                    )
 
                 # 7. Lyrics search (if no existing lyrics or force refresh)
                 try:
-                    logger.info(f"Starting lyrics search for video {video_id}. Current lyrics: {'exists' if video.lyrics else 'empty'}, force_refresh: {force_refresh}")
+                    logger.info(
+                        f"Starting lyrics search for video {video_id}. Current lyrics: {'exists' if video.lyrics else 'empty'}, force_refresh: {force_refresh}"
+                    )
                     if force_refresh or not video.lyrics:
                         if video.artist and video.artist.name and video.title:
-                            logger.info(f"Searching lyrics for: '{video.artist.name}' - '{video.title}'")
+                            logger.info(
+                                f"Searching lyrics for: '{video.artist.name}' - '{video.title}'"
+                            )
                             # Try lyrics search using the existing azlyrics function
                             try:
-                                lyrics_result = search_lyrics_azlyrics(video.artist.name, video.title)
+                                lyrics_result = search_lyrics_azlyrics(
+                                    video.artist.name, video.title
+                                )
                                 if lyrics_result and len(lyrics_result.strip()) > 50:
                                     video.lyrics = lyrics_result
                                     updated_fields.append("lyrics")
                                     metadata_sources["Lyrics.ovh"] = "Lyrics search"
-                                    logger.info(f"Lyrics found and saved for video {video_id} ({len(lyrics_result)} chars)")
+                                    logger.info(
+                                        f"Lyrics found and saved for video {video_id} ({len(lyrics_result)} chars)"
+                                    )
                                 else:
-                                    logger.info(f"No substantial lyrics found for video {video_id} (result: {lyrics_result[:100] if lyrics_result else 'None'})")
+                                    logger.info(
+                                        f"No substantial lyrics found for video {video_id} (result: {lyrics_result[:100] if lyrics_result else 'None'})"
+                                    )
                             except Exception as lyrics_error:
-                                logger.warning(f"Lyrics search failed for video {video_id}: {lyrics_error}")
+                                logger.warning(
+                                    f"Lyrics search failed for video {video_id}: {lyrics_error}"
+                                )
                         else:
-                            logger.info(f"Cannot search lyrics for video {video_id}: missing artist name ({video.artist.name if video.artist else 'None'}) or title ({video.title})")
+                            logger.info(
+                                f"Cannot search lyrics for video {video_id}: missing artist name ({video.artist.name if video.artist else 'None'}) or title ({video.title})"
+                            )
 
                 except Exception as e:
                     errors.append(f"Lyrics search failed: {str(e)}")
@@ -1986,19 +2295,31 @@ class MetadataEnrichmentService:
 
                 # 8. Genre fallback - Use artist genres if video still has no genres
                 try:
-                    logger.info(f"Checking genre fallback for video {video_id}. Video genres: {video.genres}, Artist genres: {video.artist.genres if video.artist else 'No artist'}")
+                    logger.info(
+                        f"Checking genre fallback for video {video_id}. Video genres: {video.genres}, Artist genres: {video.artist.genres if video.artist else 'No artist'}"
+                    )
                     if not video.genres and video.artist and video.artist.genres:
-                        video.genres = video.artist.genres[:3]  # Top 3 genres from artist
+                        video.genres = video.artist.genres[
+                            :3
+                        ]  # Top 3 genres from artist
                         updated_fields.append("genres")
                         metadata_sources["Artist Database"] = "Genre fallback"
-                        logger.info(f"Applied genre fallback from artist for video {video_id}: {video.genres}")
+                        logger.info(
+                            f"Applied genre fallback from artist for video {video_id}: {video.genres}"
+                        )
                     elif video.genres:
-                        logger.info(f"Video {video_id} already has genres: {video.genres}")
+                        logger.info(
+                            f"Video {video_id} already has genres: {video.genres}"
+                        )
                     elif not video.artist:
-                        logger.info(f"Video {video_id} has no artist for genre fallback")
+                        logger.info(
+                            f"Video {video_id} has no artist for genre fallback"
+                        )
                     elif not video.artist.genres:
-                        logger.info(f"Video {video_id} artist has no genres for fallback")
-                        
+                        logger.info(
+                            f"Video {video_id} artist has no genres for fallback"
+                        )
+
                 except Exception as e:
                     errors.append(f"Genre fallback failed: {str(e)}")
                     logger.warning(f"Genre fallback failed for video {video_id}: {e}")
@@ -2010,7 +2331,9 @@ class MetadataEnrichmentService:
                 # Commit changes
                 session.commit()
 
-                logger.info(f"Video {video_id} enrichment completed. Updated fields: {updated_fields}")
+                logger.info(
+                    f"Video {video_id} enrichment completed. Updated fields: {updated_fields}"
+                )
 
                 return EnrichmentResult(
                     video_id=video_id,
@@ -2090,12 +2413,7 @@ class MetadataEnrichmentService:
 
                 # Calculate overall external ID coverage (average across all services)
                 overall_coverage = (
-                    (
-                        with_spotify
-                        + with_lastfm
-                        + with_imvdb
-                        + with_musicbrainz
-                    )
+                    (with_spotify + with_lastfm + with_imvdb + with_musicbrainz)
                     / (total_artists * 4)  # Updated to include MusicBrainz
                     * 100
                     if total_artists > 0

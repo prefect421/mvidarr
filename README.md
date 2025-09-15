@@ -105,8 +105,10 @@ sudo systemctl status mvidarr.service
 
 ## 📚 Documentation
 
+- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Complete deployment with Celery + Redis background jobs
 - **[User Guide](docs/USER-GUIDE.md)** - Feature documentation and tutorials
 - **[Installation Guide](docs/INSTALLATION-GUIDE.md)** - Comprehensive setup instructions
+- **[Celery Background Jobs](CELERY_BACKGROUND_JOBS_IMPLEMENTATION.md)** - Background job system documentation
 - **[Docker Optimization Guide](docs/DOCKER_OPTIMIZATION_GUIDE.md)** - Container build optimization and monitoring
 - **[Security Implementation](docs/SECURITY_IMPLEMENTATION.md)** - Security features and configuration
 - **[Final Project Status](docs/FINAL_PROJECT_STATUS.md)** - Complete feature status and changelog
@@ -120,6 +122,7 @@ MVidarr is built with modern, high-performance architecture:
 - **API Layer**: Comprehensive FastAPI with versioning, request logging, and auto-generated clients
 - **Template System**: Async Jinja2 templates with performance optimization and caching
 - **WebSocket Support**: Native FastAPI WebSockets for real-time features
+- **Background Jobs**: **Celery + Redis** for reliable metadata enrichment and processing
 - **Database**: MariaDB 11.4+ with async connection pooling and optimization
 - **Frontend**: Modern HTML5/CSS3/JavaScript with ES6+ async patterns
 - **Performance**: Multi-layer caching (Memory + Redis), compression, and optimization
@@ -138,11 +141,19 @@ Configuration is managed through:
 
 Key environment variables:
 ```bash
+# Database
 DB_HOST=mariadb
 DB_PASSWORD=secure_password
 SECRET_KEY=your-secret-key
+
+# External APIs
 IMVDB_API_KEY=your-imvdb-key
 YOUTUBE_API_KEY=your-youtube-key
+
+# Background Jobs (New!)
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+BACKGROUND_JOBS_ENABLED=true
 ```
 
 ## 🛡️ Security

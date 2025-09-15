@@ -4,19 +4,20 @@ Simple synchronization between local storage and personal cloud providers
 """
 
 import asyncio
+import hashlib
 import json
 import os
-import hashlib
+import time
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Any, Callable
 from pathlib import Path
-import aiofiles
-import time
+from typing import Any, Callable, Dict, List, Optional
 
-from src.utils.logger import get_logger
+import aiofiles
+
+from src.services.personal_backup import CloudProvider, get_personal_backup_service
 from src.services.redis_service import get_redis_client
-from src.services.personal_backup import get_personal_backup_service, CloudProvider
+from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.sync_manager")
 

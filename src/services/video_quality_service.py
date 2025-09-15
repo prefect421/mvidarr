@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
 from src.database.models import Artist, Setting, User, Video, VideoStatus
-from src.services.youtube_quality_check_service import youtube_quality_check_service
 from src.services.settings_service import settings
+from src.services.youtube_quality_check_service import youtube_quality_check_service
 from src.utils.logger import get_logger
 from src.utils.performance_monitor import monitor_performance
 
@@ -243,10 +243,10 @@ class VideoQualityService:
     ) -> str:
         """
         Generate yt-dlp format string with improved quality selection using -S parameters
-        
+
         Uses advanced format selection based on:
         - Resolution preference (1080p optimal)
-        - Container preference (mp4:m4a)  
+        - Container preference (mp4:m4a)
         - Codec preference (AVC1/H264)
         - Quality-focused selection strategy
 
@@ -288,67 +288,83 @@ class VideoQualityService:
 
             # IMPROVED STRATEGY: Use yt-dlp's advanced format selection with -S parameters
             # This provides much better quality selection than traditional format strings
-            
+
             # Primary: High-quality formats with AVC1 codec preference (best compatibility)
             # Target 1080p as optimal balance of quality and file size
             if max_height >= 1080:
                 # Best quality 1080p with AVC1 codec and MP4 container
-                format_parts.extend([
-                    "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][vcodec^=avc1]+bestaudio",
-                    "bestvideo[height<=1080][ext=mp4]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][ext=mp4]+bestaudio",
-                ])
-            
+                format_parts.extend(
+                    [
+                        "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][vcodec^=avc1]+bestaudio",
+                        "bestvideo[height<=1080][ext=mp4]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][ext=mp4]+bestaudio",
+                    ]
+                )
+
             if max_height >= 720:
                 # Fallback to 720p with same codec preferences
-                format_parts.extend([
-                    "bestvideo[height<=720][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=720][vcodec^=avc1]+bestaudio",
-                    "bestvideo[height<=720][ext=mp4]+bestaudio[acodec^=mp4a]/bestvideo[height<=720][ext=mp4]+bestaudio",
-                ])
+                format_parts.extend(
+                    [
+                        "bestvideo[height<=720][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=720][vcodec^=avc1]+bestaudio",
+                        "bestvideo[height<=720][ext=mp4]+bestaudio[acodec^=mp4a]/bestvideo[height<=720][ext=mp4]+bestaudio",
+                    ]
+                )
 
             # Secondary: Traditional best quality with height limits
             if default_quality == QualityLevel.BEST_AVAILABLE.value:
                 if max_height >= 1080:
                     # Prioritize 1080p as optimal quality
-                    format_parts.extend([
-                        "best[height<=1080][vcodec^=avc1][ext=mp4]",
-                        "best[height<=1080][ext=mp4]",
-                        "best[height<=1080]"
-                    ])
+                    format_parts.extend(
+                        [
+                            "best[height<=1080][vcodec^=avc1][ext=mp4]",
+                            "best[height<=1080][ext=mp4]",
+                            "best[height<=1080]",
+                        ]
+                    )
                 elif max_height >= 720:
-                    format_parts.extend([
-                        "best[height<=720][vcodec^=avc1][ext=mp4]",
-                        "best[height<=720][ext=mp4]",
-                        "best[height<=720]"
-                    ])
+                    format_parts.extend(
+                        [
+                            "best[height<=720][vcodec^=avc1][ext=mp4]",
+                            "best[height<=720][ext=mp4]",
+                            "best[height<=720]",
+                        ]
+                    )
                 else:
                     format_parts.append(f"best[height<={max_height}]")
             else:
                 # Specific quality preference
                 target_height = QualityLevel(default_quality).to_height()
-                format_parts.extend([
-                    f"best[height<={target_height}][vcodec^=avc1][ext=mp4]",
-                    f"best[height<={target_height}][ext=mp4]",
-                    f"best[height<={target_height}]"
-                ])
+                format_parts.extend(
+                    [
+                        f"best[height<={target_height}][vcodec^=avc1][ext=mp4]",
+                        f"best[height<={target_height}][ext=mp4]",
+                        f"best[height<={target_height}]",
+                    ]
+                )
 
             # Tertiary: Quality fallback chain with codec preferences
             if preferences.get("quality_fallback", True):
-                fallback_heights = [1080, 720, 480] if max_height >= 480 else [max_height]
+                fallback_heights = (
+                    [1080, 720, 480] if max_height >= 480 else [max_height]
+                )
                 for height in fallback_heights:
                     if min_height <= height <= max_height:
-                        format_parts.extend([
-                            f"best[height<={height}][vcodec^=avc1][ext=mp4]",
-                            f"best[height<={height}][ext=mp4]",
-                            f"best[height<={height}]"
-                        ])
+                        format_parts.extend(
+                            [
+                                f"best[height<={height}][vcodec^=avc1][ext=mp4]",
+                                f"best[height<={height}][ext=mp4]",
+                                f"best[height<={height}]",
+                            ]
+                        )
 
             # Final fallbacks: Ensure something downloads
-            format_parts.extend([
-                "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]",  # Best AVC1 + MP4 audio
-                "bestvideo[ext=mp4]+bestaudio[acodec^=mp4a]",       # Best MP4 video + MP4 audio  
-                "bestvideo+bestaudio/best[ext=mp4]",                # Any separate streams or MP4
-                "best",                                              # Ultimate fallback
-            ])
+            format_parts.extend(
+                [
+                    "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]",  # Best AVC1 + MP4 audio
+                    "bestvideo[ext=mp4]+bestaudio[acodec^=mp4a]",  # Best MP4 video + MP4 audio
+                    "bestvideo+bestaudio/best[ext=mp4]",  # Any separate streams or MP4
+                    "best",  # Ultimate fallback
+                ]
+            )
 
             # Join with forward slashes for yt-dlp format selection
             format_string = "/".join(format_parts)
@@ -361,12 +377,14 @@ class VideoQualityService:
         except Exception as e:
             self.logger.error(f"Error generating yt-dlp format string: {e}")
             # Return improved safe default with AVC1 and MP4 preferences
-            return ("bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
-                   "bestvideo[height<=1080][ext=mp4]+bestaudio/"
-                   "best[height<=1080][ext=mp4]/"
-                   "best[height<=720][ext=mp4]/"
-                   "bestvideo[height<=1080]+bestaudio/"
-                   "best")
+            return (
+                "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
+                "bestvideo[height<=1080][ext=mp4]+bestaudio/"
+                "best[height<=1080][ext=mp4]/"
+                "best[height<=720][ext=mp4]/"
+                "bestvideo[height<=1080]+bestaudio/"
+                "best"
+            )
 
     def _get_artist_quality_preferences(
         self, artist_id: int
@@ -442,7 +460,7 @@ class VideoQualityService:
             if video.video_metadata:
                 metadata = video.video_metadata
                 analysis["current_width"] = metadata.get("width")
-                
+
                 # Ensure height is an integer
                 metadata_height = metadata.get("height")
                 if metadata_height is not None:
@@ -484,7 +502,7 @@ class VideoQualityService:
                     height = int(height)
                 except (ValueError, TypeError):
                     height = 0
-                    
+
                 if height >= 2160:
                     quality_score = 100  # 4K
                 elif height >= 1440:
@@ -517,7 +535,7 @@ class VideoQualityService:
                 current_height = int(current_height) if current_height else 0
             except (ValueError, TypeError):
                 current_height = 0
-                
+
             if current_height < 1080:  # Recommend upgrade for anything below 1080p
                 analysis["upgrade_recommended"] = True
 
@@ -554,11 +572,11 @@ class VideoQualityService:
                     Video.local_path.isnot(None),
                     Video.quality.isnot(None),
                 )
-                
+
                 # Apply limit only if specified (0 means no limit)
                 if limit > 0:
                     query = query.limit(limit * 2)  # Get extra to filter
-                
+
                 videos = query.all()
 
                 user_preferences = self.get_user_quality_preferences(user_id)
@@ -568,7 +586,7 @@ class VideoQualityService:
                     # Use YouTube quality check data if available
                     if not youtube_quality_check_service.is_video_upgradeable(video):
                         continue
-                        
+
                     analysis = self.analyze_video_quality(video)
 
                     if analysis["upgrade_recommended"]:
@@ -626,7 +644,7 @@ class VideoQualityService:
             current_height = int(current_height) if current_height else 0
         except (ValueError, TypeError):
             current_height = 0
-            
+
         if current_height <= 360:
             priority += 50  # High priority for very low quality
         elif current_height <= 480:
@@ -713,30 +731,38 @@ class VideoQualityService:
 
                 # Queue the upgrade download using background job system
                 import asyncio
-                from src.services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
-                
+
+                from src.services.job_queue import (
+                    BackgroundJob,
+                    JobPriority,
+                    JobType,
+                    get_job_queue,
+                )
+
                 # Create background job for video download
                 download_job = BackgroundJob(
                     type=JobType.VIDEO_DOWNLOAD,
                     priority=JobPriority.HIGH,  # Quality upgrades are high priority
                     payload={
-                        'video_id': video_id,
-                        'quality': 'best',  # Will be overridden by format string
-                        'force_redownload': True,  # Always redownload for upgrades
-                        'upgrade_mode': True,  # Flag this as an upgrade
-                        'original_quality': current_analysis.get("current_quality"),
-                        'target_quality': user_prefs.get("default_quality")
-                    }
+                        "video_id": video_id,
+                        "quality": "best",  # Will be overridden by format string
+                        "force_redownload": True,  # Always redownload for upgrades
+                        "upgrade_mode": True,  # Flag this as an upgrade
+                        "original_quality": current_analysis.get("current_quality"),
+                        "target_quality": user_prefs.get("default_quality"),
+                    },
                 )
-                
+
                 # Queue the download job
                 async def queue_download_job():
                     job_queue = await get_job_queue()
                     return await job_queue.enqueue(download_job)
-                
+
                 download_job_id = asyncio.run(queue_download_job())
-                
-                self.logger.info(f"Queued video download job {download_job_id} for quality upgrade of video {video_id}")
+
+                self.logger.info(
+                    f"Queued video download job {download_job_id} for quality upgrade of video {video_id}"
+                )
 
                 return {
                     "success": True,

@@ -56,7 +56,7 @@ class DynamicPlaylistService:
 
             session.add(playlist)
             session.commit()
-            
+
             # Get the playlist ID before any potential refresh issues
             playlist_id = playlist.id
 

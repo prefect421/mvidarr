@@ -216,7 +216,9 @@ class EnhancedArtistDiscoveryService:
 
                 # IMVDb enrichment - DISABLED per user requirements
                 # IMVDb should only be used for searching, not as a metadata source
-                logger.debug(f"IMVDb enrichment disabled per configuration for artist: {artist.name}")
+                logger.debug(
+                    f"IMVDb enrichment disabled per configuration for artist: {artist.name}"
+                )
 
                 # Spotify enrichment
                 try:
@@ -778,7 +780,9 @@ class EnhancedArtistDiscoveryService:
     def _enrich_from_imvdb(self, artist_name: str) -> Optional[ArtistMetadata]:
         """Enrich artist from IMVDb - DISABLED per user requirements"""
         # IMVDb should only be used for searching, not as a metadata source
-        logger.debug(f"IMVDb enrichment method disabled per configuration for artist: {artist_name}")
+        logger.debug(
+            f"IMVDb enrichment method disabled per configuration for artist: {artist_name}"
+        )
         return None
 
     def _enrich_from_spotify(self, artist_name: str) -> Optional[ArtistMetadata]:
@@ -1156,7 +1160,7 @@ enhanced_artist_discovery_service = EnhancedArtistDiscoveryService()
 async def get_enhanced_artist_discovery() -> EnhancedArtistDiscoveryService:
     """
     Get the enhanced artist discovery service instance
-    
+
     Returns:
         EnhancedArtistDiscoveryService: Configured service instance
     """

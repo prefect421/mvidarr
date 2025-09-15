@@ -284,19 +284,30 @@ class SpotifySyncService:
 
         session.add(new_artist)
         session.flush()  # Get the ID
-        
+
         # Run auto-processing for newly created artist
         try:
-            from src.services.artist_auto_processing_service import artist_auto_processing_service
+            from src.services.artist_auto_processing_service import (
+                artist_auto_processing_service,
+            )
+
             # Ensure artist is bound to session for auto-processing
             session.refresh(new_artist)
-            auto_processing_results = artist_auto_processing_service.process_new_artist(new_artist, session)
+            auto_processing_results = artist_auto_processing_service.process_new_artist(
+                new_artist, session
+            )
             # Refresh artist after auto-processing to get any metadata enrichment updates
             session.refresh(new_artist)
-            match_count = auto_processing_results.get("auto_match", {}).get("match_count", 0)
-            logger.info(f"Auto-processing completed for {artist_name} - {match_count} services matched")
+            match_count = auto_processing_results.get("auto_match", {}).get(
+                "match_count", 0
+            )
+            logger.info(
+                f"Auto-processing completed for {artist_name} - {match_count} services matched"
+            )
         except Exception as e:
-            logger.warning(f"Auto-processing failed for newly created artist {artist_name}: {e}")
+            logger.warning(
+                f"Auto-processing failed for newly created artist {artist_name}: {e}"
+            )
 
         logger.info(f"Created new artist from Spotify: {artist_name}")
         return new_artist

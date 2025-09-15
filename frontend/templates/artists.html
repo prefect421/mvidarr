@@ -1666,10 +1666,10 @@ function deleteArtist(id) {
                     // Update the results count
                     updateResultsAfterDelete();
                 }, 300);
-            } else if (response.status === 400 && data.message && data.message.includes('associated videos')) {
+            } else if (response.status === 400 && (data.detail || data.message) && (data.detail || data.message).includes('associated videos')) {
                 // Artist has videos, ask if user wants to delete videos too
                 const confirmWithVideos = confirm(
-                    `${data.message}\n\nWould you like to delete the artist along with all their videos? This action cannot be undone.`
+                    `${data.detail || data.message}\n\nWould you like to delete the artist along with all their videos? This action cannot be undone.`
                 );
                 
                 if (confirmWithVideos) {
@@ -1693,7 +1693,7 @@ function deleteArtist(id) {
                                 updateResultsAfterDelete();
                             }, 300);
                         } else {
-                            showError(retryData.message || retryData.error || 'Failed to delete artist with videos');
+                            showError(retryData.detail || retryData.message || retryData.error || 'Failed to delete artist with videos');
                             // Restore button
                             deleteBtn.innerHTML = originalContent;
                             deleteBtn.disabled = false;
@@ -1713,7 +1713,7 @@ function deleteArtist(id) {
                 }
             } else {
                 // Other error
-                showError(data.message || data.error || 'Failed to delete artist');
+                showError(data.detail || data.message || data.error || 'Failed to delete artist');
                 // Restore button
                 deleteBtn.innerHTML = originalContent;
                 deleteBtn.disabled = false;
@@ -1927,7 +1927,7 @@ function bulkDeleteArtists() {
             updateSelectionDisplay();
             loadArtists(currentPage);
         } else {
-            showError(result.message || result.error || 'Failed to delete selected artists');
+            showError(result.detail || result.message || result.error || 'Failed to delete selected artists');
         }
     })
     .catch(error => {

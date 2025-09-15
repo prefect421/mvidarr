@@ -3,30 +3,45 @@ Analytics & Reporting FastAPI Endpoints - Phase 3 Week 27
 Comprehensive API endpoints for analytics, reporting, and real-time dashboards
 """
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends
-from fastapi.responses import FileResponse, HTMLResponse
-from typing import Dict, List, Optional, Any, Union
-from datetime import datetime
-from pydantic import BaseModel, Field
 import time
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
-from src.services.user_behavior_analytics import (
-    get_user_behavior_analytics, UserActionType, track_video_play, track_search_query, track_page_view
-)
-from src.services.content_analytics_engine import (
-    get_content_analytics_engine, ContentType, MetricType, record_video_view, record_video_download, record_engagement_time
-)
-from src.services.real_time_reporting_system import (
-    get_real_time_reporting_system, ReportType, ReportFormat, ReportSchedule, ReportConfiguration
-)
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import BaseModel, Field
+
 from src.services.analytics_service import get_analytics_service
+from src.services.content_analytics_engine import (
+    ContentType,
+    MetricType,
+    get_content_analytics_engine,
+    record_engagement_time,
+    record_video_download,
+    record_video_view,
+)
 from src.services.performance_monitor import get_performance_monitor
+from src.services.real_time_reporting_system import (
+    ReportConfiguration,
+    ReportFormat,
+    ReportSchedule,
+    ReportType,
+    get_real_time_reporting_system,
+)
+from src.services.user_behavior_analytics import (
+    UserActionType,
+    get_user_behavior_analytics,
+    track_page_view,
+    track_search_query,
+    track_video_play,
+)
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.analytics_reporting")
 
 # Create router
 analytics_router = APIRouter(prefix="/analytics", tags=["analytics", "reporting"])
+
 
 # Pydantic models for request/response
 class UserActionRequest(BaseModel):
@@ -36,8 +51,12 @@ class UserActionRequest(BaseModel):
     user_agent: str = Field(..., description="User's browser/client info")
     session_id: Optional[str] = Field(None, description="Session identifier")
     ip_address: Optional[str] = Field("", description="User's IP address")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional action data")
-    duration_ms: Optional[int] = Field(None, description="Action duration in milliseconds")
+    metadata: Optional[Dict[str, Any]] = Field(
+        None, description="Additional action data"
+    )
+    duration_ms: Optional[int] = Field(
+        None, description="Action duration in milliseconds"
+    )
 
 
 class ContentMetricRequest(BaseModel):
@@ -47,7 +66,9 @@ class ContentMetricRequest(BaseModel):
     value: float = Field(..., description="Metric value")
     user_id: Optional[str] = Field(None, description="User identifier")
     session_id: Optional[str] = Field(None, description="Session identifier")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metric data")
+    metadata: Optional[Dict[str, Any]] = Field(
+        None, description="Additional metric data"
+    )
 
 
 class ReportConfigRequest(BaseModel):
@@ -77,15 +98,17 @@ async def track_user_action(request: UserActionRequest):
     """Track a user action event"""
     try:
         start_time = time.time()
-        
+
         user_analytics = await get_user_behavior_analytics()
-        
+
         # Validate action type
         try:
             action_type = UserActionType(request.action_type)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid action type: {request.action_type}")
-        
+            raise HTTPException(
+                status_code=400, detail=f"Invalid action type: {request.action_type}"
+            )
+
         # Track the action
         action_id = await user_analytics.track_user_action(
             user_id=request.user_id,
@@ -95,18 +118,18 @@ async def track_user_action(request: UserActionRequest):
             session_id=request.session_id,
             ip_address=request.ip_address or "",
             metadata=request.metadata or {},
-            duration_ms=request.duration_ms
+            duration_ms=request.duration_ms,
         )
-        
+
         processing_time = (time.time() - start_time) * 1000
-        
+
         return AnalyticsResponse(
             success=True,
             message="User action tracked successfully",
             data={"action_id": action_id},
-            processing_time_ms=processing_time
+            processing_time_ms=processing_time,
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to track user action: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -117,18 +140,20 @@ async def get_user_engagement_metrics(user_id: str):
     """Get engagement metrics for a specific user"""
     try:
         user_analytics = await get_user_behavior_analytics()
-        
+
         engagement_metrics = await user_analytics.get_user_engagement_metrics(user_id)
-        
+
         if not engagement_metrics:
-            raise HTTPException(status_code=404, detail="User engagement data not found")
-        
+            raise HTTPException(
+                status_code=404, detail="User engagement data not found"
+            )
+
         return AnalyticsResponse(
             success=True,
             message="User engagement metrics retrieved successfully",
-            data=engagement_metrics.to_dict()
+            data=engagement_metrics.to_dict(),
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -141,34 +166,36 @@ async def get_user_behavior_summary():
     """Get comprehensive user behavior analytics summary"""
     try:
         user_analytics = await get_user_behavior_analytics()
-        
+
         summary = await user_analytics.get_analytics_summary()
-        
+
         return AnalyticsResponse(
             success=True,
             message="User behavior summary retrieved successfully",
-            data=summary
+            data=summary,
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get user behavior summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @analytics_router.get("/popular-content", response_model=AnalyticsResponse)
-async def get_popular_content(hours: int = Query(24, description="Time window in hours")):
+async def get_popular_content(
+    hours: int = Query(24, description="Time window in hours")
+):
     """Get popular content based on user interactions"""
     try:
         user_analytics = await get_user_behavior_analytics()
-        
+
         popular_content = await user_analytics.get_popular_content(hours=hours)
-        
+
         return AnalyticsResponse(
             success=True,
             message="Popular content retrieved successfully",
-            data=popular_content
+            data=popular_content,
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get popular content: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -180,16 +207,16 @@ async def record_content_metric(request: ContentMetricRequest):
     """Record a content performance metric"""
     try:
         start_time = time.time()
-        
+
         content_analytics = await get_content_analytics_engine()
-        
+
         # Validate content and metric types
         try:
             content_type = ContentType(request.content_type)
             metric_type = MetricType(request.metric_type)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"Invalid type: {e}")
-        
+
         # Record the metric
         await content_analytics.record_content_metric(
             content_id=request.content_id,
@@ -198,17 +225,17 @@ async def record_content_metric(request: ContentMetricRequest):
             value=request.value,
             user_id=request.user_id,
             session_id=request.session_id,
-            metadata=request.metadata or {}
+            metadata=request.metadata or {},
         )
-        
+
         processing_time = (time.time() - start_time) * 1000
-        
+
         return AnalyticsResponse(
             success=True,
             message="Content metric recorded successfully",
-            processing_time_ms=processing_time
+            processing_time_ms=processing_time,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -216,23 +243,27 @@ async def record_content_metric(request: ContentMetricRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@analytics_router.get("/content-performance/{content_id}", response_model=AnalyticsResponse)
+@analytics_router.get(
+    "/content-performance/{content_id}", response_model=AnalyticsResponse
+)
 async def get_content_performance(content_id: str):
     """Get performance analysis for specific content"""
     try:
         content_analytics = await get_content_analytics_engine()
-        
+
         performance = await content_analytics.get_content_performance(content_id)
-        
+
         if not performance:
-            raise HTTPException(status_code=404, detail="Content performance data not found")
-        
+            raise HTTPException(
+                status_code=404, detail="Content performance data not found"
+            )
+
         return AnalyticsResponse(
             success=True,
             message="Content performance retrieved successfully",
-            data=performance.to_dict()
+            data=performance.to_dict(),
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -241,40 +272,44 @@ async def get_content_performance(content_id: str):
 
 
 @analytics_router.get("/trending-content", response_model=AnalyticsResponse)
-async def get_trending_content(limit: int = Query(20, description="Maximum number of results")):
+async def get_trending_content(
+    limit: int = Query(20, description="Maximum number of results")
+):
     """Get current trending content"""
     try:
         content_analytics = await get_content_analytics_engine()
-        
+
         trending_content = await content_analytics.get_trending_content(limit=limit)
-        
+
         trending_data = [item.to_dict() for item in trending_content]
-        
+
         return AnalyticsResponse(
             success=True,
             message="Trending content retrieved successfully",
-            data={"trending_content": trending_data, "count": len(trending_data)}
+            data={"trending_content": trending_data, "count": len(trending_data)},
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get trending content: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@analytics_router.get("/content-insights/{content_id}", response_model=AnalyticsResponse)
+@analytics_router.get(
+    "/content-insights/{content_id}", response_model=AnalyticsResponse
+)
 async def get_content_insights(content_id: str):
     """Get comprehensive insights for specific content"""
     try:
         content_analytics = await get_content_analytics_engine()
-        
+
         insights = await content_analytics.get_content_insights(content_id)
-        
+
         return AnalyticsResponse(
             success=True,
             message="Content insights retrieved successfully",
-            data=insights
+            data=insights,
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get content insights: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -286,7 +321,7 @@ async def create_report_configuration(request: ReportConfigRequest):
     """Create a new report configuration"""
     try:
         reporting_system = await get_real_time_reporting_system()
-        
+
         # Validate enum values
         try:
             report_type = ReportType(request.report_type)
@@ -294,11 +329,12 @@ async def create_report_configuration(request: ReportConfigRequest):
             schedule_type = ReportSchedule(request.schedule)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"Invalid enum value: {e}")
-        
+
         # Generate report ID
         import hashlib
+
         report_id = f"report_{hashlib.md5(f'{request.title}_{time.time()}'.encode()).hexdigest()[:12]}"
-        
+
         # Create configuration
         config = ReportConfiguration(
             report_id=report_id,
@@ -312,18 +348,18 @@ async def create_report_configuration(request: ReportConfigRequest):
             include_insights=request.include_insights,
             include_recommendations=request.include_recommendations,
             recipients=request.recipients,
-            webhook_urls=request.webhook_urls
+            webhook_urls=request.webhook_urls,
         )
-        
+
         # Create the configuration
         created_id = await reporting_system.create_report_configuration(config)
-        
+
         return AnalyticsResponse(
             success=True,
             message="Report configuration created successfully",
-            data={"report_id": created_id, "config": config.to_dict()}
+            data={"report_id": created_id, "config": config.to_dict()},
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -331,21 +367,23 @@ async def create_report_configuration(request: ReportConfigRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@analytics_router.post("/reports/generate/{report_id}", response_model=AnalyticsResponse)
+@analytics_router.post(
+    "/reports/generate/{report_id}", response_model=AnalyticsResponse
+)
 async def generate_report(report_id: str, background_tasks: BackgroundTasks):
     """Generate a report on-demand"""
     try:
         reporting_system = await get_real_time_reporting_system()
-        
+
         # Generate report in background
         background_tasks.add_task(reporting_system.generate_report, report_id)
-        
+
         return AnalyticsResponse(
             success=True,
             message="Report generation started",
-            data={"report_id": report_id, "status": "generating"}
+            data={"report_id": report_id, "status": "generating"},
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to start report generation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -356,18 +394,16 @@ async def get_generated_report(report_id: str):
     """Get a generated report"""
     try:
         reporting_system = await get_real_time_reporting_system()
-        
+
         report = await reporting_system.get_generated_report(report_id)
-        
+
         if not report:
             raise HTTPException(status_code=404, detail="Report not found")
-        
+
         return AnalyticsResponse(
-            success=True,
-            message="Report retrieved successfully",
-            data=report.to_dict()
+            success=True, message="Report retrieved successfully", data=report.to_dict()
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -380,21 +416,21 @@ async def download_report_file(report_id: str):
     """Download report file if available"""
     try:
         reporting_system = await get_real_time_reporting_system()
-        
+
         report = await reporting_system.get_generated_report(report_id)
-        
+
         if not report:
             raise HTTPException(status_code=404, detail="Report not found")
-        
+
         if not report.file_path:
             raise HTTPException(status_code=404, detail="Report file not available")
-        
+
         return FileResponse(
             path=report.file_path,
             filename=f"{report.config.title.replace(' ', '_')}.{report.config.format.value}",
-            media_type="application/octet-stream"
+            media_type="application/octet-stream",
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -408,18 +444,20 @@ async def get_real_time_metrics():
     """Get current real-time metrics"""
     try:
         reporting_system = await get_real_time_reporting_system()
-        
+
         metrics = await reporting_system.get_real_time_metrics()
-        
+
         if not metrics:
-            raise HTTPException(status_code=404, detail="Real-time metrics not available")
-        
+            raise HTTPException(
+                status_code=404, detail="Real-time metrics not available"
+            )
+
         return AnalyticsResponse(
             success=True,
             message="Real-time metrics retrieved successfully",
-            data=metrics.to_dict()
+            data=metrics.to_dict(),
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -428,21 +466,27 @@ async def get_real_time_metrics():
 
 
 @analytics_router.get("/real-time/history", response_model=AnalyticsResponse)
-async def get_metrics_history(minutes: int = Query(60, description="History window in minutes")):
+async def get_metrics_history(
+    minutes: int = Query(60, description="History window in minutes")
+):
     """Get historical real-time metrics"""
     try:
         reporting_system = await get_real_time_reporting_system()
-        
+
         history = await reporting_system.get_metrics_history(minutes=minutes)
-        
+
         history_data = [metrics.to_dict() for metrics in history]
-        
+
         return AnalyticsResponse(
             success=True,
             message="Metrics history retrieved successfully",
-            data={"history": history_data, "count": len(history_data), "window_minutes": minutes}
+            data={
+                "history": history_data,
+                "count": len(history_data),
+                "window_minutes": minutes,
+            },
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get metrics history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -574,9 +618,9 @@ async def get_analytics_dashboard():
         </body>
         </html>
         """
-        
+
         return HTMLResponse(content=dashboard_html)
-        
+
     except Exception as e:
         logger.error(f"Failed to generate dashboard: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -589,20 +633,20 @@ async def get_system_health():
     try:
         performance_monitor = await get_performance_monitor()
         analytics_service = await get_analytics_service()
-        
+
         system_health = await performance_monitor.get_system_health_summary()
         dashboard_summary = await analytics_service.get_dashboard_summary()
-        
+
         return AnalyticsResponse(
             success=True,
             message="System health retrieved successfully",
             data={
                 "system_health": system_health,
                 "dashboard_summary": dashboard_summary,
-                "timestamp": time.time()
-            }
+                "timestamp": time.time(),
+            },
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get system health: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -615,11 +659,11 @@ async def get_analytics_services_status():
         user_analytics = await get_user_behavior_analytics()
         content_analytics = await get_content_analytics_engine()
         reporting_system = await get_real_time_reporting_system()
-        
+
         user_stats = await user_analytics.get_service_statistics()
         content_stats = await content_analytics.get_service_statistics()
         reporting_stats = await reporting_system.get_service_statistics()
-        
+
         return AnalyticsResponse(
             success=True,
             message="Analytics services status retrieved successfully",
@@ -627,10 +671,10 @@ async def get_analytics_services_status():
                 "user_behavior_analytics": user_stats,
                 "content_analytics_engine": content_stats,
                 "real_time_reporting_system": reporting_stats,
-                "overall_status": "operational"
-            }
+                "overall_status": "operational",
+            },
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get analytics services status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -639,23 +683,23 @@ async def get_analytics_services_status():
 # Convenience endpoints for common tracking operations
 @analytics_router.post("/track/video-play", response_model=AnalyticsResponse)
 async def track_video_play_endpoint(
-    user_id: str,
-    video_id: str,
-    session_id: str,
-    page_url: str,
-    user_agent: str
+    user_id: str, video_id: str, session_id: str, page_url: str, user_agent: str
 ):
     """Track video play action (convenience endpoint)"""
     try:
-        action_id = await track_video_play(user_id, video_id, session_id, page_url, user_agent)
-        await record_video_view(video_id, user_id, session_id, {"title": "Unknown", "artist": "Unknown"})
-        
+        action_id = await track_video_play(
+            user_id, video_id, session_id, page_url, user_agent
+        )
+        await record_video_view(
+            video_id, user_id, session_id, {"title": "Unknown", "artist": "Unknown"}
+        )
+
         return AnalyticsResponse(
             success=True,
             message="Video play tracked successfully",
-            data={"action_id": action_id}
+            data={"action_id": action_id},
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to track video play: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -668,18 +712,20 @@ async def track_search_endpoint(
     results_count: int,
     session_id: str,
     page_url: str,
-    user_agent: str
+    user_agent: str,
 ):
     """Track search query action (convenience endpoint)"""
     try:
-        action_id = await track_search_query(user_id, query, results_count, session_id, page_url, user_agent)
-        
+        action_id = await track_search_query(
+            user_id, query, results_count, session_id, page_url, user_agent
+        )
+
         return AnalyticsResponse(
             success=True,
             message="Search tracked successfully",
-            data={"action_id": action_id}
+            data={"action_id": action_id},
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to track search: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -687,22 +733,20 @@ async def track_search_endpoint(
 
 @analytics_router.post("/track/page-view", response_model=AnalyticsResponse)
 async def track_page_view_endpoint(
-    user_id: str,
-    page_url: str,
-    user_agent: str,
-    session_id: str,
-    referrer: str = ""
+    user_id: str, page_url: str, user_agent: str, session_id: str, referrer: str = ""
 ):
     """Track page view action (convenience endpoint)"""
     try:
-        action_id = await track_page_view(user_id, page_url, user_agent, session_id, referrer)
-        
+        action_id = await track_page_view(
+            user_id, page_url, user_agent, session_id, referrer
+        )
+
         return AnalyticsResponse(
             success=True,
             message="Page view tracked successfully",
-            data={"action_id": action_id}
+            data={"action_id": action_id},
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to track page view: {e}")
         raise HTTPException(status_code=500, detail=str(e))

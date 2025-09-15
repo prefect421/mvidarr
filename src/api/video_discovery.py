@@ -82,16 +82,22 @@ def test_discovery_for_artist(artist_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-def discover_videos_for_artists(limit_artists=5, limit_videos_per_artist=3, max_artists=None, max_videos_per_artist=None, scheduled=False):
+def discover_videos_for_artists(
+    limit_artists=5,
+    limit_videos_per_artist=3,
+    max_artists=None,
+    max_videos_per_artist=None,
+    scheduled=False,
+):
     """Discover videos for multiple artists (helper function for scheduler)
-    
+
     Args:
         limit_artists: Maximum number of artists to process (for backward compatibility)
         limit_videos_per_artist: Maximum videos to discover per artist (for backward compatibility)
         max_artists: Alternative name for limit_artists
-        max_videos_per_artist: Alternative name for limit_videos_per_artist  
+        max_videos_per_artist: Alternative name for limit_videos_per_artist
         scheduled: Whether this is a scheduled discovery operation
-        
+
     Returns:
         dict: Discovery results with artists_processed and videos_discovered counts
     """
@@ -99,15 +105,16 @@ def discover_videos_for_artists(limit_artists=5, limit_videos_per_artist=3, max_
         # Support both parameter naming conventions
         artists_limit = max_artists or limit_artists
         videos_limit = max_videos_per_artist or limit_videos_per_artist
-        
-        logger.info(f"Starting video discovery for {artists_limit} artists, {videos_limit} videos per artist (scheduled={scheduled})")
-        
+
+        logger.info(
+            f"Starting video discovery for {artists_limit} artists, {videos_limit} videos per artist (scheduled={scheduled})"
+        )
+
         # Use the existing discovery service
         result = video_discovery_service.discover_videos_for_all_artists(
-            limit_per_artist=videos_limit,
-            max_artists=artists_limit
+            limit_per_artist=videos_limit, max_artists=artists_limit
         )
-        
+
         if result.get("success"):
             # Standardize return format for scheduler
             return {
@@ -115,21 +122,21 @@ def discover_videos_for_artists(limit_artists=5, limit_videos_per_artist=3, max_
                 "artists_processed": result.get("processed_artists", 0),
                 "videos_discovered": result.get("total_discovered", 0),
                 "scheduled": scheduled,
-                "details": result
+                "details": result,
             }
         else:
             return {
                 "success": False,
                 "error": result.get("error", "Discovery failed"),
                 "artists_processed": 0,
-                "videos_discovered": 0
+                "videos_discovered": 0,
             }
-            
+
     except Exception as e:
         logger.error(f"Error in discover_videos_for_artists: {e}")
         return {
             "success": False,
             "error": str(e),
             "artists_processed": 0,
-            "videos_discovered": 0
+            "videos_discovered": 0,
         }

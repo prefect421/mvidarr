@@ -2,17 +2,17 @@
 Async Spotify API integration service for importing playlists and discovering music videos
 """
 
+import asyncio
 import base64
 import difflib
 import json
 import os
 import re
-import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
-from urllib.parse import quote_plus, urlencode
-from dataclasses import dataclass
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import quote_plus, urlencode
 
 import aiohttp
 from sqlalchemy import and_, func, or_
@@ -21,8 +21,8 @@ from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
 from src.services.imvdb_service import imvdb_service
 from src.services.settings_service import settings
+from src.utils.async_http_client import CircuitBreakerOpenError, get_global_http_client
 from src.utils.logger import get_logger
-from src.utils.async_http_client import get_global_http_client, CircuitBreakerOpenError
 
 logger = get_logger("mvidarr.services.async_spotify")
 
@@ -30,6 +30,7 @@ logger = get_logger("mvidarr.services.async_spotify")
 @dataclass
 class SpotifyTokenInfo:
     """Spotify token information"""
+
     access_token: str
     refresh_token: Optional[str] = None
     token_type: str = "Bearer"
@@ -43,11 +44,11 @@ class AsyncSpotifyService:
     def __init__(self):
         self.base_url = "https://api.spotify.com/v1"
         self.auth_url = "https://accounts.spotify.com/api/token"
-        
+
         # Thread-safe token management (lazy initialization to avoid event loop issues)
         self._token_info: Optional[SpotifyTokenInfo] = None
         self._token_lock: Optional[asyncio.Lock] = None
-        
+
         # Cache for settings to avoid repeated calls
         self._client_id: Optional[str] = None
         self._client_secret: Optional[str] = None
@@ -92,7 +93,7 @@ class AsyncSpotifyService:
 
                 self._settings_loaded = True
                 logger.debug("Spotify settings loaded successfully")
-                
+
             except Exception as e:
                 logger.error(f"Failed to load Spotify settings: {e}")
                 raise
@@ -122,7 +123,7 @@ class AsyncSpotifyService:
                 "playlist-read-private",
                 "playlist-read-collaborative",
                 "user-library-read",
-                "user-read-private"
+                "user-read-private",
             ]
 
         client_id = await self.client_id
@@ -165,21 +166,19 @@ class AsyncSpotifyService:
         try:
             http_client = await get_global_http_client()
             response_data = await http_client.post(
-                self.auth_url, 
-                headers=headers, 
-                data=data
+                self.auth_url, headers=headers, data=data
             )
 
             # Create token info
             expires_in = response_data.get("expires_in", 3600)
             expires_at = datetime.now() + timedelta(seconds=expires_in)
-            
+
             token_info = SpotifyTokenInfo(
                 access_token=response_data.get("access_token"),
                 refresh_token=response_data.get("refresh_token"),
                 token_type=response_data.get("token_type", "Bearer"),
                 expires_at=expires_at,
-                scope=response_data.get("scope")
+                scope=response_data.get("scope"),
             )
 
             # Store token info
@@ -220,9 +219,7 @@ class AsyncSpotifyService:
             try:
                 http_client = await get_global_http_client()
                 response_data = await http_client.post(
-                    self.auth_url, 
-                    headers=headers, 
-                    data=data
+                    self.auth_url, headers=headers, data=data
                 )
 
                 # Update token info
@@ -261,9 +258,7 @@ class AsyncSpotifyService:
         try:
             http_client = await get_global_http_client()
             response_data = await http_client.post(
-                self.auth_url, 
-                headers=headers, 
-                data=data
+                self.auth_url, headers=headers, data=data
             )
 
             expires_in = response_data.get("expires_in", 3600)
@@ -273,7 +268,7 @@ class AsyncSpotifyService:
                 access_token=response_data.get("access_token"),
                 token_type=response_data.get("token_type", "Bearer"),
                 expires_at=expires_at,
-                scope=response_data.get("scope")
+                scope=response_data.get("scope"),
             )
 
             token_lock = await self._get_token_lock()
@@ -297,18 +292,24 @@ class AsyncSpotifyService:
                 return
 
             # Check if token is expired
-            if (self._token_info.expires_at and 
-                datetime.now() >= self._token_info.expires_at):
-                
+            if (
+                self._token_info.expires_at
+                and datetime.now() >= self._token_info.expires_at
+            ):
+
                 if self._token_info.refresh_token:
                     await self.refresh_access_token()
                 else:
                     # Get new client credentials token
                     await self.get_client_credentials_token()
 
-    async def _make_request(self, endpoint: str, method: str = "GET", 
-                          params: Optional[Dict] = None, 
-                          json_data: Optional[Dict] = None) -> Dict:
+    async def _make_request(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        params: Optional[Dict] = None,
+        json_data: Optional[Dict] = None,
+    ) -> Dict:
         """Make authenticated request to Spotify API"""
         await self._ensure_valid_token()
 
@@ -326,11 +327,7 @@ class AsyncSpotifyService:
         try:
             http_client = await get_global_http_client()
             response = await http_client.request(
-                method=method,
-                url=url,
-                headers=headers,
-                params=params,
-                json=json_data
+                method=method, url=url, headers=headers, params=params, json=json_data
             )
             return response
 
@@ -362,8 +359,10 @@ class AsyncSpotifyService:
         params = {"limit": limit, "offset": offset}
         if fields:
             params["fields"] = fields
-        
-        return await self._make_request(f"playlists/{playlist_id}/tracks", params=params)
+
+        return await self._make_request(
+            f"playlists/{playlist_id}/tracks", params=params
+        )
 
     async def get_all_playlist_tracks(self, playlist_id: str) -> List[Dict]:
         """Get all tracks from a playlist (handles pagination)"""
@@ -376,13 +375,13 @@ class AsyncSpotifyService:
                 response = await self.get_playlist_tracks(
                     playlist_id, limit=limit, offset=offset
                 )
-                
+
                 tracks = response.get("items", [])
                 if not tracks:
                     break
 
                 all_tracks.extend(tracks)
-                
+
                 # Check if there are more tracks
                 if len(tracks) < limit or response.get("next") is None:
                     break
@@ -421,7 +420,9 @@ class AsyncSpotifyService:
         """Get artist information"""
         return await self._make_request(f"artists/{artist_id}")
 
-    async def get_artist_albums(self, artist_id: str, limit: int = 50, offset: int = 0) -> Dict:
+    async def get_artist_albums(
+        self, artist_id: str, limit: int = 50, offset: int = 0
+    ) -> Dict:
         """Get artist's albums"""
         params = {"limit": limit, "offset": offset}
         return await self._make_request(f"artists/{artist_id}/albums", params=params)
@@ -429,14 +430,17 @@ class AsyncSpotifyService:
     async def get_artist_top_tracks(self, artist_id: str, country: str = "US") -> Dict:
         """Get artist's top tracks"""
         params = {"country": country}
-        return await self._make_request(f"artists/{artist_id}/top-tracks", params=params)
+        return await self._make_request(
+            f"artists/{artist_id}/top-tracks", params=params
+        )
 
     async def get_artist_related_artists(self, artist_id: str) -> Dict:
         """Get artist's related artists"""
         return await self._make_request(f"artists/{artist_id}/related-artists")
 
-    async def create_playlist(self, user_id: str, name: str, description: str = "", 
-                            public: bool = False) -> Dict:
+    async def create_playlist(
+        self, user_id: str, name: str, description: str = "", public: bool = False
+    ) -> Dict:
         """Create a new playlist"""
         json_data = {
             "name": name,
@@ -444,12 +448,12 @@ class AsyncSpotifyService:
             "public": public,
         }
         return await self._make_request(
-            f"users/{user_id}/playlists", 
-            method="POST", 
-            json_data=json_data
+            f"users/{user_id}/playlists", method="POST", json_data=json_data
         )
 
-    async def add_tracks_to_playlist(self, playlist_id: str, track_uris: List[str]) -> Dict:
+    async def add_tracks_to_playlist(
+        self, playlist_id: str, track_uris: List[str]
+    ) -> Dict:
         """Add tracks to a playlist"""
         if len(track_uris) > 100:
             # Split into batches of 100
@@ -464,29 +468,25 @@ class AsyncSpotifyService:
 
         json_data = {"uris": track_uris}
         return await self._make_request(
-            f"playlists/{playlist_id}/tracks", 
-            method="POST", 
-            json_data=json_data
+            f"playlists/{playlist_id}/tracks", method="POST", json_data=json_data
         )
 
-    async def remove_tracks_from_playlist(self, playlist_id: str, track_uris: List[str]) -> Dict:
+    async def remove_tracks_from_playlist(
+        self, playlist_id: str, track_uris: List[str]
+    ) -> Dict:
         """Remove tracks from a playlist"""
         json_data = {"uris": track_uris}
         return await self._make_request(
-            f"playlists/{playlist_id}/tracks", 
-            method="DELETE", 
-            json_data=json_data
+            f"playlists/{playlist_id}/tracks", method="DELETE", json_data=json_data
         )
 
     async def follow_playlist(self, playlist_id: str, public: bool = True) -> bool:
         """Follow a playlist"""
         json_data = {"public": public}
-        
+
         try:
             await self._make_request(
-                f"playlists/{playlist_id}/followers", 
-                method="PUT", 
-                json_data=json_data
+                f"playlists/{playlist_id}/followers", method="PUT", json_data=json_data
             )
             return True
         except Exception as e:
@@ -497,8 +497,7 @@ class AsyncSpotifyService:
         """Unfollow a playlist"""
         try:
             await self._make_request(
-                f"playlists/{playlist_id}/followers", 
-                method="DELETE"
+                f"playlists/{playlist_id}/followers", method="DELETE"
             )
             return True
         except Exception as e:
@@ -507,7 +506,7 @@ class AsyncSpotifyService:
 
     # TODO: The following methods need to be adapted for async database operations
     # For now, they're commented out until we create async database utilities
-    
+
     # async def import_playlist_artists(self, playlist_id: str) -> Dict:
     #     """Import artists from a Spotify playlist and search for music videos"""
     #     logger.info(f"Importing artists from Spotify playlist: {playlist_id}")
@@ -530,23 +529,27 @@ class AsyncSpotifyService:
         params = {"ids": ",".join(track_ids)}
         return await self._make_request("audio-features", params=params)
 
-    async def get_recommendations(self, seed_artists: List[str] = None, 
-                                seed_tracks: List[str] = None, 
-                                seed_genres: List[str] = None, 
-                                limit: int = 20, **kwargs) -> Dict:
+    async def get_recommendations(
+        self,
+        seed_artists: List[str] = None,
+        seed_tracks: List[str] = None,
+        seed_genres: List[str] = None,
+        limit: int = 20,
+        **kwargs,
+    ) -> Dict:
         """Get track recommendations"""
         params = {"limit": limit}
-        
+
         if seed_artists:
             params["seed_artists"] = ",".join(seed_artists[:5])  # Max 5 seeds
         if seed_tracks:
             params["seed_tracks"] = ",".join(seed_tracks[:5])
         if seed_genres:
             params["seed_genres"] = ",".join(seed_genres[:5])
-            
+
         # Add any audio feature parameters
         for key, value in kwargs.items():
-            if key.startswith(('min_', 'max_', 'target_')):
+            if key.startswith(("min_", "max_", "target_")):
                 params[key] = value
 
         return await self._make_request("recommendations", params=params)
@@ -573,14 +576,14 @@ async def _get_global_spotify_lock() -> asyncio.Lock:
 async def get_async_spotify_service() -> AsyncSpotifyService:
     """Get global async Spotify service instance"""
     global _global_spotify_service
-    
+
     if _global_spotify_service is None:
         lock = await _get_global_spotify_lock()
         async with lock:
             if _global_spotify_service is None:
                 _global_spotify_service = AsyncSpotifyService()
                 logger.info("Created global async Spotify service instance")
-    
+
     return _global_spotify_service
 
 

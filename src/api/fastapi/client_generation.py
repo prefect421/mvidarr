@@ -3,16 +3,16 @@ Client Library Generation - Issue 128 Advanced FastAPI Features
 Auto-generated client libraries for multiple programming languages
 """
 
+import asyncio
 import json
 import os
-import tempfile
-from typing import Dict, Any, List, Optional
-from pathlib import Path
-from dataclasses import dataclass
-from enum import Enum
 import shutil
 import subprocess
-import asyncio
+import tempfile
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
@@ -21,8 +21,10 @@ from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.client_generation")
 
+
 class ClientLanguage(Enum):
     """Supported client library languages"""
+
     PYTHON = "python"
     JAVASCRIPT = "javascript"
     TYPESCRIPT = "typescript"
@@ -34,9 +36,11 @@ class ClientLanguage(Enum):
     RUBY = "ruby"
     SWIFT = "swift"
 
+
 @dataclass
 class ClientConfig:
     """Client library configuration"""
+
     language: ClientLanguage
     package_name: str
     version: str
@@ -46,9 +50,11 @@ class ClientConfig:
     output_dir: str
     additional_properties: Dict[str, Any]
 
+
 @dataclass
 class GeneratedClient:
     """Generated client library information"""
+
     language: ClientLanguage
     package_name: str
     version: str
@@ -58,19 +64,20 @@ class GeneratedClient:
     documentation_path: Optional[str]
     installation_instructions: str
 
+
 class ClientLibraryGenerator:
     """Generates client libraries from OpenAPI specification"""
-    
+
     def __init__(self, app: FastAPI, config: Optional[Dict] = None):
         self.app = app
         self.config = config or {}
-        
+
         # Generator configuration
-        self.output_base_dir = self.config.get('output_dir', '/tmp/mvidarr_clients')
-        self.openapi_generator_jar = self.config.get('generator_jar_path')
-        self.include_examples = self.config.get('include_examples', True)
-        self.generate_docs = self.config.get('generate_docs', True)
-        
+        self.output_base_dir = self.config.get("output_dir", "/tmp/mvidarr_clients")
+        self.openapi_generator_jar = self.config.get("generator_jar_path")
+        self.include_examples = self.config.get("include_examples", True)
+        self.generate_docs = self.config.get("generate_docs", True)
+
         # Default client configurations
         self.default_configs = {
             ClientLanguage.PYTHON: ClientConfig(
@@ -86,14 +93,13 @@ class ClientLibraryGenerator:
                     "packageName": "mvidarr_client",
                     "packageVersion": "1.0.0",
                     "clientPackage": "mvidarr_client",
-                    "generateSourceCodeOnly": "false"
-                }
+                    "generateSourceCodeOnly": "false",
+                },
             ),
-            
             ClientLanguage.JAVASCRIPT: ClientConfig(
                 language=ClientLanguage.JAVASCRIPT,
                 package_name="mvidarr-js-client",
-                version="1.0.0", 
+                version="1.0.0",
                 description="JavaScript client library for MVidarr API",
                 author="MVidarr Team",
                 license="MIT",
@@ -102,15 +108,14 @@ class ClientLibraryGenerator:
                     "projectName": "mvidarr-js-client",
                     "clientPackage": "mvidarr-client",
                     "npmName": "mvidarr-js-client",
-                    "npmVersion": "1.0.0"
-                }
+                    "npmVersion": "1.0.0",
+                },
             ),
-            
             ClientLanguage.TYPESCRIPT: ClientConfig(
                 language=ClientLanguage.TYPESCRIPT,
                 package_name="mvidarr-ts-client",
                 version="1.0.0",
-                description="TypeScript client library for MVidarr API", 
+                description="TypeScript client library for MVidarr API",
                 author="MVidarr Team",
                 license="MIT",
                 output_dir="typescript-client",
@@ -118,41 +123,39 @@ class ClientLibraryGenerator:
                     "projectName": "mvidarr-ts-client",
                     "npmName": "mvidarr-ts-client",
                     "npmVersion": "1.0.0",
-                    "supportsES6": "true"
-                }
+                    "supportsES6": "true",
+                },
             ),
-            
             ClientLanguage.JAVA: ClientConfig(
                 language=ClientLanguage.JAVA,
                 package_name="mvidarr-java-client",
                 version="1.0.0",
                 description="Java client library for MVidarr API",
-                author="MVidarr Team", 
+                author="MVidarr Team",
                 license="MIT",
                 output_dir="java-client",
                 additional_properties={
                     "groupId": "com.mvidarr",
                     "artifactId": "mvidarr-client",
                     "artifactVersion": "1.0.0",
-                    "clientPackage": "com.mvidarr.client"
-                }
+                    "clientPackage": "com.mvidarr.client",
+                },
             ),
-            
             ClientLanguage.GO: ClientConfig(
                 language=ClientLanguage.GO,
                 package_name="mvidarr-go-client",
                 version="1.0.0",
                 description="Go client library for MVidarr API",
                 author="MVidarr Team",
-                license="MIT", 
+                license="MIT",
                 output_dir="go-client",
                 additional_properties={
                     "packageName": "mvidarr",
-                    "clientPackage": "mvidarr"
-                }
-            )
+                    "clientPackage": "mvidarr",
+                },
+            ),
         }
-    
+
     def get_openapi_spec(self) -> Dict[str, Any]:
         """Get OpenAPI specification from FastAPI app"""
         return get_openapi(
@@ -162,15 +165,15 @@ class ClientLibraryGenerator:
             routes=self.app.routes,
             servers=[
                 {"url": "http://localhost:5000", "description": "Local development"},
-                {"url": "https://api.mvidarr.local", "description": "Local network"}
-            ]
+                {"url": "https://api.mvidarr.local", "description": "Local network"},
+            ],
         )
-    
+
     async def generate_client(
         self,
         language: ClientLanguage,
         custom_config: Optional[ClientConfig] = None,
-        output_dir: Optional[str] = None
+        output_dir: Optional[str] = None,
     ) -> GeneratedClient:
         """Generate client library for specified language"""
         try:
@@ -178,14 +181,14 @@ class ClientLibraryGenerator:
             config = custom_config or self.default_configs.get(language)
             if not config:
                 raise ValueError(f"No configuration available for {language.value}")
-            
+
             # Set output directory
             if output_dir:
                 config.output_dir = output_dir
-            
+
             full_output_path = os.path.join(self.output_base_dir, config.output_dir)
             os.makedirs(full_output_path, exist_ok=True)
-            
+
             # Generate based on language
             if language == ClientLanguage.PYTHON:
                 return await self._generate_python_client(config, full_output_path)
@@ -197,87 +200,93 @@ class ClientLibraryGenerator:
                 return await self._generate_openapi_client(config, full_output_path)
             else:
                 return await self._generate_custom_client(config, full_output_path)
-                
+
         except Exception as e:
             logger.error(f"Failed to generate {language.value} client: {e}")
             raise
-    
+
     async def generate_all_clients(self) -> Dict[ClientLanguage, GeneratedClient]:
         """Generate client libraries for all supported languages"""
         results = {}
-        
-        for language in [ClientLanguage.PYTHON, ClientLanguage.JAVASCRIPT, ClientLanguage.TYPESCRIPT]:
+
+        for language in [
+            ClientLanguage.PYTHON,
+            ClientLanguage.JAVASCRIPT,
+            ClientLanguage.TYPESCRIPT,
+        ]:
             try:
                 client = await self.generate_client(language)
                 results[language] = client
                 logger.info(f"Generated {language.value} client successfully")
             except Exception as e:
                 logger.error(f"Failed to generate {language.value} client: {e}")
-        
+
         return results
-    
-    async def _generate_python_client(self, config: ClientConfig, output_path: str) -> GeneratedClient:
+
+    async def _generate_python_client(
+        self, config: ClientConfig, output_path: str
+    ) -> GeneratedClient:
         """Generate Python client library"""
         try:
             # Create Python client structure
             client_dir = os.path.join(output_path, "mvidarr_client")
             os.makedirs(client_dir, exist_ok=True)
-            
+
             # Generate OpenAPI spec file
             spec = self.get_openapi_spec()
             spec_file = os.path.join(output_path, "openapi.json")
-            with open(spec_file, 'w') as f:
+            with open(spec_file, "w") as f:
                 json.dump(spec, f, indent=2)
-            
+
             # Generate main client file
             client_code = self._generate_python_client_code(spec, config)
-            with open(os.path.join(client_dir, "__init__.py"), 'w') as f:
+            with open(os.path.join(client_dir, "__init__.py"), "w") as f:
                 f.write(client_code)
-            
+
             # Generate models
             models_code = self._generate_python_models(spec)
-            with open(os.path.join(client_dir, "models.py"), 'w') as f:
+            with open(os.path.join(client_dir, "models.py"), "w") as f:
                 f.write(models_code)
-            
+
             # Generate API classes
             api_code = self._generate_python_api_classes(spec)
-            with open(os.path.join(client_dir, "api.py"), 'w') as f:
+            with open(os.path.join(client_dir, "api.py"), "w") as f:
                 f.write(api_code)
-            
+
             # Generate setup.py
             setup_code = self._generate_python_setup(config)
-            with open(os.path.join(output_path, "setup.py"), 'w') as f:
+            with open(os.path.join(output_path, "setup.py"), "w") as f:
                 f.write(setup_code)
-            
+
             # Generate examples
             examples_dir = os.path.join(output_path, "examples")
             if self.include_examples:
                 os.makedirs(examples_dir, exist_ok=True)
                 examples_code = self._generate_python_examples(config)
-                with open(os.path.join(examples_dir, "basic_usage.py"), 'w') as f:
+                with open(os.path.join(examples_dir, "basic_usage.py"), "w") as f:
                     f.write(examples_code)
-            
+
             # Generate requirements.txt
-            with open(os.path.join(output_path, "requirements.txt"), 'w') as f:
+            with open(os.path.join(output_path, "requirements.txt"), "w") as f:
                 f.write("requests>=2.25.0\ntyping-extensions>=3.7.4\n")
-            
+
             # Generate README
             readme_content = self._generate_python_readme(config)
-            with open(os.path.join(output_path, "README.md"), 'w') as f:
+            with open(os.path.join(output_path, "README.md"), "w") as f:
                 f.write(readme_content)
-            
+
             files_generated = [
                 "mvidarr_client/__init__.py",
-                "mvidarr_client/models.py", 
+                "mvidarr_client/models.py",
                 "mvidarr_client/api.py",
                 "setup.py",
                 "requirements.txt",
-                "README.md"
+                "README.md",
             ]
-            
+
             if self.include_examples:
                 files_generated.append("examples/basic_usage.py")
-            
+
             return GeneratedClient(
                 language=ClientLanguage.PYTHON,
                 package_name=config.package_name,
@@ -286,58 +295,56 @@ class ClientLibraryGenerator:
                 files_generated=files_generated,
                 examples_included=self.include_examples,
                 documentation_path=os.path.join(output_path, "README.md"),
-                installation_instructions="pip install -e ."
+                installation_instructions="pip install -e .",
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to generate Python client: {e}")
             raise
-    
-    async def _generate_javascript_client(self, config: ClientConfig, output_path: str) -> GeneratedClient:
+
+    async def _generate_javascript_client(
+        self, config: ClientConfig, output_path: str
+    ) -> GeneratedClient:
         """Generate JavaScript client library"""
         try:
             # Create JS client structure
             src_dir = os.path.join(output_path, "src")
             os.makedirs(src_dir, exist_ok=True)
-            
+
             # Generate OpenAPI spec
             spec = self.get_openapi_spec()
             spec_file = os.path.join(output_path, "openapi.json")
-            with open(spec_file, 'w') as f:
+            with open(spec_file, "w") as f:
                 json.dump(spec, f, indent=2)
-            
+
             # Generate main client file
             client_code = self._generate_javascript_client_code(spec, config)
-            with open(os.path.join(src_dir, "mvidarr-client.js"), 'w') as f:
+            with open(os.path.join(src_dir, "mvidarr-client.js"), "w") as f:
                 f.write(client_code)
-            
+
             # Generate package.json
             package_json = self._generate_javascript_package_json(config)
-            with open(os.path.join(output_path, "package.json"), 'w') as f:
+            with open(os.path.join(output_path, "package.json"), "w") as f:
                 json.dump(package_json, f, indent=2)
-            
+
             # Generate examples
             if self.include_examples:
                 examples_dir = os.path.join(output_path, "examples")
                 os.makedirs(examples_dir, exist_ok=True)
                 examples_code = self._generate_javascript_examples(config)
-                with open(os.path.join(examples_dir, "basic-usage.js"), 'w') as f:
+                with open(os.path.join(examples_dir, "basic-usage.js"), "w") as f:
                     f.write(examples_code)
-            
+
             # Generate README
             readme_content = self._generate_javascript_readme(config)
-            with open(os.path.join(output_path, "README.md"), 'w') as f:
+            with open(os.path.join(output_path, "README.md"), "w") as f:
                 f.write(readme_content)
-            
-            files_generated = [
-                "src/mvidarr-client.js",
-                "package.json",
-                "README.md"
-            ]
-            
+
+            files_generated = ["src/mvidarr-client.js", "package.json", "README.md"]
+
             if self.include_examples:
                 files_generated.append("examples/basic-usage.js")
-            
+
             return GeneratedClient(
                 language=ClientLanguage.JAVASCRIPT,
                 package_name=config.package_name,
@@ -346,67 +353,69 @@ class ClientLibraryGenerator:
                 files_generated=files_generated,
                 examples_included=self.include_examples,
                 documentation_path=os.path.join(output_path, "README.md"),
-                installation_instructions="npm install"
+                installation_instructions="npm install",
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to generate JavaScript client: {e}")
             raise
-    
-    async def _generate_typescript_client(self, config: ClientConfig, output_path: str) -> GeneratedClient:
+
+    async def _generate_typescript_client(
+        self, config: ClientConfig, output_path: str
+    ) -> GeneratedClient:
         """Generate TypeScript client library"""
         try:
             # Create TS client structure
             src_dir = os.path.join(output_path, "src")
             os.makedirs(src_dir, exist_ok=True)
-            
+
             # Generate OpenAPI spec
             spec = self.get_openapi_spec()
-            
+
             # Generate TypeScript definitions
             types_code = self._generate_typescript_types(spec)
-            with open(os.path.join(src_dir, "types.ts"), 'w') as f:
+            with open(os.path.join(src_dir, "types.ts"), "w") as f:
                 f.write(types_code)
-            
+
             # Generate main client
             client_code = self._generate_typescript_client_code(spec, config)
-            with open(os.path.join(src_dir, "client.ts"), 'w') as f:
+            with open(os.path.join(src_dir, "client.ts"), "w") as f:
                 f.write(client_code)
-            
+
             # Generate index file
             index_code = self._generate_typescript_index()
-            with open(os.path.join(src_dir, "index.ts"), 'w') as f:
+            with open(os.path.join(src_dir, "index.ts"), "w") as f:
                 f.write(index_code)
-            
+
             # Generate package.json
             package_json = self._generate_typescript_package_json(config)
-            with open(os.path.join(output_path, "package.json"), 'w') as f:
+            with open(os.path.join(output_path, "package.json"), "w") as f:
                 json.dump(package_json, f, indent=2)
-            
+
             # Generate tsconfig.json
             tsconfig = self._generate_typescript_config()
-            with open(os.path.join(output_path, "tsconfig.json"), 'w') as f:
+            with open(os.path.join(output_path, "tsconfig.json"), "w") as f:
                 json.dump(tsconfig, f, indent=2)
-            
+
             # Generate examples
             if self.include_examples:
                 examples_dir = os.path.join(output_path, "examples")
                 os.makedirs(examples_dir, exist_ok=True)
                 examples_code = self._generate_typescript_examples(config)
-                with open(os.path.join(examples_dir, "basic-usage.ts"), 'w') as f:
+                with open(os.path.join(examples_dir, "basic-usage.ts"), "w") as f:
                     f.write(examples_code)
-            
+
             files_generated = [
                 "src/types.ts",
                 "src/client.ts",
                 "src/index.ts",
                 "package.json",
-                "tsconfig.json"
+                "tsconfig.json",
             ]
-            
+
             if self.include_examples:
                 files_generated.append("examples/basic-usage.ts")
-            
+
             return GeneratedClient(
                 language=ClientLanguage.TYPESCRIPT,
                 package_name=config.package_name,
@@ -415,48 +424,55 @@ class ClientLibraryGenerator:
                 files_generated=files_generated,
                 examples_included=self.include_examples,
                 documentation_path=os.path.join(output_path, "README.md"),
-                installation_instructions="npm install && npm run build"
+                installation_instructions="npm install && npm run build",
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to generate TypeScript client: {e}")
             raise
-    
-    async def _generate_openapi_client(self, config: ClientConfig, output_path: str) -> GeneratedClient:
+
+    async def _generate_openapi_client(
+        self, config: ClientConfig, output_path: str
+    ) -> GeneratedClient:
         """Generate client using OpenAPI Generator (for Java, Go, etc.)"""
         try:
             if not self.openapi_generator_jar:
                 raise ValueError("OpenAPI Generator JAR path not configured")
-            
+
             # Generate OpenAPI spec
             spec = self.get_openapi_spec()
             spec_file = os.path.join(output_path, "openapi.json")
-            with open(spec_file, 'w') as f:
+            with open(spec_file, "w") as f:
                 json.dump(spec, f, indent=2)
-            
+
             # Prepare generator command
             generator_name = self._get_openapi_generator_name(config.language)
-            
+
             cmd = [
-                "java", "-jar", self.openapi_generator_jar,
+                "java",
+                "-jar",
+                self.openapi_generator_jar,
                 "generate",
-                "-i", spec_file,
-                "-g", generator_name,
-                "-o", output_path
+                "-i",
+                spec_file,
+                "-g",
+                generator_name,
+                "-o",
+                output_path,
             ]
-            
+
             # Add additional properties
             for key, value in config.additional_properties.items():
                 cmd.extend(["--additional-properties", f"{key}={value}"])
-            
+
             # Run generator
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 raise RuntimeError(f"OpenAPI Generator failed: {result.stderr}")
-            
+
             # Determine generated files (simplified)
             files_generated = ["Generated by OpenAPI Generator"]
-            
+
             return GeneratedClient(
                 language=config.language,
                 package_name=config.package_name,
@@ -465,19 +481,25 @@ class ClientLibraryGenerator:
                 files_generated=files_generated,
                 examples_included=False,
                 documentation_path=None,
-                installation_instructions="See generated README"
+                installation_instructions="See generated README",
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to generate OpenAPI client: {e}")
             raise
-    
-    async def _generate_custom_client(self, config: ClientConfig, output_path: str) -> GeneratedClient:
+
+    async def _generate_custom_client(
+        self, config: ClientConfig, output_path: str
+    ) -> GeneratedClient:
         """Generate custom client for unsupported languages"""
         # Placeholder for custom client generation
-        raise NotImplementedError(f"Custom client generation for {config.language.value} not implemented")
-    
-    def _generate_python_client_code(self, spec: Dict[str, Any], config: ClientConfig) -> str:
+        raise NotImplementedError(
+            f"Custom client generation for {config.language.value} not implemented"
+        )
+
+    def _generate_python_client_code(
+        self, spec: Dict[str, Any], config: ClientConfig
+    ) -> str:
         """Generate Python client code"""
         return '''"""
 MVidarr Python Client Library
@@ -555,7 +577,7 @@ class MVidarrClient:
         """Create new playlist"""
         return self._make_request("POST", "/api/playlists", json=playlist_data)
 '''
-    
+
     def _generate_python_models(self, spec: Dict[str, Any]) -> str:
         """Generate Python model classes"""
         return '''"""
@@ -595,7 +617,7 @@ class Playlist:
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 '''
-    
+
     def _generate_python_api_classes(self, spec: Dict[str, Any]) -> str:
         """Generate Python API classes"""
         return '''"""
@@ -632,10 +654,10 @@ class ArtistsAPI:
         response = self.client._make_request("GET", "/api/artists", params=params)
         return [Artist(**artist_data) for artist_data in response.get("artists", [])]
 '''
-    
+
     def _generate_python_setup(self, config: ClientConfig) -> str:
         """Generate Python setup.py"""
-        return f'''from setuptools import setup, find_packages
+        return f"""from setuptools import setup, find_packages
 
 setup(
     name="{config.package_name}",
@@ -659,8 +681,8 @@ setup(
         "Programming Language :: Python :: 3.9",
     ]
 )
-'''
-    
+"""
+
     def _generate_python_examples(self, config: ClientConfig) -> str:
         """Generate Python usage examples"""
         return '''#!/usr/bin/env python3
@@ -694,10 +716,10 @@ print("\\nFetching playlists...")
 playlists = client.get_playlists()
 print(f"Found {len(playlists.get('playlists', []))} playlists")
 '''
-    
+
     def _generate_python_readme(self, config: ClientConfig) -> str:
         """Generate Python README"""
-        return f'''# {config.package_name}
+        return f"""# {config.package_name}
 
 {config.description}
 
@@ -731,11 +753,13 @@ For complete API documentation, see the [MVidarr API Documentation](http://local
 ## License
 
 {config.license}
-'''
-    
-    def _generate_javascript_client_code(self, spec: Dict[str, Any], config: ClientConfig) -> str:
+"""
+
+    def _generate_javascript_client_code(
+        self, spec: Dict[str, Any], config: ClientConfig
+    ) -> str:
         """Generate JavaScript client code"""
-        return '''/**
+        return """/**
  * MVidarr JavaScript Client Library
  * Generated automatically from OpenAPI specification
  */
@@ -830,8 +854,8 @@ if (typeof module !== 'undefined' && module.exports) {
 } else if (typeof window !== 'undefined') {
     window.MVidarrClient = MVidarrClient;
 }
-'''
-    
+"""
+
     def _generate_javascript_package_json(self, config: ClientConfig) -> Dict[str, Any]:
         """Generate JavaScript package.json"""
         return {
@@ -844,16 +868,14 @@ if (typeof module !== 'undefined' && module.exports) {
             "keywords": ["mvidarr", "api", "client", "music", "video"],
             "repository": {
                 "type": "git",
-                "url": "https://github.com/prefect421/mvidarr-js-client"
+                "url": "https://github.com/prefect421/mvidarr-js-client",
             },
-            "scripts": {
-                "test": "echo \"Error: no test specified\" && exit 1"
-            }
+            "scripts": {"test": 'echo "Error: no test specified" && exit 1'},
         }
-    
+
     def _generate_javascript_examples(self, config: ClientConfig) -> str:
         """Generate JavaScript usage examples"""
-        return '''/**
+        return """/**
  * MVidarr JavaScript Client - Basic Usage Examples
  */
 
@@ -892,11 +914,11 @@ async function basicUsage() {
 
 // Run examples
 basicUsage();
-'''
-    
+"""
+
     def _generate_javascript_readme(self, config: ClientConfig) -> str:
         """Generate JavaScript README"""
-        return f'''# {config.package_name}
+        return f"""# {config.package_name}
 
 {config.description}
 
@@ -945,11 +967,11 @@ For complete API documentation, see the [MVidarr API Documentation](http://local
 ## License
 
 {config.license}
-'''
-    
+"""
+
     def _generate_typescript_types(self, spec: Dict[str, Any]) -> str:
         """Generate TypeScript type definitions"""
-        return '''/**
+        return """/**
  * MVidarr API TypeScript Definitions
  */
 
@@ -1017,11 +1039,13 @@ export interface ClientConfig {
     apiKey?: string;
     timeout?: number;
 }
-'''
-    
-    def _generate_typescript_client_code(self, spec: Dict[str, Any], config: ClientConfig) -> str:
+"""
+
+    def _generate_typescript_client_code(
+        self, spec: Dict[str, Any], config: ClientConfig
+    ) -> str:
         """Generate TypeScript client code"""
-        return '''/**
+        return """/**
  * MVidarr TypeScript Client Library
  */
 
@@ -1125,18 +1149,18 @@ export class MVidarrClient {
         return this.makeRequest<Playlist>('POST', '/api/playlists', { body: playlistData });
     }
 }
-'''
-    
+"""
+
     def _generate_typescript_index(self) -> str:
         """Generate TypeScript index file"""
-        return '''/**
+        return """/**
  * MVidarr TypeScript Client - Main Export
  */
 
 export { MVidarrClient } from './client';
 export * from './types';
-'''
-    
+"""
+
     def _generate_typescript_package_json(self, config: ClientConfig) -> Dict[str, Any]:
         """Generate TypeScript package.json"""
         return {
@@ -1151,15 +1175,12 @@ export * from './types';
             "scripts": {
                 "build": "tsc",
                 "dev": "tsc --watch",
-                "prepublishOnly": "npm run build"
+                "prepublishOnly": "npm run build",
             },
-            "devDependencies": {
-                "typescript": "^4.9.0",
-                "@types/node": "^18.0.0"
-            },
-            "files": ["dist/**/*"]
+            "devDependencies": {"typescript": "^4.9.0", "@types/node": "^18.0.0"},
+            "files": ["dist/**/*"],
         }
-    
+
     def _generate_typescript_config(self) -> Dict[str, Any]:
         """Generate TypeScript configuration"""
         return {
@@ -1175,15 +1196,15 @@ export * from './types';
                 "strict": True,
                 "esModuleInterop": True,
                 "skipLibCheck": True,
-                "forceConsistentCasingInFileNames": True
+                "forceConsistentCasingInFileNames": True,
             },
             "include": ["src/**/*"],
-            "exclude": ["node_modules", "dist", "examples"]
+            "exclude": ["node_modules", "dist", "examples"],
         }
-    
+
     def _generate_typescript_examples(self, config: ClientConfig) -> str:
         """Generate TypeScript usage examples"""
-        return '''/**
+        return """/**
  * MVidarr TypeScript Client - Basic Usage Examples
  */
 
@@ -1229,8 +1250,8 @@ async function basicUsage(): Promise<void> {
 
 // Run examples
 basicUsage();
-'''
-    
+"""
+
     def _get_openapi_generator_name(self, language: ClientLanguage) -> str:
         """Get OpenAPI generator name for language"""
         generator_names = {
@@ -1240,18 +1261,22 @@ basicUsage();
             ClientLanguage.PHP: "php",
             ClientLanguage.RUBY: "ruby",
             ClientLanguage.SWIFT: "swift",
-            ClientLanguage.RUST: "rust"
+            ClientLanguage.RUST: "rust",
         }
         return generator_names.get(language, language.value)
+
 
 # Global generator instance
 _client_generator = None
 
-def get_client_generator(app: FastAPI, config: Optional[Dict] = None) -> ClientLibraryGenerator:
+
+def get_client_generator(
+    app: FastAPI, config: Optional[Dict] = None
+) -> ClientLibraryGenerator:
     """Get global client generator instance"""
     global _client_generator
-    
+
     if _client_generator is None:
         _client_generator = ClientLibraryGenerator(app, config)
-    
+
     return _client_generator

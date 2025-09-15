@@ -6,7 +6,8 @@ Basic Redis operations for MVidarr caching system
 import asyncio
 import json
 import time
-from typing import Optional, Any, Union
+from typing import Any, Optional, Union
+
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.redis_manager")
@@ -14,20 +15,21 @@ logger = get_logger("mvidarr.redis_manager")
 
 class RedisManager:
     """Simplified Redis manager for MVidarr performance caching"""
-    
+
     def __init__(self):
         self.redis_client = None
         self._connected = False
-        
+
     async def _ensure_connection(self):
         """Ensure Redis connection is available"""
         if not self._connected:
             try:
                 import redis.asyncio as redis
+
                 self.redis_client = redis.Redis.from_url(
                     "redis://localhost:6379/0",
                     decode_responses=True,
-                    socket_connect_timeout=5
+                    socket_connect_timeout=5,
                 )
                 # Test connection
                 await self.redis_client.ping()
@@ -37,7 +39,7 @@ class RedisManager:
                 logger.warning(f"Redis connection failed: {e}")
                 self.redis_client = None
                 self._connected = False
-    
+
     async def get(self, key: str) -> Optional[str]:
         """Get value from Redis"""
         try:
@@ -47,7 +49,7 @@ class RedisManager:
         except Exception as e:
             logger.error(f"Redis GET error for key {key}: {e}")
         return None
-    
+
     async def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
         """Set value in Redis with optional TTL"""
         try:
@@ -61,7 +63,7 @@ class RedisManager:
         except Exception as e:
             logger.error(f"Redis SET error for key {key}: {e}")
         return False
-    
+
     async def delete(self, key: str) -> bool:
         """Delete key from Redis"""
         try:
@@ -71,7 +73,7 @@ class RedisManager:
         except Exception as e:
             logger.error(f"Redis DELETE error for key {key}: {e}")
         return False
-    
+
     async def lpush(self, key: str, value: str) -> bool:
         """Push value to left of list"""
         try:
@@ -82,7 +84,7 @@ class RedisManager:
         except Exception as e:
             logger.error(f"Redis LPUSH error for key {key}: {e}")
         return False
-    
+
     async def ltrim(self, key: str, start: int, stop: int) -> bool:
         """Trim list to specified range"""
         try:
@@ -93,7 +95,7 @@ class RedisManager:
         except Exception as e:
             logger.error(f"Redis LTRIM error for key {key}: {e}")
         return False
-    
+
     async def exists(self, key: str) -> bool:
         """Check if key exists"""
         try:
@@ -103,7 +105,7 @@ class RedisManager:
         except Exception as e:
             logger.error(f"Redis EXISTS error for key {key}: {e}")
         return False
-    
+
     async def keys(self, pattern: str = "*") -> list:
         """Get keys matching pattern"""
         try:
@@ -113,7 +115,7 @@ class RedisManager:
         except Exception as e:
             logger.error(f"Redis KEYS error for pattern {pattern}: {e}")
         return []
-    
+
     async def health_check(self) -> bool:
         """Check Redis connection health"""
         try:
@@ -124,7 +126,7 @@ class RedisManager:
         except Exception:
             pass
         return False
-    
+
     async def close(self):
         """Close Redis connection"""
         if self.redis_client:

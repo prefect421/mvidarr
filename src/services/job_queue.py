@@ -469,7 +469,9 @@ class JobQueue:
                     "status": job.status.value,
                     "progress": job.progress,
                     "message": job.message,
-                    "started_at": job.started_at.isoformat() if job.started_at else None,
+                    "started_at": (
+                        job.started_at.isoformat() if job.started_at else None
+                    ),
                 }
             elif event_type == "completed":
                 progress_data = {
@@ -478,8 +480,12 @@ class JobQueue:
                     "status": "completed",
                     "progress": 100,
                     "message": "Job completed successfully",
-                    "started_at": job.started_at.isoformat() if job.started_at else None,
-                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                    "started_at": (
+                        job.started_at.isoformat() if job.started_at else None
+                    ),
+                    "completed_at": (
+                        job.completed_at.isoformat() if job.completed_at else None
+                    ),
                     "result": job.result,
                 }
             elif event_type == "failed":
@@ -489,7 +495,9 @@ class JobQueue:
                     "status": "failed",
                     "progress": 0,
                     "message": job.error_message or "Job failed",
-                    "started_at": job.started_at.isoformat() if job.started_at else None,
+                    "started_at": (
+                        job.started_at.isoformat() if job.started_at else None
+                    ),
                     "error": job.error_message,
                 }
             else:
@@ -498,18 +506,25 @@ class JobQueue:
 
             # Use asyncio to run the async broadcast method
             import asyncio
+
             try:
                 # Try to get the current event loop
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     # If loop is running, schedule the coroutine
-                    asyncio.create_task(websocket_manager._broadcast_job_update(job.id, progress_data))
+                    asyncio.create_task(
+                        websocket_manager._broadcast_job_update(job.id, progress_data)
+                    )
                 else:
                     # If no loop is running, run it
-                    loop.run_until_complete(websocket_manager._broadcast_job_update(job.id, progress_data))
+                    loop.run_until_complete(
+                        websocket_manager._broadcast_job_update(job.id, progress_data)
+                    )
             except RuntimeError:
                 # No event loop in thread, create a new one
-                asyncio.run(websocket_manager._broadcast_job_update(job.id, progress_data))
+                asyncio.run(
+                    websocket_manager._broadcast_job_update(job.id, progress_data)
+                )
 
         except ImportError:
             # WebSocket system not available
@@ -517,7 +532,10 @@ class JobQueue:
         except Exception as e:
             logger.warning(f"Failed to broadcast WebSocket update: {e}")
             import traceback
-            logger.debug(f"WebSocket broadcast error traceback: {traceback.format_exc()}")
+
+            logger.debug(
+                f"WebSocket broadcast error traceback: {traceback.format_exc()}"
+            )
 
 
 # Global job queue instance

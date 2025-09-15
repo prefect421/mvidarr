@@ -57,7 +57,7 @@ def extract_built_in_theme_data():
             "--sidebar-bg": "#000000",
             "--search-bar-bg": "#161b22",
             "--top-bar-bg": "#0d1117",
-        }
+        },
         # Add other themes as needed when they require updates
     }
 
@@ -224,11 +224,11 @@ def get_themes():
 
             # Get the latest hardcoded built-in theme definitions
             hardcoded_themes = extract_built_in_theme_data()
-            
+
             for theme in themes:
                 try:
                     theme_dict = theme.to_dict()
-                    
+
                     # If this is a built-in theme with a database record, merge with latest hardcoded definition
                     if theme.is_built_in and theme.name in hardcoded_themes:
                         hardcoded_data = hardcoded_themes[theme.name]
@@ -241,7 +241,7 @@ def get_themes():
                         else:
                             # Use hardcoded data if no database theme_data exists
                             theme_dict["theme_data"] = hardcoded_data
-                    
+
                     custom_themes.append(theme_dict)
                     if theme.is_built_in:
                         custom_theme_names.add(theme.name)
@@ -991,24 +991,35 @@ def extract_built_in_theme(theme_name):
 def update_built_in_theme(theme_name):
     """Update a built-in theme by creating or updating its database record"""
     try:
-        user_id = request.current_user.id if hasattr(request.current_user, "id") else None
+        user_id = (
+            request.current_user.id if hasattr(request.current_user, "id") else None
+        )
         data = request.get_json()
-        
+
         if not data:
             return jsonify({"error": "No data provided"}), 400
-            
+
         # Validate that the theme_name exists in our built-in themes
-        built_in_theme_names = ["default", "cyber", "vaporwave", "tardis", "punk77", "mtv", "lcars"]
+        built_in_theme_names = [
+            "default",
+            "cyber",
+            "vaporwave",
+            "tardis",
+            "punk77",
+            "mtv",
+            "lcars",
+        ]
         if theme_name not in built_in_theme_names:
             return jsonify({"error": f"Built-in theme '{theme_name}' not found"}), 404
-        
+
         with get_db() as session:
             # Check if a database record already exists for this built-in theme
-            existing_theme = session.query(CustomTheme).filter_by(
-                name=theme_name, 
-                is_built_in=True
-            ).first()
-            
+            existing_theme = (
+                session.query(CustomTheme)
+                .filter_by(name=theme_name, is_built_in=True)
+                .first()
+            )
+
             if existing_theme:
                 # Update existing theme
                 if "theme_data" in data:
@@ -1017,7 +1028,7 @@ def update_built_in_theme(theme_name):
                     existing_theme.display_name = data["display_name"]
                 if "description" in data:
                     existing_theme.description = data["description"]
-                    
+
                 session.commit()
                 logger.info(f"Updated built-in theme '{theme_name}' in database")
                 return jsonify(existing_theme.to_dict())
@@ -1026,18 +1037,22 @@ def update_built_in_theme(theme_name):
                 new_theme = CustomTheme(
                     name=theme_name,
                     display_name=data.get("display_name", theme_name.title()),
-                    description=data.get("description", f"Customized {theme_name} theme"),
+                    description=data.get(
+                        "description", f"Customized {theme_name} theme"
+                    ),
                     created_by=user_id,
                     is_public=True,
                     is_built_in=True,
-                    theme_data=data.get("theme_data", {})
+                    theme_data=data.get("theme_data", {}),
                 )
-                
+
                 session.add(new_theme)
                 session.commit()
-                logger.info(f"Created database record for built-in theme '{theme_name}'")
+                logger.info(
+                    f"Created database record for built-in theme '{theme_name}'"
+                )
                 return jsonify(new_theme.to_dict())
-                
+
     except Exception as e:
         logger.error(f"Error updating built-in theme {theme_name}: {e}")
         return jsonify({"error": "Failed to update theme", "details": str(e)}), 500

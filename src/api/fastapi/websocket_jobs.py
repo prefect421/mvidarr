@@ -4,17 +4,18 @@ Real-time job progress streaming for Celery background jobs
 Phase 2: Media Processing Optimization - Week 17
 """
 
-import json
 import asyncio
+import json
 import logging
-from typing import Dict, Set, Optional, Any
 from datetime import datetime
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException
+from typing import Any, Dict, Optional, Set
+
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
 from src.jobs.redis_manager import redis_manager
-from src.utils.logger import get_logger
 from src.middleware.simple_auth_middleware import get_current_user_optional
+from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.websocket.jobs")
 
@@ -23,100 +24,102 @@ class WebSocketJobManager:
     """
     Manages WebSocket connections for real-time Celery job progress updates
     """
-    
+
     def __init__(self):
         # Track active connections per user
         self.user_connections: Dict[str, Set[WebSocket]] = {}
-        # Track job subscriptions per connection  
+        # Track job subscriptions per connection
         self.connection_subscriptions: Dict[WebSocket, Set[str]] = {}
         # Track which connections are subscribed to each job
         self.job_subscribers: Dict[str, Set[WebSocket]] = {}
-        
+
         # Redis pub/sub for job progress updates
         self.redis_subscriber = None
         self.subscription_task: Optional[asyncio.Task] = None
-        
+
         logger.info("WebSocket Job Manager initialized")
-    
+
     async def start_redis_subscriber(self):
         """Start Redis pub/sub subscriber for job progress updates"""
         try:
             if not redis_manager.redis_client:
                 logger.warning("Redis not available, WebSocket updates will be limited")
                 return
-                
+
             self.redis_subscriber = redis_manager.redis_client.pubsub()
             await self.redis_subscriber.psubscribe("progress:*")
-            
+
             self.subscription_task = asyncio.create_task(self._process_redis_messages())
             logger.info("Redis subscriber started for WebSocket job updates")
-            
+
         except Exception as e:
             logger.error(f"Failed to start Redis subscriber: {e}")
-    
+
     async def stop_redis_subscriber(self):
         """Stop Redis pub/sub subscriber"""
         try:
             if self.subscription_task:
                 self.subscription_task.cancel()
-                
+
             if self.redis_subscriber:
                 await self.redis_subscriber.punsubscribe("progress:*")
                 await self.redis_subscriber.close()
-                
+
             logger.info("Redis subscriber stopped")
-            
+
         except Exception as e:
             logger.error(f"Error stopping Redis subscriber: {e}")
-    
+
     async def _process_redis_messages(self):
         """Process incoming Redis pub/sub messages"""
         try:
             while True:
-                message = await self.redis_subscriber.get_message(ignore_subscribe_messages=True)
+                message = await self.redis_subscriber.get_message(
+                    ignore_subscribe_messages=True
+                )
                 if message:
                     await self._handle_redis_message(message)
                 await asyncio.sleep(0.01)  # Small delay to prevent busy loop
-                
+
         except asyncio.CancelledError:
             logger.info("Redis message processing cancelled")
         except Exception as e:
             logger.error(f"Error processing Redis messages: {e}")
-    
+
     async def _handle_redis_message(self, message):
         """Handle individual Redis pub/sub message"""
         try:
-            if message['type'] == 'pmessage':
-                channel = message['channel'].decode()
-                data = message['data'].decode()
-                
+            if message["type"] == "pmessage":
+                channel = message["channel"].decode()
+                data = message["data"].decode()
+
                 # Extract job ID from channel (format: progress:job_id)
-                if channel.startswith('progress:'):
+                if channel.startswith("progress:"):
                     job_id = channel[9:]  # Remove 'progress:' prefix
-                    
+
                     # Parse progress data
                     try:
                         progress_data = json.loads(data)
                         await self._broadcast_job_update(job_id, progress_data)
                     except json.JSONDecodeError:
                         logger.warning(f"Invalid JSON in Redis message: {data}")
-                        
+
         except Exception as e:
             logger.error(f"Error handling Redis message: {e}")
-    
+
     async def _broadcast_job_update(self, job_id: str, progress_data: Dict[str, Any]):
         """Broadcast job update to all subscribed connections"""
         if job_id not in self.job_subscribers:
             return
-            
+
         # Prepare message
         message = {
             "type": "job_update",
             "job_id": job_id,
             "data": progress_data,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
-        
+
         # Send to all subscribers
         disconnected_connections = set()
         for connection in self.job_subscribers[job_id]:
@@ -124,49 +127,51 @@ class WebSocketJobManager:
                 await connection.send_json(message)
             except Exception:
                 disconnected_connections.add(connection)
-        
+
         # Clean up disconnected connections
         for connection in disconnected_connections:
             await self._cleanup_connection(connection)
-    
+
     async def connect_user(self, websocket: WebSocket, user_id: Optional[str] = None):
         """Handle new WebSocket connection"""
         try:
             await websocket.accept()
-            
+
             if user_id:
                 if user_id not in self.user_connections:
                     self.user_connections[user_id] = set()
                 self.user_connections[user_id].add(websocket)
-            
+
             self.connection_subscriptions[websocket] = set()
-            
+
             # Send welcome message
-            await websocket.send_json({
-                "type": "connected",
-                "message": "Connected to job progress updates",
-                "user_id": user_id,
-                "timestamp": datetime.utcnow().isoformat()
-            })
-            
+            await websocket.send_json(
+                {
+                    "type": "connected",
+                    "message": "Connected to job progress updates",
+                    "user_id": user_id,
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            )
+
             logger.info(f"WebSocket connected: user {user_id}")
-            
+
         except Exception as e:
             logger.error(f"Error connecting WebSocket: {e}")
             await websocket.close()
-    
+
     async def disconnect_user(self, websocket: WebSocket):
         """Handle WebSocket disconnection"""
         await self._cleanup_connection(websocket)
         logger.info("WebSocket disconnected")
-    
+
     async def _cleanup_connection(self, websocket: WebSocket):
         """Clean up connection subscriptions"""
         try:
             # Remove from user connections
             for user_id, connections in self.user_connections.items():
                 connections.discard(websocket)
-            
+
             # Remove from job subscriptions
             if websocket in self.connection_subscriptions:
                 subscribed_jobs = self.connection_subscriptions[websocket]
@@ -175,12 +180,12 @@ class WebSocketJobManager:
                         self.job_subscribers[job_id].discard(websocket)
                         if not self.job_subscribers[job_id]:
                             del self.job_subscribers[job_id]
-                
+
                 del self.connection_subscriptions[websocket]
-            
+
         except Exception as e:
             logger.error(f"Error cleaning up connection: {e}")
-    
+
     async def subscribe_to_job(self, websocket: WebSocket, job_id: str) -> bool:
         """Subscribe connection to job progress updates"""
         try:
@@ -188,68 +193,70 @@ class WebSocketJobManager:
             if websocket not in self.connection_subscriptions:
                 self.connection_subscriptions[websocket] = set()
             self.connection_subscriptions[websocket].add(job_id)
-            
+
             # Add to job subscribers
             if job_id not in self.job_subscribers:
                 self.job_subscribers[job_id] = set()
             self.job_subscribers[job_id].add(websocket)
-            
+
             # Send current job status if available
             current_status = await self._get_job_status(job_id)
             if current_status:
-                await websocket.send_json({
-                    "type": "job_status",
-                    "job_id": job_id,
-                    "data": current_status,
-                    "timestamp": datetime.utcnow().isoformat()
-                })
-            
+                await websocket.send_json(
+                    {
+                        "type": "job_status",
+                        "job_id": job_id,
+                        "data": current_status,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
+
             logger.debug(f"Subscribed WebSocket to job {job_id}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error subscribing to job {job_id}: {e}")
             return False
-    
+
     async def unsubscribe_from_job(self, websocket: WebSocket, job_id: str) -> bool:
         """Unsubscribe connection from job progress updates"""
         try:
             # Remove from connection subscriptions
             if websocket in self.connection_subscriptions:
                 self.connection_subscriptions[websocket].discard(job_id)
-            
+
             # Remove from job subscribers
             if job_id in self.job_subscribers:
                 self.job_subscribers[job_id].discard(websocket)
                 if not self.job_subscribers[job_id]:
                     del self.job_subscribers[job_id]
-            
+
             logger.debug(f"Unsubscribed WebSocket from job {job_id}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error unsubscribing from job {job_id}: {e}")
             return False
-    
+
     async def _get_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Get current job status from Redis"""
         try:
             if not redis_manager.redis_client:
                 return None
-                
+
             # Get job progress from Redis
             progress_key = f"job_progress:{job_id}"
             progress_data = redis_manager.redis_client.get(progress_key)
-            
+
             if progress_data:
                 return json.loads(progress_data)
-            
+
             return None
-            
+
         except Exception as e:
             logger.error(f"Error getting job status for {job_id}: {e}")
             return None
-    
+
     async def get_active_jobs(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get list of active jobs for user"""
         try:
@@ -258,9 +265,11 @@ class WebSocketJobManager:
             return {
                 "active_connections": len(self.connection_subscriptions),
                 "subscribed_jobs": len(self.job_subscribers),
-                "user_connections": len(self.user_connections.get(user_id, [])) if user_id else 0
+                "user_connections": (
+                    len(self.user_connections.get(user_id, [])) if user_id else 0
+                ),
             }
-            
+
         except Exception as e:
             logger.error(f"Error getting active jobs: {e}")
             return {}
@@ -277,22 +286,21 @@ async def get_websocket_manager():
 
 def setup_websocket_routes(app: FastAPI):
     """Setup WebSocket routes for job progress"""
-    
+
     @app.websocket("/ws/jobs")
     async def websocket_job_progress(
-        websocket: WebSocket,
-        user: Optional[dict] = Depends(get_current_user_optional)
+        websocket: WebSocket, user: Optional[dict] = Depends(get_current_user_optional)
     ):
         """WebSocket endpoint for real-time job progress updates"""
-        user_id = user.get('user_id') if user else None
-        
+        user_id = user.get("user_id") if user else None
+
         try:
             await websocket_manager.connect_user(websocket, user_id)
-            
+
             # Start Redis subscriber if not already running
             if not websocket_manager.subscription_task:
                 await websocket_manager.start_redis_subscriber()
-            
+
             while True:
                 # Listen for client messages
                 try:
@@ -300,71 +308,78 @@ def setup_websocket_routes(app: FastAPI):
                     await handle_websocket_message(websocket, data, user_id)
                 except WebSocketDisconnect:
                     break
-                    
+
         except Exception as e:
             logger.error(f"WebSocket error: {e}")
         finally:
             await websocket_manager.disconnect_user(websocket)
-    
+
     @app.get("/ws/jobs/test", response_class=HTMLResponse)
     async def websocket_test_page():
         """Test page for WebSocket job progress"""
         return get_websocket_test_page()
 
 
-async def handle_websocket_message(websocket: WebSocket, data: Dict[str, Any], user_id: Optional[str]):
+async def handle_websocket_message(
+    websocket: WebSocket, data: Dict[str, Any], user_id: Optional[str]
+):
     """Handle incoming WebSocket messages from clients"""
     try:
-        message_type = data.get('type')
-        
-        if message_type == 'subscribe_job':
-            job_id = data.get('job_id')
+        message_type = data.get("type")
+
+        if message_type == "subscribe_job":
+            job_id = data.get("job_id")
             if job_id:
                 success = await websocket_manager.subscribe_to_job(websocket, job_id)
-                await websocket.send_json({
-                    "type": "subscription_response",
-                    "job_id": job_id,
-                    "success": success,
-                    "message": f"{'Subscribed to' if success else 'Failed to subscribe to'} job {job_id}"
-                })
-        
-        elif message_type == 'unsubscribe_job':
-            job_id = data.get('job_id')
+                await websocket.send_json(
+                    {
+                        "type": "subscription_response",
+                        "job_id": job_id,
+                        "success": success,
+                        "message": f"{'Subscribed to' if success else 'Failed to subscribe to'} job {job_id}",
+                    }
+                )
+
+        elif message_type == "unsubscribe_job":
+            job_id = data.get("job_id")
             if job_id:
-                success = await websocket_manager.unsubscribe_from_job(websocket, job_id)
-                await websocket.send_json({
-                    "type": "unsubscription_response", 
-                    "job_id": job_id,
-                    "success": success,
-                    "message": f"{'Unsubscribed from' if success else 'Failed to unsubscribe from'} job {job_id}"
-                })
-        
-        elif message_type == 'get_active_jobs':
+                success = await websocket_manager.unsubscribe_from_job(
+                    websocket, job_id
+                )
+                await websocket.send_json(
+                    {
+                        "type": "unsubscription_response",
+                        "job_id": job_id,
+                        "success": success,
+                        "message": f"{'Unsubscribed from' if success else 'Failed to unsubscribe from'} job {job_id}",
+                    }
+                )
+
+        elif message_type == "get_active_jobs":
             jobs = await websocket_manager.get_active_jobs(user_id)
-            await websocket.send_json({
-                "type": "active_jobs",
-                "data": jobs,
-                "timestamp": datetime.utcnow().isoformat()
-            })
-        
-        elif message_type == 'ping':
-            await websocket.send_json({
-                "type": "pong",
-                "timestamp": datetime.utcnow().isoformat()
-            })
-        
+            await websocket.send_json(
+                {
+                    "type": "active_jobs",
+                    "data": jobs,
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            )
+
+        elif message_type == "ping":
+            await websocket.send_json(
+                {"type": "pong", "timestamp": datetime.utcnow().isoformat()}
+            )
+
         else:
-            await websocket.send_json({
-                "type": "error",
-                "message": f"Unknown message type: {message_type}"
-            })
-            
+            await websocket.send_json(
+                {"type": "error", "message": f"Unknown message type: {message_type}"}
+            )
+
     except Exception as e:
         logger.error(f"Error handling WebSocket message: {e}")
-        await websocket.send_json({
-            "type": "error",
-            "message": "Failed to process message"
-        })
+        await websocket.send_json(
+            {"type": "error", "message": "Failed to process message"}
+        )
 
 
 def get_websocket_test_page() -> str:

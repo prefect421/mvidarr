@@ -2,12 +2,12 @@
 FastAPI Authentication Middleware and Dependencies
 """
 
-from fastapi import HTTPException, Depends
+from fastapi import Depends, HTTPException
 
 
 async def get_current_user():
     """Get current authenticated user
-    
+
     TODO: Implement actual authentication
     For now, return a placeholder user for development
     """

@@ -27,7 +27,7 @@ class IMVDbService:
         """Get API key from settings"""
         # Use SettingsService class methods directly for better Flask context handling
         from src.services.settings_service import SettingsService
-        
+
         # Force reload settings cache
         SettingsService.reload_cache()
         api_key = SettingsService.get("imvdb_api_key", "")
@@ -453,12 +453,12 @@ class IMVDbService:
             else:
                 # Return the first (best) match
                 artist = response["results"][0]
-                
+
                 # Extract and normalize the artist name
                 extracted_name = self._extract_artist_name(artist)
                 if extracted_name and not artist.get("name"):
                     artist["name"] = extracted_name
-                
+
                 logger.info(
                     f"Found artist: {extracted_name or artist.get('name', artist_name)}, ID: {artist.get('id')}"
                 )
@@ -492,12 +492,12 @@ class IMVDbService:
                         else:
                             # Return the first (best) match
                             artist = response["results"][0]
-                            
+
                             # Extract and normalize the artist name
                             extracted_name = self._extract_artist_name(artist)
                             if extracted_name and not artist.get("name"):
                                 artist["name"] = extracted_name
-                            
+
                             logger.info(
                                 f"Found artist with cleaned name: {extracted_name or artist.get('name', cleaned_name)}, ID: {artist.get('id')}"
                             )
@@ -535,42 +535,62 @@ class IMVDbService:
     def _extract_artist_name(self, artist_data: Dict) -> Optional[str]:
         """
         Extract artist name from IMVDb data structure, handling nested formats
-        
+
         Args:
             artist_data: Raw artist data from IMVDb API
-            
+
         Returns:
             Artist name string or None
         """
         if not artist_data:
             return None
-            
+
         # Try multiple possible locations for the artist name
         name_candidates = [
             artist_data.get("name"),  # Direct name field
-            artist_data.get("artist", {}).get("name") if isinstance(artist_data.get("artist"), dict) else None,  # Nested in artist object
-            artist_data.get("entity", {}).get("name") if isinstance(artist_data.get("entity"), dict) else None,  # Nested in entity object
-            artist_data.get("data", {}).get("name") if isinstance(artist_data.get("data"), dict) else None,  # Nested in data object
+            (
+                artist_data.get("artist", {}).get("name")
+                if isinstance(artist_data.get("artist"), dict)
+                else None
+            ),  # Nested in artist object
+            (
+                artist_data.get("entity", {}).get("name")
+                if isinstance(artist_data.get("entity"), dict)
+                else None
+            ),  # Nested in entity object
+            (
+                artist_data.get("data", {}).get("name")
+                if isinstance(artist_data.get("data"), dict)
+                else None
+            ),  # Nested in data object
         ]
-        
+
         # Find the first non-empty name
         for candidate in name_candidates:
             if candidate:
                 name = str(candidate).strip()
                 if name:
                     return name
-        
+
         # Fallback to slug if name is not available
         slug_candidates = [
             artist_data.get("slug"),
-            artist_data.get("artist", {}).get("slug") if isinstance(artist_data.get("artist"), dict) else None,
-            artist_data.get("entity", {}).get("slug") if isinstance(artist_data.get("entity"), dict) else None,
+            (
+                artist_data.get("artist", {}).get("slug")
+                if isinstance(artist_data.get("artist"), dict)
+                else None
+            ),
+            (
+                artist_data.get("entity", {}).get("slug")
+                if isinstance(artist_data.get("entity"), dict)
+                else None
+            ),
         ]
-        
+
         for slug in slug_candidates:
             if slug:
                 return str(slug).replace("-", " ").title()
-        
+
         return None
 
     def get_artist(self, artist_id: str) -> Optional[Dict]:
@@ -592,8 +612,10 @@ class IMVDbService:
                 # If we extracted a name but the response doesn't have one at the top level,
                 # add it for consistency
                 response["name"] = artist_name
-                
-            logger.info(f"Retrieved artist details for IMVDb ID: {artist_id}, Name: {artist_name}")
+
+            logger.info(
+                f"Retrieved artist details for IMVDb ID: {artist_id}, Name: {artist_name}"
+            )
             return response
 
         logger.warning(f"Failed to retrieve artist details for IMVDb ID: {artist_id}")

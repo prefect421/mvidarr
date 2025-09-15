@@ -36,7 +36,7 @@ class YtDlpService:
         self.download_history = []
         self._next_id = 1
         self.custom_cookie_file = None
-        
+
         # Auto-load existing cookie file at startup
         self._load_existing_cookie_file()
 
@@ -177,9 +177,7 @@ class YtDlpService:
                         user_id, artist_id
                     )
                 )
-                logger.info(
-                    f"Using quality format string: {quality_format_string}"
-                )
+                logger.info(f"Using quality format string: {quality_format_string}")
             except Exception as quality_error:
                 logger.warning(
                     f"Failed to get quality format string, using default: {quality_error}"
@@ -193,13 +191,13 @@ class YtDlpService:
                     if existing_entry.get("video_id") == video_id:
                         existing_active = existing_entry
                         break
-                
+
                 if existing_active:
                     return {
                         "success": True,
                         "id": existing_active["id"],
                         "message": f"Download already in progress: {artist} - {title}",
-                        "status": "already_active"
+                        "status": "already_active",
                     }
 
             # Create download entry
@@ -359,36 +357,49 @@ class YtDlpService:
                     "--ignore-errors",  # Continue on errors
                     "--no-check-certificate",  # Skip SSL certificate verification if needed
                 ]
-                
+
                 # Force overwrite for quality upgrades to ensure higher quality downloads
                 if "(Quality Upgrade)" in download_entry.get("title", ""):
                     cmd.extend(["--force-overwrites"])
                     # Also ensure no caching issues by using --no-cache-dir
                     cmd.extend(["--no-cache-dir"])
-                    logger.info(f"Download {download_id}: Force overwrite and no cache enabled for quality upgrade")
+                    logger.info(
+                        f"Download {download_id}: Force overwrite and no cache enabled for quality upgrade"
+                    )
 
                 # Add YouTube extractor args to handle PO Token and SABR issues
                 enable_sabr_workarounds = settings.get("enable_sabr_workarounds", True)
                 if enable_sabr_workarounds:
                     youtube_extractor_args = [
                         "youtube:player_client=web,ios",  # Try web first, fallback to iOS client
-                        "youtube:formats=missing_pot",  # Enable formats that might be missing PO Token  
+                        "youtube:formats=missing_pot",  # Enable formats that might be missing PO Token
                         "youtube:innertube_host=studio.youtube.com",  # Alternative host to avoid restrictions
                         "youtube:bypass_age_gate=True",  # Bypass age restrictions
                         # Removed skip=hls,dash to allow higher quality formats (issue #11)
                     ]
-                    cmd.extend([
-                        "--extractor-args", ";".join(youtube_extractor_args),
-                    ])
-                    logger.debug(f"Download {download_id}: YouTube extractor args enabled: {youtube_extractor_args}")
+                    cmd.extend(
+                        [
+                            "--extractor-args",
+                            ";".join(youtube_extractor_args),
+                        ]
+                    )
+                    logger.debug(
+                        f"Download {download_id}: YouTube extractor args enabled: {youtube_extractor_args}"
+                    )
 
-                # Add throttling if enabled in settings  
-                enable_throttled_downloads = settings.get("enable_throttled_downloads", True)
+                # Add throttling if enabled in settings
+                enable_throttled_downloads = settings.get(
+                    "enable_throttled_downloads", True
+                )
                 if enable_throttled_downloads:
-                    cmd.extend([
-                        "--throttled-rate", "100K",  # Slower download to avoid detection
-                        "--sleep-requests", "1",  # Wait between requests
-                    ])
+                    cmd.extend(
+                        [
+                            "--throttled-rate",
+                            "100K",  # Slower download to avoid detection
+                            "--sleep-requests",
+                            "1",  # Wait between requests
+                        ]
+                    )
                     logger.debug(f"Download {download_id}: Throttled downloads enabled")
 
                 logger.info(
@@ -422,10 +433,10 @@ class YtDlpService:
                 try:
                     # Set up environment with explicit temp directory
                     env = os.environ.copy()
-                    env['TMPDIR'] = '/tmp'
-                    env['TEMP'] = '/tmp'
-                    env['TMP'] = '/tmp'
-                    
+                    env["TMPDIR"] = "/tmp"
+                    env["TEMP"] = "/tmp"
+                    env["TMP"] = "/tmp"
+
                     # Execute yt-dlp
                     process = subprocess.Popen(
                         cmd,
@@ -603,7 +614,7 @@ class YtDlpService:
                 if video:
                     # Store original file path for potential cleanup
                     original_file_path = video.local_path
-                    
+
                     video.status = status
                     if file_path:
                         video.local_path = file_path
@@ -613,7 +624,7 @@ class YtDlpService:
                             video.local_path = file_path
                             if not file_size:
                                 file_size = os.path.getsize(file_path)
-                                
+
                             # Handle quality upgrade file cleanup
                             if original_file_path and original_file_path != file_path:
                                 self._handle_quality_upgrade_cleanup(
@@ -739,51 +750,58 @@ class YtDlpService:
         except Exception as e:
             logger.error(f"Failed to update database download {db_download_id}: {e}")
 
-    def _handle_quality_upgrade_cleanup(self, video, original_file_path: str, new_file_path: str):
+    def _handle_quality_upgrade_cleanup(
+        self, video, original_file_path: str, new_file_path: str
+    ):
         """Handle cleanup of original files during quality upgrades"""
         try:
             # Check if this is a quality upgrade (indicated by metadata or title)
             is_upgrade = False
-            
+
             # Check video metadata for upgrade flag
-            if hasattr(video, 'video_metadata') and video.video_metadata:
+            if hasattr(video, "video_metadata") and video.video_metadata:
                 is_upgrade = video.video_metadata.get("upgrade_requested", False)
-            
+
             # Also check if this looks like an upgrade based on file paths
             # (new file in same directory, different filename)
             if not is_upgrade and original_file_path and new_file_path:
                 original_dir = os.path.dirname(original_file_path)
-                new_dir = os.path.dirname(new_file_path) 
+                new_dir = os.path.dirname(new_file_path)
                 # Same directory but different files suggests upgrade
-                is_upgrade = (original_dir == new_dir and 
-                             os.path.basename(original_file_path) != os.path.basename(new_file_path))
-            
+                is_upgrade = original_dir == new_dir and os.path.basename(
+                    original_file_path
+                ) != os.path.basename(new_file_path)
+
             if not is_upgrade:
                 return  # Not a quality upgrade, don't delete anything
-                
+
             # Check user preference for auto-deletion
             auto_delete = settings.get("auto_delete_original_on_upgrade", True)
             if not auto_delete:
                 logger.info(f"Original file cleanup disabled for video {video.id}")
                 return
-                
+
             # Verify the original file exists and new file is different
             if not os.path.exists(original_file_path):
-                logger.debug(f"Original file already doesn't exist: {original_file_path}")
+                logger.debug(
+                    f"Original file already doesn't exist: {original_file_path}"
+                )
                 return
-                
+
             if not os.path.exists(new_file_path):
-                logger.warning(f"New file doesn't exist yet, skipping cleanup: {new_file_path}")
+                logger.warning(
+                    f"New file doesn't exist yet, skipping cleanup: {new_file_path}"
+                )
                 return
-                
+
             if os.path.samefile(original_file_path, new_file_path):
                 logger.debug(f"Original and new files are the same, no cleanup needed")
                 return
-                
+
             # Compare file sizes to ensure new file is reasonable
             original_size = os.path.getsize(original_file_path)
             new_size = os.path.getsize(new_file_path)
-            
+
             # Basic sanity check - new file shouldn't be much smaller (might indicate failed download)
             if new_size < original_size * 0.5:  # New file is less than 50% of original
                 logger.warning(
@@ -791,37 +809,39 @@ class YtDlpService:
                     f"skipping cleanup for safety. Video {video.id}"
                 )
                 return
-                
+
             # Safe to delete original file
             logger.info(
                 f"Quality upgrade cleanup: Deleting original file {original_file_path} "
                 f"({original_size} bytes) for video {video.id}"
             )
-            
+
             # Create backup info before deletion
             backup_info = {
                 "deleted_file_path": original_file_path,
                 "deleted_file_size": original_size,
                 "deleted_at": datetime.utcnow().isoformat(),
                 "replaced_by": new_file_path,
-                "replaced_by_size": new_size
+                "replaced_by_size": new_size,
             }
-            
+
             # Delete the original file
             os.remove(original_file_path)
-            
+
             # Update video metadata with cleanup info
-            if not hasattr(video, 'video_metadata') or not video.video_metadata:
+            if not hasattr(video, "video_metadata") or not video.video_metadata:
                 video.video_metadata = {}
             video.video_metadata["quality_upgrade_cleanup"] = backup_info
-            
+
             logger.info(
                 f"Successfully deleted original file and updated metadata for video {video.id}. "
                 f"Saved {original_size} bytes of disk space."
             )
-            
+
         except Exception as e:
-            logger.error(f"Error during quality upgrade cleanup for video {video.id}: {e}")
+            logger.error(
+                f"Error during quality upgrade cleanup for video {video.id}: {e}"
+            )
             # Don't raise the exception - cleanup failure shouldn't break the download
 
     def get_queue(self) -> Dict:
@@ -1057,21 +1077,21 @@ class YtDlpService:
     def _load_existing_cookie_file(self):
         """Auto-load existing cookie file at startup if available"""
         import os
-        
+
         # Check standard cookie locations
         cookie_paths = [
             "data/cookies/youtube_cookies.txt",
-            "cookies.txt", 
-            "youtube_cookies.txt"
+            "cookies.txt",
+            "youtube_cookies.txt",
         ]
-        
+
         for path in cookie_paths:
             full_path = os.path.join(os.getcwd(), path)
             if os.path.exists(full_path) and os.path.getsize(full_path) > 0:
                 logger.info(f"Auto-loading existing cookie file: {full_path}")
                 self.custom_cookie_file = full_path
                 break
-        
+
         if not self.custom_cookie_file:
             logger.debug("No existing cookie file found to auto-load")
 

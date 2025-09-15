@@ -5,6 +5,7 @@ Modern async web framework with native background job support
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -27,17 +28,7 @@ from src.database.connection import DatabaseManager, get_db
 
 # Database initialization
 from src.database.init_db import initialize_database
-from src.services.background_workers import (
-    start_background_workers,
-    stop_background_workers,
-)
-from src.services.fastapi_job_integration import (
-    initialize_fastapi_job_system,
-    shutdown_fastapi_job_system,
-)
-
-# Background job system
-from src.services.job_queue import cleanup_job_queue, get_job_queue
+# Old Flask job system imports removed - using Celery now
 from src.services.settings_service import SettingsService
 from src.services.ytdlp_service import ytdlp_service
 from src.utils.logger import get_logger
@@ -96,23 +87,8 @@ async def lifespan(app: FastAPI):
 
         # Initialize background job system with minimal configuration
         logger.info("🔄 Initializing background job system...")
-        try:
-            job_queue = await get_job_queue()
-            logger.info("✅ Job queue initialized")
-
-            # Start with just 2 workers for stability
-            worker_count = 2
-            await start_background_workers(worker_count)
-            logger.info(f"✅ Started {worker_count} background workers")
-
-            # Initialize FastAPI job system integration
-            await initialize_fastapi_job_system(worker_count)
-            logger.info("✅ FastAPI job system integration initialized")
-
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize background job system: {e}")
-            # Continue startup even if background jobs fail
-            pass
+        # Background jobs are now handled by Celery + Redis system
+        logger.info("✅ Background jobs handled by Celery + Redis system")
 
         yield  # Application is running
 
@@ -125,14 +101,8 @@ async def lifespan(app: FastAPI):
         logger.info("Shutting down application services...")
 
         try:
-            # Stop background job system
-            try:
-                await shutdown_fastapi_job_system()
-                await stop_background_workers()
-                await cleanup_job_queue()
-                logger.info("✅ Background job system stopped cleanly")
-            except Exception as e:
-                logger.error(f"Error stopping background job system: {e}")
+            # Celery workers are managed independently
+            logger.info("✅ Background job system (Celery) managed independently")
 
             # Close database connections
             import src.database.connection as db_conn
@@ -1337,10 +1307,104 @@ async def get_health_version():
     return {"version": "0.9.8", "build_date": "2024-01-01", "commit": "abc1234"}
 
 
-@app.get("/api/themes/current")
+@app.get("/api/themes/current") 
 async def get_current_theme():
-    """Mock current theme endpoint"""
-    return {"theme": "dark", "available_themes": ["dark", "light"]}
+    """Get the currently applied theme"""
+    try:
+        from src.services.settings_service import SettingsService
+        current_theme = SettingsService.get("ui_theme", "default")
+        return {"current_theme": current_theme}
+    except Exception as e:
+        logger.error(f"Error getting current theme: {e}")
+        return {"error": "Failed to get current theme", "details": str(e)}
+
+
+@app.get("/api/themes")
+async def get_themes():
+    """Get all available themes"""
+    try:
+        from src.api.themes import extract_built_in_theme_data
+        from src.database.connection import get_db
+        from src.database.models import CustomTheme
+        
+        # Get built-in themes
+        built_in_themes = extract_built_in_theme_data()
+        
+        # Get custom themes from database
+        custom_themes = {}
+        try:
+            with get_db() as session:
+                custom_theme_records = session.query(CustomTheme).all()
+                for theme in custom_theme_records:
+                    custom_themes[theme.name] = {
+                        "id": theme.id,
+                        "name": theme.name,
+                        "css_variables": theme.css_variables or {},
+                        "is_active": theme.is_active,
+                        "created_at": theme.created_at.isoformat() if theme.created_at else None
+                    }
+        except Exception as db_error:
+            logger.warning(f"Failed to load custom themes from database: {db_error}")
+        
+        return {
+            "built_in_themes": built_in_themes,
+            "custom_themes": custom_themes,
+            "total_themes": len(built_in_themes) + len(custom_themes)
+        }
+    except Exception as e:
+        logger.error(f"Error getting themes: {e}")
+        return {"error": "Failed to get themes", "details": str(e)}
+
+
+@app.post("/api/themes/apply")
+async def apply_theme(request: Request):
+    """Apply a theme"""
+    try:
+        from src.services.settings_service import SettingsService
+        
+        body = await request.json()
+        theme_name = body.get("theme_name")
+        
+        if not theme_name:
+            return {"error": "Theme name is required"}
+        
+        # Set the theme in settings
+        SettingsService.set("ui_theme", theme_name)
+        
+        logger.info(f"Applied theme: {theme_name}")
+        return {
+            "success": True,
+            "message": f"Theme '{theme_name}' applied successfully",
+            "applied_theme": theme_name
+        }
+    except Exception as e:
+        logger.error(f"Error applying theme: {e}")
+        return {"error": "Failed to apply theme", "details": str(e)}
+
+
+@app.post("/api/themes/built-in/{theme_name}/extract")
+async def extract_built_in_theme(theme_name: str):
+    """Extract CSS variables from a built-in theme"""
+    try:
+        from src.api.themes import extract_built_in_theme_data
+        
+        # Get all built-in themes
+        built_in_themes = extract_built_in_theme_data()
+        
+        if theme_name not in built_in_themes:
+            return {"error": f"Built-in theme '{theme_name}' not found"}
+        
+        theme_data = built_in_themes[theme_name]
+        
+        logger.info(f"Extracted built-in theme: {theme_name}")
+        return {
+            "success": True,
+            "theme_name": theme_name,
+            "variables": theme_data
+        }
+    except Exception as e:
+        logger.error(f"Error extracting built-in theme {theme_name}: {e}")
+        return {"error": "Failed to extract theme", "details": str(e)}
 
 
 @app.get("/auth/check")
@@ -1383,27 +1447,108 @@ async def websocket_jobs(websocket: WebSocket):
 
     try:
         # Send initial status
+        from datetime import datetime
+        
         await websocket.send_json(
             {
                 "type": "status",
                 "message": "Connected to job progress WebSocket",
-                "timestamp": "2025-01-08T00:00:00Z",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
             }
         )
 
         # Keep connection alive and send periodic updates
         import asyncio
+        from src.jobs.celery_app import celery_app
+
+        # Store subscribed job IDs
+        subscribed_jobs = set()
+        
+        # Listen for incoming messages (job subscriptions)
+        async def handle_messages():
+            try:
+                while True:
+                    message = await websocket.receive_json()
+                    if message.get("type") in ["subscribe", "subscribe_job"]:
+                        job_id = message.get("job_id")
+                        if job_id:
+                            subscribed_jobs.add(job_id)
+                            logger.info(f"WebSocket subscribed to job {job_id}")
+                    elif message.get("type") in ["unsubscribe", "unsubscribe_job"]:
+                        job_id = message.get("job_id")
+                        if job_id:
+                            subscribed_jobs.discard(job_id)
+            except Exception as e:
+                logger.debug(f"WebSocket message handling stopped: {e}")
+
+        # Start message handler
+        import asyncio
+        message_task = asyncio.create_task(handle_messages())
 
         while True:
-            # Send heartbeat every 30 seconds
-            await asyncio.sleep(30)
-            await websocket.send_json(
-                {
-                    "type": "heartbeat",
-                    "timestamp": "2025-01-08T00:00:00Z",
-                    "active_jobs": 0,
-                }
-            )
+            try:
+                # Send heartbeat and check for job updates every 5 seconds
+                await asyncio.sleep(5)
+                
+                # Get active jobs count from Celery
+                try:
+                    inspect = celery_app.control.inspect()
+                    active_jobs = inspect.active()
+                    total_active = sum(len(jobs) for jobs in (active_jobs or {}).values())
+                except Exception:
+                    total_active = 0
+
+                await websocket.send_json(
+                    {
+                        "type": "heartbeat",
+                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                        "active_jobs": total_active,
+                    }
+                )
+                
+                # Check progress for subscribed jobs
+                for job_id in list(subscribed_jobs):
+                    try:
+                        from celery.result import AsyncResult
+                        result = AsyncResult(job_id, app=celery_app)
+                        
+                        if result.state == "PROGRESS":
+                            await websocket.send_json({
+                                "type": "job_update",
+                                "job_id": job_id,
+                                "status": "processing",
+                                "progress": result.info.get("progress", 0),
+                                "message": result.info.get("message", "Processing..."),
+                                "timestamp": datetime.utcnow().isoformat() + "Z",
+                            })
+                        elif result.state == "SUCCESS":
+                            await websocket.send_json({
+                                "type": "job_update", 
+                                "job_id": job_id,
+                                "status": "completed",
+                                "progress": 100,
+                                "message": "Job completed successfully",
+                                "result": result.result,
+                                "timestamp": datetime.utcnow().isoformat() + "Z",
+                            })
+                            subscribed_jobs.discard(job_id)
+                        elif result.state == "FAILURE":
+                            await websocket.send_json({
+                                "type": "job_update",
+                                "job_id": job_id, 
+                                "status": "failed",
+                                "progress": 0,
+                                "message": "Job failed",
+                                "error": str(result.info),
+                                "timestamp": datetime.utcnow().isoformat() + "Z",
+                            })
+                            subscribed_jobs.discard(job_id)
+                    except Exception as job_error:
+                        logger.debug(f"Error checking job {job_id}: {job_error}")
+
+            except Exception as loop_error:
+                logger.error(f"WebSocket update loop error: {loop_error}")
+                break
 
     except Exception as e:
         logger.error(f"WebSocket jobs error: {e}")

@@ -281,7 +281,7 @@ genre_service = GenreService()
 async def get_genre_service() -> GenreService:
     """
     Get the genre service instance
-    
+
     Returns:
         GenreService: Configured service instance
     """

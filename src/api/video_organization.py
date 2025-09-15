@@ -18,30 +18,41 @@ def organize_all_videos():
     """Organize all videos in downloads directory (background job)"""
     try:
         import asyncio
-        from src.services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
-        
+
+        from src.services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
+
         # Create background job for organizing all videos
         job = BackgroundJob(
             type=JobType.VIDEO_ORGANIZE_ALL,
             priority=JobPriority.NORMAL,
             payload={},  # No specific payload needed for organize all
-            created_by=getattr(request, 'user_id', None)
+            created_by=getattr(request, "user_id", None),
         )
-        
+
         # Enqueue job
         async def queue_job():
             job_queue = await get_job_queue()
             return await job_queue.enqueue(job)
-        
+
         job_id = asyncio.run(queue_job())
-        
+
         logger.info(f"Enqueued organize all videos job {job_id}")
-        
-        return jsonify({
-            "success": True,
-            "job_id": job_id,
-            "message": "Video organization job queued for all downloads"
-        }), 202
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": job_id,
+                    "message": "Video organization job queued for all downloads",
+                }
+            ),
+            202,
+        )
 
     except Exception as e:
         logger.error(f"Failed to queue organize all videos job: {e}")
@@ -53,32 +64,41 @@ def organize_single_video(filename):
     """Organize a specific video file (background job)"""
     try:
         import asyncio
-        from src.services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
-        
+
+        from src.services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
+
         # Create background job for organizing single video
         job = BackgroundJob(
             type=JobType.VIDEO_ORGANIZE_SINGLE,
             priority=JobPriority.HIGH,  # Single video organization is higher priority
-            payload={
-                'filename': filename
-            },
-            created_by=getattr(request, 'user_id', None)
+            payload={"filename": filename},
+            created_by=getattr(request, "user_id", None),
         )
-        
+
         # Enqueue job
         async def queue_job():
             job_queue = await get_job_queue()
             return await job_queue.enqueue(job)
-        
+
         job_id = asyncio.run(queue_job())
-        
+
         logger.info(f"Enqueued organize single video job {job_id} for {filename}")
-        
-        return jsonify({
-            "success": True,
-            "job_id": job_id,
-            "message": f"Video organization job queued for {filename}"
-        }), 202
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": job_id,
+                    "message": f"Video organization job queued for {filename}",
+                }
+            ),
+            202,
+        )
 
     except Exception as e:
         logger.error(f"Failed to queue organize video job for {filename}: {e}")
@@ -197,30 +217,41 @@ def reorganize_existing_videos():
     """Reorganize existing videos in the music videos directory (background job)"""
     try:
         import asyncio
-        from src.services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
-        
+
+        from src.services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
+
         # Create background job for reorganizing existing videos
         job = BackgroundJob(
             type=JobType.VIDEO_REORGANIZE_EXISTING,
             priority=JobPriority.NORMAL,
             payload={},  # No specific payload needed for reorganize existing
-            created_by=getattr(request, 'user_id', None)
+            created_by=getattr(request, "user_id", None),
         )
-        
+
         # Enqueue job
         async def queue_job():
             job_queue = await get_job_queue()
             return await job_queue.enqueue(job)
-        
+
         job_id = asyncio.run(queue_job())
-        
+
         logger.info(f"Enqueued reorganize existing videos job {job_id}")
-        
-        return jsonify({
-            "success": True,
-            "job_id": job_id,
-            "message": "Video reorganization job queued for existing videos"
-        }), 202
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": job_id,
+                    "message": "Video reorganization job queued for existing videos",
+                }
+            ),
+            202,
+        )
 
     except Exception as e:
         logger.error(f"Failed to queue reorganize existing videos job: {e}")

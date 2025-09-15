@@ -434,7 +434,13 @@ class EnhancedSchedulerService:
 
         try:
             import asyncio
-            from src.services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
+
+            from src.services.job_queue import (
+                BackgroundJob,
+                JobPriority,
+                JobType,
+                get_job_queue,
+            )
 
             max_downloads = self._get_setting(
                 "scheduler_max_downloads_per_run",
@@ -446,9 +452,9 @@ class EnhancedSchedulerService:
                 type=JobType.SCHEDULED_DOWNLOAD,
                 priority=JobPriority.NORMAL,
                 payload={
-                    'max_downloads': max_downloads,
-                    'scheduled_time': start_time.isoformat()
-                }
+                    "max_downloads": max_downloads,
+                    "scheduled_time": start_time.isoformat(),
+                },
             )
 
             # Enqueue job
@@ -469,7 +475,9 @@ class EnhancedSchedulerService:
                 "duration_seconds": duration,
             }
 
-            logger.info(f"🔽 Scheduled download job {job_id} queued (took {duration:.1f}s)")
+            logger.info(
+                f"🔽 Scheduled download job {job_id} queued (took {duration:.1f}s)"
+            )
             return result
 
         except Exception as e:
@@ -485,7 +493,13 @@ class EnhancedSchedulerService:
 
         try:
             import asyncio
-            from src.services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
+
+            from src.services.job_queue import (
+                BackgroundJob,
+                JobPriority,
+                JobType,
+                get_job_queue,
+            )
 
             # Get discovery settings
             max_artists = self._get_setting("scheduler_max_artists_per_discovery", 5)
@@ -502,10 +516,10 @@ class EnhancedSchedulerService:
                 type=JobType.SCHEDULED_DISCOVERY,
                 priority=JobPriority.NORMAL,
                 payload={
-                    'max_artists': max_artists,
-                    'max_videos_per_artist': max_videos_per_artist,
-                    'scheduled_time': start_time.isoformat()
-                }
+                    "max_artists": max_artists,
+                    "max_videos_per_artist": max_videos_per_artist,
+                    "scheduled_time": start_time.isoformat(),
+                },
             )
 
             # Enqueue job
@@ -527,7 +541,9 @@ class EnhancedSchedulerService:
                 "duration_seconds": duration,
             }
 
-            logger.info(f"🔍 Scheduled discovery job {job_id} queued (took {duration:.1f}s)")
+            logger.info(
+                f"🔍 Scheduled discovery job {job_id} queued (took {duration:.1f}s)"
+            )
             return result
 
         except Exception as e:

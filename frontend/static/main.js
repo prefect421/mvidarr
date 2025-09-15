@@ -1372,62 +1372,60 @@ async function autoMatchServices() {
         return;
     }
     
-    showLoading('Auto-matching services...');
+    if (!confirm(`Auto-match ${artistName} across all connected services? This will attempt to find and link corresponding profiles on IMVDb, MusicBrainz, Spotify, and other services.`)) {
+        return;
+    }
+    
     try {
-        const response = await apiRequest(`/api/metadata-enrichment/auto-match/${artistId}`);
-        if (response.matches) {
-            let linkedCount = 0;
-            
-            // Link found matches directly using the same logic as manual search
-            for (const [service, data] of Object.entries(response.matches)) {
-                try {
-                    const artistId = getCurrentArtistId();
-                    
-                    switch(service) {
-                        case 'spotify':
-                            if (data.id) {
-                                await linkSpotifyArtist(data.id, data.name);
-                                linkedCount++;
-                            }
-                            break;
-                        case 'lastfm':
-                            await linkLastfmResult(artistId, data);
-                            linkedCount++;
-                            break;
-                        case 'imvdb':
-                            await linkImvdbResult(artistId, data);
-                            linkedCount++;
-                            break;
-                        case 'musicbrainz':
-                            await linkMusicBrainzResult(artistId, data);
-                            linkedCount++;
-                            break;
-                        case 'allmusic':
-                            await linkAllMusicResult(artistId, data);
-                            linkedCount++;
-                            break;
-                        case 'wikipedia':
-                            await linkWikipediaResult(artistId, data);
-                            linkedCount++;
-                            break;
-                        default:
-                            console.warn(`Auto-match linking not implemented for ${service}`);
-                    }
-                } catch (error) {
-                    console.error(`Failed to auto-link ${service}:`, error);
-                }
-            }
-            
-            if (linkedCount > 0) {
-                showSuccess(`Auto-matched and linked ${linkedCount} services`);
-                // Refresh the page to show updated metadata
-                setTimeout(() => window.location.reload(), 2000);
-            } else {
-                showWarning('Services found but none could be linked');
-            }
+        console.log('🚀 Starting auto-match job for artist:', artistId);
+        
+        if (!window.backgroundJobs) {
+            throw new Error('Background jobs system not available');
         }
+        
+        if (!window.backgroundJobs.startAutoMatch) {
+            throw new Error('startAutoMatch method not available');
+        }
+        
+        // Start background job for auto-match
+        const jobId = await window.backgroundJobs.startAutoMatch(artistId, {
+            priority: 'normal',
+            onComplete: (error, result) => {
+                if (error) {
+                    console.error('Auto-match job failed:', error);
+                    showError('Auto-match failed: ' + error.message);
+                } else if (result) {
+                    console.log('Auto-match job completed:', result);
+                    const matches = result.total_matches || 0;
+                    const saved = result.updated_fields ? result.updated_fields.length : 0;
+                    
+                    if (saved > 0) {
+                        showSuccess(`Auto-match completed: ${matches} services matched, ${saved} saved to database`);
+                        // Refresh the page to show updated metadata
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                        showWarning(`Auto-match completed: ${matches} services matched, but no new links were saved`);
+                    }
+                } else {
+                    showSuccess('Auto-match completed');
+                    setTimeout(() => window.location.reload(), 2000);
+                }
+            },
+            onProgress: (progress) => {
+                console.log('Auto-match progress:', progress);
+            }
+        });
+        
+        if (jobId) {
+            console.log('Auto-match job started with ID:', jobId);
+            showInfo(`Auto-match job started (ID: ${jobId})`);
+        } else {
+            showError('Failed to start auto-match job');
+        }
+        
     } catch (error) {
-        showError('Auto-matching failed: ' + error.message);
+        console.error('Auto-match job error:', error);
+        showError('Auto-match failed: ' + error.message);
     }
 }
 
@@ -1618,6 +1616,9 @@ async function linkSelectedResult(service, result) {
         showLoading(`Linking ${service} result...`);
         
         switch (service) {
+            case 'spotify':
+                await linkSpotifyResult(artistId, result);
+                break;
             case 'lastfm':
                 await linkLastfmResult(artistId, result);
                 break;
@@ -1653,6 +1654,17 @@ async function linkLastfmResult(artistId, result) {
         method: 'PUT',
         body: JSON.stringify({
             lastfm_name: result.name
+        })
+    });
+    return response;
+}
+
+async function linkSpotifyResult(artistId, result) {
+    // Update the artist's spotify_id field
+    const response = await apiRequest(`/api/artists/${artistId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+            spotify_id: result.id
         })
     });
     return response;

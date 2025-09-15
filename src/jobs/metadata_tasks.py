@@ -10,9 +10,8 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from celery import Task
-from flask import Flask
 
-from src.database.connection import get_db, init_db
+from src.database.connection import get_db, init_db_standalone
 from src.database.models import Artist, Video
 from src.jobs.celery_app import celery_app
 from src.services.metadata_enrichment_service import MetadataEnrichmentService
@@ -25,37 +24,50 @@ class CallbackTask(Task):
     """Base task that supports progress callbacks"""
 
     def update_progress(self, task_id: str, progress: int, message: str = ""):
-        """Update task progress and send to WebSocket subscribers"""
+        """Update task progress with WebSocket broadcasting via Redis"""
         try:
+            progress_data = {
+                "progress": progress,
+                "message": message,
+                "timestamp": datetime.utcnow().isoformat(),
+                "status": "PROGRESS",
+            }
+
             # Update task metadata
             self.update_state(
                 task_id=task_id,
                 state="PROGRESS",
-                meta={
-                    "progress": progress,
-                    "message": message,
-                    "timestamp": datetime.utcnow().isoformat(),
-                },
+                meta=progress_data,
             )
 
-            # Emit WebSocket update for real-time UI updates
+            # Publish to Redis for WebSocket broadcasting
             try:
-                from flask_socketio import SocketIO
-                from flask import current_app
+                import json
 
-                if hasattr(current_app, "socketio"):
-                    current_app.socketio.emit(
-                        "job_progress",
-                        {
-                            "job_id": task_id,
-                            "progress": progress,
-                            "message": message,
-                            "timestamp": datetime.utcnow().isoformat(),
-                        },
-                        namespace="/jobs",
+                from src.jobs.redis_manager import redis_manager
+
+                if redis_manager.redis_client:
+                    # Store job progress for status queries
+                    progress_key = f"job_progress:{task_id}"
+                    redis_manager.redis_client.setex(
+                        progress_key, 3600, json.dumps(progress_data)  # 1 hour TTL
                     )
-            except Exception as ws_error:
-                logger.debug(f"WebSocket emission failed (non-critical): {ws_error}")
+
+                    # Publish progress update for WebSocket broadcasting
+                    channel = f"progress:{task_id}"
+                    redis_manager.redis_client.publish(
+                        channel, json.dumps(progress_data)
+                    )
+
+                    logger.debug(
+                        f"Published progress update to Redis for task {task_id}"
+                    )
+
+            except Exception as redis_error:
+                logger.warning(f"Failed to publish progress to Redis: {redis_error}")
+
+            # Log progress for monitoring
+            logger.info(f"Task {task_id} progress: {progress}% - {message}")
 
         except Exception as e:
             logger.error(f"Failed to update task progress: {e}")
@@ -83,46 +95,37 @@ def enrich_artist_metadata_task(
     logger.info(f"Starting metadata enrichment task {task_id} for artist {artist_id}")
 
     try:
-        # Initialize Flask app context for database access
-        app = Flask(__name__)
-        init_db(app)
+        # Update progress
+        self.update_progress(task_id, 5, "Initializing enrichment service...")
 
-        with app.app_context():
-            # Update progress
-            self.update_progress(task_id, 5, "Initializing enrichment service...")
+        # Get artist info (direct database access without Flask app context)
+        with get_db() as session:
+            artist = session.query(Artist).filter(Artist.id == artist_id).first()
+            if not artist:
+                raise ValueError(f"Artist with ID {artist_id} not found")
 
-            # Get artist info
-            with get_db() as session:
-                artist = session.query(Artist).filter(Artist.id == artist_id).first()
-                if not artist:
-                    raise ValueError(f"Artist with ID {artist_id} not found")
+            artist_name = artist.name
 
-                artist_name = artist.name
+        self.update_progress(task_id, 10, f"Starting enrichment for {artist_name}...")
 
-            self.update_progress(
-                task_id, 10, f"Starting enrichment for {artist_name}..."
-            )
+        # Initialize enrichment service
+        enrichment_service = MetadataEnrichmentService()
 
-            # Initialize enrichment service
-            enrichment_service = MetadataEnrichmentService()
+        # Run enrichment with progress updates
+        self.update_progress(task_id, 25, "Gathering metadata from external sources...")
 
-            # Run enrichment with progress updates
-            self.update_progress(
-                task_id, 25, "Gathering metadata from external sources..."
-            )
+        # Since the enrichment service is async, we need to run it in event loop
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
-            # Since the enrichment service is async, we need to run it in event loop
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
-                enrichment_result = loop.run_until_complete(
-                    enrichment_service.enrich_artist_metadata(
-                        artist_id, force_refresh=force_refresh, app_context=app
-                    )
+            enrichment_result = loop.run_until_complete(
+                enrichment_service.enrich_artist_metadata(
+                    artist_id, force_refresh=force_refresh
                 )
-            finally:
-                loop.close()
+            )
+        finally:
+            loop.close()
 
             self.update_progress(task_id, 75, "Processing enrichment results...")
 
@@ -245,64 +248,57 @@ def enrich_video_metadata_task(
     )
 
     try:
-        # Initialize Flask app context for database access
-        app = Flask(__name__)
-        init_db(app)
+        # Update progress
+        self.update_progress(task_id, 10, "Initializing video enrichment...")
 
-        with app.app_context():
-            # Update progress
-            self.update_progress(task_id, 10, "Initializing video enrichment...")
+        # Get video info
+        with get_db() as session:
+            video = session.query(Video).filter(Video.id == video_id).first()
+            if not video:
+                raise ValueError(f"Video with ID {video_id} not found")
 
-            # Get video info
-            with get_db() as session:
-                video = session.query(Video).filter(Video.id == video_id).first()
-                if not video:
-                    raise ValueError(f"Video with ID {video_id} not found")
+            video_title = video.title or f"Video {video_id}"
+            artist_name = video.artist.name if video.artist else "Unknown Artist"
 
-                video_title = video.title or f"Video {video_id}"
-                artist_name = video.artist.name if video.artist else "Unknown Artist"
+        self.update_progress(task_id, 25, f"Enriching metadata for: {video_title}")
 
-            self.update_progress(task_id, 25, f"Enriching metadata for: {video_title}")
+        # Initialize enrichment service
+        enrichment_service = MetadataEnrichmentService()
 
-            # Initialize enrichment service
-            enrichment_service = MetadataEnrichmentService()
+        # TODO: Implement video-specific enrichment
+        # For now, just simulate the process
+        self.update_progress(task_id, 50, "Processing video metadata...")
 
-            # TODO: Implement video-specific enrichment
-            # For now, just simulate the process
-            self.update_progress(task_id, 50, "Processing video metadata...")
+        # Simulate processing time
+        import time
 
-            # Simulate processing time
-            import time
+        time.sleep(2)
 
-            time.sleep(2)
+        self.update_progress(task_id, 90, "Finalizing video enrichment...")
 
-            self.update_progress(task_id, 90, "Finalizing video enrichment...")
+        # Update video enrichment timestamp
+        with get_db() as session:
+            video = session.query(Video).filter(Video.id == video_id).first()
+            if video:
+                video.last_enriched = datetime.utcnow()
+                session.commit()
 
-            # Update video enrichment timestamp
-            with get_db() as session:
-                video = session.query(Video).filter(Video.id == video_id).first()
-                if video:
-                    video.last_enriched = datetime.utcnow()
-                    session.commit()
+        self.update_progress(
+            task_id, 100, f"Video metadata enrichment completed: {video_title}"
+        )
 
-            self.update_progress(
-                task_id, 100, f"Video metadata enrichment completed: {video_title}"
-            )
+        result = {
+            "success": True,
+            "video_id": video_id,
+            "video_title": video_title,
+            "artist_name": artist_name,
+            "enriched_fields": [],  # TODO: Implement actual enrichment
+            "metadata_sources": [],
+            "message": f"Video metadata enriched for {video_title}",
+        }
 
-            result = {
-                "success": True,
-                "video_id": video_id,
-                "video_title": video_title,
-                "artist_name": artist_name,
-                "enriched_fields": [],  # TODO: Implement actual enrichment
-                "metadata_sources": [],
-                "message": f"Video metadata enriched for {video_title}",
-            }
-
-            logger.info(
-                f"Successfully completed video metadata enrichment task {task_id}"
-            )
-            return result
+        logger.info(f"Successfully completed video metadata enrichment task {task_id}")
+        return result
 
     except Exception as e:
         error_msg = f"Video metadata enrichment failed for video {video_id}: {str(e)}"

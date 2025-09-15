@@ -6,20 +6,29 @@ FastAPI endpoints for system health monitoring, performance metrics, and alertin
 import asyncio
 import json
 import time
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from src.services.performance_monitor import (
-    get_performance_monitor, PerformanceMonitor, MetricType, AlertLevel,
-    MonitoringConfig, get_system_health, get_performance_alerts
-)
 from src.services.media_cache_manager import get_media_cache_manager
+from src.services.performance_monitor import (
+    AlertLevel,
+    MetricType,
+    MonitoringConfig,
+    PerformanceMonitor,
+    get_performance_alerts,
+    get_performance_monitor,
+    get_system_health,
+)
 from src.services.redis_manager import RedisManager
-from src.services.system_optimizer import get_system_optimizer, OptimizationTarget, OptimizationLevel
+from src.services.system_optimizer import (
+    OptimizationLevel,
+    OptimizationTarget,
+    get_system_optimizer,
+)
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.system_health")
@@ -27,7 +36,7 @@ logger = get_logger("mvidarr.api.system_health")
 router = APIRouter(
     prefix="/api/system-health",
     tags=["system-health"],
-    responses={404: {"description": "Not found"}}
+    responses={404: {"description": "Not found"}},
 )
 
 # Global WebSocket connections for real-time monitoring
@@ -37,18 +46,26 @@ websocket_connections: List[WebSocket] = []
 # Request/Response Models
 class SystemHealthResponse(BaseModel):
     """System health summary response"""
-    health_score: float = Field(..., ge=0, le=100, description="Overall health score (0-100)")
-    health_status: str = Field(..., description="Health status: excellent, good, fair, poor, critical")
+
+    health_score: float = Field(
+        ..., ge=0, le=100, description="Overall health score (0-100)"
+    )
+    health_status: str = Field(
+        ..., description="Health status: excellent, good, fair, poor, critical"
+    )
     current_metrics: Dict[str, Any] = Field(..., description="Current system metrics")
     active_alerts_count: int = Field(..., description="Number of active alerts")
     critical_alerts: int = Field(..., description="Number of critical alerts")
     emergency_alerts: int = Field(..., description="Number of emergency alerts")
-    monitoring_stats: Dict[str, Any] = Field(..., description="Monitoring system statistics")
+    monitoring_stats: Dict[str, Any] = Field(
+        ..., description="Monitoring system statistics"
+    )
     timestamp: float = Field(..., description="Timestamp of health check")
 
 
 class MetricHistoryResponse(BaseModel):
     """Metric history response"""
+
     metric_type: str = Field(..., description="Type of metric")
     time_period_minutes: int = Field(..., description="Time period covered in minutes")
     data_points: List[Dict[str, Any]] = Field(..., description="Historical data points")
@@ -57,6 +74,7 @@ class MetricHistoryResponse(BaseModel):
 
 class PerformanceReportResponse(BaseModel):
     """Performance report response"""
+
     report_period_hours: int = Field(..., description="Report time period in hours")
     generated_at: float = Field(..., description="Report generation timestamp")
     system_health: Dict[str, Any] = Field(..., description="System health summary")
@@ -66,6 +84,7 @@ class PerformanceReportResponse(BaseModel):
 
 class CacheStatisticsResponse(BaseModel):
     """Cache statistics response"""
+
     cache_metrics: Dict[str, Any] = Field(..., description="Cache performance metrics")
     redis_info: Dict[str, Any] = Field(..., description="Redis server information")
     configuration: Dict[str, Any] = Field(..., description="Cache configuration")
@@ -77,12 +96,12 @@ class CacheStatisticsResponse(BaseModel):
 async def get_health_status():
     """
     Get comprehensive system health status
-    
+
     Returns overall system health including CPU, memory, alerts, and performance metrics
     """
     try:
         health_summary = await get_system_health()
-        
+
         return SystemHealthResponse(
             health_score=health_summary["health_score"],
             health_status=health_summary["health_status"],
@@ -91,9 +110,9 @@ async def get_health_status():
             critical_alerts=health_summary["critical_alerts"],
             emergency_alerts=health_summary["emergency_alerts"],
             monitoring_stats=health_summary["monitoring_stats"],
-            timestamp=health_summary["timestamp"]
+            timestamp=health_summary["timestamp"],
         )
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to get health status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -103,19 +122,23 @@ async def get_health_status():
 async def get_quick_health_status():
     """
     Get quick health status for uptime monitoring
-    
+
     Returns minimal health information for fast status checks
     """
     try:
         monitor = await get_performance_monitor()
         current_metrics = monitor.get_current_metrics()
         active_alerts = monitor.get_active_alerts()
-        
+
         # Simple health calculation
         cpu_usage = current_metrics.get(MetricType.CPU_USAGE.value, {}).get("value", 0)
-        memory_usage = current_metrics.get(MetricType.MEMORY_USAGE.value, {}).get("value", 0)
-        critical_alerts = len([a for a in active_alerts if a["alert_level"] == "critical"])
-        
+        memory_usage = current_metrics.get(MetricType.MEMORY_USAGE.value, {}).get(
+            "value", 0
+        )
+        critical_alerts = len(
+            [a for a in active_alerts if a["alert_level"] == "critical"]
+        )
+
         status = "healthy"
         if critical_alerts > 0:
             status = "critical"
@@ -123,16 +146,16 @@ async def get_quick_health_status():
             status = "degraded"
         elif cpu_usage > 80 or memory_usage > 80:
             status = "warning"
-        
+
         return {
             "status": status,
             "cpu_usage": cpu_usage,
             "memory_usage": memory_usage,
             "active_alerts": len(active_alerts),
             "critical_alerts": critical_alerts,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to get quick health status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -145,13 +168,13 @@ async def get_current_metrics():
     try:
         monitor = await get_performance_monitor()
         metrics = monitor.get_current_metrics()
-        
+
         return {
             "metrics": metrics,
             "timestamp": time.time(),
-            "monitoring_active": monitor.monitoring_active
+            "monitoring_active": monitor.monitoring_active,
         }
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to get current metrics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -160,7 +183,9 @@ async def get_current_metrics():
 @router.get("/metrics/{metric_type}/history", response_model=MetricHistoryResponse)
 async def get_metric_history(
     metric_type: str,
-    minutes: int = Query(10, ge=1, le=1440, description="Minutes of history to retrieve")
+    minutes: int = Query(
+        10, ge=1, le=1440, description="Minutes of history to retrieve"
+    ),
 ):
     """Get historical data for a specific metric type"""
     try:
@@ -168,11 +193,13 @@ async def get_metric_history(
         try:
             metric_enum = MetricType(metric_type)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid metric type: {metric_type}")
-        
+            raise HTTPException(
+                status_code=400, detail=f"Invalid metric type: {metric_type}"
+            )
+
         monitor = await get_performance_monitor()
         history = monitor.get_metric_history(metric_enum, minutes)
-        
+
         # Calculate summary statistics
         values = [point["value"] for point in history]
         summary = {}
@@ -182,16 +209,16 @@ async def get_metric_history(
                 "average": sum(values) / len(values),
                 "minimum": min(values),
                 "maximum": max(values),
-                "latest": values[-1] if values else None
+                "latest": values[-1] if values else None,
             }
-        
+
         return MetricHistoryResponse(
             metric_type=metric_type,
             time_period_minutes=minutes,
             data_points=history,
-            summary=summary
+            summary=summary,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -207,7 +234,7 @@ async def get_available_metric_types():
             {
                 "value": metric.value,
                 "name": metric.name,
-                "description": _get_metric_description(metric)
+                "description": _get_metric_description(metric),
             }
             for metric in MetricType
         ]
@@ -226,7 +253,7 @@ def _get_metric_description(metric: MetricType) -> str:
         MetricType.CACHE_PERFORMANCE: "Cache hit/miss performance metrics",
         MetricType.API_RESPONSE_TIME: "API endpoint response times",
         MetricType.ERROR_RATE: "Error rate percentage",
-        MetricType.CONCURRENT_OPERATIONS: "Number of concurrent operations"
+        MetricType.CONCURRENT_OPERATIONS: "Number of concurrent operations",
     }
     return descriptions.get(metric, "Performance metric")
 
@@ -237,7 +264,7 @@ async def get_active_alerts():
     """Get all active performance alerts"""
     try:
         alerts = await get_performance_alerts()
-        
+
         return {
             "active_alerts": alerts,
             "total_count": len(alerts),
@@ -245,11 +272,13 @@ async def get_active_alerts():
                 "info": len([a for a in alerts if a["alert_level"] == "info"]),
                 "warning": len([a for a in alerts if a["alert_level"] == "warning"]),
                 "critical": len([a for a in alerts if a["alert_level"] == "critical"]),
-                "emergency": len([a for a in alerts if a["alert_level"] == "emergency"])
+                "emergency": len(
+                    [a for a in alerts if a["alert_level"] == "emergency"]
+                ),
             },
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to get active alerts: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -263,18 +292,20 @@ async def get_alerts_by_level(alert_level: str):
         try:
             AlertLevel(alert_level)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid alert level: {alert_level}")
-        
+            raise HTTPException(
+                status_code=400, detail=f"Invalid alert level: {alert_level}"
+            )
+
         all_alerts = await get_performance_alerts()
         filtered_alerts = [a for a in all_alerts if a["alert_level"] == alert_level]
-        
+
         return {
             "alert_level": alert_level,
             "alerts": filtered_alerts,
             "count": len(filtered_alerts),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -289,14 +320,14 @@ async def get_cache_statistics():
     try:
         cache_manager = await get_media_cache_manager()
         stats = await cache_manager.get_cache_statistics()
-        
+
         return CacheStatisticsResponse(
             cache_metrics=stats["cache_metrics"],
             redis_info=stats["redis_info"],
             configuration=stats["configuration"],
-            cache_types=stats["cache_types"]
+            cache_types=stats["cache_types"],
         )
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to get cache statistics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -308,13 +339,13 @@ async def optimize_cache_performance():
     try:
         cache_manager = await get_media_cache_manager()
         optimization_results = await cache_manager.optimize_cache_performance()
-        
+
         return {
             "status": "completed",
             "optimization_results": optimization_results,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to optimize cache performance: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -329,15 +360,15 @@ async def get_performance_report(
     try:
         monitor = await get_performance_monitor()
         report = await monitor.get_performance_report(hours)
-        
+
         return PerformanceReportResponse(
             report_period_hours=report["report_period_hours"],
             generated_at=report["generated_at"],
             system_health=report["system_health"],
             metric_summaries=report["metric_summaries"],
-            alert_summary=report["alert_summary"]
+            alert_summary=report["alert_summary"],
         )
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to generate performance report: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -349,45 +380,46 @@ async def websocket_live_monitoring(websocket: WebSocket):
     """WebSocket endpoint for real-time system monitoring"""
     await websocket.accept()
     websocket_connections.append(websocket)
-    
+
     try:
         logger.info("📡 Live monitoring WebSocket connected")
-        
+
         # Send initial system status
         initial_health = await get_system_health()
-        await websocket.send_json({
-            "type": "initial_status",
-            "data": initial_health
-        })
-        
+        await websocket.send_json({"type": "initial_status", "data": initial_health})
+
         # Keep connection alive and send periodic updates
         while True:
             try:
                 # Send health update every 5 seconds
                 health_data = await get_system_health()
-                await websocket.send_json({
-                    "type": "health_update",
-                    "timestamp": time.time(),
-                    "data": health_data
-                })
-                
+                await websocket.send_json(
+                    {
+                        "type": "health_update",
+                        "timestamp": time.time(),
+                        "data": health_data,
+                    }
+                )
+
                 # Send alert updates
                 alerts = await get_performance_alerts()
                 if alerts:
-                    await websocket.send_json({
-                        "type": "alerts_update",
-                        "timestamp": time.time(),
-                        "data": {"alerts": alerts, "count": len(alerts)}
-                    })
-                
+                    await websocket.send_json(
+                        {
+                            "type": "alerts_update",
+                            "timestamp": time.time(),
+                            "data": {"alerts": alerts, "count": len(alerts)},
+                        }
+                    )
+
                 await asyncio.sleep(5)  # 5-second updates
-                
+
             except WebSocketDisconnect:
                 break
             except Exception as e:
                 logger.error(f"❌ WebSocket monitoring error: {e}")
                 break
-                
+
     except WebSocketDisconnect:
         logger.info("📡 Live monitoring WebSocket disconnected")
     except Exception as e:
@@ -406,9 +438,9 @@ async def perform_system_cleanup():
             "cache_cleanup": False,
             "metrics_cleanup": False,
             "log_cleanup": False,
-            "errors": []
+            "errors": [],
         }
-        
+
         # Cache cleanup
         try:
             cache_manager = await get_media_cache_manager()
@@ -417,39 +449,43 @@ async def perform_system_cleanup():
             results["cache_cleanup_details"] = cache_cleanup
         except Exception as e:
             results["errors"].append(f"Cache cleanup failed: {e}")
-        
+
         # Performance metrics cleanup (Redis)
         try:
             redis_manager = RedisManager()
             # Clean old performance metrics (keep last 24 hours)
             cutoff_time = time.time() - (24 * 3600)
-            
+
             for metric_type in MetricType:
                 key = f"performance:metrics:{metric_type.value}"
                 # This is a simplified cleanup - in production you'd implement time-based cleanup
-                await redis_manager.ltrim(key, 0, 2880)  # Keep ~24 hours at 30s intervals
-            
+                await redis_manager.ltrim(
+                    key, 0, 2880
+                )  # Keep ~24 hours at 30s intervals
+
             results["metrics_cleanup"] = True
         except Exception as e:
             results["errors"].append(f"Metrics cleanup failed: {e}")
-        
+
         # Log file cleanup
         try:
             log_path = Path("logs/performance_metrics.jsonl")
-            if log_path.exists() and log_path.stat().st_size > 100 * 1024 * 1024:  # 100MB
+            if (
+                log_path.exists() and log_path.stat().st_size > 100 * 1024 * 1024
+            ):  # 100MB
                 # Rotate log file
                 backup_path = log_path.with_suffix(".jsonl.old")
                 log_path.rename(backup_path)
                 results["log_cleanup"] = True
         except Exception as e:
             results["errors"].append(f"Log cleanup failed: {e}")
-        
+
         return {
             "status": "completed",
             "cleanup_results": results,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except Exception as e:
         logger.error(f"❌ System cleanup failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -458,8 +494,12 @@ async def perform_system_cleanup():
 # System Optimization Endpoints
 @router.post("/optimization/optimize")
 async def optimize_system_performance(
-    target: str = Query("all", description="Optimization target: memory, cpu, cache, io, all"),
-    level: str = Query("basic", description="Optimization level: basic, aggressive, maximum")
+    target: str = Query(
+        "all", description="Optimization target: memory, cpu, cache, io, all"
+    ),
+    level: str = Query(
+        "basic", description="Optimization level: basic, aggressive, maximum"
+    ),
 ):
     """Trigger system performance optimization"""
     try:
@@ -469,16 +509,18 @@ async def optimize_system_performance(
             optimization_level = OptimizationLevel(level.lower())
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"Invalid parameter: {e}")
-        
+
         optimizer = await get_system_optimizer()
-        result = await optimizer.optimize_system(optimization_target, optimization_level)
-        
+        result = await optimizer.optimize_system(
+            optimization_target, optimization_level
+        )
+
         return {
             "status": "completed",
             "optimization_result": result.to_dict(),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except Exception as e:
         logger.error(f"❌ System optimization failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -490,13 +532,13 @@ async def get_optimization_recommendations():
     try:
         optimizer = await get_system_optimizer()
         recommendations = await optimizer.get_optimization_recommendations()
-        
+
         return {
             "recommendations": recommendations,
             "count": len(recommendations),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to get optimization recommendations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -510,14 +552,14 @@ async def get_optimization_history(
     try:
         optimizer = await get_system_optimizer()
         history = optimizer.get_optimization_history(hours)
-        
+
         return {
             "optimization_history": history,
             "period_hours": hours,
             "total_optimizations": len(history),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to get optimization history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -529,13 +571,13 @@ async def start_auto_optimization():
     try:
         optimizer = await get_system_optimizer()
         await optimizer.start_auto_optimization()
-        
+
         return {
             "status": "started",
             "message": "Automatic system optimization started",
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to start auto-optimization: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -547,13 +589,13 @@ async def stop_auto_optimization():
     try:
         optimizer = await get_system_optimizer()
         await optimizer.stop_auto_optimization()
-        
+
         return {
             "status": "stopped",
             "message": "Automatic system optimization stopped",
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to stop auto-optimization: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -563,10 +605,11 @@ async def stop_auto_optimization():
 async def get_system_diagnostics():
     """Get detailed system diagnostics information"""
     try:
-        import psutil
         import platform
         import sys
-        
+
+        import psutil
+
         diagnostics = {
             "system_info": {
                 "platform": platform.system(),
@@ -574,24 +617,26 @@ async def get_system_diagnostics():
                 "platform_version": platform.version(),
                 "architecture": platform.machine(),
                 "hostname": platform.node(),
-                "python_version": sys.version
+                "python_version": sys.version,
             },
             "resources": {
                 "cpu_count": psutil.cpu_count(),
                 "cpu_count_logical": psutil.cpu_count(logical=True),
                 "memory_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
-                "disk_usage": {}
+                "disk_usage": {},
             },
             "process_info": {
                 "pid": os.getpid(),
-                "memory_usage_mb": round(psutil.Process().memory_info().rss / (1024**2), 2),
+                "memory_usage_mb": round(
+                    psutil.Process().memory_info().rss / (1024**2), 2
+                ),
                 "cpu_percent": psutil.Process().cpu_percent(),
-                "create_time": psutil.Process().create_time()
+                "create_time": psutil.Process().create_time(),
             },
             "service_status": {},
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
-        
+
         # Disk usage for main partitions
         for partition in psutil.disk_partitions():
             try:
@@ -600,33 +645,35 @@ async def get_system_diagnostics():
                     "total_gb": round(partition_usage.total / (1024**3), 2),
                     "used_gb": round(partition_usage.used / (1024**3), 2),
                     "free_gb": round(partition_usage.free / (1024**3), 2),
-                    "percent": round(partition_usage.used / partition_usage.total * 100, 1)
+                    "percent": round(
+                        partition_usage.used / partition_usage.total * 100, 1
+                    ),
                 }
             except PermissionError:
                 continue
-        
+
         # Service status checks
         try:
             monitor = await get_performance_monitor()
             diagnostics["service_status"]["performance_monitoring"] = {
                 "active": monitor.monitoring_active,
-                "stats": monitor.collection_stats
+                "stats": monitor.collection_stats,
             }
         except:
             diagnostics["service_status"]["performance_monitoring"] = {"active": False}
-        
+
         try:
             cache_manager = await get_media_cache_manager()
             cache_stats = await cache_manager.get_cache_statistics()
             diagnostics["service_status"]["cache_manager"] = {
                 "active": True,
-                "hit_ratio": cache_stats["cache_metrics"]["hit_ratio_percent"]
+                "hit_ratio": cache_stats["cache_metrics"]["hit_ratio_percent"],
             }
         except:
             diagnostics["service_status"]["cache_manager"] = {"active": False}
-        
+
         return diagnostics
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to get system diagnostics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -637,13 +684,9 @@ async def broadcast_system_alert(alert_data: Dict[str, Any]):
     """Broadcast system alert to all connected WebSocket clients"""
     if not websocket_connections:
         return
-    
-    message = {
-        "type": "system_alert",
-        "timestamp": time.time(),
-        "data": alert_data
-    }
-    
+
+    message = {"type": "system_alert", "timestamp": time.time(), "data": alert_data}
+
     # Send to all connections, remove failed ones
     failed_connections = []
     for websocket in websocket_connections:
@@ -651,7 +694,7 @@ async def broadcast_system_alert(alert_data: Dict[str, Any]):
             await websocket.send_json(message)
         except:
             failed_connections.append(websocket)
-    
+
     # Clean up failed connections
     for failed_ws in failed_connections:
         websocket_connections.remove(failed_ws)

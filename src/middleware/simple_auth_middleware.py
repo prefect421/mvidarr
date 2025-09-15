@@ -69,6 +69,7 @@ def init_simple_auth_middleware(app):
         # Skip authentication check for endpoints marked as public
         if request.endpoint:
             from flask import current_app
+
             endpoint_func = current_app.view_functions.get(request.endpoint)
             if endpoint_func and hasattr(endpoint_func, "_auth_protected"):
                 return

@@ -207,7 +207,9 @@ class Migration_003_AddArtistLabelsMembers(Migration):
             # Add labels column (JSON for record labels)
             try:
                 connection.execute(
-                    text("ALTER TABLE artists ADD COLUMN labels JSON NULL COMMENT 'Record labels associated with the artist'")
+                    text(
+                        "ALTER TABLE artists ADD COLUMN labels JSON NULL COMMENT 'Record labels associated with the artist'"
+                    )
                 )
                 logger.info("Added labels column to artists table")
             except OperationalError as e:
@@ -219,7 +221,9 @@ class Migration_003_AddArtistLabelsMembers(Migration):
             # Add members column (TEXT for band members)
             try:
                 connection.execute(
-                    text("ALTER TABLE artists ADD COLUMN members TEXT NULL COMMENT 'Band members (stored as text)'")
+                    text(
+                        "ALTER TABLE artists ADD COLUMN members TEXT NULL COMMENT 'Band members (stored as text)'"
+                    )
                 )
                 logger.info("Added members column to artists table")
             except OperationalError as e:

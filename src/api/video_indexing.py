@@ -28,32 +28,40 @@ def index_all_videos():
 
         # Create background job for video indexing
         import asyncio
-        from src.services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
-        
+
+        from src.services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
+
         job = BackgroundJob(
             type=JobType.VIDEO_INDEX_ALL,
             priority=JobPriority.NORMAL,
-            payload={
-                'fetch_metadata': fetch_metadata,
-                'max_files': max_files
-            },
-            created_by=getattr(request, 'user_id', None)
+            payload={"fetch_metadata": fetch_metadata, "max_files": max_files},
+            created_by=getattr(request, "user_id", None),
         )
-        
+
         # Enqueue job
         async def queue_job():
             job_queue = await get_job_queue()
             return await job_queue.enqueue(job)
-        
+
         job_id = asyncio.run(queue_job())
-        
+
         logger.info(f"Enqueued video indexing job {job_id}")
-        
-        return jsonify({
-            "success": True,
-            "job_id": job_id,
-            "message": f"Video indexing job queued (fetch_metadata={fetch_metadata}, max_files={max_files or 'all'})"
-        }), 202
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": job_id,
+                    "message": f"Video indexing job queued (fetch_metadata={fetch_metadata}, max_files={max_files or 'all'})",
+                }
+            ),
+            202,
+        )
 
     except Exception as e:
         logger.error(f"Failed to queue video indexing job: {e}")
@@ -65,40 +73,48 @@ def index_single_video():
     """Index a specific video file (background job)"""
     try:
         import asyncio
-        from src.services.job_queue import JobType, JobPriority, BackgroundJob, get_job_queue
-        
+
+        from src.services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
+
         data = request.get_json()
         if not data or "file_path" not in data:
             return jsonify({"success": False, "error": "file_path is required"}), 400
 
         file_path = data["file_path"]
         fetch_metadata = data.get("fetch_metadata", True)
-        
+
         # Create background job for single video indexing
         job = BackgroundJob(
             type=JobType.VIDEO_INDEX_SINGLE,
             priority=JobPriority.HIGH,  # Single video indexing is higher priority
-            payload={
-                'file_path': file_path,
-                'fetch_metadata': fetch_metadata
-            },
-            created_by=getattr(request, 'user_id', None)
+            payload={"file_path": file_path, "fetch_metadata": fetch_metadata},
+            created_by=getattr(request, "user_id", None),
         )
-        
+
         # Enqueue job
         async def queue_job():
             job_queue = await get_job_queue()
             return await job_queue.enqueue(job)
-        
+
         job_id = asyncio.run(queue_job())
-        
+
         logger.info(f"Enqueued single video indexing job {job_id} for {file_path}")
-        
-        return jsonify({
-            "success": True,
-            "job_id": job_id,
-            "message": f"Single video indexing job queued for {file_path}"
-        }), 202
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": job_id,
+                    "message": f"Single video indexing job queued for {file_path}",
+                }
+            ),
+            202,
+        )
 
     except Exception as e:
         logger.error(f"Failed to queue single video indexing job: {e}")

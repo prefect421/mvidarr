@@ -4,259 +4,289 @@ Real-time job progress endpoints using Flask-SocketIO for live updates.
 """
 
 import logging
-from flask import Blueprint, request, current_app
-from flask_socketio import SocketIO, emit, join_room, leave_room
-from typing import Dict, Any
+from typing import Any, Dict
 
-from src.services.websocket_job_events import get_job_event_broadcaster
-from src.services.job_queue import get_job_queue, JobStatus
+from flask import Blueprint, current_app, request
+from flask_socketio import SocketIO, emit, join_room, leave_room
+
 from src.middleware.simple_auth_middleware import get_current_user
+from src.services.job_queue import JobStatus, get_job_queue
+from src.services.websocket_job_events import get_job_event_broadcaster
 
 logger = logging.getLogger(__name__)
 
 # Create blueprint for WebSocket job endpoints
-websocket_jobs_bp = Blueprint('websocket_jobs', __name__)
+websocket_jobs_bp = Blueprint("websocket_jobs", __name__)
 
 
 def init_websocket_job_endpoints(socketio: SocketIO):
     """Initialize WebSocket endpoints for job progress"""
-    
-    @socketio.on('connect')
+
+    @socketio.on("connect")
     def handle_connect():
         """Handle client connection"""
         try:
             user = get_current_user()
-            user_id = user.get('user_id') if user else None
+            user_id = user.get("user_id") if user else None
             if not user_id:
                 logger.warning("WebSocket connection without authentication")
                 return False  # Reject connection
-            
+
             logger.info(f"WebSocket client connected: user {user_id}")
-            emit('connected', {'message': 'Connected to job progress updates'})
-            
+            emit("connected", {"message": "Connected to job progress updates"})
+
         except Exception as e:
             logger.error(f"Error handling WebSocket connection: {e}")
             return False
-    
-    @socketio.on('disconnect')
+
+    @socketio.on("disconnect")
     def handle_disconnect():
         """Handle client disconnection"""
         try:
             user = get_current_user()
-            user_id = user.get('user_id') if user else None
+            user_id = user.get("user_id") if user else None
             if user_id:
                 # Cleanup will be handled by the broadcaster
                 logger.info(f"WebSocket client disconnected: user {user_id}")
-            
+
         except Exception as e:
             logger.error(f"Error handling WebSocket disconnect: {e}")
-    
-    @socketio.on('subscribe_job_progress')
+
+    @socketio.on("subscribe_job_progress")
     def handle_job_progress_subscription(data):
         """Handle subscription to specific job progress updates"""
         try:
-            job_id = data.get('job_id')
+            job_id = data.get("job_id")
             if not job_id:
-                emit('error', {'message': 'job_id is required'})
+                emit("error", {"message": "job_id is required"})
                 return
-            
+
             user = get_current_user()
-            user_id = user.get('user_id') if user else None
+            user_id = user.get("user_id") if user else None
             if not user_id:
-                emit('error', {'message': 'Authentication required'})
+                emit("error", {"message": "Authentication required"})
                 return
-            
+
             # Verify user has access to this job
-            job_queue = current_app.extensions.get('job_queue')
+            job_queue = current_app.extensions.get("job_queue")
             if job_queue:
                 job = job_queue.get_job(job_id)
                 if not job:
-                    emit('error', {'message': 'Job not found'})
+                    emit("error", {"message": "Job not found"})
                     return
-                
+
                 if job.created_by and job.created_by != user_id:
-                    emit('error', {'message': 'Access denied'})
+                    emit("error", {"message": "Access denied"})
                     return
-            
+
             # Join room for this specific job
             join_room(f"job_{job_id}")
-            
+
             # Send current job status
             if job_queue and job:
-                emit('job_status', {
-                    'job_id': job.id,
-                    'type': job.type.value,
-                    'status': job.status.value,
-                    'progress': job.progress,
-                    'message': job.message,
-                    'created_at': job.created_at.isoformat(),
-                    'started_at': job.started_at.isoformat() if job.started_at else None,
-                    'completed_at': job.completed_at.isoformat() if job.completed_at else None
-                })
-            
-            emit('subscription_confirmed', {
-                'job_id': job_id,
-                'message': f'Subscribed to job {job_id} progress updates'
-            })
-            
+                emit(
+                    "job_status",
+                    {
+                        "job_id": job.id,
+                        "type": job.type.value,
+                        "status": job.status.value,
+                        "progress": job.progress,
+                        "message": job.message,
+                        "created_at": job.created_at.isoformat(),
+                        "started_at": (
+                            job.started_at.isoformat() if job.started_at else None
+                        ),
+                        "completed_at": (
+                            job.completed_at.isoformat() if job.completed_at else None
+                        ),
+                    },
+                )
+
+            emit(
+                "subscription_confirmed",
+                {
+                    "job_id": job_id,
+                    "message": f"Subscribed to job {job_id} progress updates",
+                },
+            )
+
             logger.debug(f"User {user_id} subscribed to job {job_id} progress")
-            
+
         except Exception as e:
             logger.error(f"Error handling job progress subscription: {e}")
-            emit('error', {'message': 'Failed to subscribe to job progress'})
-    
-    @socketio.on('unsubscribe_job_progress')
+            emit("error", {"message": "Failed to subscribe to job progress"})
+
+    @socketio.on("unsubscribe_job_progress")
     def handle_job_progress_unsubscription(data):
         """Handle unsubscription from job progress updates"""
         try:
-            job_id = data.get('job_id')
+            job_id = data.get("job_id")
             if not job_id:
-                emit('error', {'message': 'job_id is required'})
+                emit("error", {"message": "job_id is required"})
                 return
-            
+
             user = get_current_user()
-            user_id = user.get('user_id') if user else None
+            user_id = user.get("user_id") if user else None
             if not user_id:
-                emit('error', {'message': 'Authentication required'})
+                emit("error", {"message": "Authentication required"})
                 return
-            
+
             # Leave room for this job
             leave_room(f"job_{job_id}")
-            
-            emit('unsubscription_confirmed', {
-                'job_id': job_id,
-                'message': f'Unsubscribed from job {job_id} progress updates'
-            })
-            
+
+            emit(
+                "unsubscription_confirmed",
+                {
+                    "job_id": job_id,
+                    "message": f"Unsubscribed from job {job_id} progress updates",
+                },
+            )
+
             logger.debug(f"User {user_id} unsubscribed from job {job_id} progress")
-            
+
         except Exception as e:
             logger.error(f"Error handling job progress unsubscription: {e}")
-            emit('error', {'message': 'Failed to unsubscribe from job progress'})
-    
-    @socketio.on('get_user_jobs')
+            emit("error", {"message": "Failed to unsubscribe from job progress"})
+
+    @socketio.on("get_user_jobs")
     def handle_get_user_jobs(data):
         """Get current user's recent jobs"""
         try:
             user = get_current_user()
-            user_id = user.get('user_id') if user else None
+            user_id = user.get("user_id") if user else None
             if not user_id:
-                emit('error', {'message': 'Authentication required'})
+                emit("error", {"message": "Authentication required"})
                 return
-            
-            limit = min(50, max(1, data.get('limit', 10)))
-            status_filter = data.get('status')
-            
-            job_queue = current_app.extensions.get('job_queue')
+
+            limit = min(50, max(1, data.get("limit", 10)))
+            status_filter = data.get("status")
+
+            job_queue = current_app.extensions.get("job_queue")
             if not job_queue:
-                emit('error', {'message': 'Job system not available'})
+                emit("error", {"message": "Job system not available"})
                 return
-            
+
             # Get user's jobs
             user_jobs = job_queue.get_user_jobs(user_id, limit)
-            
+
             # Apply status filter if provided
             if status_filter:
                 try:
                     status_enum = JobStatus(status_filter)
                     user_jobs = [job for job in user_jobs if job.status == status_enum]
                 except ValueError:
-                    emit('error', {'message': f'Invalid status filter: {status_filter}'})
+                    emit(
+                        "error", {"message": f"Invalid status filter: {status_filter}"}
+                    )
                     return
-            
+
             # Format jobs for response
             jobs_data = []
             for job in user_jobs:
-                jobs_data.append({
-                    'job_id': job.id,
-                    'type': job.type.value,
-                    'status': job.status.value,
-                    'progress': job.progress,
-                    'message': job.message,
-                    'created_at': job.created_at.isoformat(),
-                    'started_at': job.started_at.isoformat() if job.started_at else None,
-                    'completed_at': job.completed_at.isoformat() if job.completed_at else None,
-                    'error_message': job.error_message if job.status == JobStatus.FAILED else None
-                })
-            
-            emit('user_jobs', {
-                'jobs': jobs_data,
-                'total': len(jobs_data),
-                'filters': {
-                    'status': status_filter,
-                    'limit': limit
-                }
-            })
-            
+                jobs_data.append(
+                    {
+                        "job_id": job.id,
+                        "type": job.type.value,
+                        "status": job.status.value,
+                        "progress": job.progress,
+                        "message": job.message,
+                        "created_at": job.created_at.isoformat(),
+                        "started_at": (
+                            job.started_at.isoformat() if job.started_at else None
+                        ),
+                        "completed_at": (
+                            job.completed_at.isoformat() if job.completed_at else None
+                        ),
+                        "error_message": (
+                            job.error_message
+                            if job.status == JobStatus.FAILED
+                            else None
+                        ),
+                    }
+                )
+
+            emit(
+                "user_jobs",
+                {
+                    "jobs": jobs_data,
+                    "total": len(jobs_data),
+                    "filters": {"status": status_filter, "limit": limit},
+                },
+            )
+
             logger.debug(f"Sent {len(jobs_data)} jobs to user {user_id}")
-            
+
         except Exception as e:
             logger.error(f"Error getting user jobs: {e}")
-            emit('error', {'message': 'Failed to get user jobs'})
-    
-    @socketio.on('get_job_details')
+            emit("error", {"message": "Failed to get user jobs"})
+
+    @socketio.on("get_job_details")
     def handle_get_job_details(data):
         """Get detailed information about a specific job"""
         try:
-            job_id = data.get('job_id')
+            job_id = data.get("job_id")
             if not job_id:
-                emit('error', {'message': 'job_id is required'})
+                emit("error", {"message": "job_id is required"})
                 return
-            
+
             user = get_current_user()
-            user_id = user.get('user_id') if user else None
+            user_id = user.get("user_id") if user else None
             if not user_id:
-                emit('error', {'message': 'Authentication required'})
+                emit("error", {"message": "Authentication required"})
                 return
-            
-            job_queue = current_app.extensions.get('job_queue')
+
+            job_queue = current_app.extensions.get("job_queue")
             if not job_queue:
-                emit('error', {'message': 'Job system not available'})
+                emit("error", {"message": "Job system not available"})
                 return
-            
+
             job = job_queue.get_job(job_id)
             if not job:
-                emit('error', {'message': 'Job not found'})
+                emit("error", {"message": "Job not found"})
                 return
-            
+
             # Check access permissions
             if job.created_by and job.created_by != user_id:
-                emit('error', {'message': 'Access denied'})
+                emit("error", {"message": "Access denied"})
                 return
-            
+
             # Send detailed job information
             job_details = {
-                'job_id': job.id,
-                'type': job.type.value,
-                'status': job.status.value,
-                'priority': job.priority.value,
-                'progress': job.progress,
-                'message': job.message,
-                'payload': job.payload,
-                'result': job.result if job.status == JobStatus.COMPLETED else None,
-                'error_message': job.error_message if job.status == JobStatus.FAILED else None,
-                'created_at': job.created_at.isoformat(),
-                'started_at': job.started_at.isoformat() if job.started_at else None,
-                'completed_at': job.completed_at.isoformat() if job.completed_at else None,
-                'retry_count': job.retry_count,
-                'max_retries': job.max_retries,
-                'tags': job.tags
+                "job_id": job.id,
+                "type": job.type.value,
+                "status": job.status.value,
+                "priority": job.priority.value,
+                "progress": job.progress,
+                "message": job.message,
+                "payload": job.payload,
+                "result": job.result if job.status == JobStatus.COMPLETED else None,
+                "error_message": (
+                    job.error_message if job.status == JobStatus.FAILED else None
+                ),
+                "created_at": job.created_at.isoformat(),
+                "started_at": job.started_at.isoformat() if job.started_at else None,
+                "completed_at": (
+                    job.completed_at.isoformat() if job.completed_at else None
+                ),
+                "retry_count": job.retry_count,
+                "max_retries": job.max_retries,
+                "tags": job.tags,
             }
-            
+
             # Add timing information
             if job.elapsed_time():
-                job_details['elapsed_seconds'] = job.elapsed_time().total_seconds()
-            
-            job_details['total_seconds'] = job.total_time().total_seconds()
-            
-            emit('job_details', job_details)
-            
+                job_details["elapsed_seconds"] = job.elapsed_time().total_seconds()
+
+            job_details["total_seconds"] = job.total_time().total_seconds()
+
+            emit("job_details", job_details)
+
             logger.debug(f"Sent details for job {job_id} to user {user_id}")
-            
+
         except Exception as e:
             logger.error(f"Error getting job details: {e}")
-            emit('error', {'message': 'Failed to get job details'})
-    
+            emit("error", {"message": "Failed to get job details"})
+
     logger.info("WebSocket job progress endpoints initialized")
 
 

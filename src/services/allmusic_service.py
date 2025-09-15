@@ -169,11 +169,12 @@ class AllMusicService:
 
             # Extract metadata from JSON-LD structured data (modern approach)
             json_ld_data = self._extract_json_ld_data(soup)
-            
+
             # Extract metadata using both JSON-LD and HTML selectors for maximum coverage
             metadata = {
                 "name": json_ld_data.get("name") or self._extract_artist_name(soup),
-                "biography": json_ld_data.get("description") or self._extract_biography(soup),
+                "biography": json_ld_data.get("description")
+                or self._extract_biography(soup),
                 "genres": self._extract_genres(soup),
                 "styles": self._extract_styles(soup),
                 "moods": self._extract_moods(soup),
@@ -181,7 +182,8 @@ class AllMusicService:
                 "active_years": self._extract_active_years(soup),
                 "formed_year": self._extract_formed_year(soup),
                 "origin": self._extract_origin(soup),
-                "members": self._extract_members_from_json_ld(json_ld_data) or self._extract_members(soup),
+                "members": self._extract_members_from_json_ld(json_ld_data)
+                or self._extract_members(soup),
                 "similar_artists": self._extract_similar_artists(soup),
                 "discography": self._extract_discography_summary(soup),
                 "rating": self._extract_allmusic_rating(soup),
@@ -226,12 +228,12 @@ class AllMusicService:
         try:
             members = []
             member_data = json_ld_data.get("member", [])
-            
+
             if isinstance(member_data, list):
                 for member in member_data:
                     if isinstance(member, dict) and member.get("name"):
                         members.append(member["name"])
-            
+
             return members
         except Exception as e:
             logger.debug(f"Error extracting members from JSON-LD: {e}")
@@ -534,7 +536,9 @@ class AllMusicService:
 
             # Fallback to older methods if needed
             if not members:
-                member_section = soup.find(string=lambda text: text and "Member" in text)
+                member_section = soup.find(
+                    string=lambda text: text and "Member" in text
+                )
                 if member_section:
                     parent = member_section.parent
                     if parent:

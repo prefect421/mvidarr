@@ -205,22 +205,38 @@ def init_db(app):
     logger.info("Database initialization completed")
 
 
+def init_db_standalone():
+    """Initialize database for standalone/Celery worker processes"""
+    global db_manager
+    if db_manager is None:
+        config = Config()
+        db_manager = DatabaseManager(config)
+        # Just initialize the connection, don't create tables
+        db_manager.create_engine()
+        db_manager.create_session_factory()
+
+
 def get_db():
     """Get database session (for use in Flask routes)"""
     if db_manager:
         return db_manager.get_session()
     else:
-        raise RuntimeError("Database not initialized")
+        # Try to initialize for standalone processes
+        init_db_standalone()
+        if db_manager:
+            return db_manager.get_session()
+        else:
+            raise RuntimeError("Database not initialized")
 
 
 def get_db_session():
     """Get database session for FastAPI dependency injection"""
     if db_manager is None:
         raise RuntimeError("Database not initialized")
-    
+
     session_factory = db_manager.create_session_factory()
     session = session_factory()
-    
+
     try:
         yield session
     except Exception as e:

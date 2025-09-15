@@ -209,6 +209,7 @@ from .settings_service import settings
 
 youtube_service = YouTubeService(settings)
 
+
 async def get_youtube_service() -> YouTubeService:
     """Get global YouTube service instance"""
     return youtube_service
