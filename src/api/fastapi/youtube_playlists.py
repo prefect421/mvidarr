@@ -36,7 +36,7 @@ class PlaylistMonitorRequest(BaseModel):
     playlist_url: str = Field(..., min_length=10, max_length=500)
     name: Optional[str] = Field(None, max_length=200)
     auto_download: bool = Field(default=True)
-    quality: str = Field(default="720p", regex="^(144p|240p|360p|480p|720p|1080p|best)$")
+    quality: str = Field(default="720p", pattern="^(144p|240p|360p|480p|720p|1080p|best)$")
     keywords: List[str] = Field(default_factory=list, max_items=20)
 
 
@@ -44,7 +44,7 @@ class PlaylistMonitorUpdate(BaseModel):
     """Playlist monitor update request"""
     name: Optional[str] = Field(None, max_length=200)
     auto_download: Optional[bool] = None
-    quality: Optional[str] = Field(None, regex="^(144p|240p|360p|480p|720p|1080p|best)$")
+    quality: Optional[str] = Field(None, pattern="^(144p|240p|360p|480p|720p|1080p|best)$")
     keywords: Optional[List[str]] = Field(None, max_items=20)
 
 

@@ -230,10 +230,11 @@ app = FastAPI(
 from src.api.fastapi.mobile_access import mobile_router
 
 # Phase 3 Week 29 Integration - Personal Cloud Backup & Basic Integrations
-from src.api.fastapi.week29_integration import (  # youtube_router,  # Temporarily disabled
+from src.api.fastapi.week29_integration import (
     backup_router,
     network_router,
     sync_router,
+    youtube_router,  # Re-enabled
 )
 
 # Include Week 29 API routers

@@ -84,7 +84,7 @@ class PresetUpdateModel(BaseModel):
 class ExportRequestModel(BaseModel):
     """Export search results model"""
     search_criteria: SearchCriteriaModel
-    export_format: str = Field(default="json", regex="^(json|csv|xlsx)$")
+    export_format: str = Field(default="json", pattern="^(json|csv|xlsx)$")
     include_metadata: bool = True
     include_thumbnails: bool = False
 
@@ -146,7 +146,7 @@ async def search_videos(
 
 @router.get("/presets")
 async def get_search_presets(
-    preset_type: Optional[str] = Query(None, regex="^(user|public|system)$"),
+    preset_type: Optional[str] = Query(None, pattern="^(user|public|system)$"),
     current_user: dict = Depends(require_authentication_legacy),
     session: Session = Depends(get_db_session)
 ):
@@ -469,7 +469,7 @@ async def export_search_results(
 @router.get("/suggestions")
 async def get_search_suggestions(
     query: str = Query(..., min_length=1),
-    field: str = Query(default="title", regex="^(title|artist|genre|description)$"),
+    field: str = Query(default="title", pattern="^(title|artist|genre|description)$"),
     limit: int = Query(default=10, ge=1, le=50),
     current_user: dict = Depends(require_authentication_legacy),
     session: Session = Depends(get_db_session)

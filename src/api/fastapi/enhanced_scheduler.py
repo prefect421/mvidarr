@@ -298,7 +298,7 @@ async def get_enhanced_scheduler_config(
 @router.get("/logs", response_model=SchedulerLogsResponse)
 async def get_enhanced_scheduler_logs(
     limit: int = Query(default=100, ge=1, le=1000),
-    level: str = Query(default="INFO", regex="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$"),
+    level: str = Query(default="INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$"),
     current_user: dict = Depends(require_authentication_legacy),
     session: Session = Depends(get_db_session)
 ):

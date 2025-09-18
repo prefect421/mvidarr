@@ -173,7 +173,7 @@ async def get_mobile_collections(
     request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    sort: str = Query("name", regex="^(name|date|size|type)$"),
+    sort: str = Query("name", pattern="^(name|date|size|type)$"),
 ):
     """Get music video collections optimized for mobile"""
     try:
@@ -243,7 +243,7 @@ async def get_mobile_collection_videos(
     request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=50),
-    quality: str = Query("auto", regex="^(auto|low|medium|high)$"),
+    quality: str = Query("auto", pattern="^(auto|low|medium|high)$"),
 ):
     """Get videos in collection optimized for mobile"""
     try:
@@ -308,7 +308,7 @@ async def get_mobile_collection_videos(
 async def mobile_search_videos(
     request: Request,
     q: str = Query(..., min_length=1),
-    type: str = Query("all", regex="^(all|videos|artists|albums)$"),
+    type: str = Query("all", pattern="^(all|videos|artists|albums)$"),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
 ):
@@ -372,7 +372,7 @@ async def mobile_search_videos(
 async def stream_video_mobile(
     video_id: str,
     request: Request,
-    quality: str = Query("auto", regex="^(auto|low|medium|high)$"),
+    quality: str = Query("auto", pattern="^(auto|low|medium|high)$"),
     range_header: Optional[str] = Header(None, alias="range"),
 ):
     """Stream video optimized for mobile devices"""
@@ -412,8 +412,8 @@ async def stream_video_mobile(
 async def get_mobile_thumbnail(
     item_id: str,
     request: Request,
-    size: str = Query("auto", regex="^(auto|small|medium|large)$"),
-    quality: str = Query("medium", regex="^(low|medium|high)$"),
+    size: str = Query("auto", pattern="^(auto|small|medium|large)$"),
+    quality: str = Query("medium", pattern="^(low|medium|high)$"),
 ):
     """Get thumbnail optimized for mobile display"""
     try:
@@ -459,8 +459,8 @@ async def get_mobile_thumbnail(
 async def download_video_mobile(
     video_id: str,
     request: Request,
-    quality: str = Query("medium", regex="^(low|medium|high)$"),
-    format: str = Query("mp4", regex="^(mp4|webm)$"),
+    quality: str = Query("medium", pattern="^(low|medium|high)$"),
+    format: str = Query("mp4", pattern="^(mp4|webm)$"),
 ):
     """Download video with mobile-optimized settings"""
     try:

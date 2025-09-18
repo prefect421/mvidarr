@@ -764,7 +764,7 @@ async def spotify_connect_play(
 
 @router.get("/analytics/listening-stats", response_model=ListeningAnalyticsResponse)
 async def get_listening_analytics(
-    time_range: str = Query("medium_term", regex="^(short_term|medium_term|long_term)$"),
+    time_range: str = Query("medium_term", pattern="^(short_term|medium_term|long_term)$"),
     current_user: dict = Depends(require_authentication)
 ):
     """Get analytics from Spotify listening data"""

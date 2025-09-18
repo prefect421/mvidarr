@@ -45,7 +45,7 @@ class TwoFactorSetupResponse(BaseModel):
 
 class TokenVerificationRequest(BaseModel):
     """Token verification request model"""
-    token: str = Field(..., min_length=6, max_length=6, regex="^[0-9]+$")
+    token: str = Field(..., min_length=6, max_length=6, pattern="^[0-9]+$")
 
 
 class TwoFactorStatusResponse(BaseModel):
