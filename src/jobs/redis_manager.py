@@ -115,7 +115,6 @@ class RedisManager:
             progress_data = {
                 **progress,
                 "updated_at": datetime.utcnow().isoformat(),
-                "job_id": job_id,
             }
 
             self.redis_client.setex(key, expire_seconds, json.dumps(progress_data))

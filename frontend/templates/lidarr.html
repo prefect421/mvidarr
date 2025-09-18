@@ -434,7 +434,11 @@ async function searchThumbnailForArtist(artistId) {
         const searchResponse = await fetch(`/api/artists/${artistId}/thumbnail/search`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            credentials: 'include'
+            credentials: 'include',
+            body: JSON.stringify({
+                source: 'auto',
+                query: null
+            })
         });
         
         const searchData = await searchResponse.json();

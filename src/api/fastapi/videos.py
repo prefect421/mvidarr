@@ -60,27 +60,19 @@ router = APIRouter(
 logger = get_logger("mvidarr.api.fastapi.videos")
 
 # ========================================================================================
-# AUTHENTICATION (PLACEHOLDER - SAME AS ARTISTS.PY)
+# AUTHENTICATION - PROPER IMPLEMENTATION
 # ========================================================================================
 
+from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
 
 async def get_current_user():
-    """
-    Placeholder for user authentication.
-    
-    CRITICAL: The original Flask API had NO authentication!
-    This must be implemented for production use.
-    """
-    # TODO: Implement actual authentication
-    # For now, return a placeholder user
-    return {"user_id": 1, "username": "admin", "role": "admin"}
+    """Get current authenticated user"""
+    return await get_current_user_legacy()
 
 
 async def require_authentication(current_user: dict = Depends(get_current_user)):
     """Dependency to require authentication for protected endpoints"""
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    return current_user
+    return await require_authentication_legacy(current_user)
 
 
 # ========================================================================================

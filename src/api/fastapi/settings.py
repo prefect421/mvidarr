@@ -141,6 +141,43 @@ async def get_setting(key: str):
         )
 
 
+@router.put("/bulk", response_model=BulkUpdateResponse)
+async def update_multiple_settings(
+    bulk_update: BulkSettingsUpdateRequest, admin_user=Depends(get_current_admin)
+):
+    """Update multiple settings at once"""
+    try:
+        # Convert values to strings for the settings service
+        settings_data = {key: str(value) for key, value in bulk_update.settings.items()}
+
+        success = settings.set_multiple(settings_data)
+
+        if success:
+            updated_settings = []
+            for key, value in settings_data.items():
+                updated_settings.append({"key": key, "value": value})
+
+            # Handle special setting updates for bulk changes
+            await _handle_bulk_special_updates(bulk_update.settings)
+
+            return BulkUpdateResponse(
+                updated_settings=updated_settings, count=len(updated_settings)
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update settings",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update multiple settings: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
 @router.put("/{key}", response_model=SettingResponse)
 async def update_setting(
     key: str,
@@ -193,43 +230,6 @@ async def delete_setting(key: str, admin_user=Depends(get_current_admin)):
         raise
     except Exception as e:
         logger.error(f"Failed to delete setting '{key}': {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
-
-
-@router.put("/bulk", response_model=BulkUpdateResponse)
-async def update_multiple_settings(
-    bulk_update: BulkSettingsUpdateRequest, admin_user=Depends(get_current_admin)
-):
-    """Update multiple settings at once"""
-    try:
-        # Convert values to strings for the settings service
-        settings_data = {key: str(value) for key, value in bulk_update.settings.items()}
-
-        success = settings.set_multiple(settings_data)
-
-        if success:
-            updated_settings = []
-            for key, value in settings_data.items():
-                updated_settings.append({"key": key, "value": value})
-
-            # Handle special setting updates for bulk changes
-            await _handle_bulk_special_updates(bulk_update.settings)
-
-            return BulkUpdateResponse(
-                updated_settings=updated_settings, count=len(updated_settings)
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update settings",
-            )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to update multiple settings: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

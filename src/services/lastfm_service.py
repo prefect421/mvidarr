@@ -382,6 +382,43 @@ class LastFmService:
             ),
         }
 
+    def get_artist_top_tracks(self, artist_name: str, limit: int = 5) -> Dict:
+        """Get artist's top tracks from Last.fm"""
+        try:
+            params = {"artist": artist_name, "limit": limit}
+            data = self._make_request("artist.getTopTracks", params)
+
+            top_tracks_data = data.get("toptracks", {})
+            tracks = []
+
+            track_list = top_tracks_data.get("track", [])
+            # Handle single track case
+            if isinstance(track_list, dict):
+                track_list = [track_list]
+
+            for track_data in track_list:
+                tracks.append({
+                    "name": track_data.get("name"),
+                    "playcount": int(track_data.get("playcount", 0)),
+                    "listeners": int(track_data.get("listeners", 0)),
+                    "mbid": track_data.get("mbid"),
+                    "url": track_data.get("url"),
+                    "image": track_data.get("image", []),
+                    "rank": int(track_data.get("@attr", {}).get("rank", 0)),
+                })
+
+            logger.debug(f"🎵 LAST.FM: Found {len(tracks)} top tracks for {artist_name}")
+            return {
+                "toptracks": {
+                    "track": tracks,
+                    "@attr": top_tracks_data.get("@attr", {})
+                }
+            }
+
+        except Exception as e:
+            logger.warning(f"🎵 LAST.FM: Could not get top tracks for {artist_name}: {e}")
+            return {"toptracks": {"track": []}}
+
     def get_similar_artists(self, artist_name: str, limit: int = 5) -> List[str]:
         """Get similar artists from Last.fm"""
         try:

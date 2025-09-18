@@ -69,34 +69,15 @@ class UserInfo:
 
 
 async def get_current_user_from_session(request: Request) -> UserInfo:
-    """
-    Get current user from session for simple auth system
-
-    This replaces the Flask session-based authentication and should be
-    integrated with the actual session management system.
-    """
-    # TODO: Implement actual session-based authentication
-    # For now, return a placeholder admin user for development
-
-    # In production, this would check the session cookie/JWT token:
-    # session = request.session or request.cookies
-    # username = session.get("username")
-    # if not username:
-    #     raise HTTPException(status_code=401, detail="Authentication required")
-
-    # Get the actual User object from database
-    # with get_db() as session_db:
-    #     user = session_db.query(User).filter(User.username == username).first()
-    #     if user:
-    #         return UserInfo(
-    #             id=1  # placeholder user id,
-    #             username=user.username,
-    #             role=user.role.value if user.role else UserRole.USER.value
-    #         )
-    #     raise HTTPException(status_code=401, detail="User not found")
-
-    # Placeholder for development
-    return UserInfo(id=1, username="admin", role=UserRole.ADMIN.value)
+    """Get current user from session for simple auth system"""
+    from src.api.fastapi.auth_dependencies import get_current_user_legacy
+    
+    user_data = await get_current_user_legacy()
+    return UserInfo(
+        id=user_data.get("user_id", 1),
+        username=user_data.get("username", "admin"),
+        role=UserRole.ADMIN.value  # Simple auth user has admin privileges
+    )
 
 
 # ========================================================================================
@@ -391,13 +372,17 @@ async def get_playlist(
 
 @router.post("/", response_model=PlaylistResponse)
 async def create_playlist(
+    request: Request,
     playlist_data: PlaylistCreateRequest = Body(...),
     session: Session = Depends(get_db_session),
 ):
     """Create new playlist"""
     try:
+        # Get authenticated user
+        current_user = await get_current_user_from_session(request)
+        
         # Only admins can create featured playlists
-        if playlist_data.is_featured and not False:
+        if playlist_data.is_featured and not current_user.can_access_admin():
             raise HTTPException(
                 status_code=403, detail="Only admins can create featured playlists"
             )
@@ -406,7 +391,7 @@ async def create_playlist(
         playlist = Playlist(
             name=playlist_data.name,
             description=playlist_data.description,
-            user_id=1,  # placeholder user id
+            user_id=current_user.id,
             is_public=playlist_data.is_public,
             is_featured=playlist_data.is_featured,
         )
@@ -849,11 +834,14 @@ async def bulk_delete_playlists(
 
 @router.post("/dynamic", response_model=PlaylistResponse)
 async def create_dynamic_playlist(
+    request: Request,
     playlist_data: DynamicPlaylistRequest = Body(...),
     session: Session = Depends(get_db_session),
 ):
     """Create dynamic playlist with filter criteria"""
     try:
+        # Get authenticated user
+        current_user = await get_current_user_from_session(request)
         # Import dynamic playlist service
         try:
             from src.services.dynamic_playlist_service import dynamic_playlist_service
@@ -876,7 +864,7 @@ async def create_dynamic_playlist(
         playlist = Playlist(
             name=playlist_data.name,
             description=playlist_data.description,
-            user_id=1,  # placeholder user id
+            user_id=current_user.id,
             is_public=playlist_data.is_public,
             is_dynamic=True,
             filter_criteria=playlist_data.filter_criteria,

@@ -89,6 +89,11 @@ async def lifespan(app: FastAPI):
         logger.info("🔄 Initializing background job system...")
         # Background jobs are now handled by Celery + Redis system
         logger.info("✅ Background jobs handled by Celery + Redis system")
+        
+        # Initialize WebSocket system for real-time job progress
+        logger.info("🔄 Initializing WebSocket job progress system...")
+        await init_websocket_system(app)
+        logger.info("✅ WebSocket job progress system initialized")
 
         yield  # Application is running
 
@@ -101,6 +106,11 @@ async def lifespan(app: FastAPI):
         logger.info("Shutting down application services...")
 
         try:
+            # Cleanup WebSocket system
+            logger.info("🔄 Stopping WebSocket job progress system...")
+            await cleanup_websocket_system()
+            logger.info("✅ WebSocket system stopped")
+            
             # Celery workers are managed independently
             logger.info("✅ Background job system (Celery) managed independently")
 
@@ -212,10 +222,74 @@ from src.api.fastapi.week29_integration import (  # youtube_router,  # Temporari
 
 # Include Week 29 API routers
 app.include_router(backup_router, prefix="/api")
-# app.include_router(youtube_router, prefix="/api")  # Temporarily disabled
+app.include_router(youtube_router, prefix="/api")  # Re-enabled for full functionality
 app.include_router(network_router, prefix="/api")
 app.include_router(sync_router, prefix="/api")
 app.include_router(mobile_router)
+
+# Enhanced Artist Discovery Router
+from src.api.fastapi.enhanced_artist_discovery import router as enhanced_discovery_router
+app.include_router(enhanced_discovery_router)
+
+# YouTube Playlists Router
+from src.api.fastapi.youtube_playlists import router as youtube_playlists_router
+app.include_router(youtube_playlists_router)
+
+# Enhanced Scheduler Router
+from src.api.fastapi.enhanced_scheduler import router as enhanced_scheduler_router
+app.include_router(enhanced_scheduler_router)
+
+# Webhooks Router
+from src.api.fastapi.webhooks import router as webhooks_router
+app.include_router(webhooks_router)
+
+# Video Discovery Router
+from src.api.fastapi.video_discovery import router as video_discovery_router
+app.include_router(video_discovery_router)
+
+# Security Router
+from src.api.fastapi.security import router as security_router
+app.include_router(security_router)
+
+# Video Organization Router
+from src.api.fastapi.video_organization import router as video_org_router
+app.include_router(video_org_router)
+
+# Video Indexing Router
+from src.api.fastapi.video_indexing import router as video_indexing_router
+app.include_router(video_indexing_router)
+
+# MeTube Router
+from src.api.fastapi.metube import router as metube_router
+app.include_router(metube_router)
+
+# YTDLP Router
+from src.api.fastapi.ytdlp import router as ytdlp_router
+app.include_router(ytdlp_router)
+
+# Optimization Router
+from src.api.fastapi.optimization import router as optimization_router
+app.include_router(optimization_router)
+
+# VLC Streaming Router
+from src.api.fastapi.vlc_streaming import router as vlc_router
+app.include_router(vlc_router)
+
+# Spotify Enhanced Router
+from src.api.fastapi.spotify_enhanced import router as spotify_enhanced_router
+app.include_router(spotify_enhanced_router)
+
+# IMVDb Router
+from src.api.fastapi.imvdb import router as imvdb_router
+app.include_router(imvdb_router)
+
+# Plex Router
+from src.api.fastapi.plex import router as plex_router
+app.include_router(plex_router)
+
+# Lidarr Router
+from src.api.fastapi.lidarr import router as lidarr_router
+app.include_router(lidarr_router)
 
 logger.info(
     "✅ Phase 3 Week 29 services integrated: Personal Cloud Backup, YouTube Import, Network Sharing, Sync Manager, Mobile Access"
@@ -384,11 +458,19 @@ from src.api.fastapi.lastfm import router as lastfm_router
 from src.api.fastapi.metadata_enrichment import router as metadata_enrichment_router
 from src.api.fastapi.musicbrainz import router as musicbrainz_router
 from src.api.fastapi.spotify import router as spotify_router
+from src.api.fastapi.themes import router as themes_router
+from src.api.fastapi.users import router as users_router
+from src.api.fastapi.advanced_search import router as advanced_search_router
+from src.api.fastapi.two_factor_auth import router as two_factor_router
 
 app.include_router(metadata_enrichment_router)
 app.include_router(spotify_router)
 app.include_router(musicbrainz_router)
+app.include_router(themes_router)
+app.include_router(users_router)
 app.include_router(lastfm_router)
+app.include_router(advanced_search_router)
+app.include_router(two_factor_router)
 app.include_router(performance_router)
 app.include_router(monitoring_router)
 app.include_router(dashboard_router)
@@ -1307,104 +1389,7 @@ async def get_health_version():
     return {"version": "0.9.8", "build_date": "2024-01-01", "commit": "abc1234"}
 
 
-@app.get("/api/themes/current") 
-async def get_current_theme():
-    """Get the currently applied theme"""
-    try:
-        from src.services.settings_service import SettingsService
-        current_theme = SettingsService.get("ui_theme", "default")
-        return {"current_theme": current_theme}
-    except Exception as e:
-        logger.error(f"Error getting current theme: {e}")
-        return {"error": "Failed to get current theme", "details": str(e)}
-
-
-@app.get("/api/themes")
-async def get_themes():
-    """Get all available themes"""
-    try:
-        from src.api.themes import extract_built_in_theme_data
-        from src.database.connection import get_db
-        from src.database.models import CustomTheme
-        
-        # Get built-in themes
-        built_in_themes = extract_built_in_theme_data()
-        
-        # Get custom themes from database
-        custom_themes = {}
-        try:
-            with get_db() as session:
-                custom_theme_records = session.query(CustomTheme).all()
-                for theme in custom_theme_records:
-                    custom_themes[theme.name] = {
-                        "id": theme.id,
-                        "name": theme.name,
-                        "css_variables": theme.css_variables or {},
-                        "is_active": theme.is_active,
-                        "created_at": theme.created_at.isoformat() if theme.created_at else None
-                    }
-        except Exception as db_error:
-            logger.warning(f"Failed to load custom themes from database: {db_error}")
-        
-        return {
-            "built_in_themes": built_in_themes,
-            "custom_themes": custom_themes,
-            "total_themes": len(built_in_themes) + len(custom_themes)
-        }
-    except Exception as e:
-        logger.error(f"Error getting themes: {e}")
-        return {"error": "Failed to get themes", "details": str(e)}
-
-
-@app.post("/api/themes/apply")
-async def apply_theme(request: Request):
-    """Apply a theme"""
-    try:
-        from src.services.settings_service import SettingsService
-        
-        body = await request.json()
-        theme_name = body.get("theme_name")
-        
-        if not theme_name:
-            return {"error": "Theme name is required"}
-        
-        # Set the theme in settings
-        SettingsService.set("ui_theme", theme_name)
-        
-        logger.info(f"Applied theme: {theme_name}")
-        return {
-            "success": True,
-            "message": f"Theme '{theme_name}' applied successfully",
-            "applied_theme": theme_name
-        }
-    except Exception as e:
-        logger.error(f"Error applying theme: {e}")
-        return {"error": "Failed to apply theme", "details": str(e)}
-
-
-@app.post("/api/themes/built-in/{theme_name}/extract")
-async def extract_built_in_theme(theme_name: str):
-    """Extract CSS variables from a built-in theme"""
-    try:
-        from src.api.themes import extract_built_in_theme_data
-        
-        # Get all built-in themes
-        built_in_themes = extract_built_in_theme_data()
-        
-        if theme_name not in built_in_themes:
-            return {"error": f"Built-in theme '{theme_name}' not found"}
-        
-        theme_data = built_in_themes[theme_name]
-        
-        logger.info(f"Extracted built-in theme: {theme_name}")
-        return {
-            "success": True,
-            "theme_name": theme_name,
-            "variables": theme_data
-        }
-    except Exception as e:
-        logger.error(f"Error extracting built-in theme {theme_name}: {e}")
-        return {"error": "Failed to extract theme", "details": str(e)}
+# All theme endpoints moved to themes router - duplicates removed
 
 
 @app.get("/auth/check")
@@ -1440,123 +1425,8 @@ async def logout():
     return response
 
 
-@app.websocket("/ws/jobs")
-async def websocket_jobs(websocket: WebSocket):
-    """WebSocket endpoint for background jobs progress"""
-    await websocket.accept()
-
-    try:
-        # Send initial status
-        from datetime import datetime
-        
-        await websocket.send_json(
-            {
-                "type": "status",
-                "message": "Connected to job progress WebSocket",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-            }
-        )
-
-        # Keep connection alive and send periodic updates
-        import asyncio
-        from src.jobs.celery_app import celery_app
-
-        # Store subscribed job IDs
-        subscribed_jobs = set()
-        
-        # Listen for incoming messages (job subscriptions)
-        async def handle_messages():
-            try:
-                while True:
-                    message = await websocket.receive_json()
-                    if message.get("type") in ["subscribe", "subscribe_job"]:
-                        job_id = message.get("job_id")
-                        if job_id:
-                            subscribed_jobs.add(job_id)
-                            logger.info(f"WebSocket subscribed to job {job_id}")
-                    elif message.get("type") in ["unsubscribe", "unsubscribe_job"]:
-                        job_id = message.get("job_id")
-                        if job_id:
-                            subscribed_jobs.discard(job_id)
-            except Exception as e:
-                logger.debug(f"WebSocket message handling stopped: {e}")
-
-        # Start message handler
-        import asyncio
-        message_task = asyncio.create_task(handle_messages())
-
-        while True:
-            try:
-                # Send heartbeat and check for job updates every 5 seconds
-                await asyncio.sleep(5)
-                
-                # Get active jobs count from Celery
-                try:
-                    inspect = celery_app.control.inspect()
-                    active_jobs = inspect.active()
-                    total_active = sum(len(jobs) for jobs in (active_jobs or {}).values())
-                except Exception:
-                    total_active = 0
-
-                await websocket.send_json(
-                    {
-                        "type": "heartbeat",
-                        "timestamp": datetime.utcnow().isoformat() + "Z",
-                        "active_jobs": total_active,
-                    }
-                )
-                
-                # Check progress for subscribed jobs
-                for job_id in list(subscribed_jobs):
-                    try:
-                        from celery.result import AsyncResult
-                        result = AsyncResult(job_id, app=celery_app)
-                        
-                        if result.state == "PROGRESS":
-                            await websocket.send_json({
-                                "type": "job_update",
-                                "job_id": job_id,
-                                "status": "processing",
-                                "progress": result.info.get("progress", 0),
-                                "message": result.info.get("message", "Processing..."),
-                                "timestamp": datetime.utcnow().isoformat() + "Z",
-                            })
-                        elif result.state == "SUCCESS":
-                            await websocket.send_json({
-                                "type": "job_update", 
-                                "job_id": job_id,
-                                "status": "completed",
-                                "progress": 100,
-                                "message": "Job completed successfully",
-                                "result": result.result,
-                                "timestamp": datetime.utcnow().isoformat() + "Z",
-                            })
-                            subscribed_jobs.discard(job_id)
-                        elif result.state == "FAILURE":
-                            await websocket.send_json({
-                                "type": "job_update",
-                                "job_id": job_id, 
-                                "status": "failed",
-                                "progress": 0,
-                                "message": "Job failed",
-                                "error": str(result.info),
-                                "timestamp": datetime.utcnow().isoformat() + "Z",
-                            })
-                            subscribed_jobs.discard(job_id)
-                    except Exception as job_error:
-                        logger.debug(f"Error checking job {job_id}: {job_error}")
-
-            except Exception as loop_error:
-                logger.error(f"WebSocket update loop error: {loop_error}")
-                break
-
-    except Exception as e:
-        logger.error(f"WebSocket jobs error: {e}")
-    finally:
-        try:
-            await websocket.close()
-        except:
-            pass
+# WebSocket routes imported from dedicated module
+from src.api.fastapi.websocket_jobs import init_websocket_system, cleanup_websocket_system
 
 
 if __name__ == "__main__":

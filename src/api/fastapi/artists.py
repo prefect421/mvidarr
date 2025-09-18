@@ -73,6 +73,7 @@ class ArtistResponse(BaseModel):
     wikipedia_url: Optional[str] = None
     musicbrainz_id: Optional[str] = None
     spotify_id: Optional[str] = None
+    imvdb_metadata: Optional[Dict[str, Any]] = None  # Include metadata for song recommendations
     video_count: int = 0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -136,31 +137,19 @@ class IMVDbImportRequest(BaseModel):
 
 
 # ========================================================================================
-# AUTHENTICATION AND SECURITY (CRITICAL ADDITION)
+# AUTHENTICATION - PROPER IMPLEMENTATION
 # ========================================================================================
 
-# TODO: Implement proper authentication middleware
-# The original Flask API had NO authentication, which is a security vulnerability
-# For now, we'll add placeholder functions that can be implemented later
-
+from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
 
 async def get_current_user():
-    """
-    Placeholder for user authentication.
-
-    CRITICAL: The original Flask API had NO authentication!
-    This must be implemented for production use.
-    """
-    # TODO: Implement actual authentication
-    # For now, return a placeholder user
-    return {"user_id": 1, "username": "admin", "role": "admin"}
+    """Get current authenticated user"""
+    return await get_current_user_legacy()
 
 
 async def require_authentication(current_user: dict = Depends(get_current_user)):
     """Dependency to require authentication for protected endpoints"""
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    return current_user
+    return await require_authentication_legacy(current_user)
 
 
 # ========================================================================================
@@ -394,6 +383,7 @@ async def get_artist(
             wikipedia_url=getattr(artist, "wikipedia_url", None),
             musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
+            imvdb_metadata=artist.imvdb_metadata,  # Include metadata for song recommendations
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
@@ -495,7 +485,7 @@ async def create_artist(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/{artist_id}", response_model=ArtistResponse)
+@router.put("/{artist_id}")
 async def update_artist(
     artist_id: int = FastAPIPath(..., ge=1),
     update_data: ArtistUpdateRequest = Body(...),
@@ -531,7 +521,7 @@ async def update_artist(
 
         logger.info(f"Updated artist {artist_id}: {artist.name}")
 
-        return ArtistResponse(
+        artist_response = ArtistResponse(
             id=artist.id,
             name=artist.name,
             sort_name=getattr(artist, "sort_name", artist.name),
@@ -550,6 +540,12 @@ async def update_artist(
             created_at=artist.created_at,
             updated_at=artist.updated_at,
         )
+
+        return {
+            "success": True,
+            "message": f"Artist '{artist.name}' updated successfully",
+            "artist": artist_response.dict()
+        }
 
     except HTTPException:
         raise
@@ -941,6 +937,142 @@ async def get_artist_thumbnail(
     session: Session = Depends(get_db_session),
 ):
     """Serve artist thumbnail image"""
+    return await _get_artist_thumbnail_impl(artist_id, size, session)
+
+
+@router.get("/{artist_id}/thumbnail/info")
+async def get_artist_thumbnail_info(
+    artist_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Get thumbnail information for artist"""
+    try:
+        artist = session.query(Artist).filter(Artist.id == artist_id).first()
+        
+        if not artist:
+            raise HTTPException(status_code=404, detail="Artist not found")
+        
+        # Check if artist has thumbnail
+        has_thumbnail = bool(artist.thumbnail_path)
+        
+        response = {
+            "has_thumbnail": has_thumbnail,
+            "thumbnail_path": artist.thumbnail_path,
+            "thumbnail_source": getattr(artist, "thumbnail_source", None),
+            "thumbnail_uploaded_at": getattr(artist, "thumbnail_uploaded_at", None),
+            "metadata": getattr(artist, "thumbnail_metadata", None),
+        }
+        
+        # Add file info if thumbnail exists
+        if has_thumbnail and artist.thumbnail_path:
+            try:
+                from pathlib import Path
+                thumb_path = Path(artist.thumbnail_path)
+                if thumb_path.exists():
+                    stat = thumb_path.stat()
+                    response["file_info"] = {
+                        "size": stat.st_size,
+                        "size_mb": round(stat.st_size / (1024 * 1024), 2),
+                        "modified": stat.st_mtime
+                    }
+            except Exception:
+                # If file doesn't exist, don't include file_info
+                pass
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting thumbnail info for artist {artist_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{artist_id}/thumbnail/{size}")
+async def get_artist_thumbnail_with_size(
+    artist_id: int = FastAPIPath(..., ge=1),
+    size: str = FastAPIPath(..., pattern="^(small|medium|large)$"),
+    session: Session = Depends(get_db_session),
+):
+    """Serve artist thumbnail image with size as path parameter"""
+    return await _get_artist_thumbnail_impl(artist_id, size, session)
+
+
+@router.put("/{artist_id}/thumbnail")
+async def set_artist_thumbnail(
+    artist_id: int = FastAPIPath(..., ge=1),
+    thumbnail_data: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Set artist thumbnail from URL or search result"""
+    try:
+        from datetime import datetime
+        import requests
+        
+        artist = session.query(Artist).filter(Artist.id == artist_id).first()
+        if not artist:
+            raise HTTPException(status_code=404, detail="Artist not found")
+        
+        thumbnail_url = thumbnail_data.get('thumbnail_url')
+        if not thumbnail_url:
+            raise HTTPException(status_code=400, detail="thumbnail_url is required")
+        
+        # Download the thumbnail from the URL
+        try:
+            response = requests.get(thumbnail_url, timeout=30)
+            response.raise_for_status()
+            
+            # Create thumbnails directory if it doesn't exist
+            thumbnail_dir = Path("data/thumbnails/artists")
+            thumbnail_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generate filename
+            import uuid
+            from urllib.parse import urlparse
+            parsed_url = urlparse(thumbnail_url)
+            file_ext = Path(parsed_url.path).suffix or '.jpg'
+            artist_name_safe = artist.name.lower().replace(" ", "_").replace("-", "_")
+            filename = f"{artist_name_safe}_{uuid.uuid4().hex[:12]}{file_ext}"
+            file_path = thumbnail_dir / filename
+            
+            # Save downloaded file
+            with open(file_path, "wb") as f:
+                f.write(response.content)
+            
+            # Update artist record
+            artist.thumbnail_path = str(file_path)
+            artist.thumbnail_url = str(file_path)
+            artist.thumbnail_source = "manual"
+            artist.thumbnail_uploaded_at = datetime.utcnow()
+            
+            session.commit()
+            
+            return {
+                "success": True,
+                "message": "Thumbnail set successfully",
+                "thumbnail_path": str(file_path),
+                "thumbnail_url": thumbnail_url
+            }
+            
+        except Exception as e:
+            logger.error(f"Error downloading thumbnail from {thumbnail_url}: {e}")
+            raise HTTPException(status_code=400, detail=f"Failed to download thumbnail: {str(e)}")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting thumbnail for artist {artist_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _get_artist_thumbnail_impl(
+    artist_id: int,
+    size: Optional[str],
+    session: Session,
+):
+    """Implementation for serving artist thumbnail image"""
     try:
         artist = session.query(Artist).filter(Artist.id == artist_id).first()
 
@@ -961,15 +1093,17 @@ async def get_artist_thumbnail(
         # Try to find thumbnail file by artist name (convert to lowercase and replace spaces with underscores)
         artist_name_safe = artist.name.lower().replace(" ", "_").replace("-", "_")
 
-        # Look for files matching the artist name pattern
+        # Look for files matching the artist name pattern (both jpg and png)
         if thumbnail_dir.exists():
-            for thumbnail_file in thumbnail_dir.glob(f"{artist_name_safe}_*.jpg"):
-                if thumbnail_file.exists():
-                    return FileResponse(
-                        thumbnail_file,
-                        media_type="image/jpeg",
-                        filename=f"artist_{artist_id}_thumbnail.jpg",
-                    )
+            for ext in ['jpg', 'png', 'jpeg']:
+                for thumbnail_file in thumbnail_dir.glob(f"{artist_name_safe}_*.{ext}"):
+                    if thumbnail_file.exists():
+                        media_type = "image/jpeg" if ext in ['jpg', 'jpeg'] else "image/png"
+                        return FileResponse(
+                            thumbnail_file,
+                            media_type=media_type,
+                            filename=f"artist_{artist_id}_thumbnail.{ext}",
+                        )
 
         # Return placeholder thumbnail
         placeholder_path = Path("frontend/static/placeholder-artist.png")
@@ -984,6 +1118,63 @@ async def get_artist_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Error getting thumbnail for artist {artist_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{artist_id}/thumbnail/upload")
+async def upload_artist_thumbnail(
+    artist_id: int = FastAPIPath(..., ge=1),
+    thumbnail: UploadFile = File(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Upload a custom thumbnail for an artist"""
+    try:
+        from datetime import datetime
+        
+        artist = session.query(Artist).filter(Artist.id == artist_id).first()
+        if not artist:
+            raise HTTPException(status_code=404, detail="Artist not found")
+        
+        # Validate file type
+        if not thumbnail.content_type or not thumbnail.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Create thumbnails directory if it doesn't exist
+        thumbnail_dir = Path("data/thumbnails/artists")
+        thumbnail_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate filename
+        import uuid
+        file_ext = Path(thumbnail.filename).suffix if thumbnail.filename else '.jpg'
+        artist_name_safe = artist.name.lower().replace(" ", "_").replace("-", "_")
+        filename = f"{artist_name_safe}_{uuid.uuid4().hex[:12]}{file_ext}"
+        file_path = thumbnail_dir / filename
+        
+        # Save uploaded file
+        content = await thumbnail.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        # Update artist record
+        artist.thumbnail_path = str(file_path)
+        artist.thumbnail_url = str(file_path)
+        artist.thumbnail_source = "manual"
+        artist.thumbnail_uploaded_at = datetime.utcnow()
+        
+        session.commit()
+        
+        return {
+            "success": True,
+            "message": "Thumbnail uploaded successfully",
+            "thumbnail_path": str(file_path),
+            "filename": filename
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading thumbnail for artist {artist_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1008,14 +1199,16 @@ async def search_artist_thumbnail(
 
         if search_request.source in ["auto", "wikipedia"]:
             try:
-                wikipedia_results = wikipedia_service.search_artist_images(search_query)
-                for result in wikipedia_results[:5]:  # Limit to 5 results
+                logger.info(f"Searching Wikipedia for thumbnails: {search_query}")
+                wikipedia_url = wikipedia_service.search_artist_thumbnail(search_query)
+                logger.info(f"Wikipedia search result: {wikipedia_url}")
+                if wikipedia_url:
                     thumbnail_results.append(
                         {
                             "source": "wikipedia",
-                            "url": result.get("url"),
-                            "title": result.get("title"),
-                            "description": result.get("description"),
+                            "url": wikipedia_url,
+                            "title": f"{search_query} - Wikipedia",
+                            "description": f"Wikipedia thumbnail for {search_query}",
                         }
                     )
             except Exception as e:
@@ -1023,16 +1216,18 @@ async def search_artist_thumbnail(
 
         if search_request.source in ["auto", "youtube"]:
             try:
-                youtube_results = youtube_search_service.search_artist_thumbnails(
+                logger.info(f"Searching YouTube for thumbnails: {search_query}")
+                youtube_url = youtube_search_service.search_artist_channel_thumbnail(
                     search_query
                 )
-                for result in youtube_results[:5]:  # Limit to 5 results
+                logger.info(f"YouTube search result: {youtube_url}")
+                if youtube_url:
                     thumbnail_results.append(
                         {
                             "source": "youtube",
-                            "url": result.get("thumbnail_url"),
-                            "title": result.get("title"),
-                            "channel": result.get("channel"),
+                            "url": youtube_url,
+                            "title": f"{search_query} - YouTube Channel",
+                            "channel": search_query,
                         }
                     )
             except Exception as e:
@@ -1050,6 +1245,97 @@ async def search_artist_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Error searching thumbnails for artist {artist_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{artist_id}/thumbnail")
+async def set_artist_thumbnail(
+    artist_id: int = FastAPIPath(..., ge=1),
+    thumbnail_data: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Set artist thumbnail from URL or search result"""
+    try:
+        from datetime import datetime
+        import httpx
+        import uuid
+        
+        # Debug logging
+        logger.info(f"PUT thumbnail request for artist {artist_id}, data: {thumbnail_data}")
+        
+        artist = session.query(Artist).filter(Artist.id == artist_id).first()
+        if not artist:
+            raise HTTPException(status_code=404, detail="Artist not found")
+        
+        # Get thumbnail URL from request
+        thumbnail_url = thumbnail_data.get("thumbnail_url")
+        logger.info(f"Extracted thumbnail_url: {thumbnail_url} (type: {type(thumbnail_url)})")
+        
+        if not thumbnail_url:
+            raise HTTPException(status_code=400, detail="thumbnail_url is required")
+        
+        if not isinstance(thumbnail_url, str) or not thumbnail_url.strip():
+            raise HTTPException(status_code=400, detail="thumbnail_url must be a non-empty string")
+        
+        # Create thumbnails directory if it doesn't exist
+        thumbnail_dir = Path("data/thumbnails/artists")
+        thumbnail_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Download the image
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(thumbnail_url)
+                response.raise_for_status()
+                
+                # Determine file extension from content type or URL
+                content_type = response.headers.get('content-type', '')
+                if 'jpeg' in content_type or 'jpg' in content_type:
+                    file_ext = '.jpg'
+                elif 'png' in content_type:
+                    file_ext = '.png'
+                elif 'webp' in content_type:
+                    file_ext = '.webp'
+                else:
+                    # Fallback to extension from URL
+                    from urllib.parse import urlparse
+                    parsed_url = urlparse(thumbnail_url)
+                    file_ext = Path(parsed_url.path).suffix or '.jpg'
+                
+                # Generate filename
+                artist_name_safe = artist.name.lower().replace(" ", "_").replace("-", "_")
+                filename = f"{artist_name_safe}_{uuid.uuid4().hex[:12]}{file_ext}"
+                file_path = thumbnail_dir / filename
+                
+                # Save the image
+                with open(file_path, "wb") as f:
+                    f.write(response.content)
+        except Exception as e:
+            logger.error(f"Error downloading thumbnail from {thumbnail_url}: {e}")
+            raise HTTPException(status_code=400, detail=f"Failed to download thumbnail: {e}")
+        
+        # Update artist record
+        artist.thumbnail_path = str(file_path)
+        artist.thumbnail_url = str(file_path)
+        artist.thumbnail_source = thumbnail_data.get("source", "manual")
+        artist.thumbnail_uploaded_at = datetime.utcnow()
+        
+        session.commit()
+        
+        logger.info(f"Set thumbnail for artist {artist.name} (ID: {artist_id}) from URL: {thumbnail_url}")
+        
+        return {
+            "success": True,
+            "message": "Thumbnail set successfully",
+            "thumbnail_path": str(file_path),
+            "filename": filename,
+            "source": thumbnail_data.get("source", "manual")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting thumbnail for artist {artist_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -610,14 +610,25 @@ function searchVideoThumbnails() {
     })
     .then(response => {
         console.log('API response received:', response.status, response.statusText);
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('Thumbnail search endpoint not available');
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+        }
         return response.json();
     })
     .then(data => {
         console.log('API response data:', data);
         if (data.error) {
             showError('Search failed: ' + data.error);
-        } else {
+        } else if (data.results) {
             displayVideoThumbnailResults(data.results);
+        } else {
+            // Handle case where results is undefined
+            console.warn('No results field in response:', data);
+            displayVideoThumbnailResults([]);
         }
     })
     .catch(error => {
@@ -638,6 +649,12 @@ function displayVideoThumbnailResults(results) {
         console.error('Results container or grid not found');
         showError('Search results container not found');
         return;
+    }
+    
+    // Handle undefined or null results
+    if (!results || !Array.isArray(results)) {
+        console.warn('Results is not an array:', results);
+        results = [];
     }
     
     if (results.length === 0) {

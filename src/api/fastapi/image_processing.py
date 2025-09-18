@@ -106,7 +106,8 @@ class ImageProcessingStatsResponse(BaseModel):
 # Endpoints
 @router.post("/thumbnails/generate", response_model=Dict[str, str])
 async def generate_thumbnails(
-    request: ThumbnailGenerationRequest, background_tasks: BackgroundTasks
+    request: ThumbnailGenerationRequest, 
+    background_tasks: BackgroundTasks
 ):
     """
     Generate thumbnails for multiple images concurrently
@@ -143,11 +144,12 @@ async def generate_thumbnails(
             ]
 
         # Submit thumbnail generation task
+        # For image processing tasks, use default user ID since these are system operations
         task_id = await submit_bulk_thumbnail_generation(
             source_paths=[str(p) for p in source_paths],
             output_dir=request.output_dir,
             specs=thumbnail_specs,
-            user_id=1,  # TODO: Get from authentication
+            user_id=1,  # System user for background image processing
         )
 
         logger.info(f"🖼️ Thumbnail generation task submitted: {task_id}")
@@ -205,7 +207,7 @@ async def optimize_images(
             output_dir=request.output_dir,
             quality=request.quality,
             max_dimension=request.max_dimension,
-            user_id=1,  # TODO: Get from authentication
+            user_id=1,  # System user for background image processing
         )
 
         logger.info(f"⚡ Image optimization task submitted: {task_id}")
@@ -244,7 +246,7 @@ async def analyze_images(
         # Submit analysis task
         task_id = await submit_image_analysis(
             source_paths=[str(p) for p in source_paths],
-            user_id=1,  # TODO: Get from authentication
+            user_id=1,  # System user for background image processing
         )
 
         logger.info(f"🔍 Image analysis task submitted: {task_id}")

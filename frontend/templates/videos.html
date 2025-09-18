@@ -987,20 +987,112 @@ function refreshThumbnails() {
             },
             body: JSON.stringify(requestBody)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(result => {
             if (result.error) {
                 showError('Error: ' + result.error);
+            } else if (result.job_id) {
+                // Show progress bar for background job
+                showThumbnailProgress(result.job_id, result.valid_videos);
+                showSuccess(`${result.message} - Job ID: ${result.job_id}`);
             } else {
-                showSuccess(result.message);
+                showSuccess(result.message || 'Thumbnail refresh completed');
                 loadVideos(); // Refresh the video list
             }
         })
         .catch(error => {
             console.error('Error refreshing thumbnails:', error);
-            showError('Error refreshing thumbnails');
+            showError('Error refreshing thumbnails: ' + error.message);
         });
     });
+}
+
+function showThumbnailProgress(jobId, totalVideos) {
+    // Create progress bar UI
+    const progressContainer = document.createElement('div');
+    progressContainer.id = `thumbnail-progress-${jobId}`;
+    progressContainer.className = 'progress-container';
+    progressContainer.innerHTML = `
+        <div class="progress-header">
+            <span class="progress-title">Generating Thumbnails</span>
+            <span class="progress-stats" id="thumbnail-stats-${jobId}">0 / ${totalVideos}</span>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="thumbnail-progress-bar-${jobId}" style="width: 0%"></div>
+        </div>
+        <div class="progress-details" id="thumbnail-details-${jobId}">Starting...</div>
+    `;
+    
+    // Add to page (insert at top of video container)
+    const videosContainer = document.querySelector('.videos-container');
+    videosContainer.insertBefore(progressContainer, videosContainer.firstChild);
+    
+    // Subscribe to job progress updates via WebSocket
+    if (window.backgroundJobsManager) {
+        window.backgroundJobsManager.subscribeToJob(jobId);
+        
+        // Listen for job updates
+        const originalHandler = window.backgroundJobsManager.handleJobUpdate;
+        window.backgroundJobsManager.handleJobUpdate = function(jobData) {
+            if (jobData.job_id === jobId) {
+                updateThumbnailProgress(jobId, jobData, totalVideos);
+            }
+            return originalHandler.call(this, jobData);
+        };
+    }
+}
+
+function updateThumbnailProgress(jobId, jobData, totalVideos) {
+    const progressBar = document.getElementById(`thumbnail-progress-bar-${jobId}`);
+    const statsElement = document.getElementById(`thumbnail-stats-${jobId}`);
+    const detailsElement = document.getElementById(`thumbnail-details-${jobId}`);
+    const containerElement = document.getElementById(`thumbnail-progress-${jobId}`);
+    
+    if (!progressBar || !containerElement) return;
+    
+    const progress = jobData.progress || 0;
+    const status = jobData.status || 'running';
+    const currentItem = Math.floor((progress / 100) * totalVideos);
+    
+    // Update progress bar
+    progressBar.style.width = `${progress}%`;
+    
+    // Update stats
+    if (statsElement) {
+        statsElement.textContent = `${currentItem} / ${totalVideos}`;
+    }
+    
+    // Update details
+    if (detailsElement) {
+        const message = jobData.current_step || jobData.message || `Processing video ${currentItem + 1}`;
+        detailsElement.textContent = message;
+    }
+    
+    // Handle completion
+    if (status === 'completed' || status === 'success' || status === 'SUCCESS') {
+        progressBar.style.width = '100%';
+        if (statsElement) statsElement.textContent = `${totalVideos} / ${totalVideos} - Complete`;
+        if (detailsElement) detailsElement.textContent = 'Thumbnail generation completed!';
+        
+        // Remove progress bar after 3 seconds and refresh videos
+        setTimeout(() => {
+            containerElement.remove();
+            loadVideos(); // Refresh the video list to show new thumbnails
+        }, 3000);
+    } else if (status === 'failed' || status === 'error' || status === 'FAILURE') {
+        progressBar.style.backgroundColor = '#dc3545';
+        if (detailsElement) detailsElement.textContent = 'Thumbnail generation failed: ' + (jobData.error || 'Unknown error');
+        
+        // Remove progress bar after 5 seconds
+        setTimeout(() => {
+            containerElement.remove();
+        }, 5000);
+    }
 }
 
 function viewVideo(id) {
@@ -6232,6 +6324,82 @@ function performVideoMerge(currentVideoId, duplicateVideoId) {
 
 .search-input-container {
     position: relative;
+}
+
+/* Thumbnail Generation Progress Bar Styles */
+.progress-container {
+    background: var(--surface-light, #f8fafc);
+    border: 1px solid var(--border-light, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.progress-title {
+    font-weight: 600;
+    color: var(--text-primary, #1a202c);
+    font-size: 14px;
+}
+
+.progress-stats {
+    font-size: 13px;
+    color: var(--text-muted, #64748b);
+    font-family: 'Courier New', monospace;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background-color: var(--surface-dark, #e2e8f0);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    min-width: 0;
+}
+
+.progress-details {
+    font-size: 12px;
+    color: var(--text-muted, #64748b);
+    font-style: italic;
+}
+
+/* Dark theme support for progress bar */
+@media (prefers-color-scheme: dark) {
+    .progress-container {
+        background: var(--surface-light-dark, #2d3748);
+        border-color: var(--border-light-dark, #4a5568);
+    }
+    
+    .progress-title {
+        color: var(--text-primary-dark, #f7fafc);
+    }
+    
+    .progress-stats {
+        color: var(--text-muted-dark, #a0aec0);
+    }
+    
+    .progress-bar-container {
+        background-color: var(--surface-dark-dark, #4a5568);
+    }
+    
+    .progress-details {
+        color: var(--text-muted-dark, #a0aec0);
+    }
 }
 </style>
 

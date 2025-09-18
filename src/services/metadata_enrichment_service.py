@@ -26,6 +26,7 @@ from src.services.lastfm_service import lastfm_service
 from src.services.musicbrainz_service import musicbrainz_service
 from src.services.settings_service import settings
 from src.services.spotify_service import spotify_service
+from src.services.thumbnail_service import ThumbnailService
 from src.services.video_indexing_service import VideoIndexingService
 from src.services.wikipedia_service import WikipediaService
 from src.utils.logger import get_logger
@@ -136,6 +137,7 @@ class MetadataEnrichmentService:
         self.musicbrainz = musicbrainz_service
         self.allmusic = allmusic_service
         self.wikipedia = WikipediaService()
+        self.thumbnail_service = ThumbnailService()
 
         # Configuration
         self.min_confidence_threshold = 0.7
@@ -195,7 +197,7 @@ class MetadataEnrichmentService:
         return self._get_source_priorities()
 
     async def enrich_artist_metadata(
-        self, artist_id: int, force_refresh: bool = False, app_context=None
+        self, artist_id: int, force_refresh: bool = False, app_context=None, progress_callback=None
     ) -> EnrichmentResult:
         """
         Enrich artist metadata from multiple sources with intelligent aggregation
@@ -219,10 +221,15 @@ class MetadataEnrichmentService:
                 # Store artist name for logging (avoid session issues)
                 artist_name = artist.name
 
+                logger.info(f"🔄 ENRICHMENT DEBUG: Artist {artist_name} - force_refresh={force_refresh}")
+
                 # Check if we need to refresh metadata
-                if not force_refresh and self._is_metadata_fresh(artist):
-                    logger.debug(
-                        f"Artist {artist_name} metadata is fresh, skipping enrichment"
+                is_fresh = self._is_metadata_fresh(artist)
+                logger.info(f"🔄 ENRICHMENT DEBUG: Artist {artist_name} - metadata_is_fresh={is_fresh}")
+                
+                if not force_refresh and is_fresh:
+                    logger.info(
+                        f"🔄 ENRICHMENT SKIPPED: Artist {artist_name} metadata is fresh and force_refresh=False"
                     )
                     result.success = True
                     result.confidence_score = (
@@ -242,13 +249,17 @@ class MetadataEnrichmentService:
                 }
 
             # Gather metadata from all sources (outside of session to avoid conflicts)
-            metadata_sources = await self._gather_all_sources_metadata(artist_data)
+            if progress_callback:
+                progress_callback(40, "Gathering metadata from external sources...")
+            metadata_sources = await self._gather_all_sources_metadata(artist_data, progress_callback)
 
             if not metadata_sources:
                 result.errors.append("No metadata found from any source")
                 return result
 
             # Aggregate and resolve conflicts
+            if progress_callback:
+                progress_callback(80, "Aggregating and resolving metadata conflicts...")
             unified_metadata = self._aggregate_metadata(metadata_sources)
 
             # Update artist record in a new session
@@ -263,7 +274,7 @@ class MetadataEnrichmentService:
                 # Update artist record - ensure artist is bound to current session
                 artist = session.merge(artist)
                 updated_fields = self._update_artist_record(
-                    session, artist, unified_metadata
+                    session, artist, unified_metadata, force_refresh
                 )
 
                 logger.info(
@@ -369,35 +380,38 @@ class MetadataEnrichmentService:
         return result
 
     async def _gather_all_sources_metadata(
-        self, artist_data: Dict
+        self, artist_data: Dict, progress_callback=None
     ) -> Dict[str, ArtistMetadata]:
         """Gather metadata from all available sources"""
         metadata_sources = {}
 
         # Spotify metadata - using async service (always enabled if configured)
+        if progress_callback:
+            progress_callback(45, "Fetching Spotify metadata...")
         try:
             logger.debug(
                 f"🎵 ASYNC SPOTIFY ENRICHMENT: Starting for {artist_data['name']}"
             )
 
-            spotify_metadata = await self._get_spotify_metadata(artist_data)
+            # Temporarily force sync Spotify service due to async event loop issues in Celery
+            spotify_metadata = self._get_spotify_metadata_sync(artist_data)
             if spotify_metadata:
-                logger.debug(
-                    f"🎵 ASYNC SPOTIFY ENRICHMENT: Got metadata: {spotify_metadata}"
+                logger.info(
+                    f"🎵 SPOTIFY ENRICHMENT: Got metadata for {spotify_metadata.name} with {len(spotify_metadata.images)} images"
                 )
                 logger.debug(
-                    f"🎵 ASYNC SPOTIFY ENRICHMENT: Related artists: {spotify_metadata.related_artists}"
+                    f"🎵 SPOTIFY ENRICHMENT: Related artists: {spotify_metadata.related_artists}"
                 )
                 logger.debug(
-                    f"🎵 ASYNC SPOTIFY ENRICHMENT: Top tracks: {spotify_metadata.top_tracks}"
+                    f"🎵 SPOTIFY ENRICHMENT: Top tracks: {spotify_metadata.top_tracks}"
                 )
                 metadata_sources["spotify"] = spotify_metadata
-                logger.debug(
-                    f"Successfully gathered async Spotify metadata for {artist_data['name']}"
+                logger.info(
+                    f"🎵 SPOTIFY ENRICHMENT: Added Spotify to metadata sources"
                 )
             else:
-                logger.debug(
-                    f"🎵 ASYNC SPOTIFY ENRICHMENT: No metadata returned for {artist_data['name']}"
+                logger.warning(
+                    f"🎵 SPOTIFY ENRICHMENT: No metadata returned for {artist_data['name']}"
                 )
         except Exception as e:
             logger.warning(
@@ -405,6 +419,8 @@ class MetadataEnrichmentService:
             )
 
         # Last.fm metadata - check if enabled
+        if progress_callback:
+            progress_callback(52, "Fetching Last.fm metadata...")
         if hasattr(self.lastfm, "enabled") and self.lastfm.enabled:
             try:
                 lastfm_metadata = await self._get_lastfm_metadata(artist_data)
@@ -422,13 +438,27 @@ class MetadataEnrichmentService:
                 f"Last.fm integration disabled or not configured, skipping for {artist_data['name']}"
             )
 
-        # IMVDb metadata - DISABLED per user requirements
-        # IMVDb should only be used for searching artists and videos, not as a metadata source
-        logger.debug(
-            f"IMVDb metadata collection disabled per configuration for {artist_data['name']}"
-        )
+        # IMVDb metadata - DEEMPHASIZED (low priority fallback)
+        # IMVDb is used as a fallback source when primary sources (Spotify, Last.fm) fail
+        if progress_callback:
+            progress_callback(58, "Fetching IMVDb metadata...")
+        try:
+            imvdb_metadata = await self._get_imvdb_metadata(artist_data)
+            if imvdb_metadata:
+                # Set lower confidence for IMVDb to deemphasize it in aggregation
+                imvdb_metadata.confidence = max(0.3, imvdb_metadata.confidence * 0.5)
+                metadata_sources["imvdb"] = imvdb_metadata
+                logger.debug(
+                    f"Successfully gathered IMVDb metadata for {artist_data['name']} (deemphasized)"
+                )
+        except Exception as e:
+            logger.warning(
+                f"Failed to get IMVDb metadata for {artist_data['name']}: {e}"
+            )
 
         # MusicBrainz metadata - check if enabled
+        if progress_callback:
+            progress_callback(64, "Fetching MusicBrainz metadata...")
         if hasattr(self.musicbrainz, "enabled") and self.musicbrainz.enabled:
             try:
                 musicbrainz_metadata = await self._get_musicbrainz_metadata(artist_data)
@@ -447,6 +477,8 @@ class MetadataEnrichmentService:
             )
 
         # AllMusic metadata - check if enabled
+        if progress_callback:
+            progress_callback(70, "Fetching AllMusic metadata...")
         logger.debug(
             f"Checking AllMusic for {artist_data['name']}: hasattr={hasattr(self.allmusic, 'enabled')}, enabled={getattr(self.allmusic, 'enabled', None)}"
         )
@@ -473,6 +505,8 @@ class MetadataEnrichmentService:
             )
 
         # Wikipedia metadata - basic biography integration
+        if progress_callback:
+            progress_callback(76, "Fetching Wikipedia metadata...")
         try:
             logger.info(f"Calling Wikipedia for {artist_data['name']}")
             wikipedia_metadata = await self._get_wikipedia_metadata(artist_data)
@@ -502,8 +536,15 @@ class MetadataEnrichmentService:
     ) -> Optional[ArtistMetadata]:
         """Get enhanced metadata from Spotify (using async service)"""
         try:
-            # Get async Spotify service
-            async_spotify = await get_async_spotify_service()
+            # Get async Spotify service with timeout to prevent hanging
+            try:
+                async_spotify = await asyncio.wait_for(get_async_spotify_service(), timeout=5.0)
+                if not async_spotify:
+                    logger.warning("Could not get async Spotify service, falling back to sync")
+                    return self._get_spotify_metadata_sync(artist_data)
+            except asyncio.TimeoutError:
+                logger.warning("Async Spotify service timed out, falling back to sync")
+                return self._get_spotify_metadata_sync(artist_data)
 
             # Search for artist if we don't have Spotify ID
             spotify_artist = None
@@ -629,6 +670,76 @@ class MetadataEnrichmentService:
 
         except Exception as e:
             logger.error(f"Error getting async Spotify metadata: {e}")
+            # Fall back to sync Spotify service if async fails (e.g., event loop issues in Celery)
+            return self._get_spotify_metadata_sync(artist_data)
+
+    def _get_spotify_metadata_sync(self, artist_data: Dict) -> Optional[ArtistMetadata]:
+        """Get enhanced metadata from Spotify using sync service (fallback for Celery)"""
+        try:
+            logger.info(f"🎵 SYNC SPOTIFY METADATA: Falling back to sync service for {artist_data['name']}")
+            
+            # Use sync Spotify service - prefer existing Spotify ID over search
+            spotify_artist = None
+            
+            if artist_data.get("spotify_id"):
+                # Use existing Spotify ID
+                logger.info(f"🎵 SYNC SPOTIFY METADATA: Using existing Spotify ID: {artist_data['spotify_id']}")
+                try:
+                    spotify_artist = self.spotify.get_artist(artist_data["spotify_id"])
+                    if spotify_artist:
+                        logger.info(f"🎵 SYNC SPOTIFY METADATA: Found artist by ID: {spotify_artist.get('name')}")
+                    else:
+                        logger.warning(f"🎵 SYNC SPOTIFY METADATA: No artist found for ID: {artist_data['spotify_id']}")
+                except Exception as e:
+                    logger.warning(f"🎵 SYNC SPOTIFY METADATA: Error getting artist by ID: {e}")
+            
+            if not spotify_artist:
+                # Fallback to search by name
+                search_query = artist_data.get("spotify_name") or artist_data["name"]
+                logger.info(f"🎵 SYNC SPOTIFY METADATA: Searching for: {search_query}")
+                spotify_results = self.spotify.search_artist(search_query)
+                
+                logger.info(f"🎵 SYNC SPOTIFY METADATA: Search results: {spotify_results is not None}")
+                if spotify_results:
+                    artists = spotify_results.get("artists", {}).get("items", [])
+                    logger.info(f"🎵 SYNC SPOTIFY METADATA: Found {len(artists)} artists")
+                    
+                    # Find best match
+                    for candidate in artists:
+                        if self._is_artist_match(artist_data["name"], candidate.get("name", "")):
+                            spotify_artist = candidate
+                            break
+                
+                if not spotify_artist:
+                    logger.warning(f"No matching sync Spotify artist found for: {search_query}")
+                    return None
+            
+            logger.info(f"🎵 SYNC SPOTIFY METADATA: Found artist: {spotify_artist.get('name')} (ID: {spotify_artist.get('id')})")
+            
+            # Create metadata object with basic info (sync service has limited capabilities)
+            metadata = ArtistMetadata(
+                name=spotify_artist.get("name", artist_data["name"]),
+                source="spotify",
+                confidence=self._calculate_name_similarity(
+                    artist_data["name"], spotify_artist.get("name", "")
+                ),
+                genres=spotify_artist.get("genres", []),
+                popularity=spotify_artist.get("popularity"),
+                followers=spotify_artist.get("followers", {}).get("total"),
+                images=spotify_artist.get("images", []),
+                spotify_id=spotify_artist.get("id"),
+                related_artists=[],  # Sync service doesn't support related artists easily
+                top_tracks=[],       # Sync service doesn't support top tracks easily  
+                raw_data=spotify_artist,
+            )
+            
+            logger.info(f"🎵 SYNC SPOTIFY METADATA: Created metadata with {len(metadata.images)} images")
+            logger.info(f"🎵 SYNC SPOTIFY METADATA: Returning metadata for {metadata.name} with confidence {metadata.confidence}")
+            return metadata
+            
+        except Exception as e:
+            logger.error(f"Error getting sync Spotify metadata: {e}")
+            logger.error(f"🎵 SYNC SPOTIFY METADATA: Returning None due to error")
             return None
 
     async def _get_lastfm_metadata(self, artist_data: Dict) -> Optional[ArtistMetadata]:
@@ -658,7 +769,7 @@ class MetadataEnrichmentService:
             # Get top tracks
             top_tracks = []
             try:
-                tracks_data = self.lastfm.get_artist_top_tracks_lastfm(
+                tracks_data = self.lastfm.get_artist_top_tracks(
                     artist_data["name"], 5
                 )
                 top_tracks = [
@@ -676,6 +787,7 @@ class MetadataEnrichmentService:
                 ),
                 genres=artist_info.get("tags", []),
                 biography=artist_info.get("bio", ""),
+                images=artist_info.get("image", []),
                 similar_artists=similar_artists,
                 top_tracks=top_tracks,
                 playcount=artist_info.get("playcount"),
@@ -1008,9 +1120,11 @@ class MetadataEnrichmentService:
         elif sources.get("lastfm", ArtistMetadata("", "")).top_tracks:
             unified.top_tracks = sources["lastfm"].top_tracks
 
-        # Images (prefer Spotify)
+        # Images (prefer Spotify, fallback to LastFM)
         if sources.get("spotify", ArtistMetadata("", "")).images:
             unified.images = sources["spotify"].images
+        elif sources.get("lastfm", ArtistMetadata("", "")).images:
+            unified.images = sources["lastfm"].images
 
     def _aggregate_text_fields(
         self, unified: ArtistMetadata, sources: Dict[str, ArtistMetadata]
@@ -1071,7 +1185,7 @@ class MetadataEnrichmentService:
         return min(weighted_confidence / total_weight if total_weight > 0 else 0.0, 1.0)
 
     def _update_artist_record(
-        self, session: Session, artist: Artist, metadata: ArtistMetadata
+        self, session: Session, artist: Artist, metadata: ArtistMetadata, force_refresh: bool = False
     ) -> Dict:
         """Update artist record with aggregated metadata"""
         updated_fields = {}
@@ -1200,10 +1314,15 @@ class MetadataEnrichmentService:
         )
 
         # Merge enriched metadata, ensuring enriched data takes precedence over existing null values
+        logger.info(f"🔄 METADATA MERGE: Before merge - existing images: {len(existing_metadata.get('images', []))} items")
+        logger.info(f"🔄 METADATA MERGE: New enriched images: {len(enriched_metadata.get('images', []))} items")
+        
         for key, value in enriched_metadata.items():
             # Only update if the enriched value is meaningful (not None, not empty)
             if value is not None and value != "" and value != []:
                 existing_metadata[key] = value
+                if key == "images":
+                    logger.info(f"🔄 METADATA MERGE: Updated {key} with new non-empty value ({len(value)} items)")
             # If existing field is null/empty and we have a meaningful enriched value, use it
             elif key not in existing_metadata or existing_metadata[key] in [
                 None,
@@ -1211,6 +1330,62 @@ class MetadataEnrichmentService:
                 [],
             ]:
                 existing_metadata[key] = value
+                if key == "images":
+                    logger.info(f"🔄 METADATA MERGE: Set {key} with empty value (existing was empty)")
+            else:
+                if key == "images":
+                    logger.info(f"🔄 METADATA MERGE: Preserved existing {key} ({len(existing_metadata[key])} items) - new was empty")
+        
+        logger.info(f"🔄 METADATA MERGE: After merge - final images: {len(existing_metadata.get('images', []))} items")
+
+        # Assign artist thumbnail from collected images if not already set or force refresh
+        if (not artist.thumbnail_url or force_refresh) and existing_metadata.get("images"):
+            try:
+                from src.services.thumbnail_service import thumbnail_service
+                
+                images = existing_metadata["images"]
+                # Prefer high-quality images (largest size first)
+                best_image = None
+                for image in images:
+                    if isinstance(image, dict):
+                        # Handle both standard "url" field and LastFM "#text" field
+                        image_url = image.get("url") or image.get("#text")
+                        if image_url:
+                            # Prefer images with known dimensions (larger is better)
+                            if image.get("width") and image.get("height"):
+                                if not best_image or (
+                                    image.get("width", 0) * image.get("height", 0) > 
+                                    (best_image.get("width", 0) * best_image.get("height", 0))
+                                ):
+                                    best_image = image
+                            elif not best_image:
+                                best_image = image
+                
+                if best_image:
+                    # Get URL from either standard or LastFM format
+                    best_image_url = best_image.get("url") or best_image.get("#text")
+                    if best_image_url:
+                        # Download and set the artist thumbnail
+                        thumbnail_path = self.thumbnail_service.download_artist_thumbnail(
+                            artist.name, best_image_url
+                        )
+                        if thumbnail_path:
+                            # Store the local file path - the API will serve it via /api/artists/{id}/thumbnail
+                            artist.thumbnail_url = thumbnail_path
+                            artist.thumbnail_path = thumbnail_path  # Also set thumbnail_path for the API
+                            updated_fields["thumbnail_url"] = artist.thumbnail_url
+                            updated_fields["thumbnail_path"] = artist.thumbnail_path
+                            logger.info(f"Assigned thumbnail to artist {artist.name}: {artist.thumbnail_path}")
+                        
+                        # Also store thumbnail info in metadata
+                        existing_metadata["thumbnail_assigned"] = True
+                        existing_metadata["thumbnail_source"] = best_image.get("source", "unknown")
+                        existing_metadata["thumbnail_url"] = artist.thumbnail_url
+                    else:
+                        logger.warning(f"Failed to download thumbnail for artist {artist.name}")
+                        
+            except Exception as e:
+                logger.error(f"Error assigning artist thumbnail: {e}")
 
         # Ensure enrichment_date is always updated to show fresh data
         existing_metadata["enrichment_date"] = datetime.now().isoformat()

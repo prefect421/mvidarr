@@ -103,8 +103,11 @@ async def simple_login(
                 detail="Username and password are required",
             )
 
-        # Simple hardcoded authentication for development
-        if username == "admin" and password == "mvidarr":
+        # Use SimpleAuthService for authentication
+        from src.services.simple_auth_service import SimpleAuthService
+        
+        success, message = SimpleAuthService.authenticate(username, password)
+        if success:
             # Set session data
             session.set("authenticated", True)
             session.set("username", username)
@@ -147,7 +150,7 @@ async def simple_login(
             return response
         else:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail=message or "Invalid credentials"
             )
 
     except HTTPException:
@@ -194,12 +197,11 @@ async def login(
                 f"Main auth failed ({auth_error}), trying simple auth fallback"
             )
 
-            # Fallback to hardcoded default authentication (for development)
+            # Fallback to SimpleAuthService for authentication
             # This allows the system to work even when database is not initialized
-            simple_success = username == "admin" and password == "mvidarr"
-            simple_message = (
-                "Login successful" if simple_success else "Invalid credentials"
-            )
+            from src.services.simple_auth_service import SimpleAuthService
+            
+            simple_success, simple_message = SimpleAuthService.authenticate(username, password)
 
             if simple_success:
                 # Create mock user data for simple auth

@@ -907,7 +907,11 @@ async function searchThumbnailForArtist(artistId) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include'
+            credentials: 'include',
+            body: JSON.stringify({
+                source: 'auto',
+                query: null
+            })
         });
         
         if (!searchResponse.ok) {

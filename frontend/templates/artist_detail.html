@@ -6825,7 +6825,7 @@ function saveArtistSettings() {
         priority: formData.get('priority')
     };
     
-    fetch(`/api/artists/${currentArtistId}/settings`, {
+    fetch(`/api/artists/${currentArtistId}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -7869,7 +7869,11 @@ function searchThumbnail() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({
+            source: 'auto',
+            query: null
+        })
     })
     .then(response => response.json())
     .then(data => {
@@ -9942,7 +9946,11 @@ function searchAllProviders() {
         // IMVDb and Wikipedia search
         fetch(`/api/artists/${currentArtistId}/thumbnail/search`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                source: 'auto',
+                query: null
+            })
         }).then(response => response.json()),
         
         // Google Images search (simulated for now - would need proper API integration)
@@ -10055,7 +10063,11 @@ async function searchArtistThumbnail() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include'
+            credentials: 'include',
+            body: JSON.stringify({
+                source: 'auto',
+                query: null
+            })
         });
         
         if (!response.ok) {

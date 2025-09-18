@@ -45,11 +45,13 @@ class UpgradeableVideosResponse(BaseModel):
     upgradeable_videos: List[UpgradeableVideo]
 
 
-# Dependency for current user
+# Authentication dependencies
+from src.api.fastapi.auth_dependencies import get_current_user_legacy
+
 async def get_current_user():
-    """Get current user - simplified implementation"""
-    # TODO: Implement proper authentication
-    return "admin"
+    """Get current authenticated user"""
+    user = await get_current_user_legacy()
+    return user.get("username", "admin")
 
 
 @router.post("/upgrade/{video_id}")
@@ -126,7 +128,8 @@ async def find_upgradeable_videos() -> UpgradeableVideosResponse:
         from src.services.video_quality_service import VideoQualityService
 
         # Get upgradeable videos
-        videos = await VideoQualityService.find_upgradeable_videos()
+        service = VideoQualityService()
+        videos = service.find_upgradeable_videos()
 
         # Convert to response format
         upgradeable_videos = []

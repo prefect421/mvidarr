@@ -734,50 +734,108 @@ async def auto_match_services(
         raise HTTPException(status_code=500, detail=f"Auto-match failed: {str(e)}")
 
 
-@router.get("/job/{job_id}/status")
-async def get_job_status(
-    job_id: str, current_user: dict = Depends(require_authentication)
-):
+@router.get("/job/{job_id}/status") 
+async def get_job_status(job_id: str, current_user: dict = Depends(require_authentication)):
     """Get status of a Celery metadata enrichment job"""
+    # Handle expired/invalid job IDs
+    if not job_id or job_id == "undefined":
+        return {
+            "job_id": job_id,
+            "status": "invalid",
+            "progress": None,
+            "result": {"success": False, "error": "Invalid job ID"},
+            "ready": True,
+            "successful": False,
+            "failed": True,
+        }
+    
     try:
         from src.jobs.celery_app import celery_app
 
         # Get task result
         result = celery_app.AsyncResult(job_id)
 
-        status = result.status  # PENDING, PROGRESS, SUCCESS, FAILURE
+        try:
+            # Try to get state first, this will fail if result is expired/corrupted
+            state = result.state
+            logger.info(f"Checking job status for {job_id}, state: {state}")
+            status = result.status  # PENDING, PROGRESS, SUCCESS, FAILURE
+        except ValueError as state_error:
+            # Result expired or doesn't exist in backend
+            logger.info(f"Job {job_id} result expired or not found in backend: {state_error}")
+            return {
+                "job_id": job_id,
+                "status": "expired",
+                "progress": None,
+                "result": {"success": False, "error": "Job result expired or not found"},
+                "ready": True,
+                "successful": False,
+                "failed": True,
+            }
+        except Exception as status_error:
+            logger.error(f"Error getting result status: {status_error}")
+            status = "UNKNOWN"
+        
         task_result = None
         progress_info = None
 
-        if result.ready():
-            if result.successful():
-                task_result = result.get()
+        try:
+            is_ready = result.ready()
+        except Exception:
+            is_ready = False
+            
+        if is_ready:
+            try:
+                is_successful = result.successful()
+            except Exception:
+                is_successful = False
+                
+            if is_successful:
+                try:
+                    task_result = result.get()
+                except Exception as get_error:
+                    task_result = {"success": False, "error": f"Error getting result: {get_error}"}
             else:
-                # Task failed - get error info
+                # Task failed - get error info safely
+                try:
+                    error_info = result.result
+                    error_msg = str(error_info) if error_info else "Unknown error"
+                except Exception:
+                    error_msg = "Task failed with unknown error"
+                
                 task_result = {
                     "success": False,
-                    "error": str(result.result) if result.result else "Unknown error",
+                    "error": error_msg,
                 }
         else:
             # Task is still running - check for progress updates
             if status == "PROGRESS":
-                progress_info = result.info or {}
+                try:
+                    progress_info = result.info or {}
+                except Exception:
+                    progress_info = {}
 
         return {
             "job_id": job_id,
             "status": status.lower(),  # Convert to lowercase for consistency
             "progress": progress_info,
             "result": task_result,
-            "ready": result.ready(),
-            "successful": result.successful() if result.ready() else None,
-            "failed": result.failed() if result.ready() else None,
+            "ready": is_ready,
+            "successful": is_successful if is_ready else None,
+            "failed": not is_successful if is_ready else None,
         }
 
     except Exception as e:
-        logger.error(f"Error getting job status for {job_id}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get job status: {str(e)}"
-        )
+        logger.error(f"Error getting job status for {job_id}: {type(e).__name__}: {e}")
+        return {
+            "job_id": job_id,
+            "status": "error",
+            "progress": None,
+            "result": {"success": False, "error": "Internal server error"},
+            "ready": True,
+            "successful": False,
+            "failed": True,
+        }
 
 
 @router.post("/job/{job_id}/cancel")

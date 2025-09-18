@@ -136,7 +136,7 @@ class DatabaseManager:
             session.commit()
         except Exception as e:
             session.rollback()
-            logger.error(f"Database session error: {e}")
+            logger.error(f"Database session error: {e}", exc_info=True)
             raise
         finally:
             session.close()
@@ -241,7 +241,7 @@ def get_db_session():
         yield session
     except Exception as e:
         session.rollback()
-        logger.error(f"Database session error: {e}")
+        logger.error(f"Database session error: {e}", exc_info=True)
         raise
     finally:
         session.close()

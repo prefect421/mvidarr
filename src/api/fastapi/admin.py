@@ -51,10 +51,16 @@ class UserInfo:
 
 
 async def get_current_user() -> UserInfo:
-    """Get current authenticated user - Admin authentication mock"""
-    # TEMPORARY: Mock admin user for development
-    # In production, this should integrate with the actual session system
-    return UserInfo(id=1, username="admin", role=UserRole.ADMIN.value, is_active=True)
+    """Get current authenticated user"""
+    from src.api.fastapi.auth_dependencies import get_current_user_legacy
+    
+    user_data = await get_current_user_legacy()
+    return UserInfo(
+        id=user_data.get("user_id", 1),
+        username=user_data.get("username", "admin"),
+        role=UserRole.ADMIN.value,  # Simple auth user has admin privileges
+        is_active=True
+    )
 
 
 async def require_admin_access(

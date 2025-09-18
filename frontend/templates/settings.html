@@ -2324,10 +2324,43 @@ function updateUserCredentialsSection() {
     }
 }
 
+// Load and apply current theme on page startup
+async function loadCurrentThemeOnStartup() {
+    try {
+        const response = await fetch('/api/themes/current', {
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const currentTheme = await response.json();
+            
+            // Apply theme variables to the document
+            if (currentTheme.theme_data) {
+                Object.entries(currentTheme.theme_data).forEach(([cssVar, value]) => {
+                    document.documentElement.style.setProperty(cssVar, value);
+                });
+            }
+            
+            // Set theme name and data-theme attribute
+            window.currentTheme = currentTheme.name;
+            document.documentElement.setAttribute('data-theme', currentTheme.name);
+            
+            console.log(`Applied current theme: ${currentTheme.name}`);
+        } else {
+            console.warn('Failed to load current theme, using default');
+        }
+    } catch (error) {
+        console.error('Error loading current theme:', error);
+    }
+}
+
 // Set up authentication toggle event listener and load settings on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Load settings when page loads
     loadSettings();
+    
+    // Theme is already loaded via server-side rendering, no need to reload
+    console.log(`Theme already applied via SSR: ${window.currentTheme}`);
     
     // Load certificate status
     loadCertificateStatus();
@@ -2370,20 +2403,34 @@ function updateDownloadTimeVisibility() {
 }
 
 function saveSettings() {
+    console.log('saveSettings() called - collecting form data');
     const settingsData = {};
     
     // Collect all form values
     const inputs = document.querySelectorAll('input, select');
     inputs.forEach(input => {
         if (input.name) {
+            // Skip file inputs and invalid values
+            if (input.type === 'file') {
+                console.log(`Skipping file input: ${input.name}`);
+                return;
+            }
+            
             // Handle different input types correctly
             if (input.type === 'checkbox') {
                 settingsData[input.name] = input.checked;
             } else {
+                // Skip empty required fields
+                if (input.hasAttribute('required') && !input.value.trim()) {
+                    console.log(`Skipping empty required field: ${input.name}`);
+                    return;
+                }
                 settingsData[input.name] = input.value;
             }
         }
     });
+    
+    console.log('Settings data to be sent:', settingsData);
     
     fetch('/api/settings/bulk', {
         method: 'PUT',
@@ -2392,7 +2439,16 @@ function saveSettings() {
         },
         body: JSON.stringify({ settings: settingsData })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Settings save response status:', response.status);
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error('Settings save failed:', response.status, text);
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
     .then(result => {
         if (result.error) {
             if (typeof showError === 'function') {
@@ -2411,9 +2467,9 @@ function saveSettings() {
     .catch(error => {
         console.error('Error saving settings:', error);
         if (typeof showError === 'function') {
-            showError('Error saving settings');
+            showError('Error saving settings: ' + error.message);
         } else {
-            alert('Error saving settings');
+            alert('Error saving settings: ' + error.message);
         }
     });
 }
@@ -7124,17 +7180,17 @@ function renderThemesGrid() {
                 </div>
             </div>
             <div class="theme-actions">
-                <button onclick="quickApplyTheme('${theme.id || theme.name}'); event.stopPropagation();" class="btn btn-sm btn-success">
+                <button onclick="event.preventDefault(); event.stopPropagation(); quickApplyTheme('${theme.id || theme.name}'); return false;" class="btn btn-sm btn-success" type="button">
                     Apply
                 </button>
-                <button onclick="selectTheme('${theme.id || theme.name}'); event.stopPropagation();" class="btn btn-sm btn-primary">
+                <button onclick="event.preventDefault(); event.stopPropagation(); selectTheme('${theme.id || theme.name}'); return false;" class="btn btn-sm btn-primary" type="button">
                     Customize
                 </button>
                 ${!theme.is_built_in ? `
-                    <button onclick="editTheme('${theme.id || theme.name}'); event.stopPropagation();" class="btn btn-sm btn-secondary" title="Edit Theme">
+                    <button onclick="event.preventDefault(); event.stopPropagation(); editTheme('${theme.id || theme.name}'); return false;" class="btn btn-sm btn-secondary" type="button" title="Edit Theme">
                         <iconify-icon icon="tabler:edit"></iconify-icon>
                     </button>
-                    <button onclick="deleteTheme('${theme.id || theme.name}', '${theme.display_name}'); event.stopPropagation();" class="btn btn-sm btn-danger" title="Delete Theme">
+                    <button onclick="event.preventDefault(); event.stopPropagation(); deleteTheme('${theme.id || theme.name}', '${theme.display_name}'); return false;" class="btn btn-sm btn-danger" type="button" title="Delete Theme">
                         <iconify-icon icon="tabler:trash"></iconify-icon>
                     </button>
                 ` : ''}

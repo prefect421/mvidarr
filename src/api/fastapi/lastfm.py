@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-# from src.middleware.fastapi_auth_middleware import require_authentication  # Temporarily disabled
+from src.api.fastapi.auth_dependencies import require_authentication_legacy
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.lastfm")
@@ -461,7 +461,10 @@ async def get_listening_stats(
 
 # Import and synchronization endpoints
 @router.post("/import/top-artists")
-async def import_top_artists(request: ImportArtistsRequest):
+async def import_top_artists(
+    request: ImportArtistsRequest,
+    current_user: dict = Depends(require_authentication_legacy)
+):
     """Import user's top artists to MVidarr"""
     try:
         if not lastfm_available:

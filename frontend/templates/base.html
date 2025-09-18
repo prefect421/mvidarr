@@ -40,6 +40,29 @@
     <link rel="stylesheet" href="/css/main.css" id="main-theme">
     <link rel="stylesheet" href="/css/themes.css" id="themes-stylesheet">
     
+    <!-- Server-side theme rendering to prevent FOUC -->
+    <style id="ssr-theme-variables">
+    :root {
+        {% if current_theme and current_theme.variables %}
+        {% for css_var, value in current_theme.variables.items() %}
+        {{ css_var }}: {{ value }};
+        {% endfor %}
+        {% endif %}
+    }
+    
+    /* Set theme attribute immediately */
+    html[data-theme="{{ current_theme.name if current_theme else 'default' }}"] {
+        /* Theme-specific overrides will be applied here */
+    }
+    </style>
+    
+    <!-- Set theme attribute on HTML element immediately -->
+    <script>
+        // Set theme immediately to prevent FOUC
+        document.documentElement.setAttribute('data-theme', '{{ current_theme.name if current_theme else "default" }}');
+        window.currentTheme = '{{ current_theme.name if current_theme else "default" }}';
+    </script>
+    
     <!-- UI/UX Enhancement System -->
     <link rel="stylesheet" href="/css/typography.css">
     <link rel="stylesheet" href="/css/buttons.css">
@@ -1517,6 +1540,47 @@
             
         }
         
+        // Load and apply current theme with CSS variables
+        async function loadAndApplyCurrentTheme() {
+            try {
+                const response = await fetch('/api/themes/current', {
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    const currentTheme = await response.json();
+                    
+                    // Apply theme variables to the document
+                    if (currentTheme.theme_data) {
+                        Object.entries(currentTheme.theme_data).forEach(([cssVar, value]) => {
+                            document.documentElement.style.setProperty(cssVar, value);
+                        });
+                    }
+                    
+                    // Set theme name and data-theme attribute
+                    window.currentTheme = currentTheme.name;
+                    document.documentElement.setAttribute('data-theme', currentTheme.name);
+                    
+                    console.log(`Applied current theme: ${currentTheme.name}`);
+                    
+                    // Update settings page preview if it exists
+                    if (typeof updateThemePreviewMode === 'function') {
+                        updateThemePreviewMode();
+                    }
+                } else {
+                    console.warn('Failed to load current theme, using default');
+                    // Fallback to default theme
+                    window.currentTheme = 'default';
+                    document.documentElement.setAttribute('data-theme', 'default');
+                }
+            } catch (error) {
+                console.error('Error loading current theme:', error);
+                // Fallback to default theme
+                window.currentTheme = 'default';
+                document.documentElement.setAttribute('data-theme', 'default');
+            }
+        }
+
         function applyCurrentTheme() {
             // Apply theme data attributes to document
             document.documentElement.setAttribute('data-theme', window.currentTheme);
@@ -2318,6 +2382,15 @@
                 originalHideUserMenu();
                 updateHeaderUserSection();
             };
+        }
+
+        // Theme is already loaded server-side, so we only need to set up dynamic loading
+        // for when themes change via the settings page. No need to reload on page startup.
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                // Theme already applied via SSR, just log for debugging
+                console.log(`Theme already applied via SSR: ${window.currentTheme}`);
+            });
         }
     </script>
 </body>

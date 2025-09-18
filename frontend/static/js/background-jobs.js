@@ -62,7 +62,9 @@ class BackgroundJobManager {
                 const data = JSON.parse(event.data);
                 this.handleWebSocketMessage(data);
             } catch (e) {
-                console.error('Failed to parse WebSocket message:', event.data);
+                console.error('Failed to process WebSocket message:', e.message);
+                console.error('Raw message data:', event.data);
+                console.error('Error details:', e);
             }
         };
     }
@@ -210,6 +212,7 @@ class BackgroundJobManager {
             }
             
             // Standard job handling for other job types
+            console.log(`📡 Standard job handling for ${jobType} job ${jobId} - subscribing to WebSocket`);
             // Subscribe to job updates
             this.subscribeToJob(jobId);
             
@@ -243,11 +246,13 @@ class BackgroundJobManager {
     
     subscribeToJob(jobId) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            console.log(`📡 Subscribing to job ${jobId}`);
+            console.log(`📡 Subscribing to job ${jobId} via WebSocket`);
             this.socket.send(JSON.stringify({
                 type: 'subscribe_job',
                 job_id: jobId
             }));
+        } else {
+            console.warn(`📡 Cannot subscribe to job ${jobId} - WebSocket not ready. State: ${this.socket ? this.socket.readyState : 'null'}`);
         }
     }
     
@@ -262,18 +267,19 @@ class BackgroundJobManager {
     }
     
     handleWebSocketMessage(data) {
-        switch (data.type) {
-            case 'connected':
-                console.log('📡 Welcome message:', data.message);
-                break;
-            case 'job_update':
-                console.log('📊 Job update received:', data);
-                this.handleJobUpdate(data);
-                break;
-            case 'job_status':
-                console.log('📊 Job status received:', data);
-                this.handleJobStatus(data);
-                break;
+        try {
+            switch (data.type) {
+                case 'connected':
+                    console.log('📡 Welcome message:', data.message);
+                    break;
+                case 'job_update':
+                    console.log('📊 Job update received:', data);
+                    this.handleJobUpdate(data);
+                    break;
+                case 'job_status':
+                    console.log('📊 Job status received:', data);
+                    this.handleJobStatus(data);
+                    break;
             case 'subscription_response':
                 console.log('📡 Subscription response:', data.message);
                 if (data.success) {
@@ -298,6 +304,11 @@ class BackgroundJobManager {
                 break;
             default:
                 console.log('📡 Unknown message type:', data.type);
+        }
+        } catch (e) {
+            console.error('❌ Error in handleWebSocketMessage:', e.message);
+            console.error('❌ Message data:', data);
+            console.error('❌ Full error:', e);
         }
     }
     
@@ -332,8 +343,8 @@ class BackgroundJobManager {
         const jobId = data.job_id || data.data?.job_id;
         if (!jobId) return;
         
-        const eventType = data.event_type;
         const jobData = data.data || data;
+        console.log(`🔄 handleJobUpdate: JobID=${jobId}, Status=${jobData.status}, Progress=${jobData.progress}`);
         
         // Update local job tracking
         if (this.activeJobs.has(jobId)) {
@@ -341,23 +352,28 @@ class BackgroundJobManager {
             const updatedData = { ...existingData, ...jobData };
             this.activeJobs.set(jobId, updatedData);
         } else {
-            this.activeJobs.set(jobId, jobData);
+            // If job not found in local tracking, create with default type
+            const jobWithDefaults = {
+                id: jobId,
+                type: jobData.type || 'unknown_job', // Default type if not provided
+                ...jobData
+            };
+            this.activeJobs.set(jobId, jobWithDefaults);
         }
         
-        // Update UI based on event type
-        switch (eventType) {
-            case 'progress':
-                this.updateJobProgressUI(jobId, jobData);
-                break;
-            case 'status_change':
-                this.updateJobStatusUI(jobId, jobData);
-                break;
-            case 'completed':
-                this.handleJobCompletion(jobId, jobData);
-                break;
-            case 'failed':
-                this.handleJobFailure(jobId, jobData);
-                break;
+        // Update UI based on job status (WebSocket format)
+        const status = jobData.status;
+        
+        if (status === 'completed' || status === 'success' || status === 'SUCCESS') {
+            this.handleJobCompletion(jobId, jobData);
+        } else if (status === 'failed' || status === 'failure' || status === 'FAILURE') {
+            this.handleJobFailure(jobId, jobData);
+        } else if (status === 'processing' || status === 'progress') {
+            // Update progress UI
+            this.updateJobProgressUI(jobId, jobData);
+        } else {
+            // Default: update progress UI for any other status
+            this.updateJobProgressUI(jobId, jobData);
         }
     }
     
@@ -372,9 +388,9 @@ class BackgroundJobManager {
         this.updateJobProgressUI(jobId, data);
         
         // Handle completion
-        if (data.status === 'completed') {
+        if (data.status === 'completed' || data.status === 'SUCCESS') {
             this.handleJobCompletion(jobId, data);
-        } else if (data.status === 'failed') {
+        } else if (data.status === 'failed' || data.status === 'FAILURE') {
             this.handleJobFailure(jobId, data);
         }
     }
@@ -534,9 +550,13 @@ class BackgroundJobManager {
     }
     
     updateJobProgressUI(jobId, data) {
+        console.log(`📈 updateJobProgressUI: JobID=${jobId}, Progress=${data.progress}%, Message=${data.message}`);
         const progressItem = document.getElementById(`job-${jobId}`);
         if (progressItem) {
+            console.log(`📈 Progress item found, updating UI`);
             this.updateJobProgressItem(progressItem, jobId, data);
+        } else {
+            console.log(`⚠️ Progress item not found for job ${jobId}`);
         }
     }
     
@@ -654,6 +674,10 @@ class BackgroundJobManager {
             scheduled_download: 'Scheduled Download',
             scheduled_discovery: 'Scheduled Discovery'
         };
+        
+        if (!type) {
+            return 'Background Job';
+        }
         
         return displayNames[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
