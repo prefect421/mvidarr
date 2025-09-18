@@ -957,11 +957,11 @@ async def get_metube_queue():
         session: Session = next(session_gen)
 
         try:
-            # Get downloads with queued or downloading status
+            # Get downloads with queued, downloading, or processing status
             downloads = (
                 session.query(Download)
                 .options(joinedload(Download.video), joinedload(Download.artist))
-                .filter(Download.status.in_(["queued", "downloading"]))
+                .filter(Download.status.in_(["queued", "downloading", "processing"]))
                 .order_by(Download.created_at.desc())
                 .all()
             )
@@ -1108,12 +1108,12 @@ async def clear_stuck_downloads(force: bool = False):
 
             cleared_count = 0
             for download in stuck_downloads:
-                # Reset stuck downloads - set to queued to retry processing
-                download.status = "queued"
+                # Cancel stuck downloads instead of retrying to prevent infinite loops
+                download.status = "failed"
                 download.progress = 0
                 download.updated_at = datetime.utcnow()
                 download.error_message = (
-                    "Reset from stuck state - will retry processing"
+                    "Cancelled - stuck in processing state and cleared by user"
                 )
                 cleared_count += 1
 
@@ -1121,85 +1121,13 @@ async def clear_stuck_downloads(force: bool = False):
 
             logger.info(f"Cleared {cleared_count} stuck downloads")
 
-            # After clearing stuck downloads, submit a limited number of queued downloads to job queue
-            # Add timeout and limit to prevent hanging
-            try:
-                from src.services.job_queue import BackgroundJob, JobType, get_job_queue
-
-                # Get queued downloads (limit to 5 at a time to prevent overload)
-                queued_downloads = (
-                    session.query(Download)
-                    .filter(Download.status == "queued")
-                    .limit(5)
-                    .all()
-                )
-
-                if queued_downloads:
-                    # Submit them to the background job queue with timeout
-                    try:
-                        job_queue = await asyncio.wait_for(get_job_queue(), timeout=10)
-                        submitted_count = 0
-
-                        for download in queued_downloads:
-                            try:
-                                # Create a video download job
-                                download_job = BackgroundJob(
-                                    type=JobType.VIDEO_DOWNLOAD,
-                                    payload={
-                                        "video_id": download.video_id,  # Required by video download worker
-                                        "download_id": download.id,
-                                        "url": download.original_url,
-                                        "title": download.title,
-                                        "artist": (
-                                            download.artist.name
-                                            if download.artist
-                                            else "Unknown"
-                                        ),
-                                        "quality": "best",
-                                        "priority": download.priority,
-                                    },
-                                )
-
-                                job_id = await asyncio.wait_for(job_queue.enqueue(download_job), timeout=5)
-                                submitted_count += 1
-                                logger.info(
-                                    f"Submitted download {download.id} to job queue as job {job_id}"
-                                )
-
-                            except asyncio.TimeoutError:
-                                logger.warning(f"Timeout submitting download {download.id} to job queue")
-                                break  # Stop processing if we hit timeout
-                            except Exception as job_error:
-                                logger.error(
-                                    f"Failed to submit download {download.id} to job queue: {job_error}"
-                                )
-
-                        logger.info(
-                            f"Submitted {submitted_count} queued downloads to job queue"
-                        )
-
-                        return {
-                            "success": True,
-                            "cleared_count": cleared_count,
-                            "submitted_count": submitted_count,
-                            "message": f"Cleared {cleared_count} stuck downloads and submitted {submitted_count} to job queue",
-                        }
-                    except asyncio.TimeoutError:
-                        logger.warning("Timeout getting job queue, returning cleared count only")
-                        return {
-                            "success": True,
-                            "cleared_count": cleared_count,
-                            "message": f"Cleared {cleared_count} stuck downloads (job queue timeout)",
-                        }
-            except Exception as job_submit_error:
-                logger.error(
-                    f"Error submitting downloads to job queue: {job_submit_error}"
-                )
+            # Don't resubmit cleared downloads to avoid infinite loops
+            # Users can manually retry failed downloads if needed
 
             return {
                 "success": True,
                 "cleared_count": cleared_count,
-                "message": f"Cleared {cleared_count} stuck downloads",
+                "message": f"Cancelled {cleared_count} stuck downloads - they will no longer appear in queue",
             }
 
         finally:
