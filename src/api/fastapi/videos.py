@@ -1774,6 +1774,7 @@ async def bulk_delete_videos(
 
         for video in videos:
             try:
+                video_id = video.id  # Store ID before delete operation
                 # Delete associated files if they exist
                 if (
                     getattr(video, "file_path", video.local_path)
@@ -1785,8 +1786,9 @@ async def bulk_delete_videos(
                 deleted_count += 1
 
             except Exception as e:
-                errors.append(f"Video {video.id}: {str(e)}")
-                logger.error(f"Error deleting video {video.id}: {e}")
+                video_id = getattr(video, 'id', 'unknown')  # Safe ID retrieval
+                errors.append(f"Video {video_id}: {str(e)}")
+                logger.error(f"Error deleting video {video_id}: {e}")
 
         session.commit()
 
@@ -1832,6 +1834,7 @@ async def bulk_download_videos(
 
         for video in videos:
             try:
+                video_id = video.id  # Store ID before any operations
                 # Skip if already downloaded
                 if video.status == "downloaded":
                     skipped_count += 1
@@ -1841,7 +1844,7 @@ async def bulk_download_videos(
                 existing_download = (
                     session.query(Download)
                     .filter(
-                        Download.video_id == video.id,
+                        Download.video_id == video_id,
                         Download.status.in_(["queued", "downloading"]),
                     )
                     .first()
@@ -1853,7 +1856,7 @@ async def bulk_download_videos(
 
                 # Create download entry
                 download = Download(
-                    video_id=video.id,
+                    video_id=video_id,
                     url=video.url,
                     status="queued",
                     priority=1,  # Default priority for bulk downloads
@@ -1869,8 +1872,9 @@ async def bulk_download_videos(
                 queued_count += 1
 
             except Exception as e:
-                errors.append(f"Video {video.id}: {str(e)}")
-                logger.error(f"Error queuing download for video {video.id}: {e}")
+                video_id = getattr(video, 'id', 'unknown')  # Safe ID retrieval
+                errors.append(f"Video {video_id}: {str(e)}")
+                logger.error(f"Error queuing download for video {video_id}: {e}")
 
         session.commit()
 
@@ -1973,6 +1977,7 @@ async def bulk_edit_videos(
 
         for video in videos:
             try:
+                video_id = video.id  # Store ID before any operations
                 # Apply updates to each video
                 for field, value in update_fields.items():
                     if hasattr(video, field):
@@ -1981,8 +1986,9 @@ async def bulk_edit_videos(
                 updated_count += 1
 
             except Exception as e:
-                errors.append(f"Video {video.id}: {str(e)}")
-                logger.error(f"Error updating video {video.id}: {e}")
+                video_id = getattr(video, 'id', 'unknown')  # Safe ID retrieval
+                errors.append(f"Video {video_id}: {str(e)}")
+                logger.error(f"Error updating video {video_id}: {e}")
 
         session.commit()
 
@@ -2748,6 +2754,8 @@ async def import_from_youtube(
             new_video.artist_id = artist_obj.id
 
         session.add(new_video)
+        session.flush()  # Flush to get the ID without committing
+        video_id = new_video.id  # Get the ID while still bound to session
         session.commit()
 
         logger.info(f"Imported YouTube video: {title} ({youtube_id})")
@@ -2755,7 +2763,7 @@ async def import_from_youtube(
         return {
             "success": True,
             "message": f"Video '{title}' imported successfully",
-            "video_id": new_video.id,
+            "video_id": video_id,
             "status": "imported",
             "auto_download": auto_download,
         }

@@ -1367,13 +1367,14 @@ async def bulk_delete_artists(
 
         for artist in artists:
             try:
+                artist_id = artist.id  # Store ID before delete operation
                 artist_name = artist.name
 
                 # Handle associated videos
                 if request.delete_videos:
                     # Delete all videos by this artist
                     videos = (
-                        session.query(Video).filter(Video.artist_id == artist.id).all()
+                        session.query(Video).filter(Video.artist_id == artist_id).all()
                     )
                     video_count = len(videos)
 
@@ -1388,17 +1389,17 @@ async def bulk_delete_artists(
                                 )
 
                     # Delete video records
-                    session.query(Video).filter(Video.artist_id == artist.id).delete()
+                    session.query(Video).filter(Video.artist_id == artist_id).delete()
                     videos_affected += video_count
 
                 else:
                     # Just unlink videos from artist (set artist_id to None)
                     video_count = (
                         session.query(Video)
-                        .filter(Video.artist_id == artist.id)
+                        .filter(Video.artist_id == artist_id)
                         .count()
                     )
-                    session.query(Video).filter(Video.artist_id == artist.id).update(
+                    session.query(Video).filter(Video.artist_id == artist_id).update(
                         {"artist_id": None}
                     )
                     videos_affected += video_count
@@ -1407,11 +1408,12 @@ async def bulk_delete_artists(
                 session.delete(artist)
                 deleted_count += 1
 
-                logger.info(f"Bulk deleted artist: {artist_name} (ID: {artist.id})")
+                logger.info(f"Bulk deleted artist: {artist_name} (ID: {artist_id})")
 
             except Exception as e:
-                errors.append(f"Artist {artist.id}: {str(e)}")
-                logger.error(f"Error deleting artist {artist.id}: {e}")
+                artist_id = getattr(artist, 'id', 'unknown')  # Safe ID retrieval
+                errors.append(f"Artist {artist_id}: {str(e)}")
+                logger.error(f"Error deleting artist {artist_id}: {e}")
 
         session.commit()
 

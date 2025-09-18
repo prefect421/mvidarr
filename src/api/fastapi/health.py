@@ -14,7 +14,7 @@ import psutil
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from src.database.async_connection import async_db_manager
+from src.database.connection import get_db_session
 from src.utils.async_subprocess import get_git_branch, get_git_version
 from src.utils.logger import get_logger
 
@@ -76,15 +76,12 @@ health_router = APIRouter(prefix="/health", tags=["health"])
 
 
 @health_router.get("/", response_model=HealthResponse)
-async def health_check():
-    """Simple async health check endpoint for Docker health checks"""
+async def health_check(session = Depends(get_db_session)):
+    """Simple health check endpoint for Docker health checks"""
     try:
-        # Quick async database connectivity check
+        # Quick database connectivity check
         from sqlalchemy import text
-
-        async with async_db_manager.session_scope() as session:
-            await session.execute(text("SELECT 1"))
-
+        session.execute(text("SELECT 1"))
         return HealthResponse(status="healthy")
 
     except Exception as e:
@@ -95,8 +92,8 @@ async def health_check():
 
 
 @health_router.get("/status", response_model=DetailedHealthResponse)
-async def get_health_status():
-    """Get overall system health status with async checks"""
+async def get_health_status(session = Depends(get_db_session)):
+    """Get overall system health status"""
     try:
         status = {
             "status": "healthy",
@@ -104,13 +101,11 @@ async def get_health_status():
             "timestamp": datetime.utcnow().isoformat(),
         }
 
-        # Check async database health
+        # Check database health
         try:
-            async with async_db_manager.session_scope() as session:
-                from sqlalchemy import text
-
-                await session.execute(text("SELECT 1"))
-                logger.debug("Database health check passed")
+            from sqlalchemy import text
+            session.execute(text("SELECT 1"))
+            logger.debug("Database health check passed")
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             status["components"]["database"] = "unhealthy"
@@ -131,24 +126,23 @@ async def get_health_status():
 
 
 @health_router.get("/database", response_model=DatabaseHealthResponse)
-async def check_database():
-    """Check async database connectivity and health"""
+async def check_database(session = Depends(get_db_session)):
+    """Check database connectivity and health"""
     try:
-        async with async_db_manager.session_scope() as session:
-            from sqlalchemy import text
+        from sqlalchemy import text
 
-            result = await session.execute(text("SELECT 1 as test"))
-            row = result.fetchone()
+        result = session.execute(text("SELECT 1 as test"))
+        row = result.fetchone()
 
-            if row and row.test == 1:
-                return DatabaseHealthResponse(
-                    status="healthy", message="Database is accessible and healthy"
-                )
-            else:
-                raise HTTPException(
-                    status_code=503,
-                    detail={"status": "unhealthy", "message": "Database query failed"},
-                )
+        if row and row.test == 1:
+            return DatabaseHealthResponse(
+                status="healthy", message="Database is accessible and healthy"
+            )
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail={"status": "unhealthy", "message": "Database query failed"},
+            )
 
     except HTTPException:
         raise
@@ -329,7 +323,7 @@ async def get_system_metrics():
 
 
 @health_router.get("/production", response_model=ProductionHealthResponse)
-async def get_production_health():
+async def get_production_health(session = Depends(get_db_session)):
     """Comprehensive health check for self-hosted production monitoring"""
     try:
         overall_status = "healthy"
@@ -353,18 +347,17 @@ async def get_production_health():
         # Database health
         db_health = {"status": "unhealthy", "error": "Not checked"}
         try:
-            async with async_db_manager.session_scope() as session:
-                from sqlalchemy import text
+            from sqlalchemy import text
 
-                result = await session.execute(
-                    text("SELECT COUNT(*) FROM information_schema.tables")
-                )
-                table_count = result.scalar()
-                db_health = {
-                    "status": "healthy",
-                    "table_count": table_count,
-                    "connection": "active",
-                }
+            result = session.execute(
+                text("SELECT COUNT(*) FROM information_schema.tables")
+            )
+            table_count = result.scalar()
+            db_health = {
+                "status": "healthy",
+                "table_count": table_count,
+                "connection": "active",
+            }
         except Exception as e:
             db_health = {"status": "unhealthy", "error": str(e)}
             overall_status = "unhealthy"
@@ -445,14 +438,12 @@ async def get_production_health():
 
 
 @health_router.get("/readiness")
-async def readiness_check():
+async def readiness_check(session = Depends(get_db_session)):
     """Kubernetes-style readiness check for load balancers"""
     try:
         # Check database connectivity
-        async with async_db_manager.session_scope() as session:
-            from sqlalchemy import text
-
-            await session.execute(text("SELECT 1"))
+        from sqlalchemy import text
+        session.execute(text("SELECT 1"))
 
         return {"status": "ready", "timestamp": datetime.utcnow().isoformat()}
 

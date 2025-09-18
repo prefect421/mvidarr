@@ -291,6 +291,10 @@ app.include_router(plex_router)
 from src.api.fastapi.lidarr import router as lidarr_router
 app.include_router(lidarr_router)
 
+# Health Check Router - Comprehensive Production Health Monitoring
+from src.api.fastapi.health import health_router
+app.include_router(health_router, prefix="/api")
+
 logger.info(
     "✅ Phase 3 Week 29 services integrated: Personal Cloud Backup, YouTube Import, Network Sharing, Sync Manager, Mobile Access"
 )
@@ -535,15 +539,16 @@ async def get_plex_status():
 # add_openapi_metadata_to_routers(app)
 
 
-# Basic health check
+# Basic health check - Redirect to comprehensive health router
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Simple health check endpoint - Use /api/health for comprehensive monitoring"""
     return {
         "status": "healthy",
         "version": "0.9.8",
         "framework": "FastAPI",
         "job_system": "native_asyncio",
+        "comprehensive_health": "/api/health",
     }
 
 
@@ -1372,21 +1377,7 @@ async def process_queued_downloads():
         return {"success": False, "error": str(e), "submitted_count": 0}
 
 
-@app.get("/api/health/status")
-async def get_health_status():
-    """Mock health status endpoint"""
-    return {
-        "status": "healthy",
-        "uptime": "1h 30m",
-        "memory_usage": "180MB",
-        "cpu_usage": "15%",
-    }
-
-
-@app.get("/api/health/version")
-async def get_health_version():
-    """Mock version endpoint"""
-    return {"version": "0.9.8", "build_date": "2024-01-01", "commit": "abc1234"}
+# Health endpoints moved to comprehensive health router - see /api/health
 
 
 # All theme endpoints moved to themes router - duplicates removed
