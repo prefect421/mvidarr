@@ -41,6 +41,7 @@
             <h2>Download Queue</h2>
             <div class="queue-actions">
                 <button onclick="clearStuckDownloads()" class="btn btn-warning btn-sm">Clear Stuck Downloads</button>
+                <button onclick="clearStuckDownloads(true)" class="btn btn-danger btn-sm">Force Clear All</button>
             </div>
         </div>
         <div id="download-queue-list">
@@ -440,26 +441,29 @@ function downloadAllWantedVideos() {
     proceedDownloadWantedVideos();
 }
 
-function clearStuckDownloads() {
-    toastConfirm('Clear downloads stuck at 0% progress for more than 10 minutes?', () => {
-        proceedClearStuckDownloads();
+function clearStuckDownloads(force = false) {
+    const message = force 
+        ? 'Force clear ALL stuck downloads regardless of time? This will reset all queued/downloading/processing downloads.' 
+        : 'Clear downloads stuck for more than 10 minutes?';
+    
+    toastConfirm(message, () => {
+        proceedClearStuckDownloads(force);
     });
 }
 
-function proceedClearStuckDownloads() {
+function proceedClearStuckDownloads(force = false) {
     const button = event.target;
     const originalText = button.textContent;
     button.disabled = true;
     button.textContent = 'Clearing...';
     
-    fetch('/api/metube/clear-stuck', {
+    const url = force ? '/api/metube/clear-stuck?force=true' : '/api/metube/clear-stuck';
+    
+    fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            minutes: 10 // Clear downloads stuck for more than 10 minutes
-        })
+        }
     })
     .then(response => response.json())
     .then(data => {

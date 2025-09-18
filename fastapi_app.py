@@ -32,8 +32,14 @@ from src.database.init_db import initialize_database
 from src.services.settings_service import SettingsService
 from src.services.ytdlp_service import ytdlp_service
 from src.utils.logger import get_logger
+from src.utils.structured_logger import setup_structured_logging, get_structured_logger
+from src.api.fastapi.logging_middleware import setup_logging_middleware
+
+# Setup structured logging
+setup_structured_logging()
 
 logger = get_logger("mvidarr.fastapi")
+structured_logger = get_structured_logger("mvidarr.fastapi")
 
 
 # FastAPI-specific database initialization
@@ -94,6 +100,11 @@ async def lifespan(app: FastAPI):
         logger.info("🔄 Initializing WebSocket job progress system...")
         await init_websocket_system(app)
         logger.info("✅ WebSocket job progress system initialized")
+        
+        # Start job scheduler for advanced job features
+        logger.info("🔄 Starting advanced job scheduler...")
+        await start_job_scheduler()
+        logger.info("✅ Advanced job scheduler started")
 
         yield  # Application is running
 
@@ -106,6 +117,11 @@ async def lifespan(app: FastAPI):
         logger.info("Shutting down application services...")
 
         try:
+            # Stop job scheduler
+            logger.info("🔄 Stopping advanced job scheduler...")
+            await stop_job_scheduler()
+            logger.info("✅ Advanced job scheduler stopped")
+            
             # Cleanup WebSocket system
             logger.info("🔄 Stopping WebSocket job progress system...")
             await cleanup_websocket_system()
@@ -375,6 +391,10 @@ except Exception as e:
         f"⚠️ Failed to load JWT middleware: {e}, continuing without authentication middleware"
     )
 
+# Setup structured logging middleware for production monitoring
+setup_logging_middleware(app)
+structured_logger.info("Structured logging middleware enabled for production monitoring")
+
 # TODO: Re-enable other middleware after fixing MediaCacheManager and Redis issues
 # app.add_middleware(CircuitBreakerMiddleware, config=CircuitBreakerConfig())
 # app.add_middleware(AutoScalingMiddleware)
@@ -398,6 +418,7 @@ from src.api.fastapi.image_processing import router as image_processing_router
 
 # Include API routers - Re-enabling critical endpoints
 from src.api.fastapi.jobs import router as jobs_router
+from src.api.fastapi.advanced_jobs import router as advanced_jobs_router
 from src.api.fastapi.media_processing import router as media_processing_router
 
 # Re-enable critical missing routers
@@ -434,6 +455,7 @@ from src.api.fastapi.videos import router as fastapi_videos_router
 # from src.api.fastapi.model_demo import router as model_demo_router
 
 app.include_router(jobs_router)
+app.include_router(advanced_jobs_router)
 app.include_router(media_processing_router)
 app.include_router(image_processing_router)
 app.include_router(advanced_image_router)
@@ -1044,7 +1066,7 @@ async def get_metube_history(limit: int = 10):
 
 
 @app.post("/api/metube/clear-stuck")
-async def clear_stuck_downloads():
+async def clear_stuck_downloads(force: bool = False):
     """Clear downloads stuck in processing state"""
     import asyncio
     try:
@@ -1059,18 +1081,30 @@ async def clear_stuck_downloads():
         session: Session = next(session_gen)
 
         try:
-            # Find downloads that have been stuck for more than 1 hour
-            # This includes downloads stuck in downloading/processing AND queued state
-            cutoff_time = datetime.utcnow() - timedelta(hours=1)
-
-            stuck_downloads = (
-                session.query(Download)
-                .filter(
-                    Download.status.in_(["queued", "downloading", "processing"]),
-                    Download.updated_at < cutoff_time,
+            if force:
+                # Force mode: clear ALL stuck downloads regardless of time
+                stuck_downloads = (
+                    session.query(Download)
+                    .filter(
+                        Download.status.in_(["queued", "downloading", "processing"])
+                    )
+                    .all()
                 )
-                .all()
-            )
+                logger.info("Force clearing ALL stuck downloads")
+            else:
+                # Normal mode: Find downloads that have been stuck for more than 10 minutes
+                # This includes downloads stuck in downloading/processing AND queued state
+                cutoff_time = datetime.utcnow() - timedelta(minutes=10)
+
+                stuck_downloads = (
+                    session.query(Download)
+                    .filter(
+                        Download.status.in_(["queued", "downloading", "processing"]),
+                        Download.updated_at < cutoff_time,
+                    )
+                    .all()
+                )
+                logger.info(f"Clearing downloads stuck for more than 10 minutes")
 
             cleared_count = 0
             for download in stuck_downloads:
@@ -1418,6 +1452,9 @@ async def logout():
 
 # WebSocket routes imported from dedicated module
 from src.api.fastapi.websocket_jobs import init_websocket_system, cleanup_websocket_system
+
+# Job scheduler for advanced job features
+from src.services.job_scheduler import start_job_scheduler, stop_job_scheduler
 
 
 if __name__ == "__main__":
