@@ -1228,40 +1228,40 @@ async def clear_metube_history():
 
 
 # Temporarily disabled - causing startup issues
-# @app.get("/api/imvdb/search-videos")
-# async def search_imvdb_videos(q: str = Query(...)):
-#     """Search IMVDb for videos"""
-#     try:
-#         # Mock IMVDb search results for now
-#         query = q.lower()
-#
-#         mock_results = [
-#             {
-#                 "id": f"imvdb_{i}",
-#                 "title": f"{q} - IMVDb Result {i+1}",
-#                 "artist": f"Artist {i+1}",
-#                 "year": 2020 + i,
-#                 "director": f"Director {i+1}",
-#                 "imvdb_url": f"https://imvdb.com/video/mock_{i}"
-#             }
-#             for i in range(3)
-#         ]
-#
-#         return {
-#             "success": True,
-#             "query": q,
-#             "results": mock_results,
-#             "total": len(mock_results)
-#         }
-#
-#     except Exception as e:
-#         logger.error(f"IMVDb search failed: {e}")
-#         return {
-#             "success": False,
-#             "error": str(e),
-#             "results": [],
-#             "total": 0
-#         }
+@app.get("/api/imvdb/search-videos")
+async def search_imvdb_videos(q: str = Query(...)):
+    """Search IMVDb for videos"""
+    try:
+        # Mock IMVDb search results for now
+        query = q.lower()
+
+        mock_results = [
+            {
+                "id": f"imvdb_{i}",
+                "title": f"{q} - IMVDb Result {i+1}",
+                "artist": f"Artist {i+1}",
+                "year": 2020 + i,
+                "director": f"Director {i+1}",
+                "imvdb_url": f"https://imvdb.com/video/mock_{i}"
+            }
+            for i in range(3)
+        ]
+
+        return {
+            "success": True,
+            "query": q,
+            "results": mock_results,
+            "total": len(mock_results)
+        }
+
+    except Exception as e:
+        logger.error(f"IMVDb search failed: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "results": [],
+            "total": 0
+        }
 
 
 @app.post("/api/metube/process-queue")
@@ -1375,6 +1375,23 @@ async def logout():
             "redirect_url": "/auth/login",
         }
     )
+    response.delete_cookie(key="session_token")
+    return response
+
+
+@app.post("/auth/dynamic-logout")
+async def dynamic_logout():
+    """Dynamic logout endpoint - clears session cookie"""
+    from fastapi.responses import JSONResponse
+
+    response = JSONResponse(
+        content={
+            "success": True,
+            "message": "Logged out successfully",
+            "redirect_url": "/simple-login",
+        }
+    )
+    response.delete_cookie(key="mvidarr_session")
     response.delete_cookie(key="session_token")
     return response
 
