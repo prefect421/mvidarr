@@ -414,6 +414,34 @@ function closeAddVideoModal() {
     document.getElementById('playlistUrlInput').value = '';
 }
 
+function processPlaylistImport() {
+    const playlistUrl = document.getElementById('playlistUrlInput').value.trim();
+    const maxCount = parseInt(document.getElementById('playlistMaxCount').value) || 20;
+    
+    if (!playlistUrl) {
+        alert('Please enter a playlist URL to import.');
+        return;
+    }
+    
+    // Show loading state
+    const button = event.target;
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '⏳ Processing...';
+    
+    // Mock playlist import for now
+    setTimeout(() => {
+        alert(`Playlist import functionality is coming soon!\n\nURL: ${playlistUrl}\nMax videos: ${maxCount}`);
+        
+        // Reset button
+        button.disabled = false;
+        button.textContent = originalText;
+        
+        // Close modal
+        closeAddVideoModal();
+    }, 1000);
+}
+
 // Main Search Function
 function searchForVideos() {
     const songTitle = document.getElementById('songTitleInput').value.trim();
