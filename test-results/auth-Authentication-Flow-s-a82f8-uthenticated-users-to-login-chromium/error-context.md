@@ -1,0 +1,416 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - navigation "Main navigation" [ref=e2]:
+    - generic [ref=e3]:
+      - link "MVidarr" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e6] [cursor=pointer]
+        - generic [ref=e7] [cursor=pointer]: MVidarr
+      - button [ref=e8] [cursor=pointer]:
+        - img [ref=e10] [cursor=pointer]
+    - generic [ref=e12]:
+      - list [ref=e13]:
+        - listitem [ref=e14]:
+          - link "Dashboard" [ref=e15] [cursor=pointer]:
+            - /url: /
+            - img [ref=e17] [cursor=pointer]
+            - generic [ref=e21] [cursor=pointer]: Dashboard
+        - listitem [ref=e22]:
+          - link "Artists" [ref=e23] [cursor=pointer]:
+            - /url: /artists
+            - img [ref=e25] [cursor=pointer]
+            - generic [ref=e27] [cursor=pointer]: Artists
+        - listitem [ref=e28]:
+          - link "Videos" [ref=e29] [cursor=pointer]:
+            - /url: /videos
+            - img [ref=e31] [cursor=pointer]
+            - generic [ref=e33] [cursor=pointer]: Videos
+        - listitem [ref=e34]:
+          - link "Playlists" [ref=e35] [cursor=pointer]:
+            - /url: /playlists
+            - img [ref=e37] [cursor=pointer]
+            - generic [ref=e39] [cursor=pointer]: Playlists
+        - listitem [ref=e40]:
+          - link "MvTV" [ref=e41] [cursor=pointer]:
+            - /url: /frontend.mvtv
+            - img [ref=e43] [cursor=pointer]
+            - generic [ref=e45] [cursor=pointer]: MvTV
+        - listitem [ref=e46]:
+          - link "Background Jobs" [ref=e47] [cursor=pointer]:
+            - /url: /frontend.jobs
+            - img [ref=e49] [cursor=pointer]
+            - generic [ref=e51] [cursor=pointer]: Background Jobs
+        - listitem [ref=e52]:
+          - link "Settings" [ref=e53] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e55] [cursor=pointer]
+            - generic [ref=e59] [cursor=pointer]: Settings
+      - generic [ref=e62]: v0.9.8.dev (a5ea2cf)
+  - banner [ref=e63]:
+    - generic [ref=e66]:
+      - generic:
+        - img
+      - textbox "Search videos, artists, or discover new content..." [ref=e67]
+    - generic [ref=e69]:
+      - link "admin Admin" [ref=e70] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e73] [cursor=pointer]
+        - generic [ref=e77] [cursor=pointer]:
+          - generic [ref=e78] [cursor=pointer]: admin
+          - generic [ref=e79] [cursor=pointer]: Admin
+      - button "Logout" [ref=e80] [cursor=pointer]:
+        - img [ref=e82] [cursor=pointer]
+  - main "Main content" [ref=e87]:
+    - link "Skip to main content" [ref=e88] [cursor=pointer]:
+      - /url: "#mainContent"
+    - generic [ref=e89]:
+      - generic [ref=e90]:
+        - heading "Artists" [level=1] [ref=e92]
+        - group "Primary artist actions" [ref=e93]:
+          - button "Add new artist" [ref=e94] [cursor=pointer]:
+            - img [ref=e96] [cursor=pointer]
+            - text: Add Artist
+          - button "Toggle search and filter panel" [ref=e98] [cursor=pointer]:
+            - img [ref=e100] [cursor=pointer]
+            - text: Search & Filter
+      - group "Secondary artist actions" [ref=e103]:
+        - toolbar "Artist maintenance actions" [ref=e104]:
+          - button "Refresh artist list" [ref=e105] [cursor=pointer]:
+            - img [ref=e107] [cursor=pointer]
+            - text: Refresh
+          - button "Scan for missing thumbnails" [ref=e109] [cursor=pointer]:
+            - img [ref=e111] [cursor=pointer]
+            - text: Thumbnails
+        - group "Artist selection controls" [ref=e113]:
+          - generic [ref=e114] [cursor=pointer]:
+            - checkbox "Select all artists" [ref=e115] [cursor=pointer]
+            - text: Select All (
+            - generic [ref=e117] [cursor=pointer]: 0 artists selected
+            - text: )
+          - button "Toggle bulk actions panel" [ref=e118] [cursor=pointer]:
+            - img [ref=e120] [cursor=pointer]
+            - text: Bulk Actions
+    - generic [ref=e122]:
+      - generic [ref=e123]:
+        - generic [ref=e125]: Showing 28 of 28 artists
+        - generic [ref=e126]:
+          - combobox [ref=e127]:
+            - option "Sort by Name" [selected]
+            - option "Sort by Date Added"
+            - option "Sort by Last Updated"
+            - option "Sort by Video Count"
+          - combobox [ref=e128]:
+            - option "Ascending" [selected]
+            - option "Descending"
+      - generic [ref=e130]:
+        - generic [ref=e131]:
+          - checkbox [ref=e133]
+          - img "ATARASHII GAKKO!" [ref=e135]
+          - generic [ref=e136]:
+            - heading "ATARASHII GAKKO!" [level=3] [ref=e137]
+            - generic [ref=e138]:
+              - generic [ref=e139]: "Videos: 15"
+              - generic "Not Monitored" [ref=e140]: ❌
+              - generic [ref=e141]:
+                - button "✏️" [ref=e142] [cursor=pointer]
+                - button "🗑️" [ref=e143] [cursor=pointer]
+        - generic [ref=e144]:
+          - checkbox [ref=e146]
+          - img "Bad Religion" [ref=e148]
+          - generic [ref=e149]:
+            - heading "Bad Religion" [level=3] [ref=e150]
+            - generic [ref=e151]:
+              - generic [ref=e152]: "Videos: 14"
+              - generic "Not Monitored" [ref=e153]: ❌
+              - generic [ref=e154]:
+                - button "✏️" [ref=e155] [cursor=pointer]
+                - button "🗑️" [ref=e156] [cursor=pointer]
+        - generic [ref=e157]:
+          - checkbox [ref=e159]
+          - img "Balming Tiger" [ref=e161]
+          - generic [ref=e162]:
+            - heading "Balming Tiger" [level=3] [ref=e163]
+            - generic [ref=e164]:
+              - generic [ref=e165]: "Videos: 4"
+              - generic "Not Monitored" [ref=e166]: ❌
+              - generic [ref=e167]:
+                - button "✏️" [ref=e168] [cursor=pointer]
+                - button "🗑️" [ref=e169] [cursor=pointer]
+        - generic [ref=e170]:
+          - checkbox [ref=e172]
+          - img "Beastie Boys" [ref=e174]
+          - generic [ref=e175]:
+            - heading "Beastie Boys" [level=3] [ref=e176]
+            - generic [ref=e177]:
+              - generic [ref=e178]: "Videos: 21"
+              - generic "Not Monitored" [ref=e179]: ❌
+              - generic [ref=e180]:
+                - button "✏️" [ref=e181] [cursor=pointer]
+                - button "🗑️" [ref=e182] [cursor=pointer]
+        - generic [ref=e183]:
+          - checkbox [ref=e185]
+          - img "Big Audio Dynamite" [ref=e187]
+          - generic [ref=e188]:
+            - heading "Big Audio Dynamite" [level=3] [ref=e189]
+            - generic [ref=e190]:
+              - generic [ref=e191]: "Videos: 1"
+              - generic "Not Monitored" [ref=e192]: ❌
+              - generic [ref=e193]:
+                - button "✏️" [ref=e194] [cursor=pointer]
+                - button "🗑️" [ref=e195] [cursor=pointer]
+        - generic [ref=e196]:
+          - checkbox [ref=e198]
+          - img "Bikini Kill" [ref=e200]
+          - generic [ref=e201]:
+            - heading "Bikini Kill" [level=3] [ref=e202]
+            - generic [ref=e203]:
+              - generic [ref=e204]: "Videos: 3"
+              - generic "Not Monitored" [ref=e205]: ❌
+              - generic [ref=e206]:
+                - button "✏️" [ref=e207] [cursor=pointer]
+                - button "🗑️" [ref=e208] [cursor=pointer]
+        - generic [ref=e209]:
+          - checkbox [ref=e211]
+          - img "blink-182" [ref=e213]
+          - generic [ref=e214]:
+            - heading "blink-182" [level=3] [ref=e215]
+            - generic [ref=e216]:
+              - generic [ref=e217]: "Videos: 1"
+              - generic "Not Monitored" [ref=e218]: ❌
+              - generic [ref=e219]:
+                - button "✏️" [ref=e220] [cursor=pointer]
+                - button "🗑️" [ref=e221] [cursor=pointer]
+        - generic [ref=e222]:
+          - checkbox [ref=e224]
+          - img "David Bowie" [ref=e226]
+          - generic [ref=e227]:
+            - heading "David Bowie" [level=3] [ref=e228]
+            - generic [ref=e229]:
+              - generic [ref=e230]: "Videos: 0"
+              - generic "Not Monitored" [ref=e231]: ❌
+              - generic [ref=e232]:
+                - button "✏️" [ref=e233] [cursor=pointer]
+                - button "🗑️" [ref=e234] [cursor=pointer]
+        - generic [ref=e235]:
+          - checkbox [ref=e237]
+          - img "Dolly Parton" [ref=e239]
+          - generic [ref=e240]:
+            - heading "Dolly Parton" [level=3] [ref=e241]
+            - generic [ref=e242]:
+              - generic [ref=e243]: "Videos: 3"
+              - generic "Not Monitored" [ref=e244]: ❌
+              - generic [ref=e245]:
+                - button "✏️" [ref=e246] [cursor=pointer]
+                - button "🗑️" [ref=e247] [cursor=pointer]
+        - generic [ref=e248]:
+          - checkbox [ref=e250]
+          - img "Dropkick Murphys" [ref=e252]
+          - generic [ref=e253]:
+            - heading "Dropkick Murphys" [level=3] [ref=e254]
+            - generic [ref=e255]:
+              - generic [ref=e256]: "Videos: 1"
+              - generic "Not Monitored" [ref=e257]: ❌
+              - generic [ref=e258]:
+                - button "✏️" [ref=e259] [cursor=pointer]
+                - button "🗑️" [ref=e260] [cursor=pointer]
+        - generic [ref=e261]:
+          - checkbox [ref=e263]
+          - img "Dwarves" [ref=e265]
+          - generic [ref=e266]:
+            - heading "Dwarves" [level=3] [ref=e267]
+            - generic [ref=e268]:
+              - generic [ref=e269]: "Videos: 0"
+              - generic "Not Monitored" [ref=e270]: ❌
+              - generic [ref=e271]:
+                - button "✏️" [ref=e272] [cursor=pointer]
+                - button "🗑️" [ref=e273] [cursor=pointer]
+        - generic [ref=e274]:
+          - checkbox [ref=e276]
+          - img "Ghost" [ref=e278]
+          - generic [ref=e279]:
+            - heading "Ghost" [level=3] [ref=e280]
+            - generic [ref=e281]:
+              - generic [ref=e282]: "Videos: 0"
+              - generic "Not Monitored" [ref=e283]: ❌
+              - generic [ref=e284]:
+                - button "✏️" [ref=e285] [cursor=pointer]
+                - button "🗑️" [ref=e286] [cursor=pointer]
+        - generic [ref=e287]:
+          - checkbox [ref=e289]
+          - img "Jimmy Eat World" [ref=e291]
+          - generic [ref=e292]:
+            - heading "Jimmy Eat World" [level=3] [ref=e293]
+            - generic [ref=e294]:
+              - generic [ref=e295]: "Videos: 0"
+              - generic "Not Monitored" [ref=e296]: ❌
+              - generic [ref=e297]:
+                - button "✏️" [ref=e298] [cursor=pointer]
+                - button "🗑️" [ref=e299] [cursor=pointer]
+        - generic [ref=e300]:
+          - checkbox [ref=e302]
+          - img "John Prine" [ref=e304]
+          - generic [ref=e305]:
+            - heading "John Prine" [level=3] [ref=e306]
+            - generic [ref=e307]:
+              - generic [ref=e308]: "Videos: 6"
+              - generic "Not Monitored" [ref=e309]: ❌
+              - generic [ref=e310]:
+                - button "✏️" [ref=e311] [cursor=pointer]
+                - button "🗑️" [ref=e312] [cursor=pointer]
+        - generic [ref=e313]:
+          - checkbox [ref=e315]
+          - img "Kendrick Lamar" [ref=e317]
+          - generic [ref=e318]:
+            - heading "Kendrick Lamar" [level=3] [ref=e319]
+            - generic [ref=e320]:
+              - generic [ref=e321]: "Videos: 19"
+              - generic "Not Monitored" [ref=e322]: ❌
+              - generic [ref=e323]:
+                - button "✏️" [ref=e324] [cursor=pointer]
+                - button "🗑️" [ref=e325] [cursor=pointer]
+        - generic [ref=e326]:
+          - checkbox [ref=e328]
+          - img "Megan Thee Stallion" [ref=e330]
+          - generic [ref=e331]:
+            - heading "Megan Thee Stallion" [level=3] [ref=e332]
+            - generic [ref=e333]:
+              - generic [ref=e334]: "Videos: 0"
+              - generic "Not Monitored" [ref=e335]: ❌
+              - generic [ref=e336]:
+                - button "✏️" [ref=e337] [cursor=pointer]
+                - button "🗑️" [ref=e338] [cursor=pointer]
+        - generic [ref=e339]:
+          - checkbox [ref=e341]
+          - img "New Found Glory" [ref=e343]
+          - generic [ref=e344]:
+            - heading "New Found Glory" [level=3] [ref=e345]
+            - generic [ref=e346]:
+              - generic [ref=e347]: "Videos: 0"
+              - generic "Not Monitored" [ref=e348]: ❌
+              - generic [ref=e349]:
+                - button "✏️" [ref=e350] [cursor=pointer]
+                - button "🗑️" [ref=e351] [cursor=pointer]
+        - generic [ref=e352]:
+          - checkbox [ref=e354]
+          - img "Nova Twins" [ref=e356]
+          - generic [ref=e357]:
+            - heading "Nova Twins" [level=3] [ref=e358]
+            - generic [ref=e359]:
+              - generic [ref=e360]: "Videos: 8"
+              - generic "Not Monitored" [ref=e361]: ❌
+              - generic [ref=e362]:
+                - button "✏️" [ref=e363] [cursor=pointer]
+                - button "🗑️" [ref=e364] [cursor=pointer]
+        - generic [ref=e365]:
+          - checkbox [ref=e367]
+          - img "Ren" [ref=e369]
+          - generic [ref=e370]:
+            - heading "Ren" [level=3] [ref=e371]
+            - generic [ref=e372]:
+              - generic [ref=e373]: "Videos: 1"
+              - generic "Not Monitored" [ref=e374]: ❌
+              - generic [ref=e375]:
+                - button "✏️" [ref=e376] [cursor=pointer]
+                - button "🗑️" [ref=e377] [cursor=pointer]
+        - generic [ref=e378]:
+          - checkbox [ref=e380]
+          - img "Scissor Sisters" [ref=e382]
+          - generic [ref=e383]:
+            - heading "Scissor Sisters" [level=3] [ref=e384]
+            - generic [ref=e385]:
+              - generic [ref=e386]: "Videos: 0"
+              - generic "Not Monitored" [ref=e387]: ❌
+              - generic [ref=e388]:
+                - button "✏️" [ref=e389] [cursor=pointer]
+                - button "🗑️" [ref=e390] [cursor=pointer]
+        - generic [ref=e391]:
+          - checkbox [ref=e393]
+          - img "SOFT PLAY" [ref=e395]
+          - generic [ref=e396]:
+            - heading "SOFT PLAY" [level=3] [ref=e397]
+            - generic [ref=e398]:
+              - generic [ref=e399]: "Videos: 0"
+              - generic "Not Monitored" [ref=e400]: ❌
+              - generic [ref=e401]:
+                - button "✏️" [ref=e402] [cursor=pointer]
+                - button "🗑️" [ref=e403] [cursor=pointer]
+        - generic [ref=e404]:
+          - checkbox [ref=e406]
+          - img "Soundgarden" [ref=e408]
+          - generic [ref=e409]:
+            - heading "Soundgarden" [level=3] [ref=e410]
+            - generic [ref=e411]:
+              - generic [ref=e412]: "Videos: 11"
+              - generic "Not Monitored" [ref=e413]: ❌
+              - generic [ref=e414]:
+                - button "✏️" [ref=e415] [cursor=pointer]
+                - button "🗑️" [ref=e416] [cursor=pointer]
+        - generic [ref=e417]:
+          - checkbox [ref=e419]
+          - img "Steve Earle" [ref=e421]
+          - generic [ref=e422]:
+            - heading "Steve Earle" [level=3] [ref=e423]
+            - generic [ref=e424]:
+              - generic [ref=e425]: "Videos: 1"
+              - generic "Not Monitored" [ref=e426]: ❌
+              - generic [ref=e427]:
+                - button "✏️" [ref=e428] [cursor=pointer]
+                - button "🗑️" [ref=e429] [cursor=pointer]
+        - generic [ref=e430]:
+          - checkbox [ref=e432]
+          - img "Stone Sour" [ref=e434]
+          - generic [ref=e435]:
+            - heading "Stone Sour" [level=3] [ref=e436]
+            - generic [ref=e437]:
+              - generic [ref=e438]: "Videos: 0"
+              - generic "Not Monitored" [ref=e439]: ❌
+              - generic [ref=e440]:
+                - button "✏️" [ref=e441] [cursor=pointer]
+                - button "🗑️" [ref=e442] [cursor=pointer]
+        - generic [ref=e443]:
+          - checkbox [ref=e445]
+          - img "Stone Temple Pilots" [ref=e447]
+          - generic [ref=e448]:
+            - heading "Stone Temple Pilots" [level=3] [ref=e449]
+            - generic [ref=e450]:
+              - generic [ref=e451]: "Videos: 1"
+              - generic "Not Monitored" [ref=e452]: ❌
+              - generic [ref=e453]:
+                - button "✏️" [ref=e454] [cursor=pointer]
+                - button "🗑️" [ref=e455] [cursor=pointer]
+        - generic [ref=e456]:
+          - checkbox [ref=e458]
+          - img "Survivor" [ref=e460]
+          - generic [ref=e461]:
+            - heading "Survivor" [level=3] [ref=e462]
+            - generic [ref=e463]:
+              - generic [ref=e464]: "Videos: 0"
+              - generic "Not Monitored" [ref=e465]: ❌
+              - generic [ref=e466]:
+                - button "✏️" [ref=e467] [cursor=pointer]
+                - button "🗑️" [ref=e468] [cursor=pointer]
+        - generic [ref=e469]:
+          - checkbox [ref=e471]
+          - img "The Offspring" [ref=e473]
+          - generic [ref=e474]:
+            - heading "The Offspring" [level=3] [ref=e475]
+            - generic [ref=e476]:
+              - generic [ref=e477]: "Videos: 0"
+              - generic "Not Monitored" [ref=e478]: ❌
+              - generic [ref=e479]:
+                - button "✏️" [ref=e480] [cursor=pointer]
+                - button "🗑️" [ref=e481] [cursor=pointer]
+        - generic [ref=e482]:
+          - checkbox [ref=e484]
+          - img "Tyler Childers" [ref=e486]
+          - generic [ref=e487]:
+            - heading "Tyler Childers" [level=3] [ref=e488]
+            - generic [ref=e489]:
+              - generic [ref=e490]: "Videos: 8"
+              - generic "Not Monitored" [ref=e491]: ❌
+              - generic [ref=e492]:
+                - button "✏️" [ref=e493] [cursor=pointer]
+                - button "🗑️" [ref=e494] [cursor=pointer]
+```

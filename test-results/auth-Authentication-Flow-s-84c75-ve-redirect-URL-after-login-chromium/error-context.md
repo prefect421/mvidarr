@@ -1,0 +1,170 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - navigation "Main navigation" [ref=e2]:
+    - generic [ref=e3]:
+      - link "MVidarr" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e6] [cursor=pointer]
+        - generic [ref=e7] [cursor=pointer]: MVidarr
+      - button [ref=e8] [cursor=pointer]:
+        - img [ref=e10] [cursor=pointer]
+    - generic [ref=e12]:
+      - list [ref=e13]:
+        - listitem [ref=e14]:
+          - link "Dashboard" [ref=e15] [cursor=pointer]:
+            - /url: /
+            - img [ref=e17] [cursor=pointer]
+            - generic [ref=e21] [cursor=pointer]: Dashboard
+        - listitem [ref=e22]:
+          - link "Artists" [ref=e23] [cursor=pointer]:
+            - /url: /artists
+            - img [ref=e25] [cursor=pointer]
+            - generic [ref=e27] [cursor=pointer]: Artists
+        - listitem [ref=e28]:
+          - link "Videos" [ref=e29] [cursor=pointer]:
+            - /url: /videos
+            - img [ref=e31] [cursor=pointer]
+            - generic [ref=e33] [cursor=pointer]: Videos
+        - listitem [ref=e34]:
+          - link "Playlists" [ref=e35] [cursor=pointer]:
+            - /url: /playlists
+            - img [ref=e37] [cursor=pointer]
+            - generic [ref=e39] [cursor=pointer]: Playlists
+        - listitem [ref=e40]:
+          - link "MvTV" [ref=e41] [cursor=pointer]:
+            - /url: /frontend.mvtv
+            - img [ref=e43] [cursor=pointer]
+            - generic [ref=e45] [cursor=pointer]: MvTV
+        - listitem [ref=e46]:
+          - link "Background Jobs" [ref=e47] [cursor=pointer]:
+            - /url: /frontend.jobs
+            - img [ref=e49] [cursor=pointer]
+            - generic [ref=e51] [cursor=pointer]: Background Jobs
+        - listitem [ref=e52]:
+          - link "Settings" [ref=e53] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e55] [cursor=pointer]
+            - generic [ref=e59] [cursor=pointer]: Settings
+      - generic [ref=e62]: v0.9.8.dev (a5ea2cf)
+  - banner [ref=e63]:
+    - generic [ref=e66]:
+      - generic:
+        - img
+      - textbox "Search videos, artists, or discover new content..." [ref=e67]
+    - generic [ref=e69]:
+      - link "admin Admin" [ref=e70] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e73] [cursor=pointer]
+        - generic [ref=e77] [cursor=pointer]:
+          - generic [ref=e78] [cursor=pointer]: admin
+          - generic [ref=e79] [cursor=pointer]: Admin
+      - button "Logout" [ref=e80] [cursor=pointer]:
+        - img [ref=e82] [cursor=pointer]
+  - main "Main content" [ref=e87]:
+    - link "Skip to main content" [ref=e88] [cursor=pointer]:
+      - /url: "#mainContent"
+    - generic [ref=e89]:
+      - generic [ref=e90]:
+        - heading "Settings" [level=1] [ref=e92]
+        - group "Settings actions" [ref=e93]:
+          - link "Open job management page" [ref=e94] [cursor=pointer]:
+            - /url: /jobs
+            - img [ref=e96] [cursor=pointer]
+            - text: Job Management
+          - button "Save current settings" [ref=e98] [cursor=pointer]:
+            - img [ref=e100] [cursor=pointer]
+            - text: Save Settings
+          - button "Restart application to apply changes" [ref=e104] [cursor=pointer]:
+            - img [ref=e106] [cursor=pointer]
+            - text: Restart Application
+      - generic [ref=e108]:
+        - generic [ref=e109]:
+          - tablist "Settings categories" [ref=e110]:
+            - heading "Settings" [level=3] [ref=e112]
+            - list [ref=e113]:
+              - listitem [ref=e114]:
+                - tab "General" [selected] [ref=e115] [cursor=pointer]:
+                  - img [ref=e117] [cursor=pointer]
+                  - generic [ref=e121] [cursor=pointer]: General
+              - listitem [ref=e122]:
+                - tab "Security" [ref=e123] [cursor=pointer]:
+                  - img [ref=e125] [cursor=pointer]
+                  - generic [ref=e129] [cursor=pointer]: Security
+              - listitem [ref=e130]:
+                - tab "Services" [ref=e131] [cursor=pointer]:
+                  - img [ref=e133] [cursor=pointer]
+                  - generic [ref=e135] [cursor=pointer]: Services
+              - listitem [ref=e136]:
+                - tab "Downloads" [ref=e137] [cursor=pointer]:
+                  - img [ref=e139] [cursor=pointer]
+                  - generic [ref=e141] [cursor=pointer]: Downloads
+              - listitem [ref=e142]:
+                - tab "Database" [ref=e143] [cursor=pointer]:
+                  - img [ref=e145] [cursor=pointer]
+                  - generic [ref=e150] [cursor=pointer]: Database
+              - listitem [ref=e151]:
+                - tab "System" [ref=e152] [cursor=pointer]:
+                  - img [ref=e154] [cursor=pointer]
+                  - generic [ref=e158] [cursor=pointer]: System
+              - listitem [ref=e159]:
+                - tab "Themes" [ref=e160] [cursor=pointer]:
+                  - img [ref=e162] [cursor=pointer]
+                  - generic [ref=e166] [cursor=pointer]: Themes
+              - listitem [ref=e167]:
+                - tab "Blacklist" [ref=e168] [cursor=pointer]:
+                  - generic [ref=e170] [cursor=pointer]: Blacklist
+          - main [ref=e171]:
+            - tabpanel "General" [ref=e173]:
+              - generic [ref=e174]:
+                - generic [ref=e175]:
+                  - heading "Application" [level=2] [ref=e176]
+                  - generic [ref=e177]:
+                    - generic [ref=e178]: "Port:"
+                    - spinbutton "Port:" [ref=e179]: "5000"
+                  - generic [ref=e180]:
+                    - generic [ref=e181]: "Debug Mode:"
+                    - combobox "Debug Mode:" [ref=e182]:
+                      - option "Disabled"
+                      - option "Enabled" [selected]
+                  - generic [ref=e183]:
+                    - generic [ref=e184]: "Secret Key:"
+                    - textbox "Secret Key:" [ref=e185]: uNn&Op@npn!cyEz!f5s@!P(_SifmK@CDwkdS-i&4bglXOWRkgikLf_$Ttt1T+2Dw
+                  - generic [ref=e186]:
+                    - generic [ref=e187]: "Require User Authentication:"
+                    - combobox "Require User Authentication:" [ref=e188]:
+                      - option "Disabled - Open Access"
+                      - option "Enabled - Login Required" [selected]
+                    - generic [ref=e190]: When enabled, users must log in with username/password to access the system. Requires application restart to take effect.
+                - generic [ref=e191]:
+                  - heading "👤 User Credentials" [level=2] [ref=e192]
+                  - generic [ref=e194]: Configure the username and password for accessing the system when authentication is enabled.
+                  - generic [ref=e195]:
+                    - generic [ref=e196]: "Username:"
+                    - textbox "Username:" [ref=e197]: admin
+                    - generic [ref=e199]: Username must be at least 3 characters long
+                  - generic [ref=e200]:
+                    - generic [ref=e201]: "Password:"
+                    - textbox "Password:" [ref=e202]
+                    - generic [ref=e204]: Password must be at least 6 characters long
+                  - generic [ref=e205]:
+                    - generic [ref=e206]: "Confirm Password:"
+                    - textbox "Confirm Password:" [ref=e207]
+                    - generic [ref=e209]: Re-enter the password to confirm
+                  - generic [ref=e210]:
+                    - button "🔑 Update Credentials" [ref=e211] [cursor=pointer]
+                    - button "🔄 Reset to Default" [ref=e212] [cursor=pointer]
+                - generic [ref=e213]:
+                  - heading "Paths" [level=2] [ref=e214]
+                  - generic [ref=e215]:
+                    - generic [ref=e216]: "Downloads Directory:"
+                    - textbox "Downloads Directory:" [ref=e217]: data/downloads
+                  - generic [ref=e218]:
+                    - generic [ref=e219]: "Music Videos Directory:"
+                    - textbox "Music Videos Directory:" [ref=e220]: data/musicvideos
+                  - generic [ref=e221]:
+                    - generic [ref=e222]: "Thumbnails Directory:"
+                    - textbox "Thumbnails Directory:" [ref=e223]: data/thumbnails
+        - button "Save Settings" [ref=e225] [cursor=pointer]
+```
