@@ -264,6 +264,17 @@ document.addEventListener('DOMContentLoaded', function() {
             link.classList.add('active');
         }
     });
+    
+    // Initialize Background Job Manager for real-time job progress
+    // Note: BackgroundJobManager is already instantiated as window.backgroundJobs in background-jobs.js
+    if (typeof window.backgroundJobs !== 'undefined') {
+        console.log('🚀 Background Job Manager already initialized');
+    } else if (typeof BackgroundJobManager !== 'undefined') {
+        window.backgroundJobs = new BackgroundJobManager();
+        console.log('🚀 Background Job Manager initialized');
+    } else {
+        console.warn('⚠️ BackgroundJobManager not available - background-jobs.js may not be loaded');
+    }
 });
 
 // Thumbnail management functions
@@ -1971,5 +1982,28 @@ window.MVidarr = {
     linkSpotifyArtist,
     syncFromSpotify,
     syncFromImvdb,
-    clearImvdbId
+    clearImvdbId,
+    // Background job management
+    get backgroundJobManager() {
+        return window.backgroundJobs;
+    },
+    get backgroundJobs() {
+        return window.backgroundJobs;
+    },
+    // Convenient background job functions
+    startJob: function(jobType, payload, options = {}) {
+        if (window.backgroundJobs) {
+            return window.backgroundJobs.startJob(jobType, payload, options);
+        } else {
+            console.warn('BackgroundJobManager not available');
+            return Promise.reject(new Error('BackgroundJobManager not initialized'));
+        }
+    },
+    showJobDashboard: function() {
+        if (typeof showJobDashboard === 'function') {
+            showJobDashboard();
+        } else {
+            console.warn('showJobDashboard function not available');
+        }
+    }
 };

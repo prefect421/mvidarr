@@ -1157,6 +1157,10 @@ function renderVideoDetails(video) {
             </button>
             <button onclick="editVideo()" class="btn btn-info">Edit Details</button>
             <button onclick="enhancedRefreshMetadata()" class="btn btn-success">Enhanced Metadata</button>
+            <button onclick="MVidarr.showJobDashboard()" class="btn btn-primary" title="View active background jobs">
+                <iconify-icon icon="tabler:activity" style="margin-right: 5px;"></iconify-icon>
+                Jobs
+            </button>
             <div class="status-dropdown" style="position: relative; display: inline-block;">
                 <button class="btn btn-secondary" type="button" id="statusDropdownBtn" onclick="toggleStatusDropdown()" style="min-width: 140px;">
                     Status: ${video.status} ▼

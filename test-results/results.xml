@@ -1,0 +1,72 @@
+<testsuites id="" name="" tests="5" failures="0" skipped="0" errors="0" time="58.064247">
+<testsuite name="fixes-0.9.8.spec.js" timestamp="2025-09-18T22:07:47.603Z" hostname="chromium" tests="1" failures="0" skipped="0" time="7.282" errors="0">
+<testcase name="0.9.8 Bug Fixes Validation › should not have pydantic regex errors in service" classname="fixes-0.9.8.spec.js" time="7.282">
+<system-out>
+<![CDATA[🔐 Logging in as admin...
+✅ Login successful
+🧪 Testing Fix: Pydantic regex deprecation errors
+✅ Endpoint /api/artists/ accessible: 200
+✅ Endpoint /api/health accessible: 200
+✅ Endpoint /auth/check accessible: 200
+✅ Service running without pydantic regex errors
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="fixes-0.9.8.spec.js" timestamp="2025-09-18T22:07:47.603Z" hostname="firefox" tests="1" failures="0" skipped="0" time="12.427" errors="0">
+<testcase name="0.9.8 Bug Fixes Validation › should not have pydantic regex errors in service" classname="fixes-0.9.8.spec.js" time="12.427">
+<system-out>
+<![CDATA[🔐 Logging in as admin...
+✅ Login successful
+🧪 Testing Fix: Pydantic regex deprecation errors
+✅ Endpoint /api/artists/ accessible: 200
+✅ Endpoint /api/health accessible: 200
+✅ Endpoint /auth/check accessible: 200
+✅ Service running without pydantic regex errors
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="fixes-0.9.8.spec.js" timestamp="2025-09-18T22:07:47.603Z" hostname="webkit" tests="1" failures="0" skipped="0" time="7.657" errors="0">
+<testcase name="0.9.8 Bug Fixes Validation › should not have pydantic regex errors in service" classname="fixes-0.9.8.spec.js" time="7.657">
+<system-out>
+<![CDATA[🔐 Logging in as admin...
+✅ Login successful
+🧪 Testing Fix: Pydantic regex deprecation errors
+✅ Endpoint /api/artists/ accessible: 200
+✅ Endpoint /api/health accessible: 200
+✅ Endpoint /auth/check accessible: 200
+✅ Service running without pydantic regex errors
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="fixes-0.9.8.spec.js" timestamp="2025-09-18T22:07:47.603Z" hostname="Mobile Chrome" tests="1" failures="0" skipped="0" time="7.107" errors="0">
+<testcase name="0.9.8 Bug Fixes Validation › should not have pydantic regex errors in service" classname="fixes-0.9.8.spec.js" time="7.107">
+<system-out>
+<![CDATA[🔐 Logging in as admin...
+✅ Login successful
+🧪 Testing Fix: Pydantic regex deprecation errors
+✅ Endpoint /api/artists/ accessible: 200
+✅ Endpoint /api/health accessible: 200
+✅ Endpoint /auth/check accessible: 200
+✅ Service running without pydantic regex errors
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="fixes-0.9.8.spec.js" timestamp="2025-09-18T22:07:47.603Z" hostname="Mobile Safari" tests="1" failures="0" skipped="0" time="8.285" errors="0">
+<testcase name="0.9.8 Bug Fixes Validation › should not have pydantic regex errors in service" classname="fixes-0.9.8.spec.js" time="8.285">
+<system-out>
+<![CDATA[🔐 Logging in as admin...
+✅ Login successful
+🧪 Testing Fix: Pydantic regex deprecation errors
+✅ Endpoint /api/artists/ accessible: 200
+✅ Endpoint /api/health accessible: 200
+✅ Endpoint /auth/check accessible: 200
+✅ Service running without pydantic regex errors
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

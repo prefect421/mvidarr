@@ -40,6 +40,12 @@ npm run test:debug       # Debug mode with DevTools
 npm run test:auth        # Authentication tests only
 npm run test:dashboard   # Dashboard functionality tests
 npm run test:artists     # Artist management tests
+npm run test:videos      # Video management tests
+npm run test:navigation  # Navigation and UI tests
+npm run test:api         # API endpoint validation tests
+npm run test:fixes       # 0.9.8 bug fixes validation
+npm run test:core        # Core functionality (auth, dashboard, artists)
+npm run test:extended    # Extended functionality (videos, navigation, API)
 ```
 
 ### View Results
@@ -54,7 +60,11 @@ tests/
 ├── e2e/                 # End-to-end test specs
 │   ├── auth.spec.js     # Authentication flow tests
 │   ├── dashboard.spec.js # Dashboard functionality tests
-│   └── artists.spec.js  # Artist management tests
+│   ├── artists.spec.js  # Artist management tests
+│   ├── video-management.spec.js # Video search, import, playlist tests
+│   ├── navigation-ui.spec.js # Navigation and UI interaction tests
+│   ├── api-validation.spec.js # API endpoint validation tests
+│   └── fixes-0.9.8.spec.js # 0.9.8 bug fixes validation tests
 ├── fixtures/            # Test data and mocks
 │   └── test-data.js     # Test users, artists, videos, mock API responses
 ├── utils/               # Helper functions
@@ -180,13 +190,17 @@ Current coverage includes:
 - **Authentication flows** (8 tests)
 - **Dashboard functionality** (12 tests) 
 - **Artist management** (12 tests)
+- **Video management** (6 tests)
+- **Navigation and UI** (6 tests)
+- **API endpoint validation** (10 tests)
+- **0.9.8 Bug fixes validation** (8 tests)
 
 ### 🔄 Planned
-- Video management tests
 - Settings and configuration tests
-- Download management tests
-- API endpoint validation tests
 - Performance and load tests
+- Mobile-specific UI tests
+- Error handling and edge cases
+- Integration with external services
 
 ## Troubleshooting
 

@@ -558,6 +558,73 @@ class BackgroundJobManager {
         } else {
             console.log(`⚠️ Progress item not found for job ${jobId}`);
         }
+        
+        // Enhanced toast notifications for major status changes
+        this.updateJobToastNotification(jobId, data);
+    }
+    
+    updateJobToastNotification(jobId, data) {
+        const jobData = this.activeJobs.get(jobId);
+        if (!jobData) return;
+        
+        const previousStatus = jobData.lastNotifiedStatus;
+        const currentStatus = data.status;
+        const progress = data.progress || 0;
+        
+        // Only show notifications for significant status changes
+        if (previousStatus !== currentStatus) {
+            const jobTypeDisplay = this.getJobTypeDisplay(jobData.type);
+            
+            switch (currentStatus) {
+                case 'processing':
+                    if (window.toastManager) {
+                        window.toastManager.show(`${jobTypeDisplay} started`, 'info', {
+                            duration: 3000,
+                            icon: 'tabler:loader-2'
+                        });
+                    }
+                    break;
+                    
+                case 'completed':
+                    if (window.toastManager) {
+                        window.toastManager.show(`${jobTypeDisplay} completed successfully`, 'success', {
+                            duration: 5000,
+                            icon: 'tabler:check-circle'
+                        });
+                    }
+                    break;
+                    
+                case 'failed':
+                    if (window.toastManager) {
+                        const errorMsg = data.error_message || 'Job failed';
+                        window.toastManager.show(`${jobTypeDisplay} failed: ${errorMsg}`, 'error', {
+                            duration: 8000,
+                            icon: 'tabler:x-circle'
+                        });
+                    }
+                    break;
+            }
+            
+            // Update the last notified status
+            jobData.lastNotifiedStatus = currentStatus;
+            this.activeJobs.set(jobId, jobData);
+        }
+        
+        // Show progress milestones (25%, 50%, 75%)
+        const lastProgress = jobData.lastNotifiedProgress || 0;
+        if (progress > 0 && Math.floor(progress / 25) > Math.floor(lastProgress / 25)) {
+            const milestone = Math.floor(progress / 25) * 25;
+            if (milestone > 0 && milestone < 100) {
+                if (window.toastManager) {
+                    window.toastManager.show(`${this.getJobTypeDisplay(jobData.type)} ${milestone}% complete`, 'info', {
+                        duration: 2000,
+                        icon: 'tabler:progress'
+                    });
+                }
+            }
+            jobData.lastNotifiedProgress = progress;
+            this.activeJobs.set(jobId, jobData);
+        }
     }
     
     updateJobProgressItem(element, jobId, data) {

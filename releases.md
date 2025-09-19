@@ -8,49 +8,55 @@ permalink: /releases/
 
 Track MVidarr's development progress through our release history and upcoming milestones.
 
-## 🚀 Current Release: v0.9.4
+## 🚀 Current Release: v0.9.8
 
-**Released**: August 6, 2025  
-**Focus**: Docker Optimization and Build Reliability
+**Released**: September 19, 2025  
+**Focus**: Advanced Background Job System & Production Stability
 
 ### Major Improvements
-- **🐳 Docker Build Optimization**: Reduced build time from timeout failures to consistent 8m6s builds
-- **📦 Container Size Reduction**: Optimized Docker image layers and dependencies (1.41GB production images)
-- **⚡ Build Reliability**: Fixed timeout issues with build-essential package installation
-- **🔍 Monitoring Infrastructure**: Added comprehensive Docker build monitoring and validation tools
+- **🚀 Advanced Background Job System**: Complete implementation of job scheduling, dependencies, and retry mechanisms
+- **🔧 Production Bug Fixes**: Resolved 10+ critical production issues identified during user testing
+- **🧪 Comprehensive Testing Infrastructure**: Full Playwright E2E testing framework with CI/CD integration
+- **📡 Real-time Job Monitoring**: WebSocket-based job progress tracking and live notifications
+- **🏗️ Flask to FastAPI Migration**: Complete transition to modern async API architecture
 
 ### Key Features
-- Multi-stage Docker builds with optimized caching
-- Automated Docker size monitoring and validation
-- Enhanced .dockerignore for build context optimization
-- Production-ready container configurations
-- Build performance monitoring and analysis tools
+- **Job Scheduling & Dependencies**: Advanced job system with exponential backoff, scheduling, and chaining
+- **Real-time Progress Tracking**: WebSocket integration for live job status updates
+- **Comprehensive API Testing**: Multi-browser E2E testing with automated validation
+- **Production Stability**: Fixed stuck downloads, authentication endpoints, and service startup issues
+- **Modern Architecture**: FastAPI async endpoints with enhanced performance and monitoring
+
+### Critical Bug Fixes
+- ✅ Fixed stuck downloads clearing functionality (timeout and infinite loop issues)
+- ✅ Resolved logout button 404 errors with proper endpoint implementation
+- ✅ Fixed video search 404 errors and API endpoint accessibility
+- ✅ Corrected artist import loadStats reference errors
+- ✅ Fixed playlist import processPlaylistImport function missing errors
+- ✅ Resolved Pydantic regex deprecation errors preventing service startup
 
 ### Technical Enhancements
-- Fixed Docker build timeout issues by replacing build-essential with gcc+g++
-- Implemented --timeout=1000 for pip installations of heavy packages
-- Added comprehensive Docker monitoring workflows
-- Created build context analysis and optimization tools
-- Enhanced container layer caching strategies
+- **FastAPI Async Architecture**: Complete migration from Flask with performance improvements
+- **Advanced Job Queue**: Exponential/linear/fixed retry strategies with dependency management
+- **WebSocket Integration**: Real-time job progress updates and client notifications
+- **Comprehensive Testing**: 40+ Playwright tests across authentication, API, and UI validation
+- **CI/CD Integration**: Automated testing with multi-browser support and GitHub Actions
 
-**Docker Image**: `ghcr.io/prefect421/mvidarr:v0.9.4`
+**Docker Image**: `ghcr.io/prefect421/mvidarr:v0.9.8`
 
 ---
 
-## 🔄 Development Version: v0.9.5-dev
+## 🔄 Development Version: v0.9.9-dev
 
 **Status**: In Active Development  
-**Focus**: Performance & User Experience Enhancements
+**Focus**: Enterprise Features & Multi-User Support
 
 ### Planned Improvements
-- Database performance analysis and targeted query optimization
-- API response time optimization for critical endpoints  
-- Frontend loading performance and user experience optimization
-- UI/UX enhancement package and workflow refinement
-- Documentation completion and developer experience enhancement
-
-### Strategic Focus
-Strategic mix of targeted performance improvements with measurable outcomes and user-facing enhancements that deliver tangible value through focused execution on 5-6 specific issues.
+- Advanced user management and role-based access control
+- Multi-tenant artist libraries and data isolation
+- Comprehensive audit logging and activity tracking
+- API rate limiting and resource quota management
+- Enhanced authentication integration (LDAP/SSO)
 
 ---
 
@@ -74,23 +80,23 @@ Strategic mix of targeted performance improvements with measurable outcomes and 
 - Import/export and backup management system
 - Custom video organization rules and automation
 
-### v0.9.8 - External Service Integrations
-**Planned Release**: May 2026
-
-- Enhanced Spotify integration and music discovery
-- Media server integration (Plex/Jellyfin/Emby)
-- Advanced notification system with Discord/Slack integration
-- Third-party metadata providers integration
-- Cloud storage integration and backup solutions
-
 ### v0.9.9 - Enterprise & Multi-User Features
-**Planned Release**: August 2026
+**Planned Release**: December 2025
 
 - Advanced user management and role-based access control
 - Multi-tenant artist libraries and data isolation
 - Comprehensive audit logging and activity tracking
 - API rate limiting and resource quota management
 - Enterprise authentication integration (LDAP/SSO/SAML)
+
+### v0.9.10 - External Service Integrations
+**Planned Release**: March 2026
+
+- Enhanced Spotify integration and music discovery
+- Media server integration (Plex/Jellyfin/Emby)
+- Advanced notification system with Discord/Slack integration
+- Third-party metadata providers integration
+- Cloud storage integration and backup solutions
 
 ### v1.0.0 - Production Readiness & Stability
 **Planned Release**: November 2026 - **Public Release**
@@ -104,6 +110,16 @@ Strategic mix of targeted performance improvements with measurable outcomes and 
 ---
 
 ## 📈 Previous Releases
+
+### v0.9.4
+**Released**: August 6, 2025  
+**Focus**: Docker Optimization and Build Reliability
+
+- Docker build optimization and reliability improvements
+- Container size reduction and performance enhancements
+- Build monitoring infrastructure and validation tools
+- Production-ready container configurations
+- Comprehensive Docker build automation
 
 ### v0.9.3
 **Released**: July 28, 2025  

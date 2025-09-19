@@ -4,17 +4,17 @@
  * Test data fixtures for MVidarr E2E tests
  */
 
-// Test user accounts
+// Test user accounts (based on MVidarr's actual auth system)
 const testUsers = {
   admin: {
     username: 'admin',
-    password: 'admin123',
+    password: 'mvidarr',
     email: 'admin@mvidarr.test'
   },
   user: {
-    username: 'testuser',
-    password: 'testpass',
-    email: 'user@mvidarr.test'
+    username: 'admin', // Using admin account as default for testing
+    password: 'mvidarr',
+    email: 'admin@mvidarr.test'
   }
 };
 

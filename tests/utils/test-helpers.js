@@ -11,24 +11,44 @@
  * @param {string} username
  * @param {string} password
  */
-async function login(page, username = 'testuser', password = 'testpass') {
+async function login(page, username = 'admin', password = 'mvidarr') {
   console.log(`🔐 Logging in as ${username}...`);
   
   // Navigate to login page if not already there
   const currentUrl = page.url();
-  if (!currentUrl.includes('/auth/login') && !currentUrl.includes('/simple-login')) {
+  if (!currentUrl.includes('/auth/login')) {
     await page.goto('/auth/login');
   }
   
-  // Fill in credentials
-  await page.fill('input[name="username"], input[name="email"]', username);
-  await page.fill('input[name="password"]', password);
+  // Wait for login form to be visible
+  await page.waitForSelector('#loginForm', { timeout: 10000 });
+  
+  // Fill in credentials using MVidarr's actual form IDs
+  await page.fill('#username', username);
+  await page.fill('#password', password);
   
   // Submit form
-  await page.click('button[type="submit"], .btn-primary');
+  await page.click('button[type="submit"]');
   
-  // Wait for navigation to dashboard
-  await page.waitForURL('/', { timeout: 10000 });
+  // Wait for either successful navigation or error message
+  try {
+    // Try to wait for navigation to dashboard
+    await page.waitForURL('/', { timeout: 5000 });
+  } catch (error) {
+    // If navigation fails, check if we're still on login page with error
+    const currentUrl = page.url();
+    if (currentUrl.includes('/auth/login')) {
+      // Check for error messages
+      const errorElement = page.locator('.error, .alert-danger, #loginMessage');
+      if (await errorElement.isVisible()) {
+        const errorText = await errorElement.textContent();
+        throw new Error(`Login failed: ${errorText}`);
+      }
+      // If no error shown, credentials might be wrong
+      throw new Error('Login failed: No navigation occurred and no error shown');
+    }
+    throw error;
+  }
   
   console.log('✅ Login successful');
 }
@@ -40,14 +60,44 @@ async function login(page, username = 'testuser', password = 'testpass') {
 async function logout(page) {
   console.log('🚪 Logging out...');
   
-  // Look for logout button or link
-  const logoutSelector = 'button:has-text("Logout"), a:has-text("Logout"), [data-action="logout"]';
-  await page.click(logoutSelector);
-  
-  // Wait for redirect to login page
-  await page.waitForURL(/\/(auth\/login|simple-login)/, { timeout: 5000 });
-  
-  console.log('✅ Logout successful');
+  // Look for logout button in MVidarr's interface
+  try {
+    // Try different logout selectors that might exist in MVidarr
+    const logoutSelectors = [
+      'button:has-text("Logout")',
+      'a:has-text("Logout")', 
+      '.logout-btn',
+      '[onclick*="logout"]',
+      '#logout-button'
+    ];
+    
+    let logoutElement = null;
+    for (const selector of logoutSelectors) {
+      const element = page.locator(selector);
+      if (await element.count() > 0) {
+        logoutElement = element;
+        break;
+      }
+    }
+    
+    if (logoutElement) {
+      await logoutElement.click();
+      
+      // Wait for redirect to login page
+      await page.waitForURL(/\/auth\/login/, { timeout: 10000 });
+      console.log('✅ Logout successful');
+    } else {
+      // Fallback: Clear cookies and navigate to login
+      console.log('⚠️ No logout button found, clearing session manually');
+      await page.context().clearCookies();
+      await page.goto('/auth/login');
+      console.log('✅ Session cleared');
+    }
+  } catch (error) {
+    console.log('⚠️ Logout error, clearing session manually:', error.message);
+    await page.context().clearCookies();
+    await page.goto('/auth/login');
+  }
 }
 
 /**
@@ -57,10 +107,11 @@ async function logout(page) {
 async function waitForPageLoad(page) {
   // Wait for common loading indicators to disappear
   await page.waitForFunction(() => {
-    const loadingElements = document.querySelectorAll(
-      '.loading, .spinner, [data-loading], .btn:disabled:has-text("Loading")'
+    const loadingElements = document.querySelectorAll('.loading, .spinner, [data-loading]');
+    const disabledButtons = Array.from(document.querySelectorAll('.btn:disabled')).filter(btn => 
+      btn.textContent && btn.textContent.toLowerCase().includes('loading')
     );
-    return loadingElements.length === 0;
+    return loadingElements.length === 0 && disabledButtons.length === 0;
   }, { timeout: 10000 });
 }
 

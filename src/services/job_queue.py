@@ -46,12 +46,14 @@ class JobType(Enum):
 class JobStatus(Enum):
     """Job processing status"""
 
+    SCHEDULED = "scheduled"  # Job scheduled for future execution
     QUEUED = "queued"
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
     RETRYING = "retrying"
     CANCELLED = "cancelled"
+    WAITING_DEPENDENCIES = "waiting_dependencies"  # Waiting for dependent jobs
 
 
 class JobPriority(Enum):
@@ -91,6 +93,12 @@ class BackgroundJob:
     retry_count: int = 0
     max_retries: int = 3
     retry_delay: int = 60  # seconds
+    retry_strategy: str = "exponential"  # exponential, linear, fixed
+
+    # Scheduling and dependencies
+    scheduled_for: Optional[datetime] = None  # When to execute the job
+    depends_on: List[str] = field(default_factory=list)  # Job IDs this job depends on
+    blocking: bool = False  # Whether this job blocks dependent jobs if it fails
 
     # User and tracking
     created_by: Optional[str] = None
@@ -164,27 +172,43 @@ class JobQueue:
         async with self._lock:
             self._jobs[job.id] = job
 
-            # Priority queue uses tuples: (priority, creation_time, job)
-            # Lower priority number = higher priority in queue
-            priority_value = job.priority.value * -1  # Reverse for proper ordering
-            await self._queue.put((priority_value, time.time(), job))
+            # Check if job is scheduled for future execution
+            if job.scheduled_for and job.scheduled_for > datetime.utcnow():
+                job.status = JobStatus.SCHEDULED
+                logger.info(
+                    f"Scheduled job {job.id} ({job.type.value}) for {job.scheduled_for.isoformat()}"
+                )
+                await self._notify_subscribers(
+                    job.id,
+                    "job_scheduled",
+                    {
+                        "job_id": job.id,
+                        "type": job.type.value,
+                        "scheduled_for": job.scheduled_for.isoformat(),
+                    },
+                )
+                return job.id
 
-            self._stats["jobs_queued"] += 1
+            # Check job dependencies
+            if job.depends_on:
+                if not await self._check_dependencies_ready(job):
+                    job.status = JobStatus.WAITING_DEPENDENCIES
+                    logger.info(
+                        f"Job {job.id} ({job.type.value}) waiting for dependencies: {job.depends_on}"
+                    )
+                    await self._notify_subscribers(
+                        job.id,
+                        "job_waiting_dependencies",
+                        {
+                            "job_id": job.id,
+                            "type": job.type.value,
+                            "dependencies": job.depends_on,
+                        },
+                    )
+                    return job.id
 
-            logger.info(
-                f"Queued job {job.id} ({job.type.value}) with priority {job.priority.value}"
-            )
-            await self._notify_subscribers(
-                job.id,
-                "job_queued",
-                {
-                    "job_id": job.id,
-                    "type": job.type.value,
-                    "priority": job.priority.value,
-                    "created_at": job.created_at.isoformat(),
-                },
-            )
-
+            # Queue immediately if no scheduling or dependencies
+            await self._add_to_queue(job)
             return job.id
 
     async def get_next_job(self) -> Optional[BackgroundJob]:
@@ -272,6 +296,9 @@ class JobQueue:
 
                 # Broadcast to WebSocket clients
                 self._broadcast_websocket_update(job, "completed")
+                
+                # Check for dependent jobs that can now be processed
+                await self.process_waiting_jobs()
 
     async def fail_job(self, job_id: str, error: str, retry: bool = True):
         """Mark job as failed and optionally retry"""
@@ -290,10 +317,11 @@ class JobQueue:
                         f"Job {job_id} failed, retrying in {job.retry_delay}s (attempt {job.retry_count}): {error}"
                     )
 
-                    # Schedule retry
-                    await asyncio.sleep(
-                        job.retry_delay * job.retry_count
-                    )  # Exponential backoff
+                    # Calculate retry delay using enhanced strategy
+                    retry_delay = await self._calculate_retry_delay(job)
+                    
+                    logger.info(f"Retrying job {job_id} in {retry_delay} seconds using {job.retry_strategy} strategy")
+                    await asyncio.sleep(retry_delay)
 
                     # Reset job state for retry
                     job.status = JobStatus.QUEUED
@@ -454,6 +482,182 @@ class JobQueue:
             logger.info(f"Cleaned up {removed_count} old jobs")
 
         return removed_count
+
+    async def _add_to_queue(self, job: BackgroundJob):
+        """Add job to the priority queue"""
+        job.status = JobStatus.QUEUED
+        # Priority queue uses tuples: (priority, creation_time, job)
+        # Lower priority number = higher priority in queue
+        priority_value = job.priority.value * -1  # Reverse for proper ordering
+        await self._queue.put((priority_value, time.time(), job))
+
+        self._stats["jobs_queued"] += 1
+
+        logger.info(
+            f"Queued job {job.id} ({job.type.value}) with priority {job.priority.value}"
+        )
+        await self._notify_subscribers(
+            job.id,
+            "job_queued",
+            {
+                "job_id": job.id,
+                "type": job.type.value,
+                "priority": job.priority.value,
+                "created_at": job.created_at.isoformat(),
+            },
+        )
+
+    async def _check_dependencies_ready(self, job: BackgroundJob) -> bool:
+        """Check if all job dependencies are completed"""
+        for dep_job_id in job.depends_on:
+            dep_job = self._jobs.get(dep_job_id)
+            if not dep_job:
+                logger.warning(f"Dependency job {dep_job_id} not found for job {job.id}")
+                return False
+            
+            if dep_job.status == JobStatus.FAILED and dep_job.blocking:
+                logger.warning(f"Blocking dependency {dep_job_id} failed for job {job.id}")
+                return False
+            
+            if dep_job.status not in [JobStatus.COMPLETED]:
+                return False
+        
+        return True
+
+    async def _calculate_retry_delay(self, job: BackgroundJob) -> int:
+        """Calculate retry delay based on retry strategy"""
+        base_delay = job.retry_delay
+        
+        if job.retry_strategy == "exponential":
+            return base_delay * (2 ** job.retry_count)
+        elif job.retry_strategy == "linear":
+            return base_delay * (job.retry_count + 1)
+        else:  # fixed
+            return base_delay
+
+    async def schedule_job(self, job: BackgroundJob, delay_seconds: int = 0, 
+                          scheduled_time: Optional[datetime] = None) -> str:
+        """Schedule a job for future execution"""
+        if scheduled_time:
+            job.scheduled_for = scheduled_time
+        elif delay_seconds > 0:
+            job.scheduled_for = datetime.utcnow() + timedelta(seconds=delay_seconds)
+        
+        return await self.enqueue(job)
+
+    async def add_job_dependency(self, job_id: str, depends_on_job_id: str, blocking: bool = False):
+        """Add a dependency to an existing job"""
+        async with self._lock:
+            if job_id in self._jobs:
+                job = self._jobs[job_id]
+                if depends_on_job_id not in job.depends_on:
+                    job.depends_on.append(depends_on_job_id)
+                    if blocking:
+                        job.blocking = True
+                
+                # Re-check if job can be queued now
+                if job.status == JobStatus.WAITING_DEPENDENCIES:
+                    if await self._check_dependencies_ready(job):
+                        await self._add_to_queue(job)
+
+    async def process_scheduled_jobs(self):
+        """Process jobs that are scheduled for execution"""
+        current_time = datetime.utcnow()
+        ready_jobs = []
+        
+        async with self._lock:
+            for job in self._jobs.values():
+                if (job.status == JobStatus.SCHEDULED and 
+                    job.scheduled_for and 
+                    job.scheduled_for <= current_time):
+                    ready_jobs.append(job)
+        
+        for job in ready_jobs:
+            logger.info(f"Processing scheduled job {job.id} ({job.type.value})")
+            
+            # Check dependencies before queueing
+            if job.depends_on:
+                if await self._check_dependencies_ready(job):
+                    await self._add_to_queue(job)
+                else:
+                    job.status = JobStatus.WAITING_DEPENDENCIES
+            else:
+                await self._add_to_queue(job)
+
+    async def process_waiting_jobs(self):
+        """Process jobs waiting for dependencies"""
+        waiting_jobs = []
+        
+        async with self._lock:
+            for job in self._jobs.values():
+                if job.status == JobStatus.WAITING_DEPENDENCIES:
+                    waiting_jobs.append(job)
+        
+        for job in waiting_jobs:
+            if await self._check_dependencies_ready(job):
+                logger.info(f"Dependencies ready for job {job.id} ({job.type.value})")
+                await self._add_to_queue(job)
+
+    def get_job_analytics(self, days: int = 7) -> Dict[str, Any]:
+        """Get detailed job analytics for the specified period"""
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        
+        # Filter jobs from the specified period
+        period_jobs = [
+            job for job in self._jobs.values() 
+            if job.created_at >= cutoff_date
+        ]
+        
+        # Calculate analytics
+        total_jobs = len(period_jobs)
+        completed_jobs = len([j for j in period_jobs if j.status == JobStatus.COMPLETED])
+        failed_jobs = len([j for j in period_jobs if j.status == JobStatus.FAILED])
+        
+        # Job type distribution
+        job_types = {}
+        for job in period_jobs:
+            job_type = job.type.value
+            if job_type not in job_types:
+                job_types[job_type] = {"total": 0, "completed": 0, "failed": 0}
+            job_types[job_type]["total"] += 1
+            if job.status == JobStatus.COMPLETED:
+                job_types[job_type]["completed"] += 1
+            elif job.status == JobStatus.FAILED:
+                job_types[job_type]["failed"] += 1
+        
+        # Average processing times by job type
+        processing_times = {}
+        for job in period_jobs:
+            if job.status == JobStatus.COMPLETED and job.elapsed_time():
+                job_type = job.type.value
+                if job_type not in processing_times:
+                    processing_times[job_type] = []
+                processing_times[job_type].append(job.elapsed_time().total_seconds())
+        
+        avg_processing_times = {}
+        for job_type, times in processing_times.items():
+            avg_processing_times[job_type] = sum(times) / len(times) if times else 0
+        
+        # Retry statistics
+        retry_stats = {
+            "jobs_with_retries": len([j for j in period_jobs if j.retry_count > 0]),
+            "total_retries": sum(j.retry_count for j in period_jobs),
+            "max_retries": max([j.retry_count for j in period_jobs], default=0)
+        }
+        
+        return {
+            "period_days": days,
+            "total_jobs": total_jobs,
+            "completed_jobs": completed_jobs,
+            "failed_jobs": failed_jobs,
+            "success_rate": (completed_jobs / total_jobs * 100) if total_jobs > 0 else 0,
+            "job_types": job_types,
+            "average_processing_times": avg_processing_times,
+            "retry_statistics": retry_stats,
+            "current_queue_size": self._queue.qsize(),
+            "scheduled_jobs": len([j for j in self._jobs.values() if j.status == JobStatus.SCHEDULED]),
+            "waiting_jobs": len([j for j in self._jobs.values() if j.status == JobStatus.WAITING_DEPENDENCIES])
+        }
 
     def _broadcast_websocket_update(self, job: BackgroundJob, event_type: str):
         """Broadcast job update via WebSocket (non-blocking)"""

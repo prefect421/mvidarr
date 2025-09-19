@@ -15,6 +15,12 @@
     "test:auth": "playwright test tests/e2e/auth.spec.js",
     "test:dashboard": "playwright test tests/e2e/dashboard.spec.js", 
     "test:artists": "playwright test tests/e2e/artists.spec.js",
+    "test:videos": "playwright test tests/e2e/video-management.spec.js",
+    "test:navigation": "playwright test tests/e2e/navigation-ui.spec.js",
+    "test:api": "playwright test tests/e2e/api-validation.spec.js",
+    "test:fixes": "playwright test tests/e2e/fixes-0.9.8.spec.js",
+    "test:core": "playwright test tests/e2e/auth.spec.js tests/e2e/dashboard.spec.js tests/e2e/artists.spec.js",
+    "test:extended": "playwright test tests/e2e/video-management.spec.js tests/e2e/navigation-ui.spec.js tests/e2e/api-validation.spec.js",
     "test:report": "playwright show-report",
     "test:install": "playwright install"
   },
