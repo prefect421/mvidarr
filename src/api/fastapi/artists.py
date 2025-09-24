@@ -5,6 +5,7 @@ Phase 3 Week 28: Artists API Complete Migration
 Migrated from src/api/artists.py (4,979 lines, 34 endpoints)
 """
 
+import asyncio
 import json
 import os
 from datetime import datetime, timedelta
@@ -73,6 +74,8 @@ class ArtistResponse(BaseModel):
     wikipedia_url: Optional[str] = None
     musicbrainz_id: Optional[str] = None
     spotify_id: Optional[str] = None
+    monitored: Optional[bool] = None
+    auto_download: Optional[bool] = None
     imvdb_metadata: Optional[Dict[str, Any]] = None  # Include metadata for song recommendations
     video_count: int = 0
     created_at: Optional[datetime] = None
@@ -86,6 +89,8 @@ class ArtistCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     imvdb_id: Optional[int] = None
     folder_path: Optional[str] = None
+    monitored: bool = True
+    auto_download: bool = False
     auto_discover: bool = True
 
 
@@ -102,6 +107,8 @@ class ArtistUpdateRequest(BaseModel):
     wikipedia_url: Optional[str] = None
     musicbrainz_id: Optional[str] = None
     spotify_id: Optional[str] = None
+    monitored: Optional[bool] = None
+    auto_download: Optional[bool] = None
 
 
 class ArtistSearchRequest(BaseModel):
@@ -190,17 +197,43 @@ async def ensure_artist_folder_path(artist: Artist, session: Session) -> str:
 @router.get("/", response_model=Dict[str, Any])
 async def list_artists(
     query: Optional[str] = Query(None, description="Search query"),
+    search: Optional[str] = Query(None, description="Search query (alternative name)"),
     sort_by: str = Query("name", pattern="^(name|video_count|created_at|updated_at)$"),
+    sort: str = Query("name", description="Sort field (alternative name)"),
     sort_order: str = Query("asc", pattern="^(asc|desc)$"),
+    order: str = Query("asc", description="Sort order (alternative name)"),
     limit: int = Query(50, ge=1, le=500),
+    per_page: int = Query(50, ge=1, le=500, description="Items per page (alternative name)"),
     offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Page number"),
     has_videos: Optional[bool] = Query(None, description="Filter by video existence"),
     has_imvdb: Optional[bool] = Query(None, description="Filter by IMVDb link"),
+    has_imvdb_id: Optional[bool] = Query(None, description="Filter by IMVDb ID (alternative name)"),
+    has_thumbnail: Optional[bool] = Query(None, description="Filter by thumbnail existence"),
+    monitored: Optional[bool] = Query(None, description="Filter by monitoring status"),
+    auto_download: Optional[bool] = Query(None, description="Filter by auto-download status"),
+    genre: Optional[str] = Query(None, description="Filter by genre"),
+    min_videos: Optional[int] = Query(None, description="Minimum video count"),
+    max_videos: Optional[int] = Query(None, description="Maximum video count"),
+    date_from: Optional[str] = Query(None, description="Filter by created date from"),
+    date_to: Optional[str] = Query(None, description="Filter by created date to"),
+    keywords: Optional[str] = Query(None, description="Filter by keywords"),
     current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """List all tracked artists with search and filtering - OPTIMIZED"""
     try:
+        # Handle alternative parameter names for frontend compatibility
+        search_query = query or search
+        sort_field = sort_by if sort_by != "name" else sort
+        sort_direction = sort_order if sort_order != "asc" else order
+        items_per_page = per_page if per_page != 50 else limit
+        has_imvdb_filter = has_imvdb if has_imvdb is not None else has_imvdb_id
+        
+        # Convert page-based pagination to offset-based
+        if page > 1:
+            offset = (page - 1) * items_per_page
+        
         # Start with optimized query approach
         try:
             from src.database.performance_optimizations import (
@@ -235,9 +268,9 @@ async def list_artists(
             )
 
         # Apply search filter
-        if query:
+        if search_query:
             search_filter = or_(
-                Artist.name.ilike(f"%{query}%"), Artist.name.ilike(f"%{query}%")
+                Artist.name.ilike(f"%{search_query}%"), Artist.name.ilike(f"%{search_query}%")
             )
             base_query = base_query.filter(search_filter)
 
@@ -252,26 +285,56 @@ async def list_artists(
                     func.coalesce(video_count_subquery.c.video_count, 0) == 0
                 )
 
-        if has_imvdb is not None:
-            if has_imvdb:
+        if has_imvdb_filter is not None:
+            if has_imvdb_filter:
                 base_query = base_query.filter(Artist.imvdb_id.isnot(None))
             else:
                 base_query = base_query.filter(Artist.imvdb_id.is_(None))
 
+        # Apply monitored filter
+        if monitored is not None:
+            base_query = base_query.filter(Artist.monitored == monitored)
+
+        # Apply auto_download filter
+        if auto_download is not None:
+            base_query = base_query.filter(Artist.auto_download == auto_download)
+
+        # Apply thumbnail filter
+        if has_thumbnail is not None:
+            if has_thumbnail:
+                base_query = base_query.filter(
+                    or_(Artist.thumbnail_path.isnot(None), Artist.thumbnail_url.isnot(None))
+                )
+            else:
+                base_query = base_query.filter(
+                    and_(Artist.thumbnail_path.is_(None), Artist.thumbnail_url.is_(None))
+                )
+
+        # Apply video count filters
+        if min_videos is not None:
+            base_query = base_query.having(
+                func.coalesce(video_count_subquery.c.video_count, 0) >= min_videos
+            )
+        
+        if max_videos is not None:
+            base_query = base_query.having(
+                func.coalesce(video_count_subquery.c.video_count, 0) <= max_videos
+            )
+
         # Apply sorting
-        if sort_by == "name":
+        if sort_field == "name":
             sort_column = Artist.name
-        elif sort_by == "video_count":
+        elif sort_field == "video_count":
             sort_column = "video_count"
-        elif sort_by == "created_at":
+        elif sort_field == "created_at":
             sort_column = Artist.created_at
-        elif sort_by == "updated_at":
+        elif sort_field == "updated_at":
             sort_column = Artist.updated_at
         else:
             sort_column = Artist.name
 
-        if sort_order == "desc":
-            if sort_by == "video_count":
+        if sort_direction == "desc":
+            if sort_field == "video_count":
                 base_query = base_query.order_by(desc("video_count"))
             else:
                 base_query = base_query.order_by(desc(sort_column))
@@ -282,7 +345,7 @@ async def list_artists(
         total_count = base_query.count()
 
         # Apply pagination
-        results = base_query.offset(offset).limit(limit).all()
+        results = base_query.offset(offset).limit(items_per_page).all()
 
         # Process results
         artists = []
@@ -297,6 +360,18 @@ async def list_artists(
             # Ensure folder path
             await ensure_artist_folder_path(artist, session)
 
+            # Check if artist has thumbnail
+            has_thumbnail = bool(
+                getattr(artist, "thumbnail_path", None) or 
+                getattr(artist, "thumbnail_url", None)
+            )
+            
+            # Check if artist has IMVDB data
+            has_imvdb_data = bool(
+                artist.imvdb_id or 
+                getattr(artist, "imvdb_metadata", None)
+            )
+            
             artist_dict = {
                 "id": artist.id,
                 "name": artist.name,
@@ -314,6 +389,10 @@ async def list_artists(
                 "wikipedia_url": getattr(artist, "wikipedia_url", None),
                 "musicbrainz_id": getattr(artist, "musicbrainz_id", None),
                 "spotify_id": artist.spotify_id,
+                "monitored": getattr(artist, "monitored", True),  # Default to True for compatibility
+                "auto_download": getattr(artist, "auto_download", False),  # Default to False
+                "has_thumbnail": has_thumbnail,
+                "has_imvdb_data": has_imvdb_data,
                 "video_count": video_count or 0,
                 "created_at": (
                     artist.created_at.isoformat() if artist.created_at else None
@@ -324,17 +403,36 @@ async def list_artists(
             }
             artists.append(artist_dict)
 
+        # Calculate pagination info for frontend compatibility
+        total_pages = (total_count + items_per_page - 1) // items_per_page
+        current_page = (offset // items_per_page) + 1
+        
         return {
             "artists": artists,
+            "count": len(artists),
+            "total": total_count,
+            "page": current_page,
+            "pages": total_pages,
+            "per_page": items_per_page,
             "search": {
-                "query": query,
-                "filters": {"has_videos": has_videos, "has_imvdb": has_imvdb},
+                "query": search_query,
+                "filters": {
+                    "has_videos": has_videos, 
+                    "has_imvdb": has_imvdb_filter,
+                    "has_thumbnail": has_thumbnail,
+                    "monitored": monitored,
+                    "auto_download": auto_download,
+                    "min_videos": min_videos,
+                    "max_videos": max_videos,
+                },
             },
             "pagination": {
                 "total": total_count,
-                "limit": limit,
+                "limit": items_per_page,
                 "offset": offset,
-                "has_more": offset + limit < total_count,
+                "page": current_page,
+                "pages": total_pages,
+                "has_more": offset + items_per_page < total_count,
             },
         }
 
@@ -383,6 +481,8 @@ async def get_artist(
             wikipedia_url=getattr(artist, "wikipedia_url", None),
             musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
+            monitored=getattr(artist, "monitored", True),  # Default to True for compatibility
+            auto_download=getattr(artist, "auto_download", False),  # Default to False
             imvdb_metadata=artist.imvdb_metadata,  # Include metadata for song recommendations
             video_count=video_count or 0,
             created_at=artist.created_at,
@@ -415,6 +515,8 @@ async def create_artist(
         # Create new artist
         artist = Artist(
             name=artist_data.name,
+            monitored=artist_data.monitored,
+            auto_download=artist_data.auto_download,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -472,6 +574,8 @@ async def create_artist(
             wikipedia_url=getattr(artist, "wikipedia_url", None),
             musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
+            monitored=getattr(artist, "monitored", True),
+            auto_download=getattr(artist, "auto_download", False),
             video_count=0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
@@ -716,6 +820,18 @@ async def advanced_search(
         # Process results
         artists = []
         for artist, video_count in results:
+            # Check if artist has thumbnail
+            has_thumbnail = bool(
+                getattr(artist, "thumbnail_path", None) or 
+                getattr(artist, "thumbnail_url", None)
+            )
+            
+            # Check if artist has IMVDB data
+            has_imvdb_data = bool(
+                artist.imvdb_id or 
+                getattr(artist, "imvdb_metadata", None)
+            )
+            
             artist_dict = {
                 "id": artist.id,
                 "name": artist.name,
@@ -724,6 +840,10 @@ async def advanced_search(
                 "imvdb_id": artist.imvdb_id,
                 "formed_year": getattr(artist, "formed_year", None),
                 "location": getattr(artist, "location", None),
+                "monitored": getattr(artist, "monitored", True),  # Default to True for compatibility
+                "auto_download": getattr(artist, "auto_download", False),  # Default to False
+                "has_thumbnail": has_thumbnail,
+                "has_imvdb_data": has_imvdb_data,
                 "video_count": video_count or 0,
                 "thumbnail_url": f"/api/artists/{artist.id}/thumbnail",
             }
@@ -1467,6 +1587,8 @@ async def bulk_edit_artists(
             "wikipedia_url",
             "musicbrainz_id",
             "spotify_id",
+            "monitored",
+            "auto_download",
         }
 
         invalid_fields = set(request.updates.keys()) - allowed_fields
@@ -1750,6 +1872,264 @@ async def get_artist_navigation(
     except Exception as e:
         logger.error(f"Error getting artist navigation for {artist_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{artist_id}/videos/discover")
+async def discover_artist_videos(
+    artist_id: int = FastAPIPath(..., ge=1),
+    request: Dict[str, Any] = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Enhanced video discovery with filtering, sorting, and bulk operations"""
+    try:
+        # Get the artist
+        artist = session.query(Artist).filter(Artist.id == artist_id).first()
+        if not artist:
+            raise HTTPException(status_code=404, detail="Artist not found")
+
+        # Get enhanced discovery options from request
+        limit = min(int(request.get("limit", 50)), 200)  # Increased max limit
+        auto_import = request.get("auto_import", False)
+
+        # New filtering options
+        filter_options = request.get("filters", {})
+        year_from = filter_options.get("year_from")
+        year_to = filter_options.get("year_to")
+        include_existing = filter_options.get("include_existing", True)
+        directors_filter = filter_options.get("directors", [])
+
+        # Sorting options
+        sort_by = request.get("sort_by", "year")  # year, title, directors
+        sort_order = request.get("sort_order", "desc")  # desc, asc
+
+        # Extract artist data for use outside session
+        artist_name = artist.name
+        artist_imvdb_id = artist.imvdb_id
+
+        # Search both IMVDb and YouTube in parallel for better performance
+        async def search_imvdb():
+            imvdb_videos = []
+            try:
+                from src.services.imvdb_service import imvdb_service
+                
+                if artist_imvdb_id:
+                    logger.info(f"Using IMVDb ID {artist_imvdb_id} for video discovery for artist {artist_name}")
+                    videos_data = await asyncio.to_thread(imvdb_service.get_artist_videos_by_id, artist_imvdb_id, limit)
+                else:
+                    logger.info(f"Using name search for video discovery for artist {artist_name}")
+                    videos_data = await asyncio.to_thread(imvdb_service.search_artist_videos, artist_name, limit)
+
+                if videos_data and videos_data.get("videos"):
+                    imvdb_videos = videos_data["videos"]
+                    logger.info(f"Found {len(imvdb_videos)} videos from IMVDb for {artist_name}")
+                    
+                    # Set source field for all IMVDb videos
+                    for video in imvdb_videos:
+                        video["source"] = "imvdb"
+                    
+                    # Debug: Log sample video structure 
+                    if imvdb_videos:
+                        sample_video = imvdb_videos[0]
+                        logger.debug(f"Sample IMVDb video structure: {sample_video}")
+                        logger.debug(f"Sample video fields: {list(sample_video.keys())}")
+                        logger.debug(f"Sample video title: {sample_video.get('song_title')} / {sample_video.get('title')}")
+                        logger.debug(f"Sample video imvdb_id: {sample_video.get('imvdb_id')} / {sample_video.get('id')}")
+                else:
+                    logger.warning(f"No videos returned from IMVDb for {artist_name}, response: {videos_data}")
+            except Exception as e:
+                logger.warning(f"IMVDb video discovery failed for {artist_name}: {e}")
+            return imvdb_videos
+
+        async def search_youtube():
+            youtube_videos = []
+            try:
+                from src.services.youtube_search_service import youtube_search_service
+                logger.info(f"Searching YouTube for videos by {artist_name}")
+                
+                # Search YouTube for music videos by this artist
+                youtube_results = await asyncio.to_thread(youtube_search_service.search_artist_videos, artist_name, limit)
+                
+                if youtube_results and youtube_results.get("videos"):
+                    yt_video_list = youtube_results["videos"]
+                    logger.info(f"Found {len(yt_video_list)} videos from YouTube for {artist_name}")
+                    
+                    # Convert YouTube results to our standard format
+                    for yt_video in yt_video_list:
+                        youtube_id = yt_video.get("youtube_id")
+                        youtube_video = {
+                            "id": youtube_id,
+                            "youtube_id": youtube_id,  # Frontend expects this field
+                            "title": yt_video.get("title", "Unknown"),
+                            "song_title": yt_video.get("title", "Unknown"),
+                            "url": f"https://youtube.com/watch?v={youtube_id}",
+                            "youtube_url": f"https://youtube.com/watch?v={youtube_id}",
+                            "artist": {"name": artist_name},
+                            "year": yt_video.get("upload_year"),
+                            "duration": yt_video.get("duration"),
+                            "image_url": yt_video.get("thumbnail_url"),
+                            "view_count": yt_video.get("view_count"),
+                            "channel": yt_video.get("channel_title"),
+                            "source": "youtube"
+                        }
+                        youtube_videos.append(youtube_video)
+                        
+                    logger.info(f"Converted {len(youtube_videos)} YouTube videos to standard format")
+                else:
+                    logger.warning(f"No YouTube results found for {artist_name}")
+                    
+            except Exception as e:
+                logger.warning(f"YouTube video search failed for {artist_name}: {e}")
+            return youtube_videos
+
+        # Execute both searches in parallel
+        logger.info(f"Starting parallel search on IMVDb and YouTube for {artist_name}")
+        imvdb_videos, youtube_videos = await asyncio.gather(search_imvdb(), search_youtube())
+
+        # Combine IMVDb and YouTube results
+        all_discovered_videos = imvdb_videos + youtube_videos
+        logger.info(f"Total discovered videos: {len(all_discovered_videos)} (IMVDb: {len(imvdb_videos)}, YouTube: {len(youtube_videos)})")
+
+        # Get existing videos from database
+        existing_videos = []
+        try:
+            from src.database.models import Video
+            db_videos = session.query(Video).filter(Video.artist_id == artist_id).all()
+            existing_videos = [{"id": v.id, "title": v.title, "url": v.youtube_url} for v in db_videos]
+            logger.info(f"Found {len(existing_videos)} existing videos for {artist_name}")
+        except Exception as e:
+            logger.warning(f"Failed to get existing videos for {artist_name}: {e}")
+
+        # Process and filter discovered videos
+        discovered_videos = []
+        stats = {
+            "total_discovered": len(all_discovered_videos),
+            "total_existing": len(existing_videos),
+            "imvdb_results": len(imvdb_videos),
+            "youtube_results": len(youtube_videos),
+            "with_thumbnails": 0,
+            "high_quality": 0,
+            "available_for_import": 0
+        }
+
+        # Note: Discovery shows only external results (IMVDb/YouTube), not database videos
+        # Database videos are used only for existence checking and filtering
+
+        # Process all discovered videos (IMVDb + YouTube)
+        logger.info(f"Processing {len(all_discovered_videos)} discovered videos for enrichment")
+        for video in all_discovered_videos:
+            # Check if video already exists
+            video_exists = any(
+                existing_video.get("url") == video.get("url") or 
+                existing_video.get("title").lower() == video.get("title", "").lower()
+                for existing_video in existing_videos
+            )
+
+            # Skip videos that already exist in database (discovery shows only new videos)
+            if video_exists:
+                continue
+
+            # Apply year filtering
+            video_year = video.get("year")
+            if year_from and video_year and int(video_year) < int(year_from):
+                continue
+            if year_to and video_year and int(video_year) > int(year_to):
+                continue
+
+            # Apply directors filtering
+            if directors_filter:
+                video_directors = video.get("directors", [])
+                if not any(director in video_directors for director in directors_filter):
+                    continue
+
+            # Determine video source and ensure proper ID fields
+            video_source = video.get("source", "imvdb")
+            youtube_id = video.get("youtube_id")
+            logger.debug(f"Processing video: {video.get('song_title', video.get('title', 'Unknown'))} | Source: {video_source} | Has ID: {video.get('id')} | Has youtube_id: {youtube_id}")
+            
+            # For IMVDb videos, ensure we have a valid ID
+            if video_source == "imvdb":
+                # IMVDb API returns videos with 'id' field - map this to 'imvdb_id' for frontend
+                raw_id = video.get("id")
+                existing_imvdb_id = video.get("imvdb_id")
+                video_id_field = video.get("video_id")
+                
+                print(f"DEBUG: IMVDb video processing - title: {video.get('song_title', 'Unknown')}")
+                print(f"DEBUG: Raw fields - id: {raw_id}, imvdb_id: {existing_imvdb_id}, video_id: {video_id_field}")
+                
+                imvdb_id = existing_imvdb_id or raw_id or video_id_field
+                # Convert to string if it's a number (IMVDb IDs are large integers)
+                if imvdb_id is not None:
+                    imvdb_id = str(imvdb_id)
+                    print(f"DEBUG: Final imvdb_id: {imvdb_id}")
+                    logger.debug(f"IMVDb video ID assignment successful: {video.get('song_title', 'Unknown')} -> imvdb_id: {imvdb_id}")
+                else:
+                    print(f"DEBUG: No valid ID found for IMVDb video: {video.get('song_title', 'Unknown')}")
+                    logger.warning(f"IMVDb video missing ID field: {video.get('song_title', 'Unknown')}")
+            else:
+                imvdb_id = video.get("imvdb_id")
+            
+            # Enrich video data - normalize field names for frontend compatibility
+            enriched_video = {
+                **video,
+                "title": video.get("song_title") or video.get("title", "Unknown"),  # Normalize title field
+                "song_title": video.get("song_title", "Unknown"),  # Keep original for compatibility
+                "exists_in_library": video_exists,
+                "already_exists": video_exists,  # Frontend compatibility
+                "imported": False,  # New videos are not imported yet
+                "youtube_id": youtube_id,  # Frontend expects this field
+                "imvdb_id": imvdb_id,  # Frontend expects this field  
+                "can_import": not video_exists and (video.get("url") or video.get("youtube_url") or imvdb_id),
+                "thumbnail_available": bool(video.get("image_url") or video.get("image")),
+                "thumbnail_url": video.get("image_url") or (video.get("image", {}).get("o") if isinstance(video.get("image"), dict) else None),
+                "quality_indicator": video.get("quality", "unknown"),
+                "source": video_source
+            }
+            
+            # Debug: Verify the enriched video has the correct fields
+            if video_source == "imvdb":
+                print(f"DEBUG: Final enriched video - title: {enriched_video.get('song_title', 'Unknown')}, imvdb_id: {enriched_video.get('imvdb_id')}")
+                logger.info(f"ENRICHED VIDEO DEBUG - {enriched_video.get('song_title', 'Unknown')} | imvdb_id set to: {enriched_video.get('imvdb_id')} | source: {enriched_video.get('source')}")
+            
+            discovered_videos.append(enriched_video)
+
+            # Update stats
+            if enriched_video["thumbnail_available"]:
+                stats["with_thumbnails"] += 1
+            if enriched_video["can_import"]:
+                stats["available_for_import"] += 1
+            if video.get("quality") in ["hd", "high"]:
+                stats["high_quality"] += 1
+
+        # Sort results
+        if sort_by == "year":
+            discovered_videos.sort(
+                key=lambda x: int(x.get("year", 0) or 0),
+                reverse=(sort_order == "desc")
+            )
+        elif sort_by == "title":
+            discovered_videos.sort(
+                key=lambda x: (x.get("song_title") or x.get("title", "")).lower(),
+                reverse=(sort_order == "desc")
+            )
+
+        logger.info(f"Video discovery completed for {artist_name}: {len(discovered_videos)} videos after filtering")
+
+        return {
+            "success": True,
+            "artist_id": artist_id,
+            "artist_name": artist_name,
+            "discovered_videos": discovered_videos,
+            "stats": stats,
+            "filters_applied": filter_options,
+            "sort_config": {"sort_by": sort_by, "sort_order": sort_order}
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error discovering videos for artist {artist_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Video discovery failed: {str(e)}")
 
 
 # ========================================================================================

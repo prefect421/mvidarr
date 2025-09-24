@@ -24,8 +24,8 @@ celery_app = Celery(
     broker=CELERY_BROKER_URL,
     backend=CELERY_RESULT_BACKEND,
     include=[
-        "src.jobs.video_download_tasks",
-        "src.jobs.metadata_tasks",
+        "src.jobs.simple_download_task",
+        "src.jobs.metadata_tasks", 
         "src.jobs.image_processing_tasks",
         "src.jobs.ffmpeg_processing_tasks",
     ],

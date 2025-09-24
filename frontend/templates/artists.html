@@ -618,11 +618,13 @@ function loadArtists(page = 1, resetPage = false) {
                             <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})">
                         </div>
                         <div class="artist-thumbnail">
-                            <img src="/api/artists/${artist.id}/thumbnail" 
-                                 alt="${artist.name}" onerror="handleThumbnailError(this)">
+                            <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${artist.name} details">
+                                <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" 
+                                     alt="${artist.name}" onerror="handleThumbnailError(this)">
+                            </a>
                         </div>
                         <div class="artist-info">
-                            <h3>${artist.name}</h3>
+                            <h3><a href="/artist/${artist.id}" class="artist-name-link" title="View ${artist.name} details">${artist.name}</a></h3>
                             <div class="artist-stats">
                                 <span class="stat">Videos: ${artist.video_count || 0}</span>
                                 <span class="stat ${artist.monitored ? 'monitored' : 'not-monitored'}" title="${artist.monitored ? 'Monitored' : 'Not Monitored'}">
@@ -700,11 +702,13 @@ function loadArtists(page = 1, resetPage = false) {
                                     <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})">
                                 </div>
                                 <div class="artist-thumbnail">
-                                    <img src="/api/artists/${artist.id}/thumbnail" 
-                                         alt="${artist.name}" onerror="handleThumbnailError(this)">
+                                    <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${artist.name} details">
+                                        <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" 
+                                             alt="${artist.name}" onerror="handleThumbnailError(this)">
+                                    </a>
                                 </div>
                                 <div class="artist-info">
-                                    <h3>${artist.name}</h3>
+                                    <h3><a href="/artist/${artist.id}" class="artist-name-link" title="View ${artist.name} details">${artist.name}</a></h3>
                                     <div class="artist-stats">
                                         <span class="stat">Videos: N/A</span>
                                         <span class="stat ${artist.monitored ? 'monitored' : 'not-monitored'}" title="${artist.monitored ? 'Monitored' : 'Not Monitored'}">
@@ -2010,7 +2014,7 @@ function loadMergeArtists() {
                 <label>
                     <input type="radio" name="primaryArtist" value="${artist.id}" onchange="selectPrimaryArtist(${artist.id})">
                     <div class="merge-artist-info">
-                        <img src="/api/artists/${artist.id}/thumbnail" alt="${artist.name}" onerror="handleThumbnailError(this)">
+                        <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" alt="${artist.name}" onerror="handleThumbnailError(this)">
                         <div class="merge-artist-details">
                             <h4>${artist.name}</h4>
                             <p>${artist.video_count || 0} videos</p>
@@ -3380,6 +3384,36 @@ function updateArtistPagination(data) {
 }
 
 .artist-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Artist name and thumbnail link styles */
+.artist-name-link {
+    color: var(--text-primary, #fff);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.artist-name-link:hover {
+    color: var(--text-accent, #00d4ff);
+    text-decoration: none;
+}
+
+.artist-thumbnail-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.2s ease;
+}
+
+.artist-thumbnail-link:hover {
+    opacity: 0.8;
+}
+
+.artist-thumbnail-link img {
     width: 100%;
     height: 100%;
     object-fit: cover;

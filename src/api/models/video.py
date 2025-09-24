@@ -106,8 +106,8 @@ class VideoCreateRequest(BaseRequest, GenresMixin, UrlValidationMixin):
     url: Optional[HttpUrl] = Field(None, description="Video source URL")
     youtube_url: Optional[HttpUrl] = Field(None, description="YouTube URL")
     status: str = Field(
-        default="wanted",
-        pattern="^(wanted|ignored|downloaded|failed|processing)$",
+        default="WANTED",
+        pattern="^(WANTED|DOWNLOADING|DOWNLOADED|IGNORED|FAILED|MONITORED)$",
         description="Initial video status",
     )
     priority: int = Field(
@@ -128,7 +128,7 @@ class VideoUpdateRequest(BaseRequest, GenresMixin, UrlValidationMixin):
     url: Optional[HttpUrl] = None
     youtube_url: Optional[HttpUrl] = None
     status: Optional[str] = Field(
-        None, pattern="^(wanted|ignored|downloaded|failed|processing|queued)$"
+        None, pattern="^(WANTED|DOWNLOADING|DOWNLOADED|IGNORED|FAILED|MONITORED)$"
     )
 
     @validator("title")
@@ -149,7 +149,7 @@ class VideoSearchRequest(BaseRequest, PaginationRequest):
     artist_id: Optional[int] = Field(None, ge=1, description="Filter by artist ID")
     status: Optional[str] = Field(
         None,
-        pattern="^(wanted|ignored|downloaded|failed|processing|queued)$",
+        pattern="^(WANTED|DOWNLOADING|DOWNLOADED|IGNORED|FAILED|MONITORED)$",
         description="Filter by status",
     )
     year: Optional[int] = Field(
@@ -240,7 +240,7 @@ class VideoBulkStatusUpdateRequest(BulkOperationRequest):
 
     status: str = Field(
         ...,
-        pattern="^(wanted|ignored|downloaded|failed|processing|queued)$",
+        pattern="^(WANTED|DOWNLOADING|DOWNLOADED|IGNORED|FAILED|MONITORED)$",
         description="New status for all specified videos",
     )
     reason: Optional[str] = Field(

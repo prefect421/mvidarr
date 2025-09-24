@@ -1,149 +1,155 @@
 #!/usr/bin/env python3
 """
 Fix Unlinked Videos Utility
-
-This script identifies and fixes videos that were downloaded successfully but not
-properly linked to their local files. This addresses the race condition issue
-where download metadata wasn't available when _update_video_after_download was called.
-
-Usage: python3 fix_unlinked_videos.py [--dry-run] [--video-id ID]
+Identifies and fixes videos that were downloaded but not properly linked to local files.
 """
 
-import sys
 import os
+import sys
 import argparse
-from pathlib import Path
+from datetime import datetime, timedelta
 
-# Add the project root to sys.path so we can import modules
-sys.path.insert(0, str(Path(__file__).parent))
+# Add the project root to the path
+sys.path.insert(0, '/home/mike/mvidarr')
 
 from src.database.connection import get_db
-from src.database.models import Video, Download, VideoStatus
+from src.database.models import Video, VideoStatus, Artist, Download
 from src.jobs.simple_download_task import _update_video_after_download
-from src.utils.logger import get_logger
+def logger_info(msg):
+    print(f"[INFO] {msg}")
 
-logger = get_logger("fix_unlinked_videos")
+def logger_warning(msg):
+    print(f"[WARNING] {msg}")
+    
+def logger_error(msg):
+    print(f"[ERROR] {msg}")
 
+class logger:
+    @staticmethod
+    def info(msg):
+        logger_info(msg)
+    
+    @staticmethod
+    def warning(msg):
+        logger_warning(msg)
+    
+    @staticmethod
+    def error(msg):
+        logger_error(msg)
 
-def find_unlinked_videos():
-    """Find videos that are marked as DOWNLOADED but have no local_path"""
-    with get_db() as session:
-        unlinked_videos = session.query(Video).filter(
-            Video.status == VideoStatus.DOWNLOADED,
-            Video.local_path.is_(None)
-        ).all()
+def find_unlinked_videos(session, video_ids=None, hours_back=24):
+    """Find videos that are marked as downloaded but have no local_path"""
+    query = session.query(Video).filter(
+        Video.status == VideoStatus.DOWNLOADED,
+        Video.local_path.is_(None)
+    )
+    
+    if video_ids:
+        query = query.filter(Video.id.in_(video_ids))
+    
+    if hours_back:
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+        query = query.filter(Video.created_at >= cutoff_time)
+    
+    return query.all()
+
+def fix_video_linking(video, session, dry_run=False):
+    """Fix a single video's file linking"""
+    logger.info(f"Attempting to fix video {video.id}: {video.title}")
+    
+    # Find the corresponding download record
+    download = session.query(Download).filter(
+        Download.video_id == video.id,
+        Download.status == 'completed'
+    ).order_by(Download.download_date.desc()).first()
+    
+    if not download:
+        logger.warning(f"No completed download record found for video {video.id}")
+        return False
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would attempt to link video {video.id} using download {download.id}")
+        return True
+    
+    try:
+        # Use the existing function to update the video
+        _update_video_after_download(video, download, session)
+        session.commit()
         
-        logger.info(f"Found {len(unlinked_videos)} unlinked videos")
-        return [(video.id, video.title, video.artist.name if video.artist else "Unknown") 
-                for video in unlinked_videos]
-
-
-def fix_video(video_id, dry_run=False):
-    """Fix a specific video by running the file linking process"""
-    with get_db() as session:
-        video = session.query(Video).filter(Video.id == video_id).first()
-        if not video:
-            logger.error(f"Video {video_id} not found")
-            return False
-            
-        download = session.query(Download).filter(Download.video_id == video_id).first()
-        if not download:
-            logger.error(f"No download record found for video {video_id}")
-            return False
-            
+        # Refresh and check if it worked
+        session.refresh(video)
         if video.local_path:
-            logger.info(f"Video {video_id} already has local_path: {video.local_path}")
+            logger.info(f"✅ Successfully linked video {video.id} to {video.local_path}")
             return True
-            
-        logger.info(f"Fixing video {video_id}: {video.title}")
-        
-        if dry_run:
-            logger.info(f"DRY RUN: Would fix video {video_id}")
-            
-            # Check if we have the necessary data
-            if download.download_metadata:
-                task_result = download.download_metadata.get('task_result', {})
-                output_files = task_result.get('output_files', [])
-                if output_files:
-                    expected_file = output_files[0]
-                    logger.info(f"DRY RUN: Expected file: {expected_file}")
-                    logger.info(f"DRY RUN: File exists: {os.path.exists(expected_file)}")
-                else:
-                    logger.warning(f"DRY RUN: No output files in metadata")
-            else:
-                logger.warning(f"DRY RUN: No download metadata")
-            return True
-        
-        try:
-            _update_video_after_download(video, download, session)
-            session.refresh(video)
-            
-            if video.local_path:
-                logger.info(f"✅ Successfully fixed video {video_id}")
-                logger.info(f"   Local path: {video.local_path}")
-                logger.info(f"   Quality: {video.quality}")
-                logger.info(f"   Duration: {video.duration}s")
-                return True
-            else:
-                logger.warning(f"❌ Failed to fix video {video_id} - no local_path set")
-                return False
-                
-        except Exception as e:
-            logger.error(f"❌ Error fixing video {video_id}: {e}")
+        else:
+            logger.warning(f"❌ Failed to link video {video.id} - no local_path set")
             return False
-
+            
+    except Exception as e:
+        logger.error(f"❌ Error fixing video {video.id}: {e}")
+        session.rollback()
+        return False
 
 def main():
-    parser = argparse.ArgumentParser(description="Fix unlinked downloaded videos")
-    parser.add_argument("--dry-run", action="store_true", 
-                       help="Show what would be fixed without making changes")
-    parser.add_argument("--video-id", type=int, 
-                       help="Fix specific video ID")
+    parser = argparse.ArgumentParser(description='Fix videos that were downloaded but not linked to local files')
+    parser.add_argument('--video-ids', type=str, help='Comma-separated list of video IDs to fix (e.g., 331,332,333)')
+    parser.add_argument('--hours-back', type=int, default=24, help='Only fix videos created in the last N hours (default: 24)')
+    parser.add_argument('--dry-run', action='store_true', help='Show what would be fixed without making changes')
+    parser.add_argument('--all', action='store_true', help='Fix all unlinked videos regardless of age')
     
     args = parser.parse_args()
     
-    if args.video_id:
-        # Fix specific video
-        logger.info(f"Fixing specific video ID: {args.video_id}")
-        success = fix_video(args.video_id, args.dry_run)
-        sys.exit(0 if success else 1)
+    if args.all:
+        args.hours_back = None
     
-    # Find and fix all unlinked videos
-    unlinked_videos = find_unlinked_videos()
+    video_ids = None
+    if args.video_ids:
+        try:
+            video_ids = [int(x.strip()) for x in args.video_ids.split(',')]
+            logger.info(f"Targeting specific video IDs: {video_ids}")
+        except ValueError:
+            logger.error("Invalid video IDs format. Use comma-separated integers like: 331,332,333")
+            return 1
     
-    if not unlinked_videos:
-        logger.info("✅ No unlinked videos found. All downloaded videos are properly linked!")
-        return
-    
-    logger.info(f"Found {len(unlinked_videos)} unlinked videos:")
-    for video_id, title, artist in unlinked_videos:
-        logger.info(f"  {video_id}: {artist} - {title}")
-    
-    if args.dry_run:
-        logger.info("Running in DRY RUN mode - no changes will be made")
-    
-    fixed_count = 0
-    failed_count = 0
-    
-    for video_id, title, artist in unlinked_videos:
-        logger.info(f"\nProcessing video {video_id}: {artist} - {title}")
+    with get_db() as session:
+        # Find unlinked videos
+        unlinked_videos = find_unlinked_videos(session, video_ids, args.hours_back)
         
-        if fix_video(video_id, args.dry_run):
-            fixed_count += 1
+        if not unlinked_videos:
+            logger.info("No unlinked videos found")
+            return 0
+        
+        logger.info(f"Found {len(unlinked_videos)} unlinked videos:")
+        for video in unlinked_videos:
+            artist_name = "Unknown Artist"
+            if video.artist_id:
+                artist = session.query(Artist).filter(Artist.id == video.artist_id).first()
+                if artist:
+                    artist_name = artist.name
+            logger.info(f"  Video {video.id}: {video.title} by {artist_name}")
+        
+        if args.dry_run:
+            logger.info("\n[DRY RUN MODE] - No changes will be made")
+        
+        # Fix each video
+        fixed_count = 0
+        failed_count = 0
+        
+        for video in unlinked_videos:
+            success = fix_video_linking(video, session, args.dry_run)
+            if success:
+                fixed_count += 1
+            else:
+                failed_count += 1
+        
+        if not args.dry_run:
+            logger.info(f"\n✅ Fixed {fixed_count} videos")
+            if failed_count > 0:
+                logger.warning(f"❌ Failed to fix {failed_count} videos")
         else:
-            failed_count += 1
+            logger.info(f"\n[DRY RUN] Would attempt to fix {len(unlinked_videos)} videos")
     
-    logger.info(f"\nSummary:")
-    logger.info(f"  Total unlinked videos: {len(unlinked_videos)}")
-    logger.info(f"  Successfully fixed: {fixed_count}")
-    logger.info(f"  Failed to fix: {failed_count}")
-    
-    if not args.dry_run and fixed_count > 0:
-        logger.info(f"✅ Fixed {fixed_count} unlinked videos!")
-    
-    if failed_count > 0:
-        logger.warning(f"⚠️  {failed_count} videos could not be fixed. Check logs for details.")
+    return 0
 
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    sys.exit(main())

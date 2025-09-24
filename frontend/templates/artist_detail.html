@@ -2745,6 +2745,10 @@ div.artist-header-actions button.btn iconify-icon {
                         <iconify-icon icon="tabler:trash"></iconify-icon>
                         <span>Delete Selected</span>
                     </button>
+                    <button onclick="refreshAllVideoThumbnails()" class="btn btn-warning" id="bulkThumbnailRefreshBtn" title="Refresh thumbnails for all videos">
+                        <iconify-icon icon="tabler:photo"></iconify-icon>
+                        <span>Refresh All Thumbnails</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -3699,7 +3703,7 @@ function renderArtistHeader(artist, statistics) {
     const headerHtml = `
         <div class="artist-header-content">
             <div class="artist-thumbnail-large">
-                <img src="/api/artists/${artist.id}/thumbnail" alt="${artist.name}" onerror="handleThumbnailError(this)">
+                <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" alt="${artist.name}" onerror="handleThumbnailError(this)">
             </div>
             <div class="artist-header-info">
                 <h1>${artist.name}</h1>
@@ -3724,10 +3728,6 @@ function renderArtistHeader(artist, statistics) {
                             <button type="button" onclick="viewEnrichmentHistory()" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.6rem; flex: 0 0 auto; gap: 0.3rem; min-width: auto; width: auto;">
                                 <iconify-icon icon="tabler:history" style="font-size: 0.9rem;"></iconify-icon>
                                 Enrichment History
-                            </button>
-                            <button type="button" onclick="MVidarr.showJobDashboard()" class="btn btn-info" style="font-size: 0.8rem; padding: 0.4rem 0.6rem; flex: 0 0 auto; gap: 0.3rem; min-width: auto; width: auto;" title="View active background jobs">
-                                <iconify-icon icon="tabler:activity" style="font-size: 0.9rem;"></iconify-icon>
-                                Jobs
                             </button>
                         </div>
                     </div>
@@ -5401,6 +5401,41 @@ function renderDiscoverResults(data) {
     
     // Videos
     if (data.discovered_videos && data.discovered_videos.length > 0) {
+        // Debug: Log video data structure to understand IMVDb ID issue
+        const imvdbVideos = data.discovered_videos.filter(v => v.source === 'imvdb').slice(0, 3);
+        const youtubeVideos = data.discovered_videos.filter(v => v.source === 'youtube_search').slice(0, 1);
+        
+        console.log('🔍 DEBUG: First 3 IMVDb videos field analysis:', imvdbVideos.map(v => ({
+            title: v.title,
+            source: v.source,
+            imvdb_id: v.imvdb_id,  // This should be a string
+            id: v.id,              // This is the original number
+            video_id: v.video_id,  // Check if this exists
+            imvdb_id_type: typeof v.imvdb_id,
+            id_type: typeof v.id,
+            original_keys: Object.keys(v)
+        })));
+        
+        // Also log the full objects separately for detailed inspection
+        imvdbVideos.forEach((video, index) => {
+            console.log(`🔍 DEBUG: IMVDb video ${index + 1} complete object:`, video);
+            console.log(`🔍 DEBUG: IMVDb video ${index + 1} ID fields:`, {
+                id: video.id,
+                imvdb_id: video.imvdb_id,
+                has_imvdb_id: 'imvdb_id' in video,
+                imvdb_id_value: video['imvdb_id'],
+                all_video_keys: Object.keys(video)
+            });
+        });
+        
+        console.log('🔍 DEBUG: First YouTube video for comparison:', youtubeVideos.map(v => ({
+            title: v.title,
+            source: v.source,
+            youtube_id: v.youtube_id,
+            imvdb_id: v.imvdb_id,
+            id: v.id
+        })));
+        
         const videosHtml = data.discovered_videos.map(video => `
             <div class="discovered-video-card enhanced ${video.already_exists ? 'already-exists' : ''} ${video.imported ? 'imported' : ''} ${video.source || 'imvdb'}" 
                  data-imvdb-id="${video.imvdb_id || ''}" 
@@ -6042,7 +6077,7 @@ function downloadVideo(videoId) {
     downloadBtn.disabled = true;
     downloadBtn.textContent = 'Downloading...';
     
-    fetch(`/api/videos/${videoId}/download`, {
+    fetch(`/api/videos/${videoId}/queue-download`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -6298,21 +6333,38 @@ async function refreshVideoMetadata(videoId) {
             icon.setAttribute('icon', 'tabler:loader-2');
         }
         
-        safeShowInfo('Enriching metadata from multiple sources...');
+        safeShowInfo('Enriching metadata and thumbnails from multiple sources...');
         
         // Call the enhanced metadata enrichment endpoint
         const response = await fetch(`/api/videos/${videoId}/enhanced-refresh-metadata`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                force_refresh: false
+                force_refresh: true
             })
         });
         
         const result = await response.json();
         
         if (result.success) {
-            safeShowSuccess(`Enhanced metadata enriched successfully! ${result.sources_used ? `Sources: ${result.sources_used.join(', ')}` : ''}`);
+            let message = `Enhanced metadata enriched successfully! ${result.sources_used ? `Sources: ${result.sources_used.join(', ')}` : ''}`;
+            if (result.thumbnail_updated) {
+                message += ' (thumbnail updated)';
+            }
+            safeShowSuccess(message);
+            
+            // Force refresh video thumbnail with cache busting if it was updated
+            if (result.thumbnail_updated) {
+                const videoCard = document.querySelector(`[data-video-id="${videoId}"]`);
+                if (videoCard) {
+                    const thumbnailImg = videoCard.querySelector('img');
+                    if (thumbnailImg) {
+                        // Update with cache busting
+                        const currentSrc = thumbnailImg.src.split('?')[0]; // Remove existing query params
+                        thumbnailImg.src = `${currentSrc}?t=${Date.now()}`;
+                    }
+                }
+            }
             
             // Refresh the videos display to show updated metadata
             if (typeof loadArtistVideos === 'function') {
@@ -6324,7 +6376,7 @@ async function refreshVideoMetadata(videoId) {
                 loadArtistDetails();
             }
         } else {
-            throw new Error(result.error || 'Metadata refresh failed');
+            throw new Error(result.message || 'Metadata refresh failed');
         }
     } catch (error) {
         console.error('Error refreshing enhanced metadata:', error);
@@ -6336,6 +6388,76 @@ async function refreshVideoMetadata(videoId) {
             refreshBtn.disabled = false;
             const icon = refreshBtn.querySelector('iconify-icon');
             icon.setAttribute('icon', 'tabler:refresh');
+        }
+    }
+}
+
+async function refreshAllVideoThumbnails() {
+    if (!currentArtistId) {
+        safeShowError('No artist selected');
+        return;
+    }
+
+    try {
+        // Find the button and show loading state
+        const refreshBtn = document.getElementById('bulkThumbnailRefreshBtn');
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            const icon = refreshBtn.querySelector('iconify-icon');
+            const span = refreshBtn.querySelector('span');
+            icon.setAttribute('icon', 'tabler:loader-2');
+            span.textContent = 'Refreshing...';
+        }
+
+        safeShowInfo('Refreshing thumbnails for all videos. This may take a while...');
+
+        // Call the bulk thumbnail refresh endpoint
+        const response = await fetch('/api/videos/bulk/refresh-all-thumbnails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                artist_id: currentArtistId
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            safeShowSuccess(`${result.message}. Refreshing video list...`);
+            
+            // Force refresh all video thumbnails with cache busting
+            const videoCards = document.querySelectorAll('[data-video-id]');
+            videoCards.forEach(card => {
+                const thumbnailImg = card.querySelector('img');
+                if (thumbnailImg) {
+                    const currentSrc = thumbnailImg.src.split('?')[0];
+                    thumbnailImg.src = `${currentSrc}?t=${Date.now()}`;
+                }
+            });
+
+            // Refresh the videos display to show updated metadata
+            if (typeof loadArtistVideos === 'function') {
+                window.videosLoaded = false;
+                loadArtistVideos();
+            } else if (currentArtistData) {
+                loadArtistDetails();
+            }
+        } else {
+            throw new Error(result.message || 'Bulk thumbnail refresh failed');
+        }
+    } catch (error) {
+        console.error('Error refreshing all video thumbnails:', error);
+        safeShowError(`Failed to refresh video thumbnails: ${error.message}`);
+    } finally {
+        // Reset button state
+        const refreshBtn = document.getElementById('bulkThumbnailRefreshBtn');
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            const icon = refreshBtn.querySelector('iconify-icon');
+            const span = refreshBtn.querySelector('span');
+            icon.setAttribute('icon', 'tabler:photo');
+            span.textContent = 'Refresh All Thumbnails';
         }
     }
 }
@@ -6541,9 +6663,22 @@ function importSingleVideo(videoId, source = 'imvdb', buttonElement = null) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccess(`"${data.video.title}" imported successfully`, {
-                title: 'Video Import Success'
-            });
+            const videoTitle = data.video?.title || data.title || data.message || 'Unknown Video';
+            // Use direct message without additional formatting to avoid conflicts
+            const successMessage = `${videoTitle} imported successfully`;
+            
+            // Try to use the same notification system as other parts of the app
+            if (typeof window.uiEnhancements !== 'undefined' && window.uiEnhancements.showNotification) {
+                window.uiEnhancements.showNotification({
+                    type: 'success',
+                    title: 'Import Complete',
+                    message: successMessage
+                });
+            } else if (typeof showSuccess === 'function') {
+                showSuccess(successMessage);
+            } else {
+                console.log('✅ ' + successMessage);
+            }
             
             // Hide the import button and show imported status
             importBtn.style.display = 'none';
@@ -9448,18 +9583,59 @@ async function importVideoWithOptions(videoId, source, options) {
     
     console.log(`Importing ${source} video:`, videoId, 'via', endpoint);
     
+    // Build request body
+    const requestBody = {
+        [bodyKey]: videoId,
+        artist_id: currentArtistId,
+        auto_download: options.auto_download,
+        skip_existing: options.skip_existing,
+        priority: options.high_priority ? 1 : 5
+    };
+    
+    // For YouTube imports, include the required URL field and other metadata
+    if (source === 'youtube') {
+        // Find the video data to get the YouTube URL and other details
+        const videoData = discoveredVideosData.find(v => v.youtube_id === videoId);
+        if (videoData && videoData.youtube_url) {
+            requestBody.url = videoData.youtube_url;
+            requestBody.title = videoData.title || `YouTube Video ${videoId}`;
+            requestBody.artist = videoData.channel_title || (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
+        } else {
+            // Fallback: construct URL from YouTube ID
+            requestBody.url = `https://www.youtube.com/watch?v=${videoId}`;
+            requestBody.title = `YouTube Video ${videoId}`;
+            requestBody.artist = (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
+        }
+        console.log(`YouTube import with URL: ${requestBody.url}, title: ${requestBody.title}, artist: ${requestBody.artist}`);
+        
+        // Remove artist_id field since endpoint expects artist name, not ID
+        delete requestBody.artist_id;
+    }
+    
+    // For IMVDb imports, include the required title and artist metadata
+    if (source === 'imvdb') {
+        // Find the video data to get IMVDb details
+        const videoData = discoveredVideosData.find(v => v.imvdb_id === videoId);
+        if (videoData) {
+            requestBody.title = videoData.title || videoData.song_title || `IMVDb Video ${videoId}`;
+            requestBody.artist = videoData.artist_name || (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
+        } else {
+            // Fallback
+            requestBody.title = `IMVDb Video ${videoId}`;
+            requestBody.artist = (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
+        }
+        console.log(`IMVDb import with title: ${requestBody.title}, artist: ${requestBody.artist}`);
+        
+        // Remove artist_id field since endpoint expects artist name, not ID
+        delete requestBody.artist_id;
+    }
+    
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            [bodyKey]: videoId,
-            artist_id: currentArtistId,
-            auto_download: options.auto_download,
-            skip_existing: options.skip_existing,
-            priority: options.high_priority ? 1 : 5
-        })
+        body: JSON.stringify(requestBody)
     });
     
     return await response.json();

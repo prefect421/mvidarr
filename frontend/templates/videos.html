@@ -585,15 +585,17 @@ function displaySearchResults(data) {
                 </div>
                 ${video.relevance_score ? `<div class="relevance-badge" title="Relevance Score: ${video.relevance_score}%">${Math.round(video.relevance_score)}%</div>` : ''}
                 <div class="video-thumbnail" data-video-id="${video.id}" data-action="play">
+                    ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="thumbnail-artist-link" title="View ${video.artist_name || 'Unknown'} artist page">` : ''}
                     <img src="/api/videos/${video.id}/thumbnail" 
                          alt="${highlightSearchTerms(video.title, searchQuery)}" onerror="this.src='/static/placeholder-video.png'">
+                    ${video.artist_id ? '</a>' : ''}
                     <div class="play-overlay">
                         <div class="play-button">▶</div>
                     </div>
                 </div>
                 <div class="video-info">
                     <h3>${highlightSearchTerms(video.title, searchQuery)}</h3>
-                    <p>Artist: ${highlightSearchTerms(video.artist_name || 'Unknown', searchQuery)}</p>
+                    <p>Artist: ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="artist-link">${highlightSearchTerms(video.artist_name || 'Unknown', searchQuery)}</a>` : highlightSearchTerms(video.artist_name || 'Unknown', searchQuery)}</p>
                     <p>Status: ${video.status}</p>
                     ${video.year ? `<p>Year: ${video.year}</p>` : ''}
                     ${video.description ? `<p class="video-description" title="${video.description}">${highlightSearchTerms(truncateText(video.description, 100), searchQuery)}</p>` : ''}
@@ -1312,7 +1314,7 @@ window.addEventListener('click', function(event) {
 function downloadVideo(id) {
     // Removed download confirmation popup - direct download
     {
-        fetch(`/api/videos/${id}/download`, {
+        fetch(`/api/videos/${id}/queue-download`, {
             method: 'POST'
         })
         .then(response => response.json())
@@ -1622,9 +1624,11 @@ function updateSingleVideoCard(videoId) {
                     <input type="checkbox" class="video-checkbox" value="${video.id}" onchange="updateSelectedCount()" ${isChecked ? 'checked' : ''}>
                 </div>
                 <div class="video-thumbnail" data-video-id="${video.id}" data-action="play">
+                    ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="thumbnail-artist-link" title="View ${escapeHtml(video.artist_name || 'Unknown')} artist page">` : ''}
                     <img src="/api/videos/${video.id}/thumbnail" 
                          alt="${video.title}"
                          onerror="this.src='/static/placeholder-video.png'">
+                    ${video.artist_id ? '</a>' : ''}
                     <div class="play-overlay">
                         <div class="play-button">▶</div>
                     </div>
@@ -4039,8 +4043,10 @@ function displayVideos(videos) {
                             <input type="checkbox" class="video-checkbox" value="${safeVideo.id}" onchange="updateSelectedCount()">
                         </div>
                         <div class="video-thumbnail" data-video-id="${safeVideo.id}" data-action="play">
+                            ${safeVideo.artist_id ? `<a href="/artist/${safeVideo.artist_id}" class="thumbnail-artist-link" title="View ${safeVideo.artist_name || 'Unknown'} artist page">` : ''}
                             <img src="/api/videos/${safeVideo.id}/thumbnail" 
                                  alt="${safeVideo.title}" onerror="this.src='/static/placeholder-video.png'">
+                            ${safeVideo.artist_id ? '</a>' : ''}
                             <div class="play-overlay">
                                 <div class="play-button">▶</div>
                             </div>
@@ -5448,6 +5454,39 @@ function performVideoMerge(currentVideoId, duplicateVideoId) {
 .artist-link:hover {
     color: var(--primary-color-hover, #6bb6ff);
     text-decoration: underline;
+}
+
+/* Thumbnail artist link styles */
+.thumbnail-artist-link {
+    position: relative;
+    display: block;
+    z-index: 1;
+}
+
+.thumbnail-artist-link img {
+    transition: opacity 0.2s ease;
+}
+
+.thumbnail-artist-link:hover img {
+    opacity: 0.8;
+}
+
+/* Ensure play overlay appears above thumbnail link */
+.video-thumbnail .play-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.video-thumbnail .play-overlay .play-button {
+    pointer-events: auto;
 }
 
 /* Video metadata styles */

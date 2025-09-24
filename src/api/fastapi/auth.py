@@ -29,6 +29,9 @@ logger = get_logger("mvidarr.fastapi.auth")
 # Create FastAPI router
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
+# Create legacy router for backward compatibility (without /api prefix)
+legacy_router = APIRouter(prefix="/auth", tags=["authentication-legacy"])
+
 # ====================================
 # Pydantic Models
 # ====================================
@@ -684,4 +687,22 @@ async def auth_health():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Authentication system unhealthy: {str(e)}",
+        )
+
+
+# ====================================
+# Legacy Router Endpoints (for backward compatibility)
+# ====================================
+
+@legacy_router.get("/credentials")
+async def get_credentials_legacy():
+    """Get current stored username for simple auth (legacy endpoint)"""
+    try:
+        from src.services.simple_auth_service import SimpleAuthService
+        username, has_credentials = SimpleAuthService.get_credentials()
+        return {"username": username, "has_credentials": has_credentials}
+    except Exception as e:
+        logger.error(f"Get credentials error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

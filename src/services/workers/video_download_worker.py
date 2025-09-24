@@ -82,6 +82,7 @@ class VideoDownloadWorker(BaseWorker):
 
             # Create or update download record
             with get_db() as session:
+                video = session.query(Video).filter(Video.id == video_id).first()
                 download = (
                     session.query(Download)
                     .filter(Download.video_id == video_id)
@@ -90,7 +91,12 @@ class VideoDownloadWorker(BaseWorker):
 
                 if not download:
                     download = Download(
-                        video_id=video_id, status="downloading", progress=0
+                        artist_id=video.artist_id,
+                        video_id=video_id,
+                        title=video.title,
+                        original_url=video.url or "Unknown URL",
+                        status="downloading",
+                        progress=0
                     )
                     session.add(download)
                 else:

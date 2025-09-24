@@ -233,7 +233,7 @@ function loadDownloadQueue() {
             
             // Check if there are active downloads
             const hasActiveDownloads = data.queue && data.queue.some(d => 
-                d.status === 'downloading' || d.status === 'pending'
+                d.status === 'downloading' || d.status === 'pending' || d.status === 'queued'
             );
             
             // Auto-manage refresh based on active downloads
@@ -264,11 +264,11 @@ function loadDownloadQueue() {
                                     <small>by ${download.artist} • ${getStatusDisplay(download.status, download.progress)}</small>
                                 </div>
                                 <div class="download-actions">
-                                    ${download.status === 'downloading' || download.status === 'pending' ? 
-                                        `<button onclick="stopDownload(${download.id})" class="btn-icon btn-stop" title="Stop Download">
+                                    ${download.status === 'downloading' || download.status === 'pending' || download.status === 'queued' ? 
+                                        `<button onclick="stopDownload('${download.id}')" class="btn-icon btn-stop" title="Stop Download">
                                             <span>⏹</span>
                                         </button>
-                                        <button onclick="retryDownload(${download.id})" class="btn-icon btn-retry" title="Retry Download">
+                                        <button onclick="retryDownload('${download.id}')" class="btn-icon btn-retry" title="Retry Download">
                                             <span>🔄</span>
                                         </button>` : ''
                                     }
@@ -311,7 +311,7 @@ function loadDownloadHistory() {
                                 </div>
                                 <div class="download-actions">
                                     ${download.status === 'failed' ? 
-                                        `<button onclick="retryDownload(${download.id})" class="btn-icon btn-retry" title="Retry Failed Download">
+                                        `<button onclick="retryDownload('${download.id}')" class="btn-icon btn-retry" title="Retry Failed Download">
                                             <span>🔄</span>
                                         </button>` : ''
                                     }

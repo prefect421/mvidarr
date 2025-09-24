@@ -442,6 +442,7 @@ from src.api.fastapi.admin import router as fastapi_admin_router
 from src.api.fastapi.api_gateway_management import router as gateway_router
 from src.api.fastapi.artists import router as fastapi_artists_router
 from src.api.fastapi.auth import router as fastapi_auth_router
+from src.api.fastapi.auth import legacy_router as fastapi_auth_legacy_router
 from src.api.fastapi.frontend_router import frontend_router
 from src.api.fastapi.genres import router as fastapi_genres_router
 from src.api.fastapi.monitoring_dashboard import router as dashboard_router
@@ -477,6 +478,7 @@ app.include_router(fastapi_genres_router)
 app.include_router(fastapi_admin_router)
 app.include_router(fastapi_settings_router)
 app.include_router(fastapi_auth_router)
+app.include_router(fastapi_auth_legacy_router)
 app.include_router(frontend_router)
 
 from src.api.fastapi.lastfm import router as lastfm_router

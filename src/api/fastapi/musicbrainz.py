@@ -152,3 +152,35 @@ async def get_musicbrainz_status(current_user: dict = Depends(require_authentica
     except Exception as e:
         logger.error(f"MusicBrainz status check error: {e}")
         return {"available": False, "error": str(e)}
+
+
+@router.get("/test")
+async def test_connection(current_user: dict = Depends(require_authentication)):
+    """Test MusicBrainz API connectivity"""
+    try:
+        if not musicbrainz_service:
+            return {
+                "success": False,
+                "service": "MusicBrainz",
+                "status": "unavailable",
+                "error": "MusicBrainz service not available"
+            }
+
+        # Run connection test in background thread since it may be blocking
+        is_connected = await asyncio.to_thread(musicbrainz_service.test_connection)
+
+        return {
+            "success": is_connected,
+            "service": "MusicBrainz",
+            "status": "connected" if is_connected else "disconnected",
+            "enabled": musicbrainz_service.enabled if musicbrainz_service else False,
+        }
+
+    except Exception as e:
+        logger.error(f"MusicBrainz connection test failed: {e}")
+        return {
+            "success": False,
+            "service": "MusicBrainz",
+            "status": "error",
+            "error": str(e),
+        }

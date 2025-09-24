@@ -144,17 +144,56 @@ async def get_download_queue(
     current_user: dict = Depends(require_authentication_legacy),
     session: Session = Depends(get_db_session)
 ):
-    """Get current download queue"""
+    """Get current download queue including active Celery tasks"""
     try:
         user_id = current_user.get("user_id", 1)
         
         logger.info(f"Getting download queue for user {current_user.get('username')}")
         
-        result = ytdlp_service.get_queue()
+        # Get queue from ytdlp service (legacy downloads)
+        legacy_result = ytdlp_service.get_queue()
+        queue_items = legacy_result.get("queue", [])
+        
+        # Also check for recent downloads that might be processing
+        try:
+            from ...database.models import Download, Artist
+            from datetime import datetime, timedelta
+            
+            # Get recent downloads that are still in queue/downloading status
+            recent_cutoff = datetime.utcnow() - timedelta(hours=2)  # Last 2 hours
+            
+            recent_downloads = (
+                session.query(Download, Artist.name)
+                .join(Artist, Download.artist_id == Artist.id)
+                .filter(
+                    Download.status.in_(["queued", "downloading"]),
+                    Download.created_at >= recent_cutoff
+                )
+                .order_by(Download.created_at.desc())
+                .limit(20)
+                .all()
+            )
+            
+            for download, artist_name in recent_downloads:
+                queue_entry = {
+                    "id": f"db_{download.id}",
+                    "title": download.title,
+                    "artist": artist_name,
+                    "url": download.original_url,
+                    "status": download.status,
+                    "progress": download.progress or 0,
+                    "quality": download.quality or "best",
+                    "created_at": download.created_at.isoformat() if download.created_at else None,
+                    "task_type": "database"
+                }
+                queue_items.append(queue_entry)
+                
+        except Exception as db_error:
+            logger.warning(f"Failed to get recent database downloads: {db_error}")
         
         return QueueResponse(
-            queue=result.get("queue", []),
-            total=result.get("total", 0)
+            queue=queue_items,
+            total=len(queue_items)
         )
         
     except Exception as e:
@@ -228,7 +267,7 @@ async def add_music_video_download(
 
 @router.post("/download/{download_id}/stop", response_model=DownloadResponse)
 async def stop_download(
-    download_id: int,
+    download_id: str,
     current_user: dict = Depends(require_authentication_legacy),
     session: Session = Depends(get_db_session)
 ):
@@ -236,9 +275,18 @@ async def stop_download(
     try:
         user_id = current_user.get("user_id", 1)
         
-        logger.info(f"Stopping download {download_id} for user {current_user.get('username')}")
+        # Parse download_id (handle both integer and "db_123" format)
+        try:
+            if download_id.startswith("db_"):
+                actual_id = int(download_id[3:])  # Remove "db_" prefix
+            else:
+                actual_id = int(download_id)
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail="Invalid download ID format")
         
-        result = ytdlp_service.stop_download(download_id)
+        logger.info(f"Stopping download {actual_id} for user {current_user.get('username')}")
+        
+        result = ytdlp_service.stop_download(actual_id)
         
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result)
@@ -254,7 +302,7 @@ async def stop_download(
 
 @router.post("/download/{download_id}/retry", response_model=DownloadResponse)
 async def retry_download(
-    download_id: int,
+    download_id: str,
     current_user: dict = Depends(require_authentication_legacy),
     session: Session = Depends(get_db_session)
 ):
@@ -262,9 +310,18 @@ async def retry_download(
     try:
         user_id = current_user.get("user_id", 1)
         
-        logger.info(f"Retrying download {download_id} for user {current_user.get('username')}")
+        # Parse download_id (handle both integer and "db_123" format)
+        try:
+            if download_id.startswith("db_"):
+                actual_id = int(download_id[3:])  # Remove "db_" prefix
+            else:
+                actual_id = int(download_id)
+        except (ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail="Invalid download ID format")
         
-        result = ytdlp_service.retry_download(download_id)
+        logger.info(f"Retrying download {actual_id} for user {current_user.get('username')}")
+        
+        result = ytdlp_service.retry_download(actual_id)
         
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result)
@@ -306,6 +363,7 @@ async def clear_history(
 @router.post("/clear-stuck", response_model=DownloadResponse)
 async def clear_stuck_downloads(
     clear_request: ClearStuckRequest = ClearStuckRequest(),
+    force: bool = Query(default=False, description="Force clear all downloads regardless of time"),
     current_user: dict = Depends(require_authentication_legacy),
     session: Session = Depends(get_db_session)
 ):
@@ -313,12 +371,68 @@ async def clear_stuck_downloads(
     try:
         user_id = current_user.get("user_id", 1)
         
-        logger.info(f"Clearing stuck downloads (minutes={clear_request.minutes}) for user {current_user.get('username')}")
+        if force:
+            logger.info(f"Force clearing ALL downloads for user {current_user.get('username')}")
+        else:
+            logger.info(f"Clearing stuck downloads (minutes={clear_request.minutes}) for user {current_user.get('username')}")
         
-        result = ytdlp_service.clear_stuck_downloads(minutes=clear_request.minutes)
+        # Clear stuck downloads from database (not just in-memory ytdlp service)
+        from datetime import datetime, timedelta
+        from ...database.models import Download, Video, VideoStatus
         
-        if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result)
+        if force:
+            # Force clear ALL downloads regardless of time
+            stuck_downloads = (
+                session.query(Download)
+                .filter(Download.status.in_(["queued", "downloading"]))
+                .all()
+            )
+        else:
+            # Clear only downloads stuck longer than specified time
+            cutoff_time = datetime.utcnow() - timedelta(minutes=clear_request.minutes)
+            stuck_downloads = (
+                session.query(Download)
+                .filter(
+                    Download.status.in_(["queued", "downloading"]),
+                    Download.created_at < cutoff_time
+                )
+                .all()
+            )
+        
+        cleared_count = 0
+        for download in stuck_downloads:
+            logger.info(f"Clearing stuck download {download.id}: {download.title}")
+            
+            # Update download status
+            if force:
+                download.status = "cancelled"
+                download.error_message = "Force cleared by user"
+            else:
+                download.status = "failed"
+                download.error_message = f"Cleared as stuck after {clear_request.minutes} minutes"
+            download.completed_at = datetime.utcnow()
+            
+            # Reset associated video status back to WANTED
+            if download.video_id:
+                video = session.query(Video).filter(Video.id == download.video_id).first()
+                if video and video.status == VideoStatus.DOWNLOADING:
+                    video.status = VideoStatus.WANTED
+            
+            cleared_count += 1
+        
+        session.commit()
+        
+        if force:
+            message = f"Force cleared {cleared_count} downloads"
+        else:
+            message = f"Cleared {cleared_count} stuck downloads"
+        
+        result = {
+            "success": True,
+            "message": message,
+            "download_id": None,
+            "error": None
+        }
         
         return DownloadResponse(**result)
         
@@ -326,6 +440,63 @@ async def clear_stuck_downloads(
         raise
     except Exception as e:
         logger.error(f"Failed to clear stuck downloads: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/force-clear-all", response_model=DownloadResponse)
+async def force_clear_all_downloads(
+    current_user: dict = Depends(require_authentication_legacy),
+    session: Session = Depends(get_db_session)
+):
+    """Force clear ALL queued/downloading downloads"""
+    try:
+        user_id = current_user.get("user_id", 1)
+        
+        logger.info(f"Force clearing all downloads for user {current_user.get('username')}")
+        
+        # Clear ALL downloads from database
+        from datetime import datetime
+        from ...database.models import Download, Video, VideoStatus
+        
+        # Find ALL queued/downloading downloads
+        all_downloads = (
+            session.query(Download)
+            .filter(Download.status.in_(["queued", "downloading"]))
+            .all()
+        )
+        
+        cleared_count = 0
+        for download in all_downloads:
+            logger.info(f"Force clearing download {download.id}: {download.title}")
+            
+            # Update download status to cancelled
+            download.status = "cancelled"
+            download.error_message = "Force cleared by user"
+            download.completed_at = datetime.utcnow()
+            
+            # Reset associated video status back to WANTED
+            if download.video_id:
+                video = session.query(Video).filter(Video.id == download.video_id).first()
+                if video and video.status == VideoStatus.DOWNLOADING:
+                    video.status = VideoStatus.WANTED
+            
+            cleared_count += 1
+        
+        session.commit()
+        
+        result = {
+            "success": True,
+            "message": f"Force cleared {cleared_count} downloads",
+            "download_id": None,
+            "error": None
+        }
+        
+        return DownloadResponse(**result)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to force clear downloads: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -515,4 +686,34 @@ async def delete_cookies(
         
     except Exception as e:
         logger.error(f"Failed to delete cookies: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/process-pending", response_model=DownloadResponse)
+async def process_pending_downloads(
+    current_user: dict = Depends(require_authentication_legacy),
+    session: Session = Depends(get_db_session)
+):
+    """Process pending downloads from database"""
+    try:
+        user_id = current_user.get("user_id", 1)
+        
+        logger.info(f"Processing pending downloads for user {current_user.get('username')}")
+        
+        result = ytdlp_service.process_pending_downloads()
+        
+        if result.get("success"):
+            return DownloadResponse(
+                success=True,
+                message=result.get("message", "Pending downloads processed"),
+                download_id=None,
+                error=None
+            )
+        else:
+            raise HTTPException(status_code=400, detail=result)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to process pending downloads: {e}")
         raise HTTPException(status_code=500, detail=str(e))

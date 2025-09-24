@@ -1081,12 +1081,6 @@ function renderVideoDetails(video) {
                     </span>
                 </div>
             ` : ''}
-            ${video.quality ? `
-                <div class="detail-group">
-                    <label>Quality:</label>
-                    <span class="quality-badge">${video.quality}</span>
-                </div>
-            ` : ''}
             ${video.video_metadata && video.video_metadata.ffmpeg_extracted ? `
                 <div class="detail-group technical-metadata">
                     <label>Technical Details:</label>
@@ -1119,6 +1113,24 @@ function renderVideoDetails(video) {
                             <div class="metadata-item">
                                 <span class="metadata-label">Bitrate:</span>
                                 <span class="metadata-value">${Math.round(video.video_metadata.bitrate / 1000)} kbps</span>
+                            </div>
+                        ` : ''}
+                        ${video.video_metadata.file_size ? `
+                            <div class="metadata-item">
+                                <span class="metadata-label">File Size:</span>
+                                <span class="metadata-value">${formatFileSize(video.video_metadata.file_size)}</span>
+                            </div>
+                        ` : ''}
+                        ${video.quality ? `
+                            <div class="metadata-item">
+                                <span class="metadata-label">Quality Level:</span>
+                                <span class="metadata-value quality-indicator">${video.quality}</span>
+                            </div>
+                        ` : ''}
+                        ${video.video_metadata.quality_upgraded ? `
+                            <div class="metadata-item">
+                                <span class="metadata-label">Quality Status:</span>
+                                <span class="metadata-value upgraded-indicator">✅ Upgraded</span>
                             </div>
                         ` : ''}
                     </div>
@@ -1157,10 +1169,6 @@ function renderVideoDetails(video) {
             </button>
             <button onclick="editVideo()" class="btn btn-info">Edit Details</button>
             <button onclick="enhancedRefreshMetadata()" class="btn btn-success">Enhanced Metadata</button>
-            <button onclick="MVidarr.showJobDashboard()" class="btn btn-primary" title="View active background jobs">
-                <iconify-icon icon="tabler:activity" style="margin-right: 5px;"></iconify-icon>
-                Jobs
-            </button>
             <div class="status-dropdown" style="position: relative; display: inline-block;">
                 <button class="btn btn-secondary" type="button" id="statusDropdownBtn" onclick="toggleStatusDropdown()" style="min-width: 140px;">
                     Status: ${video.status} ▼
@@ -1261,7 +1269,7 @@ function navigateToVideo(videoId) {
 function downloadVideo() {
     if (!currentVideo) return;
     
-    fetch(`/api/videos/${currentVideo.id}/download`, {
+    fetch(`/api/videos/${currentVideo.id}/queue-download`, {
         method: 'POST'
     })
     .then(response => response.json())
@@ -1595,6 +1603,19 @@ function formatDuration(seconds) {
     } else {
         return `${minutes}:${secs.toString().padStart(2, '0')}`;
     }
+}
+
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return 'Unknown';
+    
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    
+    if (i === 0) {
+        return `${bytes} ${sizes[i]}`;
+    }
+    
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
 }
 
 function showError(message) {
@@ -1981,15 +2002,12 @@ async function loadVideoLyrics() {
     if (!currentVideo) return;
     
     try {
-        const response = await fetch(`/api/videos/${currentVideo.id}/lyrics`);
-        if (response.ok) {
-            const result = await response.json();
-            if (result.lyrics) {
-                displayLyrics(result.lyrics);
-            } else {
-                document.getElementById('lyricsContent').innerHTML = 
-                    '<div class="lyrics-placeholder">No lyrics available. Click "Search Lyrics" to find them automatically.</div>';
-            }
+        // Lyrics are already in the currentVideo object from the main API call
+        if (currentVideo.lyrics && currentVideo.lyrics.trim()) {
+            displayLyrics(currentVideo.lyrics);
+        } else {
+            document.getElementById('lyricsContent').innerHTML = 
+                '<div class="lyrics-placeholder">No lyrics available. Click "Search Lyrics" to find them automatically.</div>';
         }
     } catch (error) {
         console.error('Error loading lyrics:', error);
@@ -2019,6 +2037,8 @@ async function searchLyrics() {
         const result = await response.json();
         if (response.ok && result.success) {
             displayLyrics(result.lyrics);
+            // Update the currentVideo object with the new lyrics
+            currentVideo.lyrics = result.lyrics;
             showSuccess('Lyrics found and saved!');
         } else {
             showError('Failed to find lyrics: ' + (result.error || 'Unknown error'));
@@ -2344,6 +2364,51 @@ async function saveLyrics() {
     display: flex;
     gap: 10px;
     justify-content: flex-end;
+}
+
+/* Quality Indicators for Video Metadata */
+.quality-indicator {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.upgraded-indicator {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.metadata-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.metadata-item:last-child {
+    border-bottom: none;
+}
+
+.metadata-label {
+    font-weight: 500;
+    color: rgba(255,255,255,0.8);
+    min-width: 120px;
+}
+
+.metadata-value {
+    font-weight: 600;
+    color: #ffffff;
+    text-align: right;
 }
 </style>
 

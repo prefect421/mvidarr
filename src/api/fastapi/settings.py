@@ -112,6 +112,36 @@ async def get_all_settings():
         )
 
 
+@router.get("/database-config", response_model=DatabaseConfigResponse)
+async def get_database_config():
+    """Get current database configuration (read-only)"""
+    try:
+        from src.config.config import Config
+
+        # Load environment variables to get current database config
+        Config.load_env()
+
+        db_config = {
+            "db_host": os.environ.get("DB_HOST", "localhost"),
+            "db_port": os.environ.get("DB_PORT", "3306"),
+            "db_name": os.environ.get("DB_NAME", "mvidarr"),
+            "db_user": os.environ.get("DB_USER", "mvidarr"),
+            "db_password": "***hidden***",  # Don't expose password
+            "db_pool_size": os.environ.get("DB_POOL_SIZE", "10"),
+            "db_pool_overflow": os.environ.get("DB_MAX_OVERFLOW", "20"),
+            "db_pool_recycle": os.environ.get("DB_POOL_RECYCLE", "3600"),
+            "db_pool_timeout": os.environ.get("DB_POOL_TIMEOUT", "30"),
+        }
+
+        return DatabaseConfigResponse(database_config=db_config)
+
+    except Exception as e:
+        logger.error(f"Failed to get database config: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
 @router.get("/{key}", response_model=SettingResponse)
 async def get_setting(key: str):
     """Get a specific setting by key"""
@@ -569,34 +599,6 @@ async def trigger_scheduled_download():
 # ====================================
 
 
-@router.get("/database-config", response_model=DatabaseConfigResponse)
-async def get_database_config():
-    """Get current database configuration (read-only)"""
-    try:
-        from src.config.config import Config
-
-        # Load environment variables to get current database config
-        Config.load_env()
-
-        db_config = {
-            "db_host": os.environ.get("DB_HOST", "localhost"),
-            "db_port": os.environ.get("DB_PORT", "3306"),
-            "db_name": os.environ.get("DB_NAME", "mvidarr"),
-            "db_user": os.environ.get("DB_USER", "mvidarr"),
-            "db_password": "***hidden***",  # Don't expose password
-            "db_pool_size": os.environ.get("DB_POOL_SIZE", "10"),
-            "db_pool_overflow": os.environ.get("DB_MAX_OVERFLOW", "20"),
-            "db_pool_recycle": os.environ.get("DB_POOL_RECYCLE", "3600"),
-            "db_pool_timeout": os.environ.get("DB_POOL_TIMEOUT", "30"),
-        }
-
-        return DatabaseConfigResponse(database_config=db_config)
-
-    except Exception as e:
-        logger.error(f"Failed to get database config: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
 
 
 # ====================================

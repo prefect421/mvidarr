@@ -184,15 +184,115 @@ class VideoOrganizationService:
                     )
 
                     if video:
-                        # Update video with local file path
+                        # Update video with local file path and extract technical details
                         video.local_path = file_path
                         video.status = VideoStatus.DOWNLOADED
                         video.updated_at = datetime.utcnow()
+                        
+                        # Extract technical metadata from the video file
+                        try:
+                            import subprocess
+                            import json
+                            import os
+                            
+                            # Use ffprobe to get video information
+                            result = subprocess.run([
+                                'ffprobe', '-v', 'quiet', '-print_format', 'json',
+                                '-show_format', '-show_streams', file_path
+                            ], capture_output=True, text=True)
+                            
+                            if result.returncode == 0:
+                                probe_data = json.loads(result.stdout)
+                                
+                                # Extract duration from format
+                                format_info = probe_data.get('format', {})
+                                duration = float(format_info.get('duration', 0))
+                                
+                                # Extract video stream info
+                                video_stream = next((s for s in probe_data.get('streams', []) if s.get('codec_type') == 'video'), None)
+                                if video_stream:
+                                    width = video_stream.get('width', 0)
+                                    height = video_stream.get('height', 0)
+                                    codec = video_stream.get('codec_name', 'unknown')
+                                    
+                                    # Determine quality based on height
+                                    if height >= 2160:
+                                        quality = "4K"
+                                    elif height >= 1440:
+                                        quality = "1440p"
+                                    elif height >= 1080:
+                                        quality = "1080p"
+                                    elif height >= 720:
+                                        quality = "720p"
+                                    elif height >= 480:
+                                        quality = "480p"
+                                    else:
+                                        quality = "SD"
+                                    
+                                    # Update video record with technical details
+                                    video.duration = duration
+                                    video.quality = quality
+                                    
+                                    # Update or create video_metadata
+                                    existing_metadata = video.video_metadata or {}
+                                    existing_metadata.update({
+                                        'width': width,
+                                        'height': height,
+                                        'video_codec': codec,
+                                        'file_size': os.path.getsize(file_path) if os.path.exists(file_path) else None,
+                                        'organized_file_path': file_path,
+                                        'extraction_date': datetime.utcnow().isoformat()
+                                    })
+                                    video.video_metadata = existing_metadata
+                                    
+                                    logger.info(f"✅ Extracted technical metadata for organized video {video.id}:")
+                                    logger.info(f"   Duration: {duration:.1f}s")
+                                    logger.info(f"   Quality: {quality} ({width}x{height})")
+                                    logger.info(f"   Codec: {codec}")
+                                    
+                                else:
+                                    logger.warning(f"No video stream found in organized file: {file_path}")
+                            else:
+                                logger.warning(f"ffprobe failed for organized file {file_path}: {result.stderr}")
+                                
+                        except Exception as metadata_error:
+                            logger.warning(f"Failed to extract metadata from organized file {file_path}: {metadata_error}")
+                        
                         session.commit()
 
                         logger.info(
                             f"Updated database record for: {artist_name} - {title}"
                         )
+                        
+                        # Trigger automatic metadata enrichment for organized video
+                        try:
+                            from src.services.metadata_enrichment_service import MetadataEnrichmentService
+                            enrichment_service = MetadataEnrichmentService()
+                            
+                            # Enrich metadata asynchronously
+                            import asyncio
+                            async def enrich_metadata():
+                                result = await enrichment_service.enrich_video_metadata(
+                                    video.id, force_refresh=True
+                                )
+                                if result.success:
+                                    logger.info(f"Metadata enrichment completed for organized video {video.id}: "
+                                               f"enriched {len(result.enriched_fields or [])} fields")
+                                else:
+                                    logger.warning(f"Metadata enrichment failed for organized video {video.id}: "
+                                                  f"{result.errors}")
+                            
+                            # Run enrichment in background
+                            try:
+                                loop = asyncio.get_event_loop()
+                                loop.create_task(enrich_metadata())
+                            except RuntimeError:
+                                asyncio.run(enrich_metadata())
+                                
+                            logger.info(f"Triggered metadata enrichment for organized video {video.id}")
+                            
+                        except Exception as enrichment_error:
+                            logger.error(f"Failed to trigger metadata enrichment for video {video.id}: {enrichment_error}")
                     else:
                         logger.debug(
                             f"No video record found for: {artist_name} - {title}"

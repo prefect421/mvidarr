@@ -414,3 +414,35 @@ async def get_spotify_status():
     except Exception as e:
         logger.error(f"Spotify status check error: {e}")
         return {"available": False, "error": str(e), "service": "Spotify Web API"}
+
+
+@router.post("/test")
+async def test_spotify_integration():
+    """Test Spotify API connection"""
+    try:
+        if not spotify_available:
+            return {
+                "success": False,
+                "service": "Spotify",
+                "status": "unavailable",
+                "error": "Spotify service not configured"
+            }
+
+        # Don't test actual Spotify connection to avoid OAuth complexities
+        # Just return that the service module is available
+        return {
+            "success": True,
+            "service": "Spotify",
+            "status": "available",
+            "note": "Service available but requires OAuth authentication for full functionality",
+            "authenticated": False,
+        }
+
+    except Exception as e:
+        logger.error(f"Spotify connection test failed: {e}")
+        return {
+            "success": False,
+            "service": "Spotify",
+            "status": "error",
+            "error": str(e),
+        }

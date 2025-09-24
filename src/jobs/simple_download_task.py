@@ -158,7 +158,21 @@ def simple_download_video(
                         video = session.query(Video).filter(Video.id == video_id).first()
                         if video and video.local_path is None:
                             logger.warning(f"⚠️  Video {video_id} was not properly linked after download completion")
-                            logger.warning(f"   This indicates a potential issue in _update_video_after_download")
+                            logger.warning(f"   Attempting emergency file linking recovery...")
+                            
+                            # Try emergency recovery by calling the linking function again
+                            download_record = session.query(Download).filter(Download.id == download_id).first()
+                            if download_record:
+                                _update_video_after_download(video, download_record, session)
+                                session.commit()
+                                session.refresh(video)
+                                if video.local_path:
+                                    logger.info(f"✅ Emergency linking recovery successful: {video.local_path}")
+                                else:
+                                    logger.error(f"❌ Emergency linking recovery FAILED for video {video_id}")
+                                    logger.error(f"   Manual intervention required - check fix_unlinked_videos.py")
+                            else:
+                                logger.error(f"❌ No download record found for emergency recovery")
                         elif video:
                             logger.info(f"✅ Video {video_id} successfully linked to {video.local_path}")
                 except Exception as e:
@@ -232,7 +246,47 @@ def _update_download_progress(download_id: Optional[int], progress: int, message
                             else:
                                 # For regular downloads, ensure we update file path and technical details
                                 logger.info(f"Processing regular download completion for video {download.video_id}")
+                                logger.info(f"Before _update_video_after_download: video.local_path = {video.local_path}")
                                 _update_video_after_download(video, download, session)
+                                # Refresh the video object to get latest data
+                                session.refresh(video)
+                                logger.info(f"After _update_video_after_download: video.local_path = {video.local_path}")
+                                
+                                # Additional verification
+                                if not video.local_path:
+                                    logger.error(f"❌ CRITICAL: _update_video_after_download failed to set local_path for video {download.video_id}")
+                                    logger.error(f"   Download metadata: {download.download_metadata}")
+                                    
+                                    # DEFENSIVE: Retry the linking one more time with fresh session
+                                    logger.warning(f"🔄 Attempting emergency retry for video {download.video_id}")
+                                    try:
+                                        # Force refresh the objects
+                                        session.refresh(video)
+                                        session.refresh(download)
+                                        
+                                        # Try again
+                                        _update_video_after_download(video, download, session)
+                                        session.commit()
+                                        session.refresh(video)
+                                        
+                                        if video.local_path:
+                                            logger.info(f"✅ Emergency retry SUCCESSFUL for video {download.video_id}: {video.local_path}")
+                                        else:
+                                            logger.error(f"❌ Emergency retry FAILED for video {download.video_id}")
+                                            
+                                            # Last resort: try to directly set from metadata
+                                            if download.download_metadata:
+                                                task_result = download.download_metadata.get('task_result', {})
+                                                output_files = task_result.get('output_files', [])
+                                                if output_files and os.path.exists(output_files[0]):
+                                                    logger.warning(f"🚨 LAST RESORT: Setting local_path directly from metadata")
+                                                    video.local_path = output_files[0]
+                                                    session.commit()
+                                                    logger.info(f"✅ Last resort fix successful: {video.local_path}")
+                                    except Exception as retry_error:
+                                        logger.error(f"❌ Emergency retry failed with error: {retry_error}")
+                                else:
+                                    logger.info(f"✅ Successfully updated video {download.video_id} local_path")
                             
                             logger.info(f"Updated video {download.video_id} status to DOWNLOADED")
                             
@@ -418,7 +472,16 @@ def _update_video_after_download(video, download, session):
         if hasattr(download, 'download_metadata') and download.download_metadata:
             task_result = download.download_metadata.get('task_result', {})
             downloaded_files = task_result.get('output_files', [])
-            logger.info(f"Found {len(downloaded_files)} files in download metadata for video {video.id}: {downloaded_files}")
+            logger.info(f"🔍 Found {len(downloaded_files)} files in download metadata for video {video.id}: {downloaded_files}")
+            
+            # Detailed validation of each file
+            for i, file_path in enumerate(downloaded_files):
+                if file_path and os.path.exists(file_path):
+                    logger.info(f"  ✅ File {i+1} exists: {file_path}")
+                elif file_path:
+                    logger.warning(f"  ❌ File {i+1} missing: {file_path}")
+                else:
+                    logger.warning(f"  ❌ File {i+1} is empty/None")
         else:
             logger.warning(f"No download metadata found for video {video.id}, will search filesystem")
         

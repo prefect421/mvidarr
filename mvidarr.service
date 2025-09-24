@@ -12,8 +12,9 @@ User=mike
 Group=mike
 WorkingDirectory=/home/mike/mvidarr
 
-# Create required directories and start application
-ExecStartPre=/usr/bin/mkdir -p /home/mike/mvidarr/data/logs /home/mike/mvidarr/data/downloads /home/mike/mvidarr/data/thumbnails /home/mike/mvidarr/data/cache /home/mike/mvidarr/data/backups /home/mike/mvidarr/data/processing
+# Create required directories and reset stuck downloads
+ExecStartPre=/usr/bin/mkdir -p /home/mike/mvidarr/data/logs /home/mike/mvidarr/data/downloads /home/mike/mvidarr/data/thumbnails /home/mike/mvidarr/data/cache /home/mike/mvidarr/data/backups /home/mike/mvidarr/data/processing /home/mike/mvidarr/scripts
+ExecStartPre=/home/mike/mvidarr/venv/bin/python /home/mike/mvidarr/scripts/reset_stuck_downloads.py
 ExecStart=/home/mike/mvidarr/venv/bin/python /home/mike/mvidarr/fastapi_app.py
 ExecReload=/bin/kill -HUP $MAINPID
 

@@ -8,7 +8,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from src.services.job_queue import BackgroundJob, JobPriority, JobType, get_job_queue
+# Removed background job imports - now using Celery directly
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.fastapi.video_quality")
@@ -45,6 +45,10 @@ class UpgradeableVideosResponse(BaseModel):
     upgradeable_videos: List[UpgradeableVideo]
 
 
+class BulkUpgradeRequest(BaseModel):
+    video_ids: List[int] = Field(..., min_items=1, description="List of video IDs to upgrade")
+
+
 # Authentication dependencies
 from src.api.fastapi.auth_dependencies import get_current_user_legacy
 
@@ -62,24 +66,25 @@ async def upgrade_video_quality(
 ):
     """Upgrade a video to higher quality (background job)"""
     try:
-        # Create background job for video quality upgrade
-        job = BackgroundJob(
-            type=JobType.VIDEO_QUALITY_UPGRADE,
-            priority=JobPriority.HIGH,  # Quality upgrades are high priority
-            payload={"video_id": video_id, "user_id": request.user_id},
-            created_by=current_user,
-        )
-
-        # Enqueue job
-        job_queue = await get_job_queue()
-        job_id = await job_queue.enqueue(job)
-
-        logger.info(f"Enqueued video quality upgrade job {job_id} for video {video_id}")
+        # Process upgrade using the VideoQualityService directly
+        from src.services.video_quality_service import video_quality_service
+        
+        # Process upgrade directly (this will now use Celery for the download)
+        upgrade_result = video_quality_service.upgrade_video_quality(video_id, request.user_id)
+        
+        if not upgrade_result.get("success"):
+            raise HTTPException(
+                status_code=400, 
+                detail={"success": False, "error": upgrade_result.get("error", "Upgrade failed")}
+            )
+        
+        job_id = upgrade_result.get("download_job_id", f"upgrade-{video_id}")
+        logger.info(f"Processed video quality upgrade for video {video_id}: {upgrade_result}")
 
         return VideoUpgradeResponse(
             success=True,
             job_id=job_id,
-            message=f"Video quality upgrade job queued for video {video_id}",
+            message=f"Video quality upgrade queued for video {video_id}",
         )
 
     except Exception as e:
@@ -161,35 +166,31 @@ async def find_upgradeable_videos() -> UpgradeableVideosResponse:
 
 @router.post("/bulk-upgrade")
 async def bulk_upgrade_videos(
-    video_ids: List[int], current_user: str = Depends(get_current_user)
+    request: BulkUpgradeRequest, current_user: str = Depends(get_current_user)
 ):
     """Upgrade multiple videos to higher quality (background job)"""
     try:
+        video_ids = request.video_ids
         if not video_ids:
             raise HTTPException(
                 status_code=400, detail={"error": "video_ids must be a non-empty array"}
             )
 
-        # Create background job for bulk video quality upgrade
-        job = BackgroundJob(
-            type=JobType.VIDEO_QUALITY_BULK_UPGRADE,
-            priority=JobPriority.HIGH,  # Bulk upgrades are high priority
-            payload={"video_ids": video_ids, "user_id": None},  # Can be extended later
-            created_by=current_user,
-        )
-
-        # Enqueue job
-        job_queue = await get_job_queue()
-        job_id = await job_queue.enqueue(job)
-
+        # Process bulk upgrade using the VideoQualityService directly
+        from src.services.video_quality_service import video_quality_service
+        
+        # Process upgrades directly (this will now use Celery for individual downloads)
+        upgrade_results = video_quality_service.bulk_upgrade_videos(video_ids, user_id=None)
+        
         logger.info(
-            f"Enqueued bulk video quality upgrade job {job_id} for {len(video_ids)} videos"
+            f"Processed bulk video quality upgrade for {len(video_ids)} videos: {upgrade_results}"
         )
 
         return {
-            "success": True,
-            "job_id": job_id,
-            "message": f"Bulk video quality upgrade job queued for {len(video_ids)} videos",
+            "success": upgrade_results.get("success", False),
+            "job_id": f"bulk-upgrade-{len(video_ids)}-videos",  # Placeholder ID
+            "message": f"Bulk video quality upgrade processed: {upgrade_results.get('successful_upgrades', 0)} successful, {upgrade_results.get('failed_upgrades', 0)} failed",
+            "details": upgrade_results
         }
 
     except HTTPException:
@@ -206,7 +207,9 @@ async def get_quality_preferences():
         # Import here to avoid circular imports
         from src.services.video_quality_service import VideoQualityService
 
-        preferences = await VideoQualityService.get_quality_preferences()
+        # Create service instance and call the method
+        service = VideoQualityService()
+        preferences = service.get_default_quality_preferences()
         return {"success": True, "preferences": preferences}
 
     except Exception as e:
@@ -221,7 +224,9 @@ async def get_quality_statistics():
         # Import here to avoid circular imports
         from src.services.video_quality_service import VideoQualityService
 
-        stats = await VideoQualityService.get_quality_statistics()
+        # Create service instance and call the method (it's not async)
+        service = VideoQualityService()
+        stats = service.get_quality_statistics()
         return {"success": True, "statistics": stats}
 
     except Exception as e:

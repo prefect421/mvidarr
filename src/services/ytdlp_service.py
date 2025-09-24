@@ -338,10 +338,10 @@ class YtDlpService:
                 else:
                     logger.info(f"Attempting download {download_id} with no cookies")
 
-                # Use quality format string from video quality service
+                # Use quality format string from video quality service with improved fallback
                 quality_format = download_entry.get(
                     "quality_format_string",
-                    "bestvideo[height<=2160]+bestaudio/best[height<=2160]/bestvideo[height<=1440]+bestaudio/best[height<=1440]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+                    "bv*[height<=2160]+ba/best[height<=2160]/bv*[height<=1440]+ba/best[height<=1440]/bv*[height<=1080]+ba/best[height<=1080]/bv*+ba/best",
                 )
 
                 cmd = [
@@ -356,6 +356,8 @@ class YtDlpService:
                     "--add-metadata",
                     "--ignore-errors",  # Continue on errors
                     "--no-check-certificate",  # Skip SSL certificate verification if needed
+                    "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",  # Modern browser User-Agent
+                    "--referer", "https://www.youtube.com/",  # Set referrer for YouTube
                 ]
 
                 # Force overwrite for quality upgrades to ensure higher quality downloads
@@ -371,10 +373,10 @@ class YtDlpService:
                 enable_sabr_workarounds = settings.get("enable_sabr_workarounds", True)
                 if enable_sabr_workarounds:
                     youtube_extractor_args = [
-                        "youtube:player_client=web,ios",  # Try web first, fallback to iOS client
-                        "youtube:formats=missing_pot",  # Enable formats that might be missing PO Token
-                        "youtube:innertube_host=studio.youtube.com",  # Alternative host to avoid restrictions
+                        "youtube:player_client=web,ios,android",  # Try multiple clients
+                        "youtube:include_live_dash=False",  # Avoid live dash formats that might cause fragment errors
                         "youtube:bypass_age_gate=True",  # Bypass age restrictions
+                        "youtube:innertube_client=web,ios",  # Use multiple clients for fallback
                         # Removed skip=hls,dash to allow higher quality formats (issue #11)
                     ]
                     cmd.extend(
@@ -955,6 +957,10 @@ class YtDlpService:
 
     def stop_download(self, download_id: int) -> Dict:
         """Stop a download (not easily implemented with subprocess, return success for UI)"""
+        from ..database.connection import get_db
+        from ..database.models import Download
+        
+        # Check in-memory active downloads first
         if download_id in self.active_downloads:
             download_entry = self.active_downloads[download_id]
             download_entry["status"] = "stopped"
@@ -967,11 +973,31 @@ class YtDlpService:
 
             return {"success": True, "message": f"Download {download_id} stopped"}
 
+        # Check database for download record
+        try:
+            with get_db() as session:
+                download = session.query(Download).filter(Download.id == download_id).first()
+                if download:
+                    # Update status in database
+                    download.status = "stopped"
+                    download.error_message = "Download stopped by user"
+                    download.updated_at = datetime.utcnow()
+                    session.commit()
+                    
+                    return {"success": True, "message": f"Download {download_id} stopped"}
+                    
+        except Exception as e:
+            logger.error(f"Error stopping download {download_id}: {e}")
+            return {"success": False, "error": f"Database error: {str(e)}"}
+
         return {"success": False, "error": "Download not found"}
 
     def retry_download(self, download_id: int) -> Dict:
         """Retry a failed download"""
-        # Find in history
+        from ..database.connection import get_db
+        from ..database.models import Download, Video
+        
+        # Find in history first
         for entry in self.download_history:
             if entry["id"] == download_id and entry["status"] in ["failed", "stopped"]:
                 # Create new download with same parameters
@@ -986,7 +1012,166 @@ class YtDlpService:
                     artist_folder_path=entry.get("artist_folder_path"),
                 )
 
+        # Check database for download record
+        try:
+            with get_db() as session:
+                download = session.query(Download).filter(Download.id == download_id).first()
+                if download and download.status in ["failed", "stopped"]:
+                    # Get video info for retry
+                    video = None
+                    if download.video_id:
+                        video = session.query(Video).filter(Video.id == download.video_id).first()
+                    
+                    # Update status to pending and reset progress
+                    download.status = "pending"
+                    download.progress = 0
+                    download.error_message = None
+                    download.updated_at = datetime.utcnow()
+                    session.commit()
+                    
+                    return {"success": True, "message": f"Download {download_id} queued for retry"}
+                elif download:
+                    return {"success": False, "error": f"Download is in '{download.status}' status and cannot be retried"}
+                    
+        except Exception as e:
+            logger.error(f"Error retrying download {download_id}: {e}")
+            return {"success": False, "error": f"Database error: {str(e)}"}
+
         return {"success": False, "error": "Download not found or not retryable"}
+
+    def process_pending_downloads(self) -> Dict:
+        """Process pending downloads from database and add them to the download queue"""
+        from ..database.connection import get_db
+        from ..database.models import Download, Video
+        
+        processed_count = 0
+        errors = []
+        
+        try:
+            with get_db() as session:
+                # Get pending/queued downloads from database
+                pending_downloads = session.query(Download).filter(
+                    Download.status.in_(['pending', 'queued'])
+                ).order_by(Download.created_at.asc()).limit(10).all()  # Process max 10 at a time
+                
+                logger.info(f"Found {len(pending_downloads)} pending downloads in database")
+                
+                for download in pending_downloads:
+                    try:
+                        # Skip if already active in ytdlp_service
+                        if download.id in self.active_downloads:
+                            logger.debug(f"Download {download.id} already active, skipping")
+                            continue
+                            
+                        # Get video info if available (with eager loading)
+                        video = None
+                        if download.video_id:
+                            from sqlalchemy.orm import joinedload
+                            video = session.query(Video).options(joinedload(Video.artist)).filter(Video.id == download.video_id).first()
+                        
+                        # Determine URL to use
+                        download_url = download.original_url
+                        if video and video.youtube_url:
+                            download_url = video.youtube_url
+                        elif video and video.url:
+                            download_url = video.url
+                            
+                        if not download_url or download_url == "Unknown URL":
+                            logger.warning(f"Download {download.id} has no valid URL, skipping")
+                            continue
+                            
+                        # Get artist name
+                        artist_name = "Unknown Artist"
+                        if video and video.artist:
+                            artist_name = video.artist.name
+                        
+                        # Create artist folder and get output directory
+                        from src.services.settings_service import settings
+                        music_videos_path = settings.get("music_videos_path", "data/musicvideos")
+                        if not music_videos_path or music_videos_path.strip() == "":
+                            music_videos_path = "data/musicvideos"
+                            
+                        # Create artist folder
+                        folder_name = FilenameCleanup.sanitize_folder_name(artist_name)
+                        output_dir = os.path.join(music_videos_path, folder_name)
+                        os.makedirs(output_dir, exist_ok=True)
+                        
+                        # Add to ytdlp_service queue with mapping to database ID
+                        logger.info(f"Processing download {download.id}: {artist_name} - {download.title}")
+                        
+                        # Create download entry for ytdlp_service
+                        download_entry = {
+                            "id": f"db_{download.id}",  # Map to database ID
+                            "database_id": download.id,  # Store original database ID
+                            "artist": artist_name,
+                            "title": download.title,
+                            "url": download_url,
+                            "quality": download.quality or "best",
+                            "video_id": download.video_id,
+                            "download_subtitles": True,  # Enable subtitles by default
+                            "subtitle_languages": "en,en-US,ja",
+                            "status": "queued",
+                            "progress": 0,
+                            "created_at": datetime.utcnow().isoformat(),
+                            "started_at": None,
+                            "completed_at": None,
+                            "error_message": None,
+                            "file_path": None,
+                            "file_size": None,
+                            "artist_folder_path": folder_name,
+                            "output_dir": output_dir,
+                        }
+                        
+                        # Add to queue and active downloads
+                        self.download_queue.append(download_entry)
+                        self.active_downloads[f"db_{download.id}"] = download_entry
+                        
+                        # Update database status to 'downloading'
+                        download.status = "downloading"
+                        download.updated_at = datetime.utcnow()
+                        
+                        # Start download in background thread
+                        thread = threading.Thread(
+                            target=self._download_video, args=(download_entry,)
+                        )
+                        thread.daemon = True
+                        thread.start()
+                        
+                        processed_count += 1
+                        logger.info(f"Started download {download.id} in background thread")
+                        
+                    except Exception as e:
+                        error_msg = f"Failed to process download {download.id}: {str(e)}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                        
+                        # Update download status to failed
+                        try:
+                            download.status = "failed"
+                            download.error_message = str(e)
+                            download.updated_at = datetime.utcnow()
+                        except:
+                            pass  # Don't fail the whole operation if we can't update one record
+                
+                # Commit all changes
+                session.commit()
+                
+                return {
+                    "success": True,
+                    "processed_count": processed_count,
+                    "found_pending": len(pending_downloads),
+                    "errors": errors,
+                    "message": f"Processed {processed_count} pending downloads"
+                }
+                
+        except Exception as e:
+            logger.error(f"Error processing pending downloads: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "processed_count": processed_count,
+                "errors": errors
+            }
 
     def clear_history(self) -> Dict:
         """Clear download history from both memory and database"""

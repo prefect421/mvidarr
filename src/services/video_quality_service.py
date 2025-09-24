@@ -286,50 +286,30 @@ class VideoQualityService:
 
             format_parts = []
 
-            # IMPROVED STRATEGY: Use yt-dlp's advanced format selection with -S parameters
-            # This provides much better quality selection than traditional format strings
+            # AUDIO-GUARANTEED 2025 STRATEGY: Always ensure audio tracks are included
+            # Prioritize combined formats and only use separate streams when audio is guaranteed
+            
+            # Primary: Combined formats that guarantee audio presence
+            format_parts.extend([
+                f"best[height<={max_height}][ext=mp4]",         # Best combined MP4 up to user's max setting
+                f"best[height<={max_height}][ext=webm]",        # Best combined WebM up to user's max setting
+                f"best[height<={max_height}]",                  # Best combined format up to user's max setting
+            ])
+            
+            # Secondary: Separate video+audio but with explicit audio requirement
+            format_parts.extend([
+                f"bv[height<={max_height}]+ba/bestvideo[height<={max_height}]+bestaudio",  # Require both video AND audio
+                f"bv*[height<={max_height}]+ba*[acodec!=none]", # Flexible but ensure audio codec exists
+            ])
 
-            # Primary: High-quality formats with AVC1 codec preference (best compatibility)
-            # Target 1080p as optimal balance of quality and file size
-            if max_height >= 1080:
-                # Best quality 1080p with AVC1 codec and MP4 container
-                format_parts.extend(
-                    [
-                        "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][vcodec^=avc1]+bestaudio",
-                        "bestvideo[height<=1080][ext=mp4]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][ext=mp4]+bestaudio",
-                    ]
-                )
-
-            if max_height >= 720:
-                # Fallback to 720p with same codec preferences
-                format_parts.extend(
-                    [
-                        "bestvideo[height<=720][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=720][vcodec^=avc1]+bestaudio",
-                        "bestvideo[height<=720][ext=mp4]+bestaudio[acodec^=mp4a]/bestvideo[height<=720][ext=mp4]+bestaudio",
-                    ]
-                )
-
-            # Secondary: Traditional best quality with height limits
+            # Secondary: Traditional best quality with height limits using user's max setting
             if default_quality == QualityLevel.BEST_AVAILABLE.value:
-                if max_height >= 1080:
-                    # Prioritize 1080p as optimal quality
-                    format_parts.extend(
-                        [
-                            "best[height<=1080][vcodec^=avc1][ext=mp4]",
-                            "best[height<=1080][ext=mp4]",
-                            "best[height<=1080]",
-                        ]
-                    )
-                elif max_height >= 720:
-                    format_parts.extend(
-                        [
-                            "best[height<=720][vcodec^=avc1][ext=mp4]",
-                            "best[height<=720][ext=mp4]",
-                            "best[height<=720]",
-                        ]
-                    )
-                else:
-                    format_parts.append(f"best[height<={max_height}]")
+                # Use user's max quality setting for traditional format selection
+                format_parts.extend([
+                    f"best[height<={max_height}][vcodec^=avc1][ext=mp4]",
+                    f"best[height<={max_height}][ext=mp4]", 
+                    f"best[height<={max_height}]",
+                ])
             else:
                 # Specific quality preference
                 target_height = QualityLevel(default_quality).to_height()
@@ -356,15 +336,15 @@ class VideoQualityService:
                             ]
                         )
 
-            # Final fallbacks: Ensure something downloads
-            format_parts.extend(
-                [
-                    "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]",  # Best AVC1 + MP4 audio
-                    "bestvideo[ext=mp4]+bestaudio[acodec^=mp4a]",  # Best MP4 video + MP4 audio
-                    "bestvideo+bestaudio/best[ext=mp4]",  # Any separate streams or MP4
-                    "best",  # Ultimate fallback
-                ]
-            )
+            # Final fallbacks: Ensure something downloads with reliable format selection
+            format_parts.extend([
+                "bv*+ba*/best",      # Flexible separate video+audio or best combined
+                "bv+ba/best",        # Standard separate video+audio or best combined
+                "best[ext=mp4]",     # Best MP4 format
+                "worst[ext=mp4]",    # Fallback to worst MP4 if nothing else works
+                "best",              # Ultimate fallback
+                "worst",             # Last resort
+            ])
 
             # Join with forward slashes for yt-dlp format selection
             format_string = "/".join(format_parts)
@@ -376,15 +356,14 @@ class VideoQualityService:
 
         except Exception as e:
             self.logger.error(f"Error generating yt-dlp format string: {e}")
-            # Return improved safe default with AVC1 and MP4 preferences
-            return (
-                "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
-                "bestvideo[height<=1080][ext=mp4]+bestaudio/"
-                "best[height<=1080][ext=mp4]/"
-                "best[height<=720][ext=mp4]/"
-                "bestvideo[height<=1080]+bestaudio/"
-                "best"
-            )
+            # Return optimized safe default that prioritizes quality (respecting user settings if available)
+            try:
+                preferences = self.get_user_quality_preferences(user_id)
+                max_quality = preferences.get("max_quality_limit", QualityLevel.ULTRA_HD.value)
+                max_height = QualityLevel(max_quality).to_height() if max_quality != "best" else 2160
+                return f"bv[height<={max_height}]+ba/best[height<={max_height}]/bv+ba/best"
+            except:
+                return "bv[height<=2160]+ba/best[height<=2160]/bv+ba/best"  # 4K default fallback
 
     def _get_artist_quality_preferences(
         self, artist_id: int
@@ -705,12 +684,17 @@ class VideoQualityService:
                 # Create new download with higher quality settings
                 from src.services.ytdlp_service import ytdlp_service
 
+                # Extract video data that we'll need before session operations
+                video_title = video.title
+                video_artist_id = video.artist_id
+                video_url_for_download = video_url  # Already extracted above
+                
                 # Get artist name for download
                 artist_name = "Unknown Artist"
-                if video.artist_id:
+                if video_artist_id:
                     artist = (
                         session.query(Artist)
-                        .filter(Artist.id == video.artist_id)
+                        .filter(Artist.id == video_artist_id)
                         .first()
                     )
                     if artist:
@@ -729,39 +713,47 @@ class VideoQualityService:
                 )
                 session.commit()  # Commit the upgrade flag immediately
 
-                # Queue the upgrade download using background job system
-                import asyncio
-
-                from src.services.job_queue import (
-                    BackgroundJob,
-                    JobPriority,
-                    JobType,
-                    get_job_queue,
-                )
-
-                # Create background job for video download
-                download_job = BackgroundJob(
-                    type=JobType.VIDEO_DOWNLOAD,
-                    priority=JobPriority.HIGH,  # Quality upgrades are high priority
-                    payload={
-                        "video_id": video_id,
-                        "quality": "best",  # Will be overridden by format string
-                        "force_redownload": True,  # Always redownload for upgrades
-                        "upgrade_mode": True,  # Flag this as an upgrade
+                # Queue the upgrade download using Celery system (like regular downloads)
+                from src.jobs.simple_download_task import simple_download_video
+                from src.database.models import Download
+                
+                # Create a download record for the upgrade
+                download = Download(
+                    artist_id=video_artist_id,
+                    video_id=video_id,
+                    title=f"{video_title} (Quality Upgrade)",
+                    original_url=video_url_for_download,
+                    status="pending",
+                    priority=1,  # High priority for upgrades
+                    quality="best",
+                    download_metadata={
+                        "upgrade_mode": True,
                         "original_quality": current_analysis.get("current_quality"),
                         "target_quality": user_prefs.get("default_quality"),
-                    },
+                    }
                 )
-
-                # Queue the download job
-                async def queue_download_job():
-                    job_queue = await get_job_queue()
-                    return await job_queue.enqueue(download_job)
-
-                download_job_id = asyncio.run(queue_download_job())
-
+                session.add(download)
+                session.commit()
+                
+                # Create download options for Celery task
+                download_options = {
+                    "quality": "best",
+                    "download_subtitles": False,
+                    "download_id": download.id,
+                    "video_id": video_id,
+                    "artist_id": video_artist_id,
+                    "artist": artist_name,
+                    "title": f"{video_title} (Quality Upgrade)",
+                    "upgrade_mode": True,
+                    "target_quality": user_prefs.get("default_quality"),
+                }
+                
+                # Queue the download using Celery
+                task_result = simple_download_video.delay(video_url_for_download, download_options)
+                download_job_id = task_result.id
+                
                 self.logger.info(
-                    f"Queued video download job {download_job_id} for quality upgrade of video {video_id}"
+                    f"Queued Celery download task {download_job_id} for quality upgrade of video {video_id}"
                 )
 
                 return {
@@ -800,17 +792,21 @@ class VideoQualityService:
 
         for video_id in video_ids:
             try:
+                # Process each video upgrade in its own database session to avoid binding issues
                 upgrade_result = self.upgrade_video_quality(video_id, user_id)
                 if upgrade_result.get("success"):
                     results["successful_upgrades"] += 1
+                    self.logger.info(f"Video {video_id} upgrade queued successfully")
                 else:
                     results["failed_upgrades"] += 1
-                    results["errors"].append(
-                        f"Video {video_id}: {upgrade_result.get('error')}"
-                    )
+                    error_msg = upgrade_result.get('error', 'Unknown error')
+                    results["errors"].append(f"Video {video_id}: {error_msg}")
+                    self.logger.warning(f"Video {video_id} upgrade failed: {error_msg}")
             except Exception as e:
                 results["failed_upgrades"] += 1
-                results["errors"].append(f"Video {video_id}: {str(e)}")
+                error_msg = str(e)
+                results["errors"].append(f"Video {video_id}: {error_msg}")
+                self.logger.error(f"Video {video_id} upgrade exception: {error_msg}")
 
         if results["failed_upgrades"] > 0:
             results["success"] = False

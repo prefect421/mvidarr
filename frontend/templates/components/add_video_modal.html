@@ -742,11 +742,14 @@ async function addVideoToLibrary(source, videoId, title, artist, url) {
             const result = await response.json();
             console.log('✅ Video added successfully:', result);
             
+            // Use the API response message which contains the correct title
+            const successMessage = result.message || `Video "${title || 'Unknown'}" by ${artist || 'Unknown Artist'} has been added to your library!`;
+            
             // Use global success function if available, otherwise use alert
             if (typeof showSuccess === 'function') {
-                showSuccess(`✅ Video "${title}" by ${artist} has been added to your library!`);
+                showSuccess(`✅ ${successMessage}`);
             } else {
-                alert(`✅ Video "${title}" by ${artist} has been added to your library!`);
+                alert(`✅ ${successMessage}`);
             }
             
             closeAddVideoModal();

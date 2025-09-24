@@ -28,6 +28,7 @@ from src.services.settings_service import settings
 from src.services.spotify_service import spotify_service
 from src.services.thumbnail_service import ThumbnailService
 from src.services.video_indexing_service import VideoIndexingService
+from src.services.youtube_search_service import YouTubeSearchService
 from src.services.wikipedia_service import WikipediaService
 from src.utils.logger import get_logger
 
@@ -138,6 +139,7 @@ class MetadataEnrichmentService:
         self.allmusic = allmusic_service
         self.wikipedia = WikipediaService()
         self.thumbnail_service = ThumbnailService()
+        self.youtube_search = YouTubeSearchService()
 
         # Configuration
         self.min_confidence_threshold = 0.7
@@ -1120,8 +1122,10 @@ class MetadataEnrichmentService:
         elif sources.get("lastfm", ArtistMetadata("", "")).top_tracks:
             unified.top_tracks = sources["lastfm"].top_tracks
 
-        # Images (prefer Spotify, fallback to LastFM)
-        if sources.get("spotify", ArtistMetadata("", "")).images:
+        # Images (prefer Wikipedia > Spotify > LastFM for quality)
+        if sources.get("wikipedia", ArtistMetadata("", "")).images:
+            unified.images = sources["wikipedia"].images
+        elif sources.get("spotify", ArtistMetadata("", "")).images:
             unified.images = sources["spotify"].images
         elif sources.get("lastfm", ArtistMetadata("", "")).images:
             unified.images = sources["lastfm"].images
@@ -1346,6 +1350,17 @@ class MetadataEnrichmentService:
                 images = existing_metadata["images"]
                 # Prefer high-quality images (largest size first)
                 best_image = None
+                
+                # Define size priority for Last.fm images (larger is better)
+                lastfm_size_priority = {
+                    'mega': 5,
+                    'extralarge': 4, 
+                    'large': 3,
+                    'medium': 2,
+                    'small': 1,
+                    '': 0  # Unknown size
+                }
+                
                 for image in images:
                     if isinstance(image, dict):
                         # Handle both standard "url" field and LastFM "#text" field
@@ -1357,6 +1372,12 @@ class MetadataEnrichmentService:
                                     image.get("width", 0) * image.get("height", 0) > 
                                     (best_image.get("width", 0) * best_image.get("height", 0))
                                 ):
+                                    best_image = image
+                            # Handle Last.fm size field priority
+                            elif image.get("size") is not None:
+                                current_priority = lastfm_size_priority.get(image.get("size", ""), 0)
+                                best_priority = lastfm_size_priority.get(best_image.get("size", "") if best_image else "", -1)
+                                if current_priority > best_priority:
                                     best_image = image
                             elif not best_image:
                                 best_image = image
@@ -2047,6 +2068,9 @@ class MetadataEnrichmentService:
 
                 # 1. IMVDb enrichment (re-enabled with improved handling)
                 try:
+                    # Ensure video stays attached to session
+                    video = session.merge(video)
+                    
                     if not current_imvdb_id or force_refresh:
                         # Search for video on IMVDb if not already linked
                         imvdb_videos = imvdb_service.search_videos(
@@ -2132,6 +2156,9 @@ class MetadataEnrichmentService:
 
                 # 2. Enhanced Spotify enrichment
                 try:
+                    # Ensure video stays attached to session
+                    video = session.merge(video)
+                    
                     if video.artist.spotify_id:
                         # Search for track on Spotify with improved matching
                         track_search = spotify_service.search_tracks(
@@ -2237,6 +2264,9 @@ class MetadataEnrichmentService:
 
                 # 3. Enhanced Last.fm enrichment
                 try:
+                    # Ensure video stays attached to session
+                    video = session.merge(video)
+                    
                     if video.artist.lastfm_name:
                         # Get detailed track info from Last.fm
                         track_info = lastfm_service.get_track_info(
@@ -2293,6 +2323,9 @@ class MetadataEnrichmentService:
 
                 # 4. MusicBrainz enrichment (for authoritative metadata)
                 try:
+                    # Ensure video stays attached to session
+                    video = session.merge(video)
+                    
                     if video.artist.mbid or not video.album:
                         # Search for recording in MusicBrainz
                         # Note: This is a basic implementation - MusicBrainz recording search would need to be added to the service
@@ -2307,9 +2340,70 @@ class MetadataEnrichmentService:
                         f"MusicBrainz enrichment failed for video {video_id}: {e}"
                     )
 
-                # 5. YouTube metadata enhancement (if we have YouTube ID)
+                # 5. YouTube ID discovery (if we don't have YouTube ID)
+                try:
+                    # Ensure video stays attached to session
+                    video = session.merge(video)
+                    
+                    if not video.youtube_id or force_refresh:
+                        # Search for YouTube video using title and artist
+                        search_result = self.youtube_search.search_video_by_title(
+                            video_title, artist_name, limit=5
+                        )
+                        
+                        if search_result and search_result.get("videos"):
+                            # Find the best match based on title similarity
+                            best_match = None
+                            best_score = 0.0
+                            
+                            for youtube_video in search_result["videos"]:
+                                yt_title = youtube_video.get("title", "").lower()
+                                clean_video_title = video_title.lower().replace(artist_name.lower(), "").strip()
+                                
+                                # Simple title matching - look for key words
+                                title_words = set(clean_video_title.split())
+                                yt_words = set(yt_title.split())
+                                
+                                if title_words and yt_words:
+                                    # Calculate similarity score (intersection over union)
+                                    intersection = len(title_words.intersection(yt_words))
+                                    union = len(title_words.union(yt_words))
+                                    score = intersection / union if union > 0 else 0
+                                    
+                                    # Bonus for exact artist name match
+                                    if artist_name.lower() in yt_title:
+                                        score += 0.2
+                                    
+                                    # Bonus for official video indicators
+                                    if any(indicator in yt_title for indicator in ["official", "music video", "mv"]):
+                                        score += 0.1
+                                    
+                                    if score > best_score and score > 0.3:  # Minimum threshold
+                                        best_score = score
+                                        best_match = youtube_video
+                            
+                            if best_match:
+                                video.youtube_id = best_match["youtube_id"]
+                                video.youtube_url = best_match["youtube_url"]
+                                updated_fields.extend(["youtube_id", "youtube_url"])
+                                metadata_sources["YouTube"] = "Video ID discovery"
+                                logger.info(
+                                    f"Found YouTube ID for video {video_id}: {video.youtube_id} "
+                                    f"(match score: {best_score:.2f})"
+                                )
+                            else:
+                                logger.debug(f"No suitable YouTube match found for video {video_id}")
+                                
+                except Exception as e:
+                    errors.append(f"YouTube ID discovery failed: {str(e)}")
+                    logger.warning(f"YouTube ID discovery failed for video {video_id}: {e}")
+
+                # 6. YouTube metadata enhancement (if we have YouTube ID)
                 try:
                     if video.youtube_id:
+                        # Re-attach video to session if needed to prevent detachment issues
+                        video = session.merge(video)
+                        
                         # Extract YouTube thumbnail if no thumbnail exists or force refresh
                         if not video.thumbnail_url or force_refresh:
                             # YouTube thumbnail URLs follow a standard pattern
@@ -2514,6 +2608,7 @@ class MetadataEnrichmentService:
                     video_id=video_id,
                     success=True,
                     enriched_fields=updated_fields,
+                    sources_used=list(metadata_sources.keys()),
                     metadata_sources=list(metadata_sources.keys()),
                     errors=errors if errors else None,
                 )

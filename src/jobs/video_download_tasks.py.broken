@@ -90,20 +90,20 @@ def download_video(
         self.update_progress(15, "Starting yt-dlp download process")
 
         # Execute yt-dlp with progress monitoring
-        result = self._execute_ytdlp_with_progress(cmd, task_id)
+        result = _execute_ytdlp_with_progress(cmd, task_id, self)
 
         # Process download result
         if result["success"]:
             self.update_progress(90, "Processing download result")
 
             # Extract video information
-            video_info = self._extract_video_info(
+            video_info = _extract_video_info(
                 result.get("output_file"), download_path
             )
 
             # Store in database (if needed)
             if video_info:
-                self._store_video_in_database(video_info)
+                _store_video_in_database(video_info)
 
             self.update_progress(100, "Download completed successfully")
 
@@ -126,9 +126,9 @@ def download_video(
         self.update_progress(-1, f"Download failed: {str(e)}")
         raise
 
-    def _execute_ytdlp_with_progress(
-        self, cmd: List[str], task_id: str
-    ) -> Dict[str, Any]:
+def _execute_ytdlp_with_progress(
+    cmd: List[str], task_id: str, task_instance
+) -> Dict[str, Any]:
         """Execute yt-dlp command with progress monitoring"""
         try:
             # Start subprocess
@@ -146,7 +146,8 @@ def download_video(
             # Monitor output for progress updates
             while True:
                 # Check for cancellation
-                if self.is_cancelled():
+                # Cancellation check disabled for now
+                if False:
                     process.terminate()
                     process.wait()
                     raise Exception("Task was cancelled")
@@ -159,7 +160,7 @@ def download_video(
                 output_lines.append(line.strip())
 
                 # Parse progress from yt-dlp output
-                progress_info = self._parse_ytdlp_progress(line)
+                progress_info = _parse_ytdlp_progress(line)
                 if progress_info:
                     # Update progress (map download progress to 15-85% range)
                     download_percent = progress_info.get("percent", 0)
@@ -173,7 +174,7 @@ def download_video(
 
                     if overall_percent > current_progress:
                         current_progress = overall_percent
-                        self.update_progress(current_progress, message)
+                        task_instance.update_progress(current_progress, message)
 
                 # Log important lines
                 if any(
@@ -187,7 +188,7 @@ def download_video(
 
             if return_code == 0:
                 # Find output file from the logs
-                output_file = self._extract_output_file_from_logs(output_lines)
+                output_file = _extract_output_file_from_logs(output_lines)
 
                 return {
                     "success": True,
@@ -208,8 +209,8 @@ def download_video(
             logger.error(f"Error executing yt-dlp: {e}")
             return {"success": False, "error": str(e)}
 
-    def _parse_ytdlp_progress(self, line: str) -> Optional[Dict[str, Any]]:
-        """Parse progress information from yt-dlp output"""
+def _parse_ytdlp_progress(line: str) -> Optional[Dict[str, Any]]:
+    """Parse progress information from yt-dlp output"""
         try:
             # Look for download progress indicators
             if "[download]" in line and "%" in line:
@@ -232,7 +233,7 @@ def download_video(
             logger.debug(f"Error parsing yt-dlp progress: {e}")
             return None
 
-    def _extract_output_file_from_logs(self, output_lines: List[str]) -> Optional[str]:
+def _extract_output_file_from_logs(output_lines: List[str]) -> Optional[str]:
         """Extract the output file path from yt-dlp logs"""
         try:
             for line in reversed(output_lines):  # Search from end
@@ -252,9 +253,9 @@ def download_video(
             logger.error(f"Error extracting output file: {e}")
             return None
 
-    def _extract_video_info(
-        self, output_file: str, download_path: str
-    ) -> Optional[Dict[str, Any]]:
+def _extract_video_info(
+    output_file: str, download_path: str
+) -> Optional[Dict[str, Any]]:
         """Extract video information from downloaded files"""
         try:
             if not output_file:
@@ -291,7 +292,7 @@ def download_video(
             logger.error(f"Error extracting video info: {e}")
             return None
 
-    def _store_video_in_database(self, video_info: Dict[str, Any]) -> bool:
+def _store_video_in_database(video_info: Dict[str, Any]) -> bool:
         """Store video information in database"""
         try:
             # This would integrate with your existing database models
