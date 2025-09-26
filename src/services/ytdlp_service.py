@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from src.database.connection import get_db
 from src.database.models import Video
 from src.services.settings_service import settings
+from src.services.youtube_download_engine import youtube_download_engine
 from src.utils.filename_cleanup import FilenameCleanup
 from src.utils.logger import get_logger
 
@@ -25,9 +26,11 @@ class YtDlpService:
     """Service for downloading videos using yt-dlp CLI directly"""
 
     def __init__(self):
-        # Find yt-dlp executable dynamically
+        # Find yt-dlp executable dynamically - prefer pipx version
         self.yt_dlp_path = (
-            shutil.which("yt-dlp")
+            "/root/.local/bin/yt-dlp"  # pipx installed (latest)
+            if os.path.exists("/root/.local/bin/yt-dlp")
+            else shutil.which("yt-dlp")
             or shutil.which("yt-dlp.exe")
             or "/usr/local/bin/yt-dlp"
         )
@@ -39,6 +42,9 @@ class YtDlpService:
 
         # Auto-load existing cookie file at startup
         self._load_existing_cookie_file()
+
+        # Resume pending downloads from database
+        self._resume_pending_downloads()
 
     def _get_next_id(self) -> int:
         """Get next unique download ID"""
@@ -182,7 +188,7 @@ class YtDlpService:
                 logger.warning(
                     f"Failed to get quality format string, using default: {quality_error}"
                 )
-                quality_format_string = "bestvideo[height<=2160]+bestaudio/best[height<=2160]/bestvideo[height<=1440]+bestaudio/best[height<=1440]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
+                quality_format_string = "bv*[height<=1080]+ba/best[height<=1080]/18/worst"  # Restore quality preference with fallback
 
             # Check for existing active downloads for this video
             if video_id:
@@ -288,7 +294,10 @@ class YtDlpService:
             return {"success": False, "error": str(e)}
 
     def _download_video(self, download_entry: Dict):
-        """Download video using yt-dlp CLI with fallback cookie sources"""
+        """
+        Download video using the complete YouTube Download Engine
+        This replaces the old fragmented approach with a unified production solution
+        """
         download_id = download_entry["id"]
         video_id = download_entry.get("video_id")
 
@@ -299,298 +308,99 @@ class YtDlpService:
             # Update database status to downloading
             self._update_database_download_status(download_entry, "downloading")
 
-            # Build yt-dlp command - use just the song name as requested
-            output_template = os.path.join(
-                download_entry["output_dir"],
-                f"{FilenameCleanup.sanitize_folder_name(download_entry['title'])}.%(ext)s",
+            # Use quality format string from video quality service
+            quality_format = download_entry.get(
+                "quality_format_string", "best"
+            )
+            
+            logger.info(f"Download {download_id}: Using YouTube Download Engine")
+            logger.info(f"Download {download_id}: Quality format: {quality_format}")
+
+            # Use the complete YouTube download engine
+            result = youtube_download_engine.download_video(
+                url=download_entry["url"],
+                output_path=download_entry["output_dir"],
+                title=download_entry["title"],
+                quality=quality_format
             )
 
-            # Try different cookie sources for age-restricted videos
-            cookie_sources = []
-
-            # First, try uploaded cookie file if available
-            if self.custom_cookie_file and os.path.exists(self.custom_cookie_file):
-                cookie_sources.append(("file", self.custom_cookie_file))
-
-            # Then try browser cookies
-            cookie_sources.extend(
-                [
-                    ("browser", "firefox"),
-                    ("browser", "chrome"),
-                    ("browser", "chromium"),
-                    ("browser", "edge"),
-                    (None, None),  # Fallback with no cookies
-                ]
-            )
-
-            success = False
-            last_error = None
-
-            for cookie_type, cookie_source in cookie_sources:
-                if cookie_type == "file":
-                    logger.info(
-                        f"Attempting download {download_id} with uploaded cookie file: {cookie_source}"
-                    )
-                elif cookie_type == "browser":
-                    logger.info(
-                        f"Attempting download {download_id} with cookies from browser: {cookie_source}"
-                    )
-                else:
-                    logger.info(f"Attempting download {download_id} with no cookies")
-
-                # Use quality format string from video quality service with improved fallback
-                quality_format = download_entry.get(
-                    "quality_format_string",
-                    "bv*[height<=2160]+ba/best[height<=2160]/bv*[height<=1440]+ba/best[height<=1440]/bv*[height<=1080]+ba/best[height<=1080]/bv*+ba/best",
-                )
-
-                cmd = [
-                    self.yt_dlp_path,
-                    "--format",
-                    quality_format,
-                    "--output",
-                    output_template,
-                    "--no-playlist",
-                    "--write-info-json",
-                    "--embed-metadata",
-                    "--add-metadata",
-                    "--ignore-errors",  # Continue on errors
-                    "--no-check-certificate",  # Skip SSL certificate verification if needed
-                    "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",  # Modern browser User-Agent
-                    "--referer", "https://www.youtube.com/",  # Set referrer for YouTube
-                ]
-
-                # Force overwrite for quality upgrades to ensure higher quality downloads
-                if "(Quality Upgrade)" in download_entry.get("title", ""):
-                    cmd.extend(["--force-overwrites"])
-                    # Also ensure no caching issues by using --no-cache-dir
-                    cmd.extend(["--no-cache-dir"])
-                    logger.info(
-                        f"Download {download_id}: Force overwrite and no cache enabled for quality upgrade"
-                    )
-
-                # Add YouTube extractor args to handle PO Token and SABR issues
-                enable_sabr_workarounds = settings.get("enable_sabr_workarounds", True)
-                if enable_sabr_workarounds:
-                    youtube_extractor_args = [
-                        "youtube:player_client=web,ios,android",  # Try multiple clients
-                        "youtube:include_live_dash=False",  # Avoid live dash formats that might cause fragment errors
-                        "youtube:bypass_age_gate=True",  # Bypass age restrictions
-                        "youtube:innertube_client=web,ios",  # Use multiple clients for fallback
-                        # Removed skip=hls,dash to allow higher quality formats (issue #11)
-                    ]
-                    cmd.extend(
-                        [
-                            "--extractor-args",
-                            ";".join(youtube_extractor_args),
-                        ]
-                    )
-                    logger.debug(
-                        f"Download {download_id}: YouTube extractor args enabled: {youtube_extractor_args}"
-                    )
-
-                # Add throttling if enabled in settings
-                enable_throttled_downloads = settings.get(
-                    "enable_throttled_downloads", True
-                )
-                if enable_throttled_downloads:
-                    cmd.extend(
-                        [
-                            "--throttled-rate",
-                            "100K",  # Slower download to avoid detection
-                            "--sleep-requests",
-                            "1",  # Wait between requests
-                        ]
-                    )
-                    logger.debug(f"Download {download_id}: Throttled downloads enabled")
-
-                logger.info(
-                    f"Download {download_id} using quality format: {quality_format}"
-                )
-
-                # Add cookie source if available
-                if cookie_type == "file":
-                    cmd.extend(["--cookies", cookie_source])
-                elif cookie_type == "browser":
-                    cmd.extend(["--cookies-from-browser", cookie_source])
-
-                # Add subtitle options if requested
-                if download_entry.get("download_subtitles", False):
-                    subtitle_langs = download_entry.get(
-                        "subtitle_languages", "en,en-US"
-                    )
-                    cmd.extend(
-                        [
-                            "--write-subs",  # Download subtitle files as separate .srt/.vtt files
-                            "--write-auto-subs",  # Download auto-generated subtitles
-                            "--sub-langs",
-                            subtitle_langs,  # Use configurable subtitle languages
-                            # Note: NOT using --embed-subs so subtitles remain as separate files
-                            # This allows users to toggle subtitles on/off in video players
-                        ]
-                    )
-
-                cmd.append(download_entry["url"])
-
-                try:
-                    # Set up environment with explicit temp directory
-                    env = os.environ.copy()
-                    env["TMPDIR"] = "/tmp"
-                    env["TEMP"] = "/tmp"
-                    env["TMP"] = "/tmp"
-
-                    # Execute yt-dlp
-                    process = subprocess.Popen(
-                        cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        universal_newlines=True,
-                        env=env,
-                    )
-
-                    # Monitor progress
-                    output_lines = []
-                    for line in iter(process.stdout.readline, ""):
-                        output_lines.append(line.strip())
-
-                        # Parse progress if available
-                        if "[download]" in line and "%" in line:
-                            try:
-                                # Extract percentage
-                                parts = line.split()
-                                for part in parts:
-                                    if "%" in part:
-                                        progress_str = part.replace("%", "")
-                                        download_entry["progress"] = float(progress_str)
-                                        break
-                            except:
-                                pass
-
-                        # Log format selection information
-                        if "Selected format:" in line or "format code" in line:
-                            logger.info(
-                                f"Download {download_id} format selection: {line.strip()}"
-                            )
-
-                        # Log format availability errors
-                        if (
-                            "No video formats found" in line
-                            or "format not available" in line
-                        ):
-                            logger.warning(
-                                f"Download {download_id} format issue: {line.strip()}"
-                            )
-
-                    process.wait()
-
-                    if process.returncode == 0:
-                        # Download successful
-                        download_entry["status"] = "completed"
-                        download_entry["completed_at"] = datetime.utcnow().isoformat()
-                        download_entry["progress"] = 100
-
-                        # Find downloaded file
-                        for ext in ["mp4", "mkv", "webm", "avi"]:
-                            potential_file = output_template.replace("%(ext)s", ext)
-                            if os.path.exists(potential_file):
-                                download_entry["file_path"] = potential_file
-                                download_entry["file_size"] = os.path.getsize(
-                                    potential_file
-                                )
-                                break
-
-                        if cookie_type == "file":
-                            logger.info(
-                                f"Download {download_id} completed successfully using uploaded cookie file"
-                            )
-                        elif cookie_type == "browser":
-                            logger.info(
-                                f"Download {download_id} completed successfully using cookies from: {cookie_source}"
-                            )
-                        else:
-                            logger.info(
-                                f"Download {download_id} completed successfully with no cookies"
-                            )
-
-                        # Sync to database (both Video and Download models)
-                        self._update_video_status_in_database(
-                            video_id,
-                            "DOWNLOADED",
-                            download_entry.get("file_path"),
-                            download_entry.get("file_size"),
-                        )
-                        self._update_database_download_status(
-                            download_entry,
-                            "completed",
-                            download_entry.get("file_path"),
-                            download_entry.get("file_size"),
-                        )
-                        success = True
-                        break
-                    else:
-                        # This attempt failed, try next cookie source
-                        error_output = "\n".join(output_lines[-5:])  # Last 5 lines
-                        last_error = error_output
-
-                        if cookie_type == "file":
-                            logger.warning(
-                                f"Download {download_id} failed with uploaded cookie file: {error_output}"
-                            )
-                        elif cookie_type == "browser":
-                            logger.warning(
-                                f"Download {download_id} failed with {cookie_source} cookies: {error_output}"
-                            )
-                        else:
-                            logger.warning(
-                                f"Download {download_id} failed with no cookies: {error_output}"
-                            )
-
-                except Exception as attempt_error:
-                    # This attempt failed, try next cookie source
-                    last_error = str(attempt_error)
-
-                    if cookie_type == "file":
-                        logger.warning(
-                            f"Download {download_id} attempt with uploaded cookie file failed: {attempt_error}"
-                        )
-                    elif cookie_type == "browser":
-                        logger.warning(
-                            f"Download {download_id} attempt with {cookie_source} cookies failed: {attempt_error}"
-                        )
-                    else:
-                        logger.warning(
-                            f"Download {download_id} attempt with no cookies failed: {attempt_error}"
-                        )
-
-            if not success:
-                # All attempts failed
-                download_entry["status"] = "failed"
+            if result.success:
+                # Download successful
+                download_entry["status"] = "completed"
                 download_entry["completed_at"] = datetime.utcnow().isoformat()
-                download_entry["error_message"] = (
-                    f"All download attempts failed. Last error: {last_error}"
+                download_entry["progress"] = 100
+                download_entry["file_path"] = result.file_path
+                download_entry["file_size"] = result.file_size
+
+                logger.info(f"Download {download_id} completed successfully!")
+                logger.info(f"Download {download_id}: Strategy used: {result.strategy_used.value}")
+                logger.info(f"Download {download_id}: File: {result.file_path}")
+                logger.info(f"Download {download_id}: Duration: {result.duration:.1f}s")
+
+                # Update database with success
+                self._update_video_status_in_database(
+                    video_id,
+                    "DOWNLOADED",
+                    result.file_path,
+                    result.file_size,
                 )
-                self._update_video_status_in_database(video_id, "FAILED")
                 self._update_database_download_status(
                     download_entry,
-                    "failed",
-                    None,
-                    None,
-                    download_entry["error_message"],
+                    "completed",
+                    result.file_path,
+                    result.file_size,
                 )
-                logger.error(
-                    f"Download {download_id} failed after all attempts: {last_error}"
-                )
+
+                # EMERGENCY VALIDATION: Ensure video was properly linked
+                if video_id:
+                    self._emergency_validate_video_linking(video_id, download_entry)
+
+            else:
+                # Download failed - check if it's rate limiting
+                error_message = result.error_message or "Unknown download error"
+                
+                # Check if failure is due to rate limiting (HTTP 429 or similar)
+                is_rate_limited = any(keyword in error_message.lower() for keyword in [
+                    "429", "too many requests", "rate limit", "temporarily unavailable"
+                ])
+                
+                if is_rate_limited:
+                    # Rate limited - reschedule for retry instead of permanent failure
+                    logger.warning(f"Download {download_id} rate limited, will retry later: {error_message}")
+                    download_entry["status"] = "pending"
+                    download_entry["error_message"] = f"Rate limited - will retry: {error_message}"
+                    
+                    # Update database to pending for retry (don't mark video as FAILED)
+                    self._update_database_download_status(
+                        download_entry, "pending", None, None, f"Rate limited - will retry: {error_message}"
+                    )
+                else:
+                    # Permanent failure
+                    download_entry["status"] = "failed"
+                    download_entry["completed_at"] = datetime.utcnow().isoformat()
+                    download_entry["error_message"] = error_message
+
+                    logger.error(f"Download {download_id} failed permanently: {error_message}")
+                    if result.duration:
+                        logger.info(f"Download {download_id}: Duration: {result.duration:.1f}s")
+
+                    # Update database with permanent failure
+                    self._update_video_status_in_database(video_id, "FAILED")
+                    self._update_database_download_status(
+                        download_entry, "failed", None, None, error_message
+                    )
 
         except Exception as e:
             download_entry["status"] = "failed"
             download_entry["completed_at"] = datetime.utcnow().isoformat()
-            download_entry["error_message"] = str(e)
+            download_entry["error_message"] = f"Download engine error: {str(e)}"
+            
+            logger.error(f"Download {download_id} engine exception: {e}")
+            
             self._update_video_status_in_database(video_id, "FAILED")
             self._update_database_download_status(
                 download_entry, "failed", None, None, str(e)
             )
-            logger.error(f"Download {download_id} exception: {e}")
 
         finally:
             # Move from active to history
@@ -633,72 +443,24 @@ class YtDlpService:
                                     video, original_file_path, file_path
                                 )
 
-                            # Automatically extract FFmpeg metadata for newly downloaded videos
-                            try:
-                                from datetime import datetime
-                                from pathlib import Path
-
-                                from src.services.video_indexing_service import (
-                                    VideoIndexingService,
-                                )
-
+                            # DEFENSIVE: Ensure local_path is set BEFORE attempting FFmpeg
+                            # This prevents loss of file path if FFmpeg extraction fails
+                            if not video.local_path and file_path:
+                                video.local_path = file_path
+                                session.commit()
                                 logger.info(
-                                    f"Extracting FFmpeg metadata for newly downloaded video {video_id}"
+                                    f"✅ DEFENSIVE: Pre-set local_path for video {video_id}: {file_path}"
                                 )
 
-                                video_path = Path(file_path)
-                                indexing_service = VideoIndexingService()
-                                ffmpeg_metadata = (
-                                    indexing_service.extract_ffmpeg_metadata(video_path)
-                                )
-
-                                # Update basic fields if extracted successfully
-                                if (
-                                    ffmpeg_metadata.get("duration")
-                                    and not video.duration
-                                ):
-                                    video.duration = ffmpeg_metadata["duration"]
-                                    logger.info(
-                                        f"Updated video {video_id} duration: {video.duration}s"
-                                    )
-
-                                if ffmpeg_metadata.get("quality") and not video.quality:
-                                    video.quality = ffmpeg_metadata["quality"]
-                                    logger.info(
-                                        f"Updated video {video_id} quality: {video.quality}"
-                                    )
-
-                                # Store additional technical metadata in video_metadata field
-                                if ffmpeg_metadata.get("width") or ffmpeg_metadata.get(
-                                    "height"
-                                ):
-                                    existing_metadata = video.video_metadata or {}
-                                    tech_metadata = {
-                                        "width": ffmpeg_metadata.get("width"),
-                                        "height": ffmpeg_metadata.get("height"),
-                                        "video_codec": ffmpeg_metadata.get(
-                                            "video_codec"
-                                        ),
-                                        "audio_codec": ffmpeg_metadata.get(
-                                            "audio_codec"
-                                        ),
-                                        "fps": ffmpeg_metadata.get("fps"),
-                                        "bitrate": ffmpeg_metadata.get("bitrate"),
-                                        "ffmpeg_extracted": True,
-                                        "extraction_date": datetime.utcnow().isoformat(),
-                                        "extracted_on_download": True,
-                                    }
-                                    existing_metadata.update(tech_metadata)
-                                    video.video_metadata = existing_metadata
-                                    logger.info(
-                                        f"Updated video {video_id} with technical metadata from FFmpeg"
-                                    )
-
-                            except Exception as e:
-                                logger.warning(
-                                    f"Failed to extract FFmpeg metadata for video {video_id}: {e}"
-                                )
-                                # Don't fail the download if FFmpeg extraction fails
+                            # ARCHITECTURAL CHANGE: Sequential processing instead of immediate FFmpeg
+                            # This eliminates race conditions between download and enhancement services
+                            logger.info(
+                                f"✅ Video {video_id} download completed and linked successfully."
+                            )
+                            logger.info(f"📋 File: {file_path} ({file_size} bytes)")
+                            logger.info(
+                                f"🔄 Video queued for enhancement processing by metadata service"
+                            )
 
                     session.commit()
                     logger.info(
@@ -720,6 +482,7 @@ class YtDlpService:
         """Update download status in database"""
         db_download_id = download_entry.get("db_download_id")
         if not db_download_id:
+            logger.warning(f"No db_download_id found in download_entry for {download_entry.get('id')}")
             return
 
         try:
@@ -959,7 +722,7 @@ class YtDlpService:
         """Stop a download (not easily implemented with subprocess, return success for UI)"""
         from ..database.connection import get_db
         from ..database.models import Download
-        
+
         # Check in-memory active downloads first
         if download_id in self.active_downloads:
             download_entry = self.active_downloads[download_id]
@@ -976,16 +739,21 @@ class YtDlpService:
         # Check database for download record
         try:
             with get_db() as session:
-                download = session.query(Download).filter(Download.id == download_id).first()
+                download = (
+                    session.query(Download).filter(Download.id == download_id).first()
+                )
                 if download:
                     # Update status in database
                     download.status = "stopped"
                     download.error_message = "Download stopped by user"
                     download.updated_at = datetime.utcnow()
                     session.commit()
-                    
-                    return {"success": True, "message": f"Download {download_id} stopped"}
-                    
+
+                    return {
+                        "success": True,
+                        "message": f"Download {download_id} stopped",
+                    }
+
         except Exception as e:
             logger.error(f"Error stopping download {download_id}: {e}")
             return {"success": False, "error": f"Database error: {str(e)}"}
@@ -996,7 +764,7 @@ class YtDlpService:
         """Retry a failed download"""
         from ..database.connection import get_db
         from ..database.models import Download, Video
-        
+
         # Find in history first
         for entry in self.download_history:
             if entry["id"] == download_id and entry["status"] in ["failed", "stopped"]:
@@ -1015,24 +783,86 @@ class YtDlpService:
         # Check database for download record
         try:
             with get_db() as session:
-                download = session.query(Download).filter(Download.id == download_id).first()
+                download = (
+                    session.query(Download).filter(Download.id == download_id).first()
+                )
                 if download and download.status in ["failed", "stopped"]:
                     # Get video info for retry
                     video = None
                     if download.video_id:
-                        video = session.query(Video).filter(Video.id == download.video_id).first()
-                    
+                        video = (
+                            session.query(Video)
+                            .filter(Video.id == download.video_id)
+                            .first()
+                        )
+
                     # Update status to pending and reset progress
                     download.status = "pending"
                     download.progress = 0
                     download.error_message = None
                     download.updated_at = datetime.utcnow()
                     session.commit()
-                    
-                    return {"success": True, "message": f"Download {download_id} queued for retry"}
+
+                    # Actually add the download back to the queue
+                    if video and video.youtube_url:
+                        # Extract data from session to avoid lazy loading issues
+                        video_id = video.id
+                        video_title = video.title
+                        video_url = video.youtube_url
+                        artist_name = (
+                            video.artist.name if video.artist else "Unknown Artist"
+                        )
+                        download_db_id = download.id
+
+                        # Add to queue using the same logic as _resume_pending_downloads
+                        from src.services.settings_service import settings
+
+                        music_videos_path = settings.get(
+                            "music_videos_path", "data/musicvideos"
+                        )
+                        if not music_videos_path or music_videos_path.strip() == "":
+                            music_videos_path = "data/musicvideos"
+
+                        folder_name = FilenameCleanup.sanitize_folder_name(artist_name)
+                        output_dir = os.path.join(music_videos_path, folder_name)
+
+                        download_entry = {
+                            "id": self._get_next_id(),
+                            "download_id": download_db_id,
+                            "artist": artist_name,
+                            "title": video_title,
+                            "url": video_url,
+                            "quality": "best",
+                            "download_subtitles": False,
+                            "status": "queued",
+                            "progress": 0,
+                            "video_id": video_id,
+                            "output_dir": output_dir,
+                            "quality_format_string": "bv*[height<=1080]+ba/best[height<=1080]/18/worst",
+                        }
+
+                        self.download_queue.append(download_entry)
+                        self.active_downloads[download_entry["id"]] = download_entry
+
+                        # Start download thread
+                        thread = threading.Thread(
+                            target=self._download_video, args=(download_entry,)
+                        )
+                        thread.daemon = True
+                        thread.start()
+
+                        logger.info(f"Requeued download: {artist_name} - {video_title}")
+
+                    return {
+                        "success": True,
+                        "message": f"Download {download_id} queued for retry",
+                    }
                 elif download:
-                    return {"success": False, "error": f"Download is in '{download.status}' status and cannot be retried"}
-                    
+                    return {
+                        "success": False,
+                        "error": f"Download is in '{download.status}' status and cannot be retried",
+                    }
+
         except Exception as e:
             logger.error(f"Error retrying download {download_id}: {e}")
             return {"success": False, "error": f"Database error: {str(e)}"}
@@ -1040,74 +870,129 @@ class YtDlpService:
         return {"success": False, "error": "Download not found or not retryable"}
 
     def process_pending_downloads(self) -> Dict:
-        """Process pending downloads from database and add them to the download queue"""
+        """Process pending downloads from database with rate limiting (max 1 every 30 seconds)"""
         from ..database.connection import get_db
         from ..database.models import Download, Video
-        
+
         processed_count = 0
         errors = []
-        
+
         try:
             with get_db() as session:
-                # Get pending/queued downloads from database
-                pending_downloads = session.query(Download).filter(
-                    Download.status.in_(['pending', 'queued'])
-                ).order_by(Download.created_at.asc()).limit(10).all()  # Process max 10 at a time
+                # Check if there are already active downloads to avoid overwhelming YouTube
+                active_download_count = len(self.active_downloads)
                 
-                logger.info(f"Found {len(pending_downloads)} pending downloads in database")
+                # Also check for downloads in 'downloading' status in database
+                downloading_in_db = session.query(Download).filter(Download.status == 'downloading').count()
+                total_active = active_download_count + downloading_in_db
                 
+                logger.info(f"Active downloads - In memory: {active_download_count}, In DB: {downloading_in_db}, Total: {total_active}")
+                
+                if total_active >= 1:  # AGGRESSIVE RATE LIMITING: Max 1 concurrent download
+                    logger.info(f"Rate limiting: {total_active} downloads already active, skipping new starts")
+                    return {
+                        "success": True,
+                        "processed_count": 0,
+                        "found_pending": 0,
+                        "errors": [],
+                        "message": f"Rate limiting: {total_active} downloads already active",
+                    }
+                
+                # Get pending/queued downloads from database - only start 1 at a time
+                pending_downloads = (
+                    session.query(Download)
+                    .filter(Download.status.in_(["pending", "queued"]))
+                    .order_by(Download.created_at.asc())
+                    .limit(1)  # RATE LIMITING: Only process 1 download at a time
+                    .all()
+                )
+
+                logger.info(
+                    f"Found {len(pending_downloads)} pending downloads in database"
+                )
+
                 for download in pending_downloads:
                     try:
+                        # EXTRACT ALL DATA WITHIN SESSION to avoid DetachedInstanceError
+                        download_data = {
+                            'id': download.id,
+                            'video_id': download.video_id,
+                            'title': download.title,
+                            'original_url': download.original_url,
+                            'quality': download.quality,
+                            'created_at': download.created_at
+                        }
+                        
                         # Skip if already active in ytdlp_service
-                        if download.id in self.active_downloads:
-                            logger.debug(f"Download {download.id} already active, skipping")
+                        if download_data['id'] in self.active_downloads:
+                            logger.debug(
+                                f"Download {download_data['id']} already active, skipping"
+                            )
                             continue
-                            
+
                         # Get video info if available (with eager loading)
-                        video = None
-                        if download.video_id:
+                        video_data = None
+                        if download_data['video_id']:
                             from sqlalchemy.orm import joinedload
-                            video = session.query(Video).options(joinedload(Video.artist)).filter(Video.id == download.video_id).first()
-                        
+
+                            video = (
+                                session.query(Video)
+                                .options(joinedload(Video.artist))
+                                .filter(Video.id == download_data['video_id'])
+                                .first()
+                            )
+                            
+                            if video:
+                                video_data = {
+                                    'youtube_url': video.youtube_url,
+                                    'url': video.url,
+                                    'artist_name': video.artist.name if video.artist else "Unknown Artist"
+                                }
+
                         # Determine URL to use
-                        download_url = download.original_url
-                        if video and video.youtube_url:
-                            download_url = video.youtube_url
-                        elif video and video.url:
-                            download_url = video.url
-                            
+                        download_url = download_data['original_url']
+                        if video_data and video_data['youtube_url']:
+                            download_url = video_data['youtube_url']
+                        elif video_data and video_data['url']:
+                            download_url = video_data['url']
+
                         if not download_url or download_url == "Unknown URL":
-                            logger.warning(f"Download {download.id} has no valid URL, skipping")
+                            logger.warning(
+                                f"Download {download_data['id']} has no valid URL, skipping"
+                            )
                             continue
-                            
+
                         # Get artist name
-                        artist_name = "Unknown Artist"
-                        if video and video.artist:
-                            artist_name = video.artist.name
-                        
+                        artist_name = video_data['artist_name'] if video_data else "Unknown Artist"
+
                         # Create artist folder and get output directory
                         from src.services.settings_service import settings
-                        music_videos_path = settings.get("music_videos_path", "data/musicvideos")
+
+                        music_videos_path = settings.get(
+                            "music_videos_path", "data/musicvideos"
+                        )
                         if not music_videos_path or music_videos_path.strip() == "":
                             music_videos_path = "data/musicvideos"
-                            
+
                         # Create artist folder
                         folder_name = FilenameCleanup.sanitize_folder_name(artist_name)
                         output_dir = os.path.join(music_videos_path, folder_name)
                         os.makedirs(output_dir, exist_ok=True)
-                        
+
                         # Add to ytdlp_service queue with mapping to database ID
-                        logger.info(f"Processing download {download.id}: {artist_name} - {download.title}")
-                        
-                        # Create download entry for ytdlp_service
+                        logger.info(
+                            f"Processing download {download_data['id']}: {artist_name} - {download_data['title']}"
+                        )
+
+                        # Create download entry for ytdlp_service using EXTRACTED DATA
                         download_entry = {
-                            "id": f"db_{download.id}",  # Map to database ID
-                            "database_id": download.id,  # Store original database ID
+                            "id": f"db_{download_data['id']}",  # Map to database ID
+                            "db_download_id": download_data['id'],  # Store original database ID for status updates
                             "artist": artist_name,
-                            "title": download.title,
+                            "title": download_data['title'],
                             "url": download_url,
-                            "quality": download.quality or "best",
-                            "video_id": download.video_id,
+                            "quality": download_data['quality'] or "best",
+                            "video_id": download_data['video_id'],
                             "download_subtitles": True,  # Enable subtitles by default
                             "subtitle_languages": "en,en-US,ja",
                             "status": "queued",
@@ -1121,56 +1006,60 @@ class YtDlpService:
                             "artist_folder_path": folder_name,
                             "output_dir": output_dir,
                         }
-                        
+
                         # Add to queue and active downloads
                         self.download_queue.append(download_entry)
-                        self.active_downloads[f"db_{download.id}"] = download_entry
-                        
-                        # Update database status to 'downloading'
+                        self.active_downloads[f"db_{download_data['id']}"] = download_entry
+
+                        # Update database status to 'downloading' (still within session)
                         download.status = "downloading"
                         download.updated_at = datetime.utcnow()
-                        
+
                         # Start download in background thread
                         thread = threading.Thread(
                             target=self._download_video, args=(download_entry,)
                         )
                         thread.daemon = True
                         thread.start()
-                        
+
                         processed_count += 1
-                        logger.info(f"Started download {download.id} in background thread")
-                        
+                        logger.info(
+                            f"Started download {download_data['id']} in background thread"
+                        )
+
                     except Exception as e:
-                        error_msg = f"Failed to process download {download.id}: {str(e)}"
+                        # Use extracted data to avoid session issues in error handling
+                        download_id = getattr(download, 'id', 'unknown')
+                        error_msg = f"Failed to process download {download_id}: {str(e)}"
                         logger.error(error_msg)
                         errors.append(error_msg)
-                        
-                        # Update download status to failed
+
+                        # Update download status to failed (still within session)
                         try:
                             download.status = "failed"
                             download.error_message = str(e)
                             download.updated_at = datetime.utcnow()
                         except:
                             pass  # Don't fail the whole operation if we can't update one record
-                
+
                 # Commit all changes
                 session.commit()
-                
+
                 return {
                     "success": True,
                     "processed_count": processed_count,
                     "found_pending": len(pending_downloads),
                     "errors": errors,
-                    "message": f"Processed {processed_count} pending downloads"
+                    "message": f"Processed {processed_count} pending downloads",
                 }
-                
+
         except Exception as e:
             logger.error(f"Error processing pending downloads: {e}")
             return {
                 "success": False,
                 "error": str(e),
                 "processed_count": processed_count,
-                "errors": errors
+                "errors": errors,
             }
 
     def clear_history(self) -> Dict:
@@ -1308,6 +1197,527 @@ class YtDlpService:
 
         except Exception as e:
             return {"status": "unhealthy", "error": str(e)}
+
+    def _emergency_validate_video_linking(self, video_id: int, download_entry: dict):
+        """
+        Emergency validation and recovery system for video file linking
+        Implements comprehensive defensive measures for download validation
+        """
+        try:
+            with get_db() as session:
+                video = session.query(Video).filter(Video.id == video_id).first()
+                if not video:
+                    logger.error(
+                        f"❌ Video {video_id} not found for emergency validation"
+                    )
+                    return
+
+                if video.local_path is None:
+                    logger.warning(
+                        f"⚠️  Video {video_id} was not properly linked after download completion"
+                    )
+                    logger.warning(f"   Attempting emergency file linking recovery...")
+
+                    # First try our improved file detection on the original template
+                    recovered_file_path = None
+                    if "output_dir" in download_entry:
+                        output_template = os.path.join(
+                            download_entry["output_dir"],
+                            f"{FilenameCleanup.sanitize_folder_name(download_entry.get('title', 'Unknown'))}.%(ext)s",
+                        )
+                        recovered_file_path = self._find_downloaded_file(
+                            output_template, download_entry
+                        )
+                        if recovered_file_path:
+                            logger.info(
+                                f"   ✅ Found file using improved template detection: {recovered_file_path}"
+                            )
+
+                    # If that fails, try comprehensive file search
+                    if not recovered_file_path:
+                        recovered_file_path = self._emergency_file_search(
+                            video, download_entry, session
+                        )
+
+                    if recovered_file_path:
+                        video.local_path = recovered_file_path
+                        session.commit()
+                        logger.info(
+                            f"✅ Emergency linking recovery successful: {recovered_file_path}"
+                        )
+
+                        # Extract basic metadata from recovered file
+                        self._extract_basic_metadata_emergency(
+                            video, recovered_file_path, session
+                        )
+                    else:
+                        logger.error(
+                            f"❌ Emergency linking recovery FAILED for video {video_id}"
+                        )
+                        logger.error(
+                            f"   Manual intervention required - check fix_unlinked_videos.py"
+                        )
+                else:
+                    logger.info(
+                        f"✅ Video {video_id} successfully linked to {video.local_path}"
+                    )
+
+        except Exception as e:
+            logger.error(f"Emergency validation failed for video {video_id}: {e}")
+
+    def _find_downloaded_file(
+        self, output_template: str, download_entry: dict
+    ) -> Optional[str]:
+        """
+        Robust file detection that handles yt-dlp filename variations
+        """
+        import glob
+        import re
+        from html import unescape
+
+        # Extract directory and base filename from template
+        output_dir = os.path.dirname(output_template)
+        template_basename = os.path.basename(output_template).replace("%(ext)s", "")
+
+        logger.debug(
+            f"Looking for files in {output_dir} matching pattern based on: {template_basename}"
+        )
+
+        # Strategy 1: Exact template match (original logic)
+        for ext in ["mp4", "mkv", "webm", "avi", "mov", "flv"]:
+            exact_file = output_template.replace("%(ext)s", ext)
+            if os.path.exists(exact_file):
+                logger.debug(f"Found exact template match: {exact_file}")
+                return exact_file
+
+        # Strategy 2: Pattern-based search with HTML entity decoding
+        # Clean the template basename by handling common yt-dlp transformations
+        search_patterns = []
+
+        # Create search pattern by:
+        # 1. HTML decode common entities
+        decoded_basename = unescape(template_basename)
+        # 2. Handle yt-dlp's common filename transformations
+        alt_basename1 = template_basename.replace("'", "39").replace("&#39;", "39")
+        alt_basename2 = template_basename.replace(" - '", " - 39").replace(
+            " - &#39;", " - 39"
+        )
+        alt_basename3 = (
+            template_basename.replace("'", "39")
+            .replace("&#39;", "39")
+            .replace(" - ", " - 39")
+        )
+        # Handle parentheses removal (common yt-dlp transformation)
+        no_parens = re.sub(r"[()]", "", template_basename)
+        no_parens_spaces = re.sub(r"[()]", " ", template_basename).replace("  ", " ")
+        # Handle period removal after abbreviations
+        no_periods = template_basename.replace("ft.", "ft").replace("feat.", "feat")
+        # Combined transformations
+        combined = (
+            re.sub(r"[()]", "", template_basename)
+            .replace("ft.", "ft")
+            .replace("feat.", "feat")
+        )
+
+        # 3. Create flexible pattern that allows for minor variations
+        flexible_pattern = re.escape(template_basename[:15])  # First 15 chars
+
+        # More comprehensive search patterns
+        search_patterns.extend(
+            [
+                f"{template_basename}.*",  # Original template
+                f"{decoded_basename}.*",  # HTML decoded
+                f"{alt_basename1}.*",  # Quote variations
+                f"{alt_basename2}.*",  # Quote variations with context
+                f"{alt_basename3}.*",  # Quote variations with separator
+                f"{no_parens}.*",  # Parentheses removed
+                f"{no_parens_spaces}.*",  # Parentheses replaced with spaces
+                f"{no_periods}.*",  # Periods removed from abbreviations
+                f"{combined}.*",  # Combined transformations
+                f"*{template_basename[:10]}*",  # Partial start match
+                f"*{flexible_pattern[:10]}*",  # Flexible partial match
+                f"*{template_basename.split(' - ')[0]}*{template_basename.split(' - ')[-1][:10]}*",  # Artist + partial title
+            ]
+        )
+
+        # Search for files using glob patterns
+        for pattern in search_patterns:
+            glob_pattern = os.path.join(output_dir, pattern)
+            matches = glob.glob(glob_pattern)
+
+            # Filter for video files
+            video_matches = [
+                m
+                for m in matches
+                if any(
+                    m.lower().endswith(f".{ext}")
+                    for ext in ["mp4", "mkv", "webm", "avi", "mov", "flv"]
+                )
+            ]
+
+            if video_matches:
+                # Filter matches by title similarity to avoid wrong files
+                title_keywords = [
+                    word.lower() for word in template_basename.split() if len(word) > 3
+                ]
+
+                if len(video_matches) > 1 and title_keywords:
+                    # Score each match by how many title keywords it contains
+                    def score_match(file_path):
+                        filename = os.path.basename(file_path).lower()
+                        score = sum(
+                            1 for keyword in title_keywords if keyword in filename
+                        )
+                        return score
+
+                    # Get matches with the highest keyword score
+                    scored_matches = [(score_match(f), f) for f in video_matches]
+                    max_score = max(scored_matches, key=lambda x: x[0])[0]
+
+                    if max_score > 0:  # At least one keyword match
+                        best_matches = [
+                            f for score, f in scored_matches if score == max_score
+                        ]
+                        # Among the best keyword matches, pick the largest file
+                        best_file = max(
+                            best_matches,
+                            key=lambda f: (
+                                os.path.getsize(f) if os.path.exists(f) else 0
+                            ),
+                        )
+                    else:
+                        # No keyword matches, fall back to largest file
+                        best_file = max(
+                            video_matches,
+                            key=lambda f: (
+                                os.path.getsize(f) if os.path.exists(f) else 0
+                            ),
+                        )
+                else:
+                    # Single match or no keywords, take first/largest
+                    best_file = (
+                        video_matches[0]
+                        if len(video_matches) == 1
+                        else max(
+                            video_matches,
+                            key=lambda f: (
+                                os.path.getsize(f) if os.path.exists(f) else 0
+                            ),
+                        )
+                    )
+
+                logger.debug(
+                    f"Found pattern match: {best_file} using pattern: {pattern}"
+                )
+                return best_file
+
+        # Strategy 3: Fallback - look for any recent video files in the directory
+        try:
+            import time
+
+            current_time = time.time()
+            recent_threshold = 300  # 5 minutes
+
+            for file_path in glob.glob(os.path.join(output_dir, "*.mp4")):
+                if os.path.exists(file_path):
+                    file_age = current_time - os.path.getmtime(file_path)
+                    if file_age < recent_threshold:
+                        # Check if filename has any similarity to expected title
+                        if any(
+                            word.lower() in os.path.basename(file_path).lower()
+                            for word in template_basename.split()
+                            if len(word) > 3
+                        ):
+                            logger.debug(f"Found recent similar file: {file_path}")
+                            return file_path
+        except Exception as e:
+            logger.debug(f"Fallback search failed: {e}")
+
+        logger.warning(f"No downloaded file found for template: {output_template}")
+        return None
+
+    def _emergency_file_search(
+        self, video, download_entry: dict, session
+    ) -> Optional[str]:
+        """
+        Emergency file search using multiple patterns and fallback locations
+        """
+        try:
+            import glob
+            import time
+
+            from src.services.settings_service import settings
+
+            music_videos_path = settings.get("music_videos_path", "data/musicvideos")
+
+            # Get artist name for file location
+            artist_name = "Unknown Artist"
+            if video.artist_id:
+                from src.database.models import Artist
+
+                artist = (
+                    session.query(Artist).filter(Artist.id == video.artist_id).first()
+                )
+                if artist:
+                    artist_name = artist.name
+
+            # Clean video title for filename matching
+            video_title = video.title or f"Video_{video.id}"
+            clean_title = self._sanitize_filename_for_search(video_title)
+
+            # Search patterns for downloaded files
+            search_patterns = [
+                # Organized location: data/musicvideos/Artist/Title.ext
+                os.path.join(
+                    music_videos_path,
+                    self._sanitize_filename_for_search(artist_name),
+                    f"*{clean_title[:20]}*",
+                ),
+                # YouTube download location: data/musicvideos/YouTube/Date-Title/file
+                os.path.join(
+                    music_videos_path, "YouTube", f"*{clean_title[:20]}*", "*.mp4"
+                ),
+                os.path.join(
+                    music_videos_path, "YouTube", f"*{clean_title[:20]}*", "*.webm"
+                ),
+                # Direct download location
+                os.path.join(music_videos_path, "*", f"*{clean_title[:20]}*"),
+                # Also search in download entry output dir if available
+                (
+                    os.path.join(
+                        download_entry.get("output_dir", ""), f"*{clean_title[:20]}*"
+                    )
+                    if download_entry.get("output_dir")
+                    else None
+                ),
+            ]
+
+            # Remove None patterns
+            search_patterns = [p for p in search_patterns if p]
+
+            # Search for video files
+            video_exts = [".mp4", ".webm", ".mkv", ".avi"]
+            for pattern in search_patterns:
+                logger.info(f"🔍 Emergency search pattern: {pattern}")
+                potential_files = glob.glob(pattern)
+                for file_path in potential_files:
+                    if any(file_path.endswith(ext) for ext in video_exts):
+                        # Check if this file was recently created (within last 30 minutes)
+                        if os.path.exists(file_path):
+                            file_time = os.path.getmtime(file_path)
+                            if time.time() - file_time < 1800:  # 30 minutes
+                                logger.info(
+                                    f"✅ Emergency recovery found recent file: {file_path}"
+                                )
+                                return file_path
+
+            logger.warning(f"❌ Emergency file search failed for video {video.id}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Emergency file search failed: {e}")
+            return None
+
+    def _extract_basic_metadata_emergency(self, video, file_path: str, session):
+        """
+        Emergency metadata extraction with graceful fallbacks
+        """
+        try:
+            import json
+            import subprocess
+
+            # Use ffprobe to get video information
+            result = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "quiet",
+                    "-print_format",
+                    "json",
+                    "-show_format",
+                    "-show_streams",
+                    file_path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+            if result.returncode == 0:
+                probe_data = json.loads(result.stdout)
+
+                # Extract duration from format
+                format_info = probe_data.get("format", {})
+                duration = float(format_info.get("duration", 0))
+
+                # Extract video stream info
+                video_stream = next(
+                    (
+                        s
+                        for s in probe_data.get("streams", [])
+                        if s.get("codec_type") == "video"
+                    ),
+                    None,
+                )
+                if video_stream:
+                    width = video_stream.get("width", 0)
+                    height = video_stream.get("height", 0)
+                    codec = video_stream.get("codec_name", "unknown")
+
+                    # Determine quality based on height
+                    if height >= 2160:
+                        quality = "4K"
+                    elif height >= 1440:
+                        quality = "1440p"
+                    elif height >= 1080:
+                        quality = "1080p"
+                    elif height >= 720:
+                        quality = "720p"
+                    elif height >= 480:
+                        quality = "480p"
+                    else:
+                        quality = "SD"
+
+                    # Update video record with emergency metadata
+                    video.duration = duration
+                    video.quality = quality
+
+                    # Update video_metadata
+                    existing_metadata = video.video_metadata or {}
+                    existing_metadata.update(
+                        {
+                            "width": width,
+                            "height": height,
+                            "video_codec": codec,
+                            "file_size": (
+                                os.path.getsize(file_path)
+                                if os.path.exists(file_path)
+                                else None
+                            ),
+                            "emergency_recovery": True,
+                            "extraction_date": datetime.utcnow().isoformat(),
+                        }
+                    )
+                    video.video_metadata = existing_metadata
+
+                    session.commit()
+                    logger.info(
+                        f"✅ Emergency metadata extraction successful for video {video.id}"
+                    )
+
+        except Exception as e:
+            logger.warning(
+                f"Emergency metadata extraction failed for video {video.id}: {e}"
+            )
+            # Don't fail - at least we have the file path
+
+    def _sanitize_filename_for_search(self, filename: str) -> str:
+        """Sanitize filename for search patterns and filesystem compatibility"""
+        import re
+
+        # Remove or replace problematic characters
+        sanitized = re.sub(r'[<>:"/\\|?*]', "", filename)
+        sanitized = re.sub(r"[^\w\s-]", "", sanitized).strip()
+        return sanitized[:100] if sanitized else "Unknown"
+
+    def _resume_pending_downloads(self):
+        """Resume downloads that were queued but not processed during restart"""
+        try:
+            from src.database.connection import get_db
+            from src.database.models import Download, Video
+
+            with get_db() as session:
+                # Get pending/queued downloads with explicit loading
+                pending_downloads = (
+                    session.query(Download)
+                    .filter(Download.status.in_(["queued", "pending"]))
+                    .order_by(Download.created_at)
+                    .all()
+                )
+
+                logger.info(
+                    f"Found {len(pending_downloads)} pending downloads to resume"
+                )
+
+                for download in pending_downloads:
+                    try:
+                        # Extract all required data within the session to avoid lazy loading
+                        download_db_id = download.id
+                        video_id_fk = download.video_id
+
+                        # Get video data with explicit loading
+                        from sqlalchemy.orm import joinedload
+                        video = (
+                            session.query(Video)
+                            .options(joinedload(Video.artist))
+                            .filter_by(id=video_id_fk)
+                            .first()
+                        )
+                        if not video or not video.youtube_url:
+                            logger.warning(
+                                f"Skipping download {download_db_id} - no video or URL"
+                            )
+                            continue
+
+                        # Get all data while in session to avoid lazy loading issues
+                        artist_name = (
+                            video.artist.name if video.artist else "Unknown Artist"
+                        )
+                        video_title = video.title
+                        video_url = video.youtube_url
+                        video_id = video.id
+
+                        # Calculate output directory
+                        from src.services.settings_service import settings
+
+                        music_videos_path = settings.get(
+                            "music_videos_path", "data/musicvideos"
+                        )
+                        if not music_videos_path or music_videos_path.strip() == "":
+                            music_videos_path = "data/musicvideos"
+
+                        folder_name = FilenameCleanup.sanitize_folder_name(artist_name)
+                        output_dir = os.path.join(music_videos_path, folder_name)
+
+                        # Add to queue with existing download record (use local vars to avoid session issues)
+                        download_entry = {
+                            "id": self._get_next_id(),  # Internal download ID
+                            "db_download_id": download_db_id,  # Reference to existing DB record (fixed field name)
+                            "artist": artist_name,
+                            "title": video_title,
+                            "url": video_url,
+                            "quality": "best",
+                            "download_subtitles": False,
+                            "status": "queued",
+                            "progress": 0,
+                            "video_id": video_id,
+                            "output_dir": output_dir,
+                            "quality_format_string": "bv*[height<=1080]+ba/best[height<=1080]/18/worst",  # Quality preference with safe fallback
+                        }
+
+                        self.download_queue.append(download_entry)
+                        self.active_downloads[download_entry["id"]] = download_entry
+
+                        # Start download thread immediately (like add_music_video_download does)
+                        thread = threading.Thread(
+                            target=self._download_video, args=(download_entry,)
+                        )
+                        thread.daemon = True
+                        thread.start()
+
+                        logger.info(f"Resumed download: {artist_name} - {video_title}")
+
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to resume download {download_db_id or 'unknown'}: {e}"
+                        )
+                        # If it's a session binding issue, skip and continue
+                        if "not bound to a Session" in str(e):
+                            logger.warning(f"Skipping download {download_db_id} due to session binding issue")
+                        continue
+
+        except Exception as e:
+            logger.error(f"Failed to resume pending downloads: {e}")
 
 
 # Global instance
