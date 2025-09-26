@@ -9,6 +9,7 @@ import asyncio
 import json
 import mimetypes
 import os
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -16,7 +17,6 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import quote, unquote, urlparse
 
 import httpx
-
 from fastapi import (
     APIRouter,
     Body,
@@ -59,11 +59,27 @@ router = APIRouter(
 )
 logger = get_logger("mvidarr.api.fastapi.videos")
 
+
+def get_ytdlp_path():
+    """Get the best available yt-dlp executable path"""
+    return (
+        "/root/.local/bin/yt-dlp"  # pipx installed (latest)
+        if os.path.exists("/root/.local/bin/yt-dlp")
+        else shutil.which("yt-dlp")
+        or shutil.which("yt-dlp.exe")
+        or "/usr/local/bin/yt-dlp"
+    )
+
+
 # ========================================================================================
 # AUTHENTICATION - PROPER IMPLEMENTATION
 # ========================================================================================
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_legacy,
+    require_authentication_legacy,
+)
+
 
 async def get_current_user():
     """Get current authenticated user"""
@@ -242,56 +258,65 @@ async def resolve_video_url(video: Video, session: Session) -> Optional[str]:
         # First try IMVDB to find URL
         try:
             from src.services.imvdb_service import IMVDbService
+
             imvdb_service = IMVDbService()
-            
+
             logger.info(f"Checking IMVDB for URL: {artist_name} - {video_title}")
             search_results = imvdb_service.search_videos(artist_name, video_title)
-            
+
             if search_results and len(search_results) > 0:
                 # Get the first result
                 imvdb_video = search_results[0]
-                
+
                 # Extract YouTube URL if available
                 youtube_url = None
-                if 'sources' in imvdb_video:
-                    for source in imvdb_video['sources']:
-                        if source.get('source') == 'youtube' and source.get('source_data'):
-                            youtube_url = source['source_data']
+                if "sources" in imvdb_video:
+                    for source in imvdb_video["sources"]:
+                        if source.get("source") == "youtube" and source.get(
+                            "source_data"
+                        ):
+                            youtube_url = source["source_data"]
                             break
-                
+
                 if youtube_url:
                     logger.info(f"✅ Found YouTube URL from IMVDB: {youtube_url}")
-                    
+
                     # Update the video with the found URL
                     video.url = youtube_url
                     video.youtube_url = youtube_url
-                    
+
                     # Extract YouTube ID from URL
-                    if 'watch?v=' in youtube_url:
-                        video.youtube_id = youtube_url.split('watch?v=')[1].split('&')[0]
-                    elif 'youtu.be/' in youtube_url:
-                        video.youtube_id = youtube_url.split('youtu.be/')[1].split('?')[0]
-                    
+                    if "watch?v=" in youtube_url:
+                        video.youtube_id = youtube_url.split("watch?v=")[1].split("&")[
+                            0
+                        ]
+                    elif "youtu.be/" in youtube_url:
+                        video.youtube_id = youtube_url.split("youtu.be/")[1].split("?")[
+                            0
+                        ]
+
                     # Also update IMVDB metadata if available
-                    if 'id' in imvdb_video:
-                        video.imvdb_id = str(imvdb_video['id'])
+                    if "id" in imvdb_video:
+                        video.imvdb_id = str(imvdb_video["id"])
                     if imvdb_video:
                         video.imvdb_metadata = imvdb_video
-                    
+
                     session.commit()
                     logger.info(f"✅ Updated video {video.id} with IMVDB data")
                     return youtube_url
                 else:
-                    logger.info(f"Found IMVDB entry but no YouTube URL for: {search_query}")
+                    logger.info(
+                        f"Found IMVDB entry but no YouTube URL for: {search_query}"
+                    )
             else:
                 logger.info(f"No IMVDB results found for: {search_query}")
-                
+
         except Exception as imvdb_error:
             logger.warning(f"IMVDB search failed for '{search_query}': {imvdb_error}")
 
         # If IMVDB didn't find anything, fall back to yt-dlp YouTube search
         cmd = [
-            "/usr/local/bin/yt-dlp",  # Use the system-installed version
+            get_ytdlp_path(),  # Use the best available version
             "--dump-json",
             "--no-download",
             "--playlist-items",
@@ -950,8 +975,6 @@ async def update_video_status(
 # ========================================================================================
 
 
-
-
 # ========================================================================================
 # VIDEO STREAMING AND MEDIA OPERATIONS
 # ========================================================================================
@@ -1074,7 +1097,7 @@ async def get_video_thumbnail(
                 return FileResponse(
                     thumbnail_file,
                     media_type=media_type,
-                    headers={"content-disposition": "inline"}
+                    headers={"content-disposition": "inline"},
                 )
 
         # Check if video has a thumbnail_url that should be downloaded
@@ -1083,43 +1106,50 @@ async def get_video_thumbnail(
                 # Download and cache the thumbnail
                 thumbnail_dir = Path("/home/mike/mvidarr/data/thumbnails/videos")
                 thumbnail_dir.mkdir(parents=True, exist_ok=True)
-                
+
                 # Determine file extension from URL
                 parsed_url = urlparse(video.thumbnail_url)
                 file_extension = Path(parsed_url.path).suffix.lower()
-                if not file_extension or file_extension not in ['.jpg', '.jpeg', '.png', '.webp']:
-                    file_extension = '.jpg'
-                
+                if not file_extension or file_extension not in [
+                    ".jpg",
+                    ".jpeg",
+                    ".png",
+                    ".webp",
+                ]:
+                    file_extension = ".jpg"
+
                 cached_thumbnail = thumbnail_dir / f"{video_id}_cached{file_extension}"
-                
+
                 # Download if not already cached
                 if not cached_thumbnail.exists():
                     async with httpx.AsyncClient() as client:
                         response = await client.get(video.thumbnail_url, timeout=10)
                         response.raise_for_status()
-                        
-                        with open(cached_thumbnail, 'wb') as f:
+
+                        with open(cached_thumbnail, "wb") as f:
                             f.write(response.content)
-                
+
                 # Update database with cached path
                 video.thumbnail_path = str(cached_thumbnail)
                 session.commit()
-                
+
                 # Return the cached file
                 media_type = "image/jpeg"
-                if file_extension == '.png':
+                if file_extension == ".png":
                     media_type = "image/png"
-                elif file_extension == '.webp':
+                elif file_extension == ".webp":
                     media_type = "image/webp"
-                
+
                 return FileResponse(
                     cached_thumbnail,
                     media_type=media_type,
-                    headers={"content-disposition": "inline"}
+                    headers={"content-disposition": "inline"},
                 )
-                
+
             except Exception as e:
-                logger.warning(f"Failed to download thumbnail from URL {video.thumbnail_url}: {e}")
+                logger.warning(
+                    f"Failed to download thumbnail from URL {video.thumbnail_url}: {e}"
+                )
                 # Continue to fallback logic
 
         # Fall back to old naming pattern for compatibility
@@ -1141,14 +1171,16 @@ async def get_video_thumbnail(
             return FileResponse(
                 thumbnail_file,
                 media_type="image/webp",
-                headers={"content-disposition": "inline"}
+                headers={"content-disposition": "inline"},
             )
         else:
             # Return placeholder thumbnail
             placeholder_path = Path("frontend/static/placeholder-video.png")
             if placeholder_path.exists():
                 return FileResponse(
-                    placeholder_path, media_type="image/png", headers={"content-disposition": "inline"}
+                    placeholder_path,
+                    media_type="image/png",
+                    headers={"content-disposition": "inline"},
                 )
             else:
                 raise HTTPException(status_code=404, detail="Thumbnail not found")
@@ -1191,13 +1223,19 @@ async def get_video_thumbnail_info(
             try:
                 file_path = Path(video.thumbnail_path)
                 stat = file_path.stat()
-                info.update({
-                    "file_size": stat.st_size,
-                    "file_modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                    "file_format": file_path.suffix.lower()
-                })
+                info.update(
+                    {
+                        "file_size": stat.st_size,
+                        "file_modified": datetime.fromtimestamp(
+                            stat.st_mtime
+                        ).isoformat(),
+                        "file_format": file_path.suffix.lower(),
+                    }
+                )
             except Exception as e:
-                logger.warning(f"Could not get file info for {video.thumbnail_path}: {e}")
+                logger.warning(
+                    f"Could not get file info for {video.thumbnail_path}: {e}"
+                )
 
         return info
 
@@ -1210,9 +1248,9 @@ async def get_video_thumbnail_info(
 
 @router.post("/refresh-thumbnails")
 async def refresh_video_thumbnails(
-    body: Optional[dict] = Body(None), 
+    body: Optional[dict] = Body(None),
     current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_db_session),
 ):
     """Refresh thumbnails for videos by downloading from source URLs with progress tracking"""
     try:
@@ -1231,19 +1269,15 @@ async def refresh_video_thumbnails(
                         and_(
                             Video.thumbnail_url.isnot(None),
                             Video.thumbnail_url != "",
-                            Video.thumbnail_path.is_(None)
-                        )
+                            Video.thumbnail_path.is_(None),
+                        ),
                     )
                 )
                 .all()
             )
         else:
             # Refresh specific videos
-            videos = (
-                session.query(Video)
-                .filter(Video.id.in_(video_ids))
-                .all()
-            )
+            videos = session.query(Video).filter(Video.id.in_(video_ids)).all()
 
         if not videos:
             return {
@@ -1267,7 +1301,7 @@ async def refresh_video_thumbnails(
                 video_paths.append(str(video.local_path))
 
         total_processable = len(url_videos) + len(ffmpeg_videos)
-        
+
         if total_processable == 0:
             return {
                 "message": "No videos found with thumbnail URLs or local files",
@@ -1278,11 +1312,13 @@ async def refresh_video_thumbnails(
                 "job_id": None,
             }
 
-        logger.info(f"Starting thumbnail refresh: {len(url_videos)} from URLs, {len(ffmpeg_videos)} from FFmpeg")
+        logger.info(
+            f"Starting thumbnail refresh: {len(url_videos)} from URLs, {len(ffmpeg_videos)} from FFmpeg"
+        )
 
         # Submit background job for mixed thumbnail processing
         from src.jobs.metadata_tasks import submit_bulk_thumbnail_url_download_task
-        
+
         job_id = submit_bulk_thumbnail_url_download_task(
             url_video_ids=[v.id for v in url_videos],
             ffmpeg_video_paths=video_paths,
@@ -1297,7 +1333,7 @@ async def refresh_video_thumbnails(
             "url_videos": len(url_videos),
             "ffmpeg_videos": len(ffmpeg_videos),
             "job_id": job_id,
-            "status": "started"
+            "status": "started",
         }
 
     except HTTPException:
@@ -1330,7 +1366,9 @@ async def update_video_thumbnail(
                 try:
                     Path(video.thumbnail_path).unlink()
                 except Exception as e:
-                    logger.warning(f"Could not delete thumbnail file {video.thumbnail_path}: {e}")
+                    logger.warning(
+                        f"Could not delete thumbnail file {video.thumbnail_path}: {e}"
+                    )
 
             video.thumbnail_url = None
             video.thumbnail_path = None
@@ -1346,15 +1384,17 @@ async def update_video_thumbnail(
             # Update thumbnail URL and clear cached path to force new download
             video.thumbnail_url = thumbnail_url
             video.thumbnail_source = "manual"
-            
+
             # Clear cached thumbnail path so new URL will be used
             if video.thumbnail_path and Path(video.thumbnail_path).exists():
                 try:
                     Path(video.thumbnail_path).unlink()
                 except Exception as e:
-                    logger.warning(f"Could not delete old thumbnail file {video.thumbnail_path}: {e}")
+                    logger.warning(
+                        f"Could not delete old thumbnail file {video.thumbnail_path}: {e}"
+                    )
                 video.thumbnail_path = None
-                
+
             session.commit()
 
             logger.info(f"Updated thumbnail URL for video {video_id}")
@@ -1362,8 +1402,7 @@ async def update_video_thumbnail(
 
         else:
             raise HTTPException(
-                status_code=400, 
-                detail="Invalid action or missing thumbnail_url"
+                status_code=400, detail="Invalid action or missing thumbnail_url"
             )
 
     except HTTPException:
@@ -1395,7 +1434,7 @@ async def upload_video_thumbnail(
         if file.content_type not in allowed_types:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid file type. Allowed types: {', '.join(allowed_types)}"
+                detail=f"Invalid file type. Allowed types: {', '.join(allowed_types)}",
             )
 
         # Generate filename based on video info
@@ -1424,7 +1463,7 @@ async def upload_video_thumbnail(
         video.thumbnail_metadata = {
             "file_size": len(content),
             "content_type": file.content_type,
-            "original_filename": file.filename
+            "original_filename": file.filename,
         }
         video.thumbnail_uploaded_at = datetime.utcnow()
         session.commit()
@@ -1435,7 +1474,7 @@ async def upload_video_thumbnail(
             "message": "Thumbnail uploaded successfully",
             "thumbnail_path": str(thumbnail_path),
             "file_size": len(content),
-            "content_type": file.content_type
+            "content_type": file.content_type,
         }
 
     except HTTPException:
@@ -1454,7 +1493,12 @@ async def search_video_thumbnails(
 ):
     """Search for video thumbnails using various sources (YouTube, IMVDb, Google)"""
     try:
-        video = session.query(Video).options(joinedload(Video.artist)).filter(Video.id == video_id).first()
+        video = (
+            session.query(Video)
+            .options(joinedload(Video.artist))
+            .filter(Video.id == video_id)
+            .first()
+        )
 
         if not video:
             raise HTTPException(status_code=404, detail="Video not found")
@@ -1466,11 +1510,11 @@ async def search_video_thumbnails(
         video_imvdb_id = video.imvdb_id
 
         # Use video info for search if no custom query provided
-        search_query = getattr(search_request, 'search_query', '') or ''
+        search_query = getattr(search_request, "search_query", "") or ""
         if not search_query:
             search_query = f"{artist_name} {video_title}"
 
-        sources = getattr(search_request, 'sources', ['youtube', 'imvdb', 'google'])
+        sources = getattr(search_request, "sources", ["youtube", "imvdb", "google"])
         results = []
 
         # 1. YouTube thumbnails
@@ -1479,6 +1523,7 @@ async def search_video_thumbnails(
         # Try to extract YouTube ID from existing URL if available
         if video_url and "youtube" in sources:
             import re
+
             patterns = [
                 r"(?:youtube\.com/watch\?v=|youtu\.be/)([^&\n?#]+)",
                 r"youtube\.com/embed/([^&\n?#]+)",
@@ -1497,7 +1542,9 @@ async def search_video_thumbnails(
         if not youtube_id and "youtube" in sources:
             try:
                 logger.info(f"Searching YouTube for: {search_query}")
-                search_results = youtube_service.search_videos(search_query, max_results=1)
+                search_results = youtube_service.search_videos(
+                    search_query, max_results=1
+                )
                 if search_results["success"] and search_results["results"]:
                     # Get video ID from YouTube API response format
                     first_result = search_results["results"][0]
@@ -1530,9 +1577,13 @@ async def search_video_thumbnails(
                     },
                 ]
                 results.extend(yt_thumbnails)
-                logger.info(f"Added {len(yt_thumbnails)} YouTube thumbnail options for video {video_id}")
+                logger.info(
+                    f"Added {len(yt_thumbnails)} YouTube thumbnail options for video {video_id}"
+                )
             except Exception as e:
-                logger.warning(f"Failed to create YouTube thumbnails for video {video_id}: {e}")
+                logger.warning(
+                    f"Failed to create YouTube thumbnails for video {video_id}: {e}"
+                )
 
         # 2. IMVDb thumbnails
         if "imvdb" in sources:
@@ -1548,7 +1599,9 @@ async def search_video_thumbnails(
                 if not video_details:
                     logger.info(f"No IMVDb ID found, searching for: {search_query}")
                     try:
-                        search_result = imvdb_service.find_best_video_match(artist_name, video_title)
+                        search_result = imvdb_service.find_best_video_match(
+                            artist_name, video_title
+                        )
                         if search_result:
                             video_details = search_result
                             logger.info(f"Found IMVDb video via search")
@@ -1570,20 +1623,27 @@ async def search_video_thumbnails(
                             }
                         ]
                         results.extend(imvdb_thumbnails)
-                        logger.info(f"Found IMVDb thumbnail for video {video_id}: {thumbnail_url}")
+                        logger.info(
+                            f"Found IMVDb thumbnail for video {video_id}: {thumbnail_url}"
+                        )
                     else:
-                        logger.debug(f"No thumbnail URL found in IMVDb data for video {video_id}")
+                        logger.debug(
+                            f"No thumbnail URL found in IMVDb data for video {video_id}"
+                        )
                 else:
                     logger.info(f"No IMVDb thumbnails found for: {search_query}")
             except Exception as e:
-                logger.warning(f"Failed to get IMVDb thumbnails for video {video_id}: {e}")
+                logger.warning(
+                    f"Failed to get IMVDb thumbnails for video {video_id}: {e}"
+                )
 
         # 3. Google Images thumbnails
         if "google" in sources:
             try:
-                import requests
                 from urllib.parse import quote
-                
+
+                import requests
+
                 logger.info(f"Searching Google Images for: {search_query}")
 
                 # Format query for image search
@@ -1591,7 +1651,9 @@ async def search_video_thumbnails(
                 encoded_query = quote(image_query)
 
                 # Google Images search URL
-                search_url = f"https://www.google.com/search?q={encoded_query}&tbm=isch&safe=off"
+                search_url = (
+                    f"https://www.google.com/search?q={encoded_query}&tbm=isch&safe=off"
+                )
 
                 headers = {
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -1624,14 +1686,22 @@ async def search_video_thumbnails(
 
                     if google_thumbnails:
                         results.extend(google_thumbnails)
-                        logger.info(f"Added {len(google_thumbnails)} Google Images results for video {video_id}")
+                        logger.info(
+                            f"Added {len(google_thumbnails)} Google Images results for video {video_id}"
+                        )
                     else:
-                        logger.info(f"No Google Images results found for: {search_query}")
+                        logger.info(
+                            f"No Google Images results found for: {search_query}"
+                        )
                 else:
-                    logger.warning(f"Google Images search failed with status: {response.status_code}")
+                    logger.warning(
+                        f"Google Images search failed with status: {response.status_code}"
+                    )
 
             except Exception as e:
-                logger.warning(f"Failed to search Google Images for video {video_id}: {e}")
+                logger.warning(
+                    f"Failed to search Google Images for video {video_id}: {e}"
+                )
 
         logger.info(
             f"Found {len(results)} thumbnail options for video {video_id} (query: '{search_query}', sources: {sources})"
@@ -1643,10 +1713,15 @@ async def search_video_thumbnails(
                 "video_url": video_url,
                 "imvdb_id": video_imvdb_id,
                 "sources_requested": sources,
-                "has_youtube_url": bool(video_url and ("youtube.com" in video_url or "youtu.be" in video_url)),
+                "has_youtube_url": bool(
+                    video_url
+                    and ("youtube.com" in video_url or "youtu.be" in video_url)
+                ),
                 "has_imvdb_id": bool(video_imvdb_id),
             }
-            logger.warning(f"No thumbnail results found for video {video_id}. Debug info: {debug_info}")
+            logger.warning(
+                f"No thumbnail results found for video {video_id}. Debug info: {debug_info}"
+            )
 
         return {
             "results": results,
@@ -1716,7 +1791,7 @@ async def bulk_download_videos(
                     if hasattr(video, "youtube_id") and video.youtube_id
                     else None
                 )
-                
+
                 if not video_url:
                     # Try to resolve URL
                     resolved_url = await resolve_video_url(video, session)
@@ -1742,33 +1817,36 @@ async def bulk_download_videos(
                 # Update video status to downloading
                 video.status = VideoStatus.DOWNLOADING
                 video.updated_at = datetime.utcnow()
-                
-                # Submit job to Celery worker
+
+                # Submit job to ytdlp_service
                 try:
-                    from src.jobs.simple_download_task import simple_download_video
-                    
-                    # Submit to Celery with download options
-                    download_options = {
-                        "quality": "best",
-                        "download_subtitles": False,
-                        "download_id": download.id,
-                        "video_id": video_id,
-                        "artist_id": video.artist_id,
-                        "artist": video.artist.name if video.artist else "Unknown Artist",
-                        "title": video.title
-                    }
-                    
-                    task = simple_download_video.delay(video_url, download_options)
-                    logger.info(f"✅ Submitted bulk download job {task.id} for video {video_id}")
-                    
-                except Exception as celery_error:
-                    logger.error(f"Failed to submit Celery task for video {video_id}: {celery_error}")
+                    from src.services.download_service_adapter import ytdlp_service
+
+                    # Submit to ytdlp_service with download options
+                    result = ytdlp_service.add_music_video_download(
+                        artist=video.artist.name if video.artist else "Unknown Artist",
+                        title=video.title,
+                        url=video_url,
+                        quality="best",
+                        download_subtitles=False,
+                        video_id=video_id,
+                        download_id=download.id,
+                    )
+
+                    logger.info(
+                        f"✅ Submitted bulk download job {result.get('download_id')} for video {video_id}"
+                    )
+
+                except Exception as download_error:
+                    logger.error(
+                        f"Failed to submit download task for video {video_id}: {download_error}"
+                    )
                     # Still count as queued since it's in the database
-                
+
                 queued_count += 1
 
             except Exception as e:
-                video_id = getattr(video, 'id', 'unknown')  # Safe ID retrieval
+                video_id = getattr(video, "id", "unknown")  # Safe ID retrieval
                 errors.append(f"Video {video_id}: {str(e)}")
                 logger.error(f"Error queuing download for video {video_id}: {e}")
 
@@ -1805,25 +1883,27 @@ async def queue_video_download(
     """Queue video download with flexible validation"""
     try:
         logger.info(f"DEBUG: Download request for video {video_id}: {request}")
-        
+
         # Extract parameters with safe defaults
         priority = 1
         force_redownload = False
-        
+
         if request:
             priority = request.get("priority", 1)
             force_redownload = request.get("force_redownload", False)
-            
+
             # Validate priority
             if not isinstance(priority, int) or priority < 1 or priority > 10:
                 priority = 1
-                
+
             # Validate force_redownload
             if not isinstance(force_redownload, bool):
                 force_redownload = False
-                
-        logger.info(f"DEBUG: Using download params - priority: {priority}, force_redownload: {force_redownload}")
-        
+
+        logger.info(
+            f"DEBUG: Using download params - priority: {priority}, force_redownload: {force_redownload}"
+        )
+
         # Get video from database
         video = (
             session.query(Video)
@@ -1836,10 +1916,7 @@ async def queue_video_download(
             raise HTTPException(status_code=404, detail="Video not found")
 
         # Check if already downloaded and not forcing redownload
-        if (
-            video.status == VideoStatus.DOWNLOADED
-            and not force_redownload
-        ):
+        if video.status == VideoStatus.DOWNLOADED and not force_redownload:
             return {"message": "Video already downloaded", "video_id": video_id}
 
         # Check if download already in queue
@@ -1911,9 +1988,7 @@ async def queue_video_download(
                 4: JobPriority.URGENT,
                 5: JobPriority.URGENT,
             }
-            job_priority = job_priority_map.get(
-                priority, JobPriority.NORMAL
-            )
+            job_priority = job_priority_map.get(priority, JobPriority.NORMAL)
 
             # Create download job
             download_job = BackgroundJob(
@@ -1939,9 +2014,7 @@ async def queue_video_download(
             )
             # Don't fail the request if job creation fails
         # This would integrate with the Celery task system
-        logger.info(
-            f"Queued download for video {video_id} (priority: {priority})"
-        )
+        logger.info(f"Queued download for video {video_id} (priority: {priority})")
 
         return {
             "message": "Video download queued",
@@ -1967,28 +2040,34 @@ async def queue_video_download_debug(
     """Debug version of video download bypassing validation"""
     try:
         logger.info(f"DEBUG: Download request for video {video_id}: {request}")
-        
+
         # Extract parameters with defaults
         priority = request.get("priority", 1) if request else 1
         force_redownload = request.get("force_redownload", False) if request else False
-        
+
         # Validate and fix parameters
         if not isinstance(priority, int) or priority < 1 or priority > 10:
             priority = 1
         if not isinstance(force_redownload, bool):
             force_redownload = False
-            
-        logger.info(f"DEBUG: Processing download - video_id: {video_id}, priority: {priority}, force: {force_redownload}")
-        
+
+        logger.info(
+            f"DEBUG: Processing download - video_id: {video_id}, priority: {priority}, force: {force_redownload}"
+        )
+
         # Get video
         video = session.query(Video).filter(Video.id == video_id).first()
         if not video:
             return {"success": False, "error": "Video not found"}
-            
+
         # Check if already downloaded
         if video.status == VideoStatus.DOWNLOADED and not force_redownload:
-            return {"success": True, "message": "Video already downloaded", "video_id": video_id}
-        
+            return {
+                "success": True,
+                "message": "Video already downloaded",
+                "video_id": video_id,
+            }
+
         # Simple success response for testing
         return {
             "success": True,
@@ -1996,16 +2075,12 @@ async def queue_video_download_debug(
             "video_id": video_id,
             "priority": priority,
             "force_redownload": force_redownload,
-            "video_status": video.status.value if video.status else "unknown"
+            "video_status": video.status.value if video.status else "unknown",
         }
-        
+
     except Exception as e:
         logger.error(f"DEBUG: Download error for video {video_id}: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"success": False, "error": str(e), "error_type": type(e).__name__}
 
 
 @router.post("/{video_id}/queue-download")
@@ -2016,21 +2091,21 @@ async def queue_download_video(
     """Working video download endpoint (bypasses validation issues)"""
     try:
         logger.info(f"WORKING DOWNLOAD: Processing video {video_id}")
-        
+
         # Get video
         video = session.query(Video).filter(Video.id == video_id).first()
         if not video:
             return {"success": False, "error": "Video not found"}
-            
+
         # Check if already downloaded
         if video.status == VideoStatus.DOWNLOADED:
             return {
-                "success": True, 
-                "message": "Video already downloaded", 
+                "success": True,
+                "message": "Video already downloaded",
                 "video_id": video_id,
-                "status": "already_downloaded"
+                "status": "already_downloaded",
             }
-        
+
         # Check if already in download queue
         existing_download = (
             session.query(Download)
@@ -2040,16 +2115,16 @@ async def queue_download_video(
             )
             .first()
         )
-        
+
         if existing_download:
             return {
                 "success": True,
                 "message": "Video already in download queue",
                 "video_id": video_id,
                 "download_id": existing_download.id,
-                "status": "already_queued"
+                "status": "already_queued",
             }
-        
+
         # Create new download entry
         download = Download(
             artist_id=video.artist_id,
@@ -2064,29 +2139,25 @@ async def queue_download_video(
             priority=1,  # Default priority
             created_at=datetime.utcnow(),
         )
-        
+
         session.add(download)
         session.commit()
-        
+
         logger.info(f"WORKING DOWNLOAD: Successfully queued video {video_id}")
-        
+
         return {
             "success": True,
             "message": "Video download queued successfully",
             "video_id": video_id,
             "download_id": download.id,
             "priority": 1,
-            "status": "queued"
+            "status": "queued",
         }
-        
+
     except Exception as e:
         logger.error(f"WORKING DOWNLOAD: Error for video {video_id}: {e}")
         session.rollback()
-        return {
-            "success": False,
-            "error": str(e),
-            "video_id": video_id
-        }
+        return {"success": False, "error": str(e), "video_id": video_id}
 
 
 # ========================================================================================
@@ -2126,7 +2197,7 @@ async def bulk_delete_videos(
                 deleted_count += 1
 
             except Exception as e:
-                video_id = getattr(video, 'id', 'unknown')  # Safe ID retrieval
+                video_id = getattr(video, "id", "unknown")  # Safe ID retrieval
                 errors.append(f"Video {video_id}: {str(e)}")
                 logger.error(f"Error deleting video {video_id}: {e}")
 
@@ -2153,8 +2224,6 @@ async def bulk_delete_videos(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-
 @router.post("/bulk/status")
 async def bulk_update_status(
     request: Dict[str, Any] = Body(...),
@@ -2163,20 +2232,20 @@ async def bulk_update_status(
     """Bulk update video status"""
     try:
         logger.info(f"Raw bulk status update request: {request}")
-        
+
         # Manual validation with better error messages
         if "video_ids" not in request or not request["video_ids"]:
             raise HTTPException(status_code=400, detail="No video IDs provided")
-        
+
         if "status" not in request:
             raise HTTPException(status_code=400, detail="Status is required")
-            
+
         # Validate video_ids are integers
         try:
             video_ids = [int(vid) for vid in request["video_ids"]]
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=422, detail=f"Invalid video ID format: {e}")
-            
+
         # Validate status value
         status_str = request["status"]
         try:
@@ -2184,12 +2253,14 @@ async def bulk_update_status(
         except ValueError:
             valid_statuses = [s.value for s in VideoStatus]
             raise HTTPException(
-                status_code=422, 
-                detail=f"Invalid status '{status_str}'. Valid statuses: {valid_statuses}"
+                status_code=422,
+                detail=f"Invalid status '{status_str}'. Valid statuses: {valid_statuses}",
             )
-        
-        logger.info(f"Validated bulk status update: video_ids={video_ids}, status={status}")
-        
+
+        logger.info(
+            f"Validated bulk status update: video_ids={video_ids}, status={status}"
+        )
+
         if not video_ids:
             raise HTTPException(status_code=400, detail="No video IDs provided")
 
@@ -2229,31 +2300,41 @@ async def bulk_update_status_debug(
     """Working bulk status update bypassing validation issues"""
     try:
         logger.info(f"DEBUG: Raw request received: {request}")
-        
+
         # Validate and extract data manually
         if "video_ids" not in request or not request["video_ids"]:
             return {"success": False, "error": "No video IDs provided"}
-        
+
         if "status" not in request:
             return {"success": False, "error": "Status is required"}
-            
+
         # Convert video_ids to integers
         try:
             video_ids = [int(vid) for vid in request["video_ids"]]
         except (ValueError, TypeError) as e:
             return {"success": False, "error": f"Invalid video ID format: {e}"}
-            
+
         # Validate status value
         status_str = request["status"]
-        valid_statuses = ["WANTED", "DOWNLOADING", "DOWNLOADED", "IGNORED", "FAILED", "MONITORED"]
+        valid_statuses = [
+            "WANTED",
+            "DOWNLOADING",
+            "DOWNLOADED",
+            "IGNORED",
+            "FAILED",
+            "MONITORED",
+        ]
         if status_str not in valid_statuses:
-            return {"success": False, "error": f"Invalid status '{status_str}'. Valid: {valid_statuses}"}
-        
+            return {
+                "success": False,
+                "error": f"Invalid status '{status_str}'. Valid: {valid_statuses}",
+            }
+
         # Convert string to VideoStatus enum
         status = VideoStatus(status_str)
-        
+
         logger.info(f"DEBUG: Validated - video_ids={video_ids}, status={status}")
-        
+
         # Perform the actual status update
         updated_count = (
             session.query(Video)
@@ -2266,7 +2347,9 @@ async def bulk_update_status_debug(
 
         session.commit()
 
-        logger.info(f"DEBUG: Successfully updated {updated_count} video statuses to {status}")
+        logger.info(
+            f"DEBUG: Successfully updated {updated_count} video statuses to {status}"
+        )
 
         return {
             "success": True,
@@ -2275,15 +2358,11 @@ async def bulk_update_status_debug(
             "new_status": status_str,
             "total_requested": len(video_ids),
         }
-        
+
     except Exception as e:
         logger.error(f"Error in debug bulk status update: {e}")
         session.rollback()
-        return {
-            "success": False,
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"success": False, "error": str(e), "error_type": type(e).__name__}
 
 
 @router.post("/bulk/edit")
@@ -2335,7 +2414,7 @@ async def bulk_edit_videos(
                 updated_count += 1
 
             except Exception as e:
-                video_id = getattr(video, 'id', 'unknown')  # Safe ID retrieval
+                video_id = getattr(video, "id", "unknown")  # Safe ID retrieval
                 errors.append(f"Video {video_id}: {str(e)}")
                 logger.error(f"Error updating video {video_id}: {e}")
 
@@ -2710,15 +2789,19 @@ async def enhanced_refresh_metadata(
         if not video:
             raise HTTPException(status_code=404, detail="Video not found")
 
-        force_refresh = request.get("force_refresh", True)  # Default to True for UI calls
+        force_refresh = request.get(
+            "force_refresh", True
+        )  # Default to True for UI calls
 
-        logger.info(f"Starting enhanced metadata refresh for video {video_id} (force_refresh={force_refresh})")
+        logger.info(
+            f"Starting enhanced metadata refresh for video {video_id} (force_refresh={force_refresh})"
+        )
 
         # Use the real metadata enrichment service
         from src.services.metadata_enrichment_service import MetadataEnrichmentService
-        
+
         enrichment_service = MetadataEnrichmentService()
-        
+
         # Call the actual video metadata enrichment
         enrichment_result = await enrichment_service.enrich_video_metadata(
             video_id, force_refresh=force_refresh
@@ -2733,22 +2816,35 @@ async def enhanced_refresh_metadata(
                 .filter(Video.id == video_id)
                 .first()
             )
-            
-            logger.info(f"Enhanced metadata refreshed for video {video_id}: {enrichment_result.enriched_fields}")
+
+            logger.info(
+                f"Enhanced metadata refreshed for video {video_id}: {enrichment_result.enriched_fields}"
+            )
 
             return {
                 "success": True,
                 "message": f"Enhanced metadata refreshed successfully from {len(enrichment_result.sources_used)} sources",
                 "video_id": video_id,
                 "sources_used": enrichment_result.sources_used,
-                "enriched_fields": list(enrichment_result.enriched_fields) if enrichment_result.enriched_fields else [],
-                "thumbnail_updated": "thumbnail_url" in (enrichment_result.enriched_fields or []),
+                "enriched_fields": (
+                    list(enrichment_result.enriched_fields)
+                    if enrichment_result.enriched_fields
+                    else []
+                ),
+                "thumbnail_updated": "thumbnail_url"
+                in (enrichment_result.enriched_fields or []),
                 "refreshed": True,
             }
         else:
-            error_msg = "; ".join(enrichment_result.errors) if enrichment_result.errors else "Unknown error"
-            logger.warning(f"Enhanced metadata refresh failed for video {video_id}: {error_msg}")
-            
+            error_msg = (
+                "; ".join(enrichment_result.errors)
+                if enrichment_result.errors
+                else "Unknown error"
+            )
+            logger.warning(
+                f"Enhanced metadata refresh failed for video {video_id}: {error_msg}"
+            )
+
             return {
                 "success": False,
                 "message": f"Enhanced metadata refresh failed: {error_msg}",
@@ -2769,8 +2865,7 @@ async def enhanced_refresh_metadata(
 
 @router.post("/bulk/refresh-all-thumbnails")
 async def bulk_refresh_all_thumbnails(
-    request: dict = Body(...), 
-    session: Session = Depends(get_db_session)
+    request: dict = Body(...), session: Session = Depends(get_db_session)
 ):
     """Refresh thumbnails for all videos of an artist"""
     try:
@@ -2780,23 +2875,25 @@ async def bulk_refresh_all_thumbnails(
 
         # Get all videos for the artist
         videos = session.query(Video).filter(Video.artist_id == artist_id).all()
-        
+
         if not videos:
             return {
                 "success": True,
                 "message": "No videos found for this artist",
                 "artist_id": artist_id,
                 "videos_processed": 0,
-                "thumbnails_updated": 0
+                "thumbnails_updated": 0,
             }
 
-        logger.info(f"Starting bulk thumbnail refresh for {len(videos)} videos of artist {artist_id}")
+        logger.info(
+            f"Starting bulk thumbnail refresh for {len(videos)} videos of artist {artist_id}"
+        )
 
         # Use the real metadata enrichment service
         from src.services.metadata_enrichment_service import MetadataEnrichmentService
-        
+
         enrichment_service = MetadataEnrichmentService()
-        
+
         videos_processed = 0
         thumbnails_updated = 0
         errors = []
@@ -2807,14 +2904,16 @@ async def bulk_refresh_all_thumbnails(
                 enrichment_result = await enrichment_service.enrich_video_metadata(
                     video.id, force_refresh=True
                 )
-                
+
                 videos_processed += 1
-                
+
                 if enrichment_result.success and enrichment_result.enriched_fields:
                     if "thumbnail_url" in enrichment_result.enriched_fields:
                         thumbnails_updated += 1
-                        logger.info(f"Updated thumbnail for video {video.id}: {video.title}")
-                
+                        logger.info(
+                            f"Updated thumbnail for video {video.id}: {video.title}"
+                        )
+
             except Exception as e:
                 error_msg = f"Video {video.id} ({video.title}): {str(e)}"
                 errors.append(error_msg)
@@ -2829,7 +2928,9 @@ async def bulk_refresh_all_thumbnails(
         if errors:
             result_message += f", {len(errors)} errors"
 
-        logger.info(f"Bulk thumbnail refresh completed for artist {artist_id}: {result_message}")
+        logger.info(
+            f"Bulk thumbnail refresh completed for artist {artist_id}: {result_message}"
+        )
 
         return {
             "success": True,
@@ -2838,7 +2939,7 @@ async def bulk_refresh_all_thumbnails(
             "videos_processed": videos_processed,
             "total_videos": len(videos),
             "thumbnails_updated": thumbnails_updated,
-            "errors": errors[:10] if errors else []  # Limit errors returned
+            "errors": errors[:10] if errors else [],  # Limit errors returned
         }
 
     except HTTPException:
@@ -2874,19 +2975,21 @@ async def search_video_lyrics(
         song_title = raw_title
         if artist_name and raw_title.lower().startswith(artist_name.lower()):
             # Remove artist name and common separators
-            song_title = raw_title[len(artist_name):].strip()
+            song_title = raw_title[len(artist_name) :].strip()
             # Remove common separators like " - ", " | ", etc.
             for separator in [" - ", " | ", " : ", ": ", " – "]:
                 if song_title.startswith(separator):
-                    song_title = song_title[len(separator):].strip()
+                    song_title = song_title[len(separator) :].strip()
                     break
 
-        logger.info(f"🎵 Extracted artist: '{artist_name}', raw title: '{raw_title}', cleaned title: '{song_title}'")
+        logger.info(
+            f"🎵 Extracted artist: '{artist_name}', raw title: '{raw_title}', cleaned title: '{song_title}'"
+        )
 
         if not artist_name or not song_title:
             raise HTTPException(
                 status_code=400,
-                detail="Artist name and song title are required for lyrics search"
+                detail="Artist name and song title are required for lyrics search",
             )
 
         # Search for lyrics using multiple sources
@@ -2896,20 +2999,21 @@ async def search_video_lyrics(
         # Define lyrics search function locally to avoid import issues
         def search_lyrics_direct(artist, title):
             """Search for lyrics using Lyrics.ovh API directly"""
-            import requests
             import urllib.parse
-            
+
+            import requests
+
             try:
                 artist_clean = artist.strip()
                 title_clean = title.strip()
                 artist_encoded = urllib.parse.quote(artist_clean)
                 title_encoded = urllib.parse.quote(title_clean)
                 url = f"https://api.lyrics.ovh/v1/{artist_encoded}/{title_encoded}"
-                
+
                 logger.info(f"Making lyrics request to: {url}")
                 response = requests.get(url, timeout=10)
                 logger.info(f"Lyrics API response status: {response.status_code}")
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     lyrics = data.get("lyrics", "")
@@ -2932,24 +3036,33 @@ async def search_video_lyrics(
 
         for source_name, search_func in lyrics_sources:
             try:
-                logger.info(f"Searching {source_name} for lyrics: {artist_name} - {song_title}")
+                logger.info(
+                    f"Searching {source_name} for lyrics: {artist_name} - {song_title}"
+                )
                 lyrics_result = search_func(artist_name, song_title)
-                logger.info(f"Lyrics search result: {lyrics_result[:100] if lyrics_result else 'None'}...")
+                logger.info(
+                    f"Lyrics search result: {lyrics_result[:100] if lyrics_result else 'None'}..."
+                )
 
-                if lyrics_result and len(lyrics_result.strip()) > 50:  # Ensure we got substantial lyrics
+                if (
+                    lyrics_result and len(lyrics_result.strip()) > 50
+                ):  # Ensure we got substantial lyrics
                     lyrics_found = lyrics_result
                     source_used = source_name
-                    logger.info(f"✅ Found lyrics from {source_name} ({len(lyrics_result)} chars)")
+                    logger.info(
+                        f"✅ Found lyrics from {source_name} ({len(lyrics_result)} chars)"
+                    )
                     break
                 else:
-                    logger.warning(f"❌ No substantial lyrics from {source_name} (got: {lyrics_result[:50] if lyrics_result else 'None'})")
+                    logger.warning(
+                        f"❌ No substantial lyrics from {source_name} (got: {lyrics_result[:50] if lyrics_result else 'None'})"
+                    )
             except Exception as e:
                 logger.warning(f"Failed to search {source_name}: {e}")
 
         if not lyrics_found:
             raise HTTPException(
-                status_code=404,
-                detail="No lyrics found from any source"
+                status_code=404, detail="No lyrics found from any source"
             )
 
         # Save lyrics to database (if lyrics field exists)
@@ -3028,42 +3141,54 @@ async def bulk_download_wanted_videos(
 
                 # Check if video has a valid URL before creating download record
                 video_url = (
-                    video.url 
-                    or video.youtube_url 
+                    video.url
+                    or video.youtube_url
                     or f"https://youtube.com/watch?v={video.youtube_id}"
                     if hasattr(video, "youtube_id") and video.youtube_id
                     else None
                 )
-                
+
                 # If no URL available, try to search for one on YouTube
                 if not video_url and video.artist:
                     try:
-                        logger.info(f"Searching YouTube for missing URL: {video.artist.name} - {video.title}")
+                        logger.info(
+                            f"Searching YouTube for missing URL: {video.artist.name} - {video.title}"
+                        )
                         from src.services.youtube_service import youtube_service
-                        
+
                         search_query = f"{video.artist.name} {video.title}"
-                        search_results = youtube_service.search_videos(search_query, max_results=1)
-                        
-                        if search_results.get("success") and search_results.get("results"):
+                        search_results = youtube_service.search_videos(
+                            search_query, max_results=1
+                        )
+
+                        if search_results.get("success") and search_results.get(
+                            "results"
+                        ):
                             first_result = search_results["results"][0]
                             if hasattr(first_result["id"], "get"):
                                 youtube_id = first_result["id"]["videoId"]
                             else:
                                 youtube_id = first_result["id"]
-                            
+
                             video_url = f"https://youtube.com/watch?v={youtube_id}"
-                            
+
                             # Update the video with the found YouTube information
                             video.youtube_id = youtube_id
                             video.youtube_url = video_url
-                            
-                            logger.info(f"Found YouTube URL for video {video.id}: {video_url}")
-                            
+
+                            logger.info(
+                                f"Found YouTube URL for video {video.id}: {video_url}"
+                            )
+
                     except Exception as search_error:
-                        logger.warning(f"YouTube search failed for video {video.id}: {search_error}")
-                
+                        logger.warning(
+                            f"YouTube search failed for video {video.id}: {search_error}"
+                        )
+
                 if not video_url:
-                    logger.warning(f"Skipping video {video.id} '{video.title}' - no valid URL available after search attempt")
+                    logger.warning(
+                        f"Skipping video {video.id} '{video.title}' - no valid URL available after search attempt"
+                    )
                     skipped_count += 1
                     continue
 
@@ -3092,28 +3217,26 @@ async def bulk_download_wanted_videos(
                 video.status = VideoStatus.DOWNLOADING
                 video.updated_at = datetime.utcnow()
 
-                # Create background job for download processing via Celery
+                # Create background job for download processing via ytdlp_service
                 try:
-                    from ...jobs.simple_download_task import simple_download_video
-                    
+                    from src.services.download_service_adapter import ytdlp_service
+
                     # video_url was already validated above
-                    
-                    # Submit job directly to Celery with download options
-                    download_options = {
-                        "video_id": video.id,
-                        "download_id": download.id,
-                        "artist": video.artist.name if video.artist else "Unknown",
-                        "title": video.title,
-                        "quality": "best",
-                        "output_dir": None,  # Use default from settings
-                    }
-                    
-                    # Submit to Celery
-                    task_result = simple_download_video.delay(video_url, download_options)
-                    job_id = task_result.id
-                    
+                    # Submit job directly to ytdlp_service
+                    result = ytdlp_service.add_music_video_download(
+                        artist=video.artist.name if video.artist else "Unknown",
+                        title=video.title,
+                        url=video_url,
+                        quality="best",
+                        download_subtitles=False,
+                        video_id=video.id,
+                        download_id=download.id,
+                    )
+
+                    job_id = result.get("download_id")
+
                     logger.info(
-                        f"Submitted Celery download task {job_id} for wanted video {video.id}"
+                        f"Submitted ytdlp download task {job_id} for wanted video {video.id}"
                     )
 
                 except Exception as job_error:
@@ -3175,12 +3298,15 @@ async def import_from_youtube(
         url = request.get("url", "")
         title = request.get("title", "")
         artist = request.get("artist", "")
+        artist_id = request.get("artist_id")
         auto_download = request.get("auto_download", True)
 
-        if not youtube_id or not url:
-            raise HTTPException(
-                status_code=400, detail="YouTube ID and URL are required"
-            )
+        if not youtube_id:
+            raise HTTPException(status_code=400, detail="YouTube ID is required")
+
+        # Generate URL if not provided
+        if not url:
+            url = f"https://www.youtube.com/watch?v={youtube_id}"
 
         # Check if video already exists
         existing_video = (
@@ -3208,7 +3334,13 @@ async def import_from_youtube(
         )
 
         # Try to find or create artist
-        if artist:
+        if artist_id:
+            # Use provided artist_id
+            artist_obj = session.query(Artist).filter(Artist.id == artist_id).first()
+            if artist_obj:
+                new_video.artist_id = artist_obj.id
+        elif artist:
+            # Fall back to finding by artist name
             artist_obj = session.query(Artist).filter(Artist.name == artist).first()
             if not artist_obj:
                 artist_obj = Artist(
@@ -3250,18 +3382,15 @@ async def import_from_imvdb(
         imvdb_id = request.get("imvdb_id", "")
         title = request.get("title", "")
         artist = request.get("artist", "")
+        artist_id = request.get("artist_id")
         auto_download = request.get("auto_download", True)
-        
+
         if not imvdb_id:
-            raise HTTPException(
-                status_code=400, detail="IMVDb ID is required"
-            )
-        
+            raise HTTPException(status_code=400, detail="IMVDb ID is required")
+
         # Check if video already exists
-        existing_video = (
-            session.query(Video).filter(Video.imvdb_id == imvdb_id).first()
-        )
-        
+        existing_video = session.query(Video).filter(Video.imvdb_id == imvdb_id).first()
+
         if existing_video:
             return {
                 "success": True,
@@ -3269,7 +3398,7 @@ async def import_from_imvdb(
                 "video_id": existing_video.id,
                 "status": "exists",
             }
-        
+
         # Create new video entry using only valid Video model fields
         new_video = Video(
             title=title or f"IMVDb Video {imvdb_id}",
@@ -3279,25 +3408,29 @@ async def import_from_imvdb(
             duration=None,  # Will be updated when metadata is fetched
             discovered_date=datetime.utcnow(),
         )
-        
+
         # Try to find or create artist
-        if artist:
+        if artist_id:
+            # Use provided artist_id
+            artist_obj = session.query(Artist).filter(Artist.id == artist_id).first()
+            if artist_obj:
+                new_video.artist_id = artist_obj.id
+        elif artist:
+            # Fall back to finding by artist name
             artist_obj = session.query(Artist).filter(Artist.name == artist).first()
             if not artist_obj:
-                artist_obj = Artist(
-                    name=artist, monitored=True, source="imvdb_import"
-                )
+                artist_obj = Artist(name=artist, monitored=True, source="imvdb_import")
                 session.add(artist_obj)
                 session.flush()  # Get the artist ID
             new_video.artist_id = artist_obj.id
-        
+
         session.add(new_video)
         session.flush()  # Flush to get the ID without committing
         video_id = new_video.id  # Get the ID while still bound to session
         session.commit()
-        
+
         logger.info(f"Imported IMVDb video: {title} ({imvdb_id})")
-        
+
         return {
             "success": True,
             "message": f"Video '{title}' imported successfully",
@@ -3305,13 +3438,137 @@ async def import_from_imvdb(
             "status": "imported",
             "auto_download": auto_download,
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error importing IMVDb video: {e}")
         session.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==============================================================================
+# SUBTITLE ENDPOINTS
+# ==============================================================================
+
+@router.get("/{video_id}/subtitles")
+async def get_video_subtitles(
+    video_id: int = FastAPIPath(..., description="Video ID"),
+    session: Session = Depends(get_db_session),
+):
+    """Get available subtitle tracks for a video"""
+    try:
+        video = session.query(Video).filter(Video.id == video_id).first()
+
+        if not video or not video.local_path:
+            return {"subtitles": []}
+
+        video_path = Path(video.local_path)
+        if not video_path.exists():
+            return {"subtitles": []}
+
+        # Look for subtitle files in the same directory
+        video_dir = video_path.parent
+        video_name_stem = video_path.stem
+
+        subtitle_extensions = [".srt", ".vtt", ".ass", ".ssa", ".sub"]
+        subtitles = []
+
+        # Look for all subtitle files in the directory and filter by base name
+        for subtitle_file in video_dir.iterdir():
+            if subtitle_file.is_file() and subtitle_file.suffix.lower() in subtitle_extensions:
+                # Check if this subtitle file belongs to our video
+                if subtitle_file.name.startswith(video_name_stem):
+                    # Extract language from filename (e.g., video.en.srt -> en)
+                    relative_name = subtitle_file.name
+                    parts = relative_name.split(".")
+
+                    language = "unknown"
+                    if len(parts) >= 3:  # video.en.srt
+                        language = parts[-2]
+                    elif len(parts) == 2:  # video.srt (assume default language)
+                        language = "default"
+
+                    subtitles.append({
+                        "language": language,
+                        "filename": relative_name,
+                        "url": f"/api/videos/{video_id}/subtitles/{quote(relative_name)}",
+                        "format": subtitle_file.suffix[1:],  # Remove the dot
+                    })
+
+        return {"subtitles": subtitles}
+
+    except Exception as e:
+        logger.error(f"Failed to get subtitles for video {video_id}: {e}")
+        return {"subtitles": []}
+
+
+@router.get("/{video_id}/subtitles/{subtitle_filename}")
+async def serve_video_subtitle(
+    video_id: int = FastAPIPath(..., description="Video ID"),
+    subtitle_filename: str = FastAPIPath(..., description="Subtitle filename"),
+    session: Session = Depends(get_db_session),
+):
+    """Serve subtitle file for a video"""
+    try:
+        # URL decode the subtitle filename
+        decoded_filename = unquote(subtitle_filename)
+        
+        video = session.query(Video).filter(Video.id == video_id).first()
+        
+        if not video or not video.local_path:
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        video_path = Path(video.local_path)
+        if not video_path.exists():
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        video_dir = video_path.parent
+
+        # Security check: ensure subtitle filename doesn't contain path traversal
+        if ".." in decoded_filename or "/" in decoded_filename:
+            raise HTTPException(status_code=400, detail="Invalid subtitle filename")
+
+        # Find subtitle file in the same directory as the video
+        subtitle_path = video_dir / decoded_filename
+
+        if not subtitle_path.exists():
+            raise HTTPException(status_code=404, detail="Subtitle file not found")
+
+        # Security check: ensure subtitle file is in the same directory as video
+        if not str(subtitle_path).startswith(str(video_dir)):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Determine MIME type
+        subtitle_ext = subtitle_path.suffix.lower()
+        if subtitle_ext == ".srt":
+            mimetype = "text/srt"
+        elif subtitle_ext == ".vtt":
+            mimetype = "text/vtt"
+        elif subtitle_ext in [".ass", ".ssa"]:
+            mimetype = "text/x-ssa"
+        else:
+            mimetype = "text/plain"
+
+        # Return the subtitle file with CORS headers
+        response = FileResponse(
+            path=subtitle_path,
+            media_type=mimetype,
+            filename=decoded_filename
+        )
+        
+        # Add CORS headers to allow video player to access subtitles
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to serve subtitle {subtitle_filename} for video {video_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Note: This completes the core video operations migration including:
@@ -3321,6 +3578,7 @@ async def import_from_imvdb(
 # - Thumbnail operations
 # - Download queue management
 # - Bulk operations (delete, download, status updates)
+# - Subtitle serving (NEW)
 #
 # Additional endpoints like metadata processing, imports, and advanced features
 # can be added in subsequent iterations.
