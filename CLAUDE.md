@@ -66,6 +66,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `docker/metadata-action@v5`
   - `docker/build-push-action@v6`
 
+## Subtitle System Implementation
+
+### Complete Subtitle Functionality ✅
+
+**Status**: MVidarr now has comprehensive subtitle support across all video players with smart language resolution.
+
+#### Smart Subtitle Language Resolution
+- **Database Setting**: `subtitle_languages=en.*` (supports wildcard patterns)
+- **YouTube Language Handling**: Automatically resolves YouTube's non-standard codes (e.g., `en-nP7-2PuUl7o`) to user patterns
+- **Download Integration**: `download_subtitles=true` setting respected by metube API
+
+#### Subtitle API Endpoints
+- **Discovery**: `/api/videos/{video_id}/subtitles` - Lists available subtitle files
+- **Serving**: `/api/videos/{video_id}/subtitles/{filename}` - Serves subtitle files with CORS
+- **Formats**: WebVTT (.vtt), SubRip (.srt), ASS (.ass), SSA (.ssa), MicroDVD (.sub)
+
+#### Video Player Integration
+- **Video Detail Page**: Full subtitle support with track selection
+- **Video Popup Modal**: Automatic subtitle loading and track creation
+- **Language Detection**: Smart handling of YouTube's non-standard language codes
+- **Auto-Enable**: First subtitle track automatically enabled and showing
+
+#### Technical Implementation
+- **YouTube Download Engine**: `_resolve_subtitle_languages()` method for pattern matching
+- **Frontend JavaScript**: Dedicated modal subtitle functions in `videos.html`
+- **API Integration**: Both Flask and FastAPI subtitle endpoints
+- **File Detection**: Automatic subtitle file discovery in video directories
+
+#### User Experience
+- Subtitles automatically available in all video players
+- Native browser CC controls for language selection
+- Respects user subtitle language preferences
+- Works with both standard and YouTube's custom language codes
+
 ## API Development & Testing
 
 ### Authentication Requirements

@@ -1150,7 +1150,7 @@ function playVideo(videoId, title, localPath, videoUrl) {
             // Give it a moment to show the loading message, then start the stream
             setTimeout(() => {
                 playerDiv.innerHTML = `
-                    <video width="800" height="450" controls autoplay>
+                    <video id="modalVideoElement" width="800" height="450" controls autoplay>
                         <source src="${streamUrl}" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
@@ -1158,6 +1158,9 @@ function playVideo(videoId, title, localPath, videoUrl) {
                         <p><small>Streaming via FFmpeg transcoding</small></p>
                     </div>
                 `;
+                
+                // Load subtitles for this video
+                loadModalVideoSubtitles(videoId);
             }, 1000);
             
             return;
@@ -1177,7 +1180,7 @@ function playVideo(videoId, title, localPath, videoUrl) {
         
         // Play local file via streaming endpoint with proper MIME type
         playerDiv.innerHTML = `
-            <video width="800" height="450" controls preload="metadata">
+            <video id="modalVideoElement" width="800" height="450" controls preload="metadata">
                 <source src="/api/videos/${videoId}/stream" type="${mimeType}">
                 Your browser does not support the video tag or this video format.
             </video>
@@ -1185,6 +1188,9 @@ function playVideo(videoId, title, localPath, videoUrl) {
         
         // Add error handling for video load failures
         const video = playerDiv.querySelector('video');
+        
+        // Load subtitles for this video
+        loadModalVideoSubtitles(videoId);
         
         // Add timeout for video loading
         let loadTimeout;
@@ -1430,11 +1436,14 @@ function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     
     // Play local file via streaming endpoint with proper MIME type
     playerDiv.innerHTML = `
-        <video width="800" height="450" controls preload="metadata">
+        <video id="modalVideoElement" width="800" height="450" controls preload="metadata">
             <source src="/api/videos/${videoId}/stream" type="${mimeType}">
             Your browser does not support the video tag or this video format.
         </video>
     `;
+    
+    // Load subtitles for this video
+    loadModalVideoSubtitles(videoId);
     
     // Add all the same error handling as the normal playback
     const video = playerDiv.querySelector('video');
@@ -1973,6 +1982,80 @@ function deleteSelectedVideos() {
             updateSelectedCount();
         });
     }
+}
+
+// Video Modal Subtitle Functions
+let modalAvailableSubtitles = [];
+
+async function loadModalVideoSubtitles(videoId) {
+    try {
+        const response = await fetch(`/api/videos/${videoId}/subtitles`);
+        const data = await response.json();
+        modalAvailableSubtitles = data.subtitles || [];
+        
+        console.log('Modal subtitles loaded:', modalAvailableSubtitles);
+        
+        // Automatically load all available subtitle tracks
+        if (modalAvailableSubtitles.length > 0) {
+            loadModalSubtitleTracks();
+        }
+    } catch (error) {
+        console.error('Failed to load modal subtitles:', error);
+        modalAvailableSubtitles = [];
+    }
+}
+
+function loadModalSubtitleTracks() {
+    const videoElement = document.getElementById('modalVideoElement');
+    if (!videoElement || modalAvailableSubtitles.length === 0) return;
+    
+    console.log('Loading modal subtitle tracks:', modalAvailableSubtitles);
+    
+    // Remove existing tracks
+    const existingTracks = videoElement.querySelectorAll('track');
+    existingTracks.forEach(track => track.remove());
+    
+    // Add all available subtitle tracks
+    modalAvailableSubtitles.forEach((subtitle, index) => {
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.src = subtitle.url;
+        
+        // Set language code
+        if (subtitle.language === 'default') {
+            track.srclang = 'en';
+        } else if (subtitle.language.includes('-')) {
+            // Handle language variants like "en-ja", use the first part
+            track.srclang = subtitle.language.split('-')[0];
+        } else {
+            track.srclang = subtitle.language;
+        }
+        
+        // Set display label
+        let label = subtitle.language === 'default' ? 'Default' : subtitle.language.toUpperCase();
+        if (subtitle.format) {
+            label += ` (${subtitle.format})`;
+        }
+        track.label = label;
+        
+        // Set the first track as default
+        if (index === 0) {
+            track.default = true;
+        }
+        
+        videoElement.appendChild(track);
+        
+        console.log(`Added modal subtitle track: ${track.label} (${track.srclang}) - ${track.src}`);
+    });
+    
+    // Wait a moment for tracks to load, then ensure the first one is showing
+    setTimeout(() => {
+        if (videoElement.textTracks.length > 0) {
+            // Set the first track to showing mode
+            videoElement.textTracks[0].mode = 'showing';
+            console.log('Enabled first modal subtitle track');
+        }
+    }, 500);
 }
 
 </script>

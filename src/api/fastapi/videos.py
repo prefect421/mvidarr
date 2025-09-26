@@ -3451,6 +3451,7 @@ async def import_from_imvdb(
 # SUBTITLE ENDPOINTS
 # ==============================================================================
 
+
 @router.get("/{video_id}/subtitles")
 async def get_video_subtitles(
     video_id: int = FastAPIPath(..., description="Video ID"),
@@ -3476,7 +3477,10 @@ async def get_video_subtitles(
 
         # Look for all subtitle files in the directory and filter by base name
         for subtitle_file in video_dir.iterdir():
-            if subtitle_file.is_file() and subtitle_file.suffix.lower() in subtitle_extensions:
+            if (
+                subtitle_file.is_file()
+                and subtitle_file.suffix.lower() in subtitle_extensions
+            ):
                 # Check if this subtitle file belongs to our video
                 if subtitle_file.name.startswith(video_name_stem):
                     # Extract language from filename (e.g., video.en.srt -> en)
@@ -3489,12 +3493,14 @@ async def get_video_subtitles(
                     elif len(parts) == 2:  # video.srt (assume default language)
                         language = "default"
 
-                    subtitles.append({
-                        "language": language,
-                        "filename": relative_name,
-                        "url": f"/api/videos/{video_id}/subtitles/{quote(relative_name)}",
-                        "format": subtitle_file.suffix[1:],  # Remove the dot
-                    })
+                    subtitles.append(
+                        {
+                            "language": language,
+                            "filename": relative_name,
+                            "url": f"/api/videos/{video_id}/subtitles/{quote(relative_name)}",
+                            "format": subtitle_file.suffix[1:],  # Remove the dot
+                        }
+                    )
 
         return {"subtitles": subtitles}
 
@@ -3513,9 +3519,9 @@ async def serve_video_subtitle(
     try:
         # URL decode the subtitle filename
         decoded_filename = unquote(subtitle_filename)
-        
+
         video = session.query(Video).filter(Video.id == video_id).first()
-        
+
         if not video or not video.local_path:
             raise HTTPException(status_code=404, detail="Video not found")
 
@@ -3552,22 +3558,22 @@ async def serve_video_subtitle(
 
         # Return the subtitle file with CORS headers
         response = FileResponse(
-            path=subtitle_path,
-            media_type=mimetype,
-            filename=decoded_filename
+            path=subtitle_path, media_type=mimetype, filename=decoded_filename
         )
-        
+
         # Add CORS headers to allow video player to access subtitles
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Methods"] = "GET"
         response.headers["Access-Control-Allow-Headers"] = "*"
-        
+
         return response
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to serve subtitle {subtitle_filename} for video {video_id}: {e}")
+        logger.error(
+            f"Failed to serve subtitle {subtitle_filename} for video {video_id}: {e}"
+        )
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

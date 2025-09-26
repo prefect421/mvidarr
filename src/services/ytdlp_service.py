@@ -309,10 +309,8 @@ class YtDlpService:
             self._update_database_download_status(download_entry, "downloading")
 
             # Use quality format string from video quality service
-            quality_format = download_entry.get(
-                "quality_format_string", "best"
-            )
-            
+            quality_format = download_entry.get("quality_format_string", "best")
+
             logger.info(f"Download {download_id}: Using YouTube Download Engine")
             logger.info(f"Download {download_id}: Quality format: {quality_format}")
 
@@ -323,7 +321,7 @@ class YtDlpService:
                 title=download_entry["title"],
                 quality=quality_format,
                 download_subtitles=download_entry.get("download_subtitles", False),
-                subtitle_languages=download_entry.get("subtitle_languages", "en,en-US")
+                subtitle_languages=download_entry.get("subtitle_languages", "en,en-US"),
             )
 
             if result.success:
@@ -335,7 +333,9 @@ class YtDlpService:
                 download_entry["file_size"] = result.file_size
 
                 logger.info(f"Download {download_id} completed successfully!")
-                logger.info(f"Download {download_id}: Strategy used: {result.strategy_used.value}")
+                logger.info(
+                    f"Download {download_id}: Strategy used: {result.strategy_used.value}"
+                )
                 logger.info(f"Download {download_id}: File: {result.file_path}")
                 logger.info(f"Download {download_id}: Duration: {result.duration:.1f}s")
 
@@ -360,12 +360,17 @@ class YtDlpService:
                 # Enhanced metadata enrichment after successful download
                 if video_id:
                     try:
-                        logger.info(f"Starting enhanced metadata enrichment for video {video_id}")
-                        from src.services.metadata_enrichment_service import metadata_enrichment_service
-                        
+                        logger.info(
+                            f"Starting enhanced metadata enrichment for video {video_id}"
+                        )
+                        from src.services.metadata_enrichment_service import (
+                            metadata_enrichment_service,
+                        )
+
                         # Run async metadata enrichment in a new thread to avoid blocking
                         def run_metadata_enrichment():
                             import asyncio
+
                             try:
                                 # Create new event loop in this thread
                                 loop = asyncio.new_event_loop()
@@ -376,40 +381,64 @@ class YtDlpService:
                                     )
                                 )
                                 if result.success:
-                                    logger.info(f"Enhanced metadata enrichment completed for video {video_id}")
+                                    logger.info(
+                                        f"Enhanced metadata enrichment completed for video {video_id}"
+                                    )
                                 else:
-                                    logger.warning(f"Enhanced metadata enrichment failed for video {video_id}: {result.errors}")
+                                    logger.warning(
+                                        f"Enhanced metadata enrichment failed for video {video_id}: {result.errors}"
+                                    )
                             except Exception as e:
-                                logger.error(f"Error during enhanced metadata enrichment for video {video_id}: {e}")
+                                logger.error(
+                                    f"Error during enhanced metadata enrichment for video {video_id}: {e}"
+                                )
                             finally:
                                 loop.close()
-                        
+
                         # Start enrichment in background thread
-                        metadata_thread = threading.Thread(target=run_metadata_enrichment)
+                        metadata_thread = threading.Thread(
+                            target=run_metadata_enrichment
+                        )
                         metadata_thread.daemon = True
                         metadata_thread.start()
-                        
+
                     except Exception as e:
-                        logger.error(f"Failed to start enhanced metadata enrichment for video {video_id}: {e}")
+                        logger.error(
+                            f"Failed to start enhanced metadata enrichment for video {video_id}: {e}"
+                        )
 
             else:
                 # Download failed - check if it's rate limiting
                 error_message = result.error_message or "Unknown download error"
-                
+
                 # Check if failure is due to rate limiting (HTTP 429 or similar)
-                is_rate_limited = any(keyword in error_message.lower() for keyword in [
-                    "429", "too many requests", "rate limit", "temporarily unavailable"
-                ])
-                
+                is_rate_limited = any(
+                    keyword in error_message.lower()
+                    for keyword in [
+                        "429",
+                        "too many requests",
+                        "rate limit",
+                        "temporarily unavailable",
+                    ]
+                )
+
                 if is_rate_limited:
                     # Rate limited - reschedule for retry instead of permanent failure
-                    logger.warning(f"Download {download_id} rate limited, will retry later: {error_message}")
+                    logger.warning(
+                        f"Download {download_id} rate limited, will retry later: {error_message}"
+                    )
                     download_entry["status"] = "pending"
-                    download_entry["error_message"] = f"Rate limited - will retry: {error_message}"
-                    
+                    download_entry["error_message"] = (
+                        f"Rate limited - will retry: {error_message}"
+                    )
+
                     # Update database to pending for retry (don't mark video as FAILED)
                     self._update_database_download_status(
-                        download_entry, "pending", None, None, f"Rate limited - will retry: {error_message}"
+                        download_entry,
+                        "pending",
+                        None,
+                        None,
+                        f"Rate limited - will retry: {error_message}",
                     )
                 else:
                     # Permanent failure
@@ -417,9 +446,13 @@ class YtDlpService:
                     download_entry["completed_at"] = datetime.utcnow().isoformat()
                     download_entry["error_message"] = error_message
 
-                    logger.error(f"Download {download_id} failed permanently: {error_message}")
+                    logger.error(
+                        f"Download {download_id} failed permanently: {error_message}"
+                    )
                     if result.duration:
-                        logger.info(f"Download {download_id}: Duration: {result.duration:.1f}s")
+                        logger.info(
+                            f"Download {download_id}: Duration: {result.duration:.1f}s"
+                        )
 
                     # Update database with permanent failure
                     self._update_video_status_in_database(video_id, "FAILED")
@@ -431,9 +464,9 @@ class YtDlpService:
             download_entry["status"] = "failed"
             download_entry["completed_at"] = datetime.utcnow().isoformat()
             download_entry["error_message"] = f"Download engine error: {str(e)}"
-            
+
             logger.error(f"Download {download_id} engine exception: {e}")
-            
+
             self._update_video_status_in_database(video_id, "FAILED")
             self._update_database_download_status(
                 download_entry, "failed", None, None, str(e)
@@ -519,7 +552,9 @@ class YtDlpService:
         """Update download status in database"""
         db_download_id = download_entry.get("db_download_id")
         if not db_download_id:
-            logger.warning(f"No db_download_id found in download_entry for {download_entry.get('id')}")
+            logger.warning(
+                f"No db_download_id found in download_entry for {download_entry.get('id')}"
+            )
             return
 
         try:
@@ -918,15 +953,25 @@ class YtDlpService:
             with get_db() as session:
                 # Check if there are already active downloads to avoid overwhelming YouTube
                 active_download_count = len(self.active_downloads)
-                
+
                 # Also check for downloads in 'downloading' status in database
-                downloading_in_db = session.query(Download).filter(Download.status == 'downloading').count()
+                downloading_in_db = (
+                    session.query(Download)
+                    .filter(Download.status == "downloading")
+                    .count()
+                )
                 total_active = active_download_count + downloading_in_db
-                
-                logger.info(f"Active downloads - In memory: {active_download_count}, In DB: {downloading_in_db}, Total: {total_active}")
-                
-                if total_active >= 1:  # AGGRESSIVE RATE LIMITING: Max 1 concurrent download
-                    logger.info(f"Rate limiting: {total_active} downloads already active, skipping new starts")
+
+                logger.info(
+                    f"Active downloads - In memory: {active_download_count}, In DB: {downloading_in_db}, Total: {total_active}"
+                )
+
+                if (
+                    total_active >= 1
+                ):  # AGGRESSIVE RATE LIMITING: Max 1 concurrent download
+                    logger.info(
+                        f"Rate limiting: {total_active} downloads already active, skipping new starts"
+                    )
                     return {
                         "success": True,
                         "processed_count": 0,
@@ -934,7 +979,7 @@ class YtDlpService:
                         "errors": [],
                         "message": f"Rate limiting: {total_active} downloads already active",
                     }
-                
+
                 # Get pending/queued downloads from database - only start 1 at a time
                 pending_downloads = (
                     session.query(Download)
@@ -952,16 +997,16 @@ class YtDlpService:
                     try:
                         # EXTRACT ALL DATA WITHIN SESSION to avoid DetachedInstanceError
                         download_data = {
-                            'id': download.id,
-                            'video_id': download.video_id,
-                            'title': download.title,
-                            'original_url': download.original_url,
-                            'quality': download.quality,
-                            'created_at': download.created_at
+                            "id": download.id,
+                            "video_id": download.video_id,
+                            "title": download.title,
+                            "original_url": download.original_url,
+                            "quality": download.quality,
+                            "created_at": download.created_at,
                         }
-                        
+
                         # Skip if already active in ytdlp_service
-                        if download_data['id'] in self.active_downloads:
+                        if download_data["id"] in self.active_downloads:
                             logger.debug(
                                 f"Download {download_data['id']} already active, skipping"
                             )
@@ -969,29 +1014,33 @@ class YtDlpService:
 
                         # Get video info if available (with eager loading)
                         video_data = None
-                        if download_data['video_id']:
+                        if download_data["video_id"]:
                             from sqlalchemy.orm import joinedload
 
                             video = (
                                 session.query(Video)
                                 .options(joinedload(Video.artist))
-                                .filter(Video.id == download_data['video_id'])
+                                .filter(Video.id == download_data["video_id"])
                                 .first()
                             )
-                            
+
                             if video:
                                 video_data = {
-                                    'youtube_url': video.youtube_url,
-                                    'url': video.url,
-                                    'artist_name': video.artist.name if video.artist else "Unknown Artist"
+                                    "youtube_url": video.youtube_url,
+                                    "url": video.url,
+                                    "artist_name": (
+                                        video.artist.name
+                                        if video.artist
+                                        else "Unknown Artist"
+                                    ),
                                 }
 
                         # Determine URL to use
-                        download_url = download_data['original_url']
-                        if video_data and video_data['youtube_url']:
-                            download_url = video_data['youtube_url']
-                        elif video_data and video_data['url']:
-                            download_url = video_data['url']
+                        download_url = download_data["original_url"]
+                        if video_data and video_data["youtube_url"]:
+                            download_url = video_data["youtube_url"]
+                        elif video_data and video_data["url"]:
+                            download_url = video_data["url"]
 
                         if not download_url or download_url == "Unknown URL":
                             logger.warning(
@@ -1000,7 +1049,11 @@ class YtDlpService:
                             continue
 
                         # Get artist name
-                        artist_name = video_data['artist_name'] if video_data else "Unknown Artist"
+                        artist_name = (
+                            video_data["artist_name"]
+                            if video_data
+                            else "Unknown Artist"
+                        )
 
                         # Create artist folder and get output directory
                         from src.services.settings_service import settings
@@ -1024,12 +1077,14 @@ class YtDlpService:
                         # Create download entry for ytdlp_service using EXTRACTED DATA
                         download_entry = {
                             "id": f"db_{download_data['id']}",  # Map to database ID
-                            "db_download_id": download_data['id'],  # Store original database ID for status updates
+                            "db_download_id": download_data[
+                                "id"
+                            ],  # Store original database ID for status updates
                             "artist": artist_name,
-                            "title": download_data['title'],
+                            "title": download_data["title"],
                             "url": download_url,
-                            "quality": download_data['quality'] or "best",
-                            "video_id": download_data['video_id'],
+                            "quality": download_data["quality"] or "best",
+                            "video_id": download_data["video_id"],
                             "download_subtitles": True,  # Enable subtitles by default
                             "subtitle_languages": "en,en-US,ja",
                             "status": "queued",
@@ -1046,7 +1101,9 @@ class YtDlpService:
 
                         # Add to queue and active downloads
                         self.download_queue.append(download_entry)
-                        self.active_downloads[f"db_{download_data['id']}"] = download_entry
+                        self.active_downloads[f"db_{download_data['id']}"] = (
+                            download_entry
+                        )
 
                         # Update database status to 'downloading' (still within session)
                         download.status = "downloading"
@@ -1066,8 +1123,10 @@ class YtDlpService:
 
                     except Exception as e:
                         # Use extracted data to avoid session issues in error handling
-                        download_id = getattr(download, 'id', 'unknown')
-                        error_msg = f"Failed to process download {download_id}: {str(e)}"
+                        download_id = getattr(download, "id", "unknown")
+                        error_msg = (
+                            f"Failed to process download {download_id}: {str(e)}"
+                        )
                         logger.error(error_msg)
                         errors.append(error_msg)
 
@@ -1684,6 +1743,7 @@ class YtDlpService:
 
                         # Get video data with explicit loading
                         from sqlalchemy.orm import joinedload
+
                         video = (
                             session.query(Video)
                             .options(joinedload(Video.artist))
@@ -1750,7 +1810,9 @@ class YtDlpService:
                         )
                         # If it's a session binding issue, skip and continue
                         if "not bound to a Session" in str(e):
-                            logger.warning(f"Skipping download {download_db_id} due to session binding issue")
+                            logger.warning(
+                                f"Skipping download {download_db_id} due to session binding issue"
+                            )
                         continue
 
         except Exception as e:

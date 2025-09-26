@@ -257,17 +257,19 @@ async def add_music_video_download(
 
         # Read subtitle settings from database if not provided in request
         from src.services.settings_service import settings
-        
+
         # Use global setting for subtitles if not explicitly set in request
         download_subtitles = download_request.download_subtitles
         if not download_subtitles:
             download_subtitles = settings.get_bool("download_subtitles", False)
-            
+
         subtitle_languages = download_request.subtitle_languages
         if not subtitle_languages:
             subtitle_languages = settings.get("subtitle_languages", "en,en-US")
 
-        logger.info(f"Download settings: subtitles={download_subtitles}, languages={subtitle_languages}")
+        logger.info(
+            f"Download settings: subtitles={download_subtitles}, languages={subtitle_languages}"
+        )
 
         result = ytdlp_service.add_music_video_download(
             artist=download_request.artist,
