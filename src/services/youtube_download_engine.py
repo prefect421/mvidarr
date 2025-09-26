@@ -123,7 +123,8 @@ class YouTubeDownloadEngine:
             logger.error(f"yt-dlp update failed: {e}")
     
     def download_video(self, url: str, output_path: str, title: str = "video", 
-                      quality: str = "best") -> DownloadResult:
+                      quality: str = "best", download_subtitles: bool = False,
+                      subtitle_languages: str = "en,en-US") -> DownloadResult:
         """
         Download video using the complete strategy suite
         Tries each strategy until one succeeds
@@ -147,7 +148,7 @@ class YouTubeDownloadEngine:
                 logger.info(f"Attempting strategy: {strategy.value}")
                 
                 result = self._attempt_download_with_strategy(
-                    strategy, url, output_path, title, quality
+                    strategy, url, output_path, title, quality, download_subtitles, subtitle_languages
                 )
                 
                 if result.success:
@@ -179,7 +180,9 @@ class YouTubeDownloadEngine:
     
     def _attempt_download_with_strategy(self, strategy: DownloadStrategy, 
                                       url: str, output_path: str, 
-                                      title: str, quality: str) -> DownloadResult:
+                                      title: str, quality: str,
+                                      download_subtitles: bool = False,
+                                      subtitle_languages: str = "en,en-US") -> DownloadResult:
         """Attempt download with specific strategy"""
         
         # Build base command
@@ -190,18 +193,24 @@ class YouTubeDownloadEngine:
         output_template = os.path.join(output_path, f"{safe_title}.%(ext)s")
         cmd.extend(["-o", output_template])
         
-        # Quality format
-        cmd.extend(["-f", self._get_quality_format(quality)])
+        # Quality format - use directly if it's a complex format string, otherwise convert
+        if "/" in quality or "[" in quality or "+" in quality:
+            # Complex format string from video quality service - use as-is
+            cmd.extend(["-f", quality])
+        else:
+            # Simple quality like "720p" or "best" - convert to format string
+            cmd.extend(["-f", self._get_quality_format(quality)])
         
         # Metadata
         cmd.extend(["--write-info-json", "--embed-metadata", "--add-metadata"])
         
-        # Subtitle options - download subtitles when available
-        cmd.extend([
-            "--write-subs",           # Download subtitle files
-            "--write-auto-subs",      # Download auto-generated subtitles  
-            "--sub-langs", "en,en-US" # Prefer English subtitles
-        ])
+        # Subtitle options - only if requested
+        if download_subtitles:
+            cmd.extend([
+                "--write-subs",           # Download subtitle files
+                "--write-auto-subs",      # Download auto-generated subtitles  
+                "--sub-langs", subtitle_languages  # Use configurable subtitle languages
+            ])
         
         # Strategy-specific arguments
         cmd.extend(self._get_strategy_args(strategy))

@@ -321,7 +321,9 @@ class YtDlpService:
                 url=download_entry["url"],
                 output_path=download_entry["output_dir"],
                 title=download_entry["title"],
-                quality=quality_format
+                quality=quality_format,
+                download_subtitles=download_entry.get("download_subtitles", False),
+                subtitle_languages=download_entry.get("subtitle_languages", "en,en-US")
             )
 
             if result.success:
@@ -354,6 +356,41 @@ class YtDlpService:
                 # EMERGENCY VALIDATION: Ensure video was properly linked
                 if video_id:
                     self._emergency_validate_video_linking(video_id, download_entry)
+
+                # Enhanced metadata enrichment after successful download
+                if video_id:
+                    try:
+                        logger.info(f"Starting enhanced metadata enrichment for video {video_id}")
+                        from src.services.metadata_enrichment_service import metadata_enrichment_service
+                        
+                        # Run async metadata enrichment in a new thread to avoid blocking
+                        def run_metadata_enrichment():
+                            import asyncio
+                            try:
+                                # Create new event loop in this thread
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                                result = loop.run_until_complete(
+                                    metadata_enrichment_service.enrich_video_metadata(
+                                        video_id, force_refresh=False
+                                    )
+                                )
+                                if result.success:
+                                    logger.info(f"Enhanced metadata enrichment completed for video {video_id}")
+                                else:
+                                    logger.warning(f"Enhanced metadata enrichment failed for video {video_id}: {result.errors}")
+                            except Exception as e:
+                                logger.error(f"Error during enhanced metadata enrichment for video {video_id}: {e}")
+                            finally:
+                                loop.close()
+                        
+                        # Start enrichment in background thread
+                        metadata_thread = threading.Thread(target=run_metadata_enrichment)
+                        metadata_thread.daemon = True
+                        metadata_thread.start()
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to start enhanced metadata enrichment for video {video_id}: {e}")
 
             else:
                 # Download failed - check if it's rate limiting
