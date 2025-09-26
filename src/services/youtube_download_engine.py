@@ -196,10 +196,13 @@ class YouTubeDownloadEngine:
         # Quality format - use directly if it's a complex format string, otherwise convert
         if "/" in quality or "[" in quality or "+" in quality:
             # Complex format string from video quality service - use as-is
+            logger.info(f"Using complex format string: {quality[:100]}...")
             cmd.extend(["-f", quality])
         else:
             # Simple quality like "720p" or "best" - convert to format string
-            cmd.extend(["-f", self._get_quality_format(quality)])
+            simple_format = self._get_quality_format(quality)
+            logger.info(f"Converting simple quality '{quality}' to format: {simple_format}")
+            cmd.extend(["-f", simple_format])
         
         # Metadata
         cmd.extend(["--write-info-json", "--embed-metadata", "--add-metadata"])
