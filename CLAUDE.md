@@ -141,10 +141,26 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
+### Current Phase: User Testing & Pre-Release Optimization
+
+#### 0.9.8 User Testing Phase
+- **Focus**: Comprehensive testing of subtitle system and FastAPI migration
+- **Testing Plan**: `TESTING_PLAN_0.9.8.md` - systematic validation of all features
+- **Priority**: Fix any critical issues found during testing
+- **Goal**: Stable foundation for code cleanup phase
+
+#### 0.9.9 Code Cleanup & Optimization Phase  
+- **Focus**: Prepare for first public release through comprehensive optimization
+- **Cleanup Plan**: `MILESTONE_0.9.9_CLEANUP.md` - systematic code cleanup and performance optimization
+- **Targets**: Remove dead code, optimize performance, enhance code quality
+- **Goal**: Production-ready codebase for 1.0.0 public release
+
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
+- **Testing**: Use 0.9.8 for user testing, prioritize critical fixes
+- **Optimization**: Use 0.9.9 for code cleanup and performance improvements
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
