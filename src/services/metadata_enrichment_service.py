@@ -327,10 +327,20 @@ class MetadataEnrichmentService:
         # Update artist record using the SAME session
         if progress_callback:
             progress_callback(90, "Updating artist record with enriched metadata...")
-        # No need to re-query - we already have the artist object in this session
-        updated_fields = self._update_artist_record(
-            session, artist, unified_metadata, force_refresh
-        )
+        
+        try:
+            # Add detailed logging for debugging
+            logger.info(f"About to update artist record for {artist_name}")
+            # No need to re-query - we already have the artist object in this session
+            updated_fields = self._update_artist_record(
+                session, artist, unified_metadata, force_refresh
+            )
+            logger.info(f"Successfully updated artist record for {artist_name}: {updated_fields}")
+        except Exception as e:
+            logger.error(f"ERROR in _update_artist_record for {artist_name}: {e}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            logger.error(f"Exception details:", exc_info=True)
+            raise
 
         logger.info(f"Committing enriched metadata for {artist_name}: {updated_fields}")
 
@@ -1504,7 +1514,13 @@ class MetadataEnrichmentService:
         artist.imvdb_metadata = existing_metadata
 
         # CRITICAL: Mark the JSON field as modified so SQLAlchemy knows to save it
-        flag_modified(artist, "imvdb_metadata")
+        try:
+            flag_modified(artist, "imvdb_metadata")
+            logger.info(f"Successfully flagged imvdb_metadata as modified for {artist.name}")
+        except Exception as e:
+            logger.error(f"Failed to flag imvdb_metadata as modified for {artist.name}: {e}")
+            # Continue anyway - the assignment might still work
+            pass
 
         logger.info(f"Artist.imvdb_metadata after assignment: {artist.imvdb_metadata}")
         logger.info(f"Marked imvdb_metadata as modified for SQLAlchemy tracking")
