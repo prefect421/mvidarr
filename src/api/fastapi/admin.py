@@ -312,6 +312,35 @@ async def restart_application(current_user: UserInfo = Depends(require_admin_acc
                 # Get the current process ID
                 current_pid = os.getpid()
 
+                # First, stop Celery workers to ensure they pick up code changes
+                logger.info("Stopping Celery workers before restart...")
+                try:
+                    # Find and terminate Celery worker processes
+                    result = subprocess.run(
+                        ["pgrep", "-f", "celery.*worker"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        worker_pids = result.stdout.strip().split('\n')
+                        for pid in worker_pids:
+                            if pid.strip():
+                                try:
+                                    subprocess.run(["kill", "-TERM", pid.strip()], timeout=5)
+                                    logger.info(f"Terminated Celery worker PID: {pid.strip()}")
+                                except Exception as e:
+                                    logger.warning(f"Failed to terminate Celery worker {pid}: {e}")
+                        
+                        # Wait a moment for workers to shut down gracefully
+                        time.sleep(2)
+                        
+                        logger.info("Celery workers stopped successfully")
+                    else:
+                        logger.info("No Celery workers found to stop")
+                except Exception as e:
+                    logger.warning(f"Failed to stop Celery workers: {e}")
+
                 # Try to restart using systemctl if available (production environment)
                 try:
                     result = subprocess.run(

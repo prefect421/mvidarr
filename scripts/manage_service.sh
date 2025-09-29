@@ -258,6 +258,36 @@ stop_service() {
     return 0
 }
 
+# Restart Celery workers
+restart_celery_workers() {
+    print_status "Starting Celery workers..."
+    
+    # Activate virtual environment if available
+    if [ -f "$VENV_DIR/bin/activate" ]; then
+        source "$VENV_DIR/bin/activate"
+        print_status "Using virtual environment for Celery workers"
+    else
+        print_warning "Virtual environment not found, starting workers without it"
+    fi
+    
+    # Change to project directory
+    cd "$PROJECT_DIR"
+    
+    # Start Celery worker in background
+    nohup celery -A src.jobs.celery_app worker --loglevel=info --concurrency=3 --hostname=worker@%h > "$PROJECT_DIR/data/logs/celery_worker.log" 2>&1 &
+    local celery_pid=$!
+    
+    # Wait a moment and verify it started
+    sleep 2
+    if kill -0 "$celery_pid" 2>/dev/null; then
+        print_status "Celery worker started successfully (PID: $celery_pid)"
+        return 0
+    else
+        print_error "Failed to start Celery worker"
+        return 1
+    fi
+}
+
 # Restart the service
 restart_service() {
     print_status "Restarting MVidarr Enhanced..."
@@ -266,6 +296,32 @@ restart_service() {
     CURRENT_PID=$(get_pid)
     if [ -n "$CURRENT_PID" ]; then
         print_status "Current service PID: $CURRENT_PID"
+    fi
+    
+    # Stop Celery workers first to ensure they restart with new code
+    print_status "Stopping Celery workers..."
+    local celery_pids=$(pgrep -f "celery.*worker" 2>/dev/null || true)
+    if [ -n "$celery_pids" ]; then
+        print_status "Found Celery workers: $celery_pids"
+        for pid in $celery_pids; do
+            print_status "Stopping Celery worker PID: $pid"
+            kill -TERM "$pid" 2>/dev/null || true
+        done
+        
+        # Wait for graceful shutdown
+        sleep 3
+        
+        # Force kill any remaining workers
+        celery_pids=$(pgrep -f "celery.*worker" 2>/dev/null || true)
+        if [ -n "$celery_pids" ]; then
+            print_warning "Force killing remaining Celery workers: $celery_pids"
+            for pid in $celery_pids; do
+                kill -9 "$pid" 2>/dev/null || true
+            done
+        fi
+        print_status "Celery workers stopped"
+    else
+        print_status "No Celery workers found to stop"
     fi
     
     # Stop the service first with enhanced verification
@@ -368,6 +424,11 @@ restart_service() {
                 # Test service responsiveness
                 if curl -s -f http://localhost:5000/api/health >/dev/null 2>&1; then
                     print_status "Service health check passed"
+                    
+                    # Restart Celery workers after successful service restart
+                    print_status "Restarting Celery workers with updated code..."
+                    restart_celery_workers
+                    
                     print_status "Service restarted successfully"
                     return 0
                 else
@@ -377,6 +438,11 @@ restart_service() {
                     
                     if curl -s -f http://localhost:5000/api/health >/dev/null 2>&1; then
                         print_status "Service health check passed after additional wait"
+                        
+                        # Restart Celery workers after successful service restart
+                        print_status "Restarting Celery workers with updated code..."
+                        restart_celery_workers
+                        
                         print_status "Service restarted successfully"
                         return 0
                     else
