@@ -384,8 +384,17 @@ async def restart_application(current_user: UserInfo = Depends(require_admin_acc
                 )
                 if os.path.exists(script_path) and os.access(script_path, os.X_OK):
                     logger.info("Restarting via manage_service.sh...")
-                    subprocess.run([script_path, "restart"], timeout=10)
-                    return
+                    try:
+                        result = subprocess.run([script_path, "restart"], timeout=60, capture_output=True, text=True)
+                        if result.returncode == 0:
+                            logger.info("Manage service script restart successful")
+                            return
+                        else:
+                            logger.warning(f"Manage service script failed: {result.stderr}")
+                    except subprocess.TimeoutExpired:
+                        logger.warning("Manage service script restart timed out")
+                    except Exception as e:
+                        logger.warning(f"Manage service script error: {e}")
 
                 # Fallback: Signal the current process to restart
                 logger.info("Performing graceful process restart...")
