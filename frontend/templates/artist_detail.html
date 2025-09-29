@@ -10143,10 +10143,18 @@ function searchAllProviders() {
         const allResults = [];
         
         // Process IMVDb/Wikipedia/YouTube results
-        if (results[0].status === 'fulfilled' && results[0].value.success && results[0].value.results) {
-            // New API format returns multiple results
+        if (results[0].status === 'fulfilled' && results[0].value.thumbnails && results[0].value.thumbnails.length > 0) {
+            // Current API format returns thumbnails array
+            allResults.push(...results[0].value.thumbnails.map(thumb => ({
+                url: thumb.url,
+                source: thumb.source,
+                quality: 'high'
+            })));
+            console.log('Added multi-source results:', results[0].value.thumbnails);
+        } else if (results[0].status === 'fulfilled' && results[0].value.success && results[0].value.results) {
+            // Legacy API format (if still in use somewhere)
             allResults.push(...results[0].value.results);
-            console.log('Added multi-source results:', results[0].value.results);
+            console.log('Added legacy results:', results[0].value.results);
         } else if (results[0].status === 'fulfilled' && results[0].value.success && results[0].value.thumbnail_url) {
             // Backward compatibility: old API format with single result
             allResults.push({
