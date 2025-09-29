@@ -2468,6 +2468,33 @@ async def bulk_auto_process_artists(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _is_placeholder_url(url: str) -> bool:
+    """Check if URL is a known placeholder image"""
+    if not url:
+        return True
+        
+    url_lower = url.lower()
+    
+    # Known placeholder patterns
+    placeholder_patterns = [
+        # Last.fm placeholder images
+        "2a96cbd8b46e442fc41c2b86b821562f.png",
+        "lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f",
+        
+        # Generic placeholders
+        "placeholder", "default", "generic", "no-image", "blank",
+        "missing", "unavailable", "coming-soon", "avatar-default",
+        "profile-default", "default_artist", "artist_placeholder",
+        "music_placeholder", "album_default", "cover_default",
+        
+        # Common placeholder files
+        "grey.gif", "transparent.png", "1x1.png", "spacer.gif",
+        "default.jpg", "default.png", "placeholder.jpg", "placeholder.png",
+    ]
+    
+    return any(pattern in url_lower for pattern in placeholder_patterns)
+
+
 @router.post("/scan-missing-thumbnails")
 async def scan_missing_thumbnails(
     current_user: dict = Depends(require_authentication),
@@ -2500,21 +2527,60 @@ async def scan_missing_thumbnails(
         for artist_data in artists_without_thumbnails:
             try:
                 artist_id, artist_name = artist_data
+                logger.info(f"Searching thumbnails for artist: {artist_name} (ID: {artist_id})")
                 
-                # Try to find thumbnail through IMVDb service
-                if hasattr(imvdb_service, 'get_artist_thumbnail'):
-                    thumbnail_url = await imvdb_service.get_artist_thumbnail(artist_name)
-                    if thumbnail_url:
-                        # Update artist with found thumbnail
-                        artist = session.query(Artist).filter(Artist.id == artist_id).first()
-                        if artist:
-                            artist.thumbnail_url = thumbnail_url
-                            session.commit()
-                            updated_count += 1
-                            logger.info(f"Updated thumbnail for {artist_name}")
+                thumbnail_url = None
+                
+                # Try multiple sources for thumbnails
+                # 1. Try Wikipedia first (usually high quality)
+                try:
+                    wikipedia_url = wikipedia_service.search_artist_thumbnail(artist_name)
+                    if wikipedia_url and not _is_placeholder_url(wikipedia_url):
+                        thumbnail_url = wikipedia_url
+                        logger.info(f"Found Wikipedia thumbnail for {artist_name}: {wikipedia_url}")
+                except Exception as e:
+                    logger.debug(f"Wikipedia search failed for {artist_name}: {e}")
+                
+                # 2. Try YouTube channel thumbnail if Wikipedia didn't work
+                if not thumbnail_url:
+                    try:
+                        from src.services.youtube_search_service import search_artist_channel_thumbnail
+                        youtube_url = search_artist_channel_thumbnail(artist_name)
+                        if youtube_url and not _is_placeholder_url(youtube_url):
+                            thumbnail_url = youtube_url
+                            logger.info(f"Found YouTube thumbnail for {artist_name}: {youtube_url}")
+                    except Exception as e:
+                        logger.debug(f"YouTube search failed for {artist_name}: {e}")
+                
+                # 3. If we found a thumbnail, download and set it
+                if thumbnail_url:
+                    try:
+                        from src.services.thumbnail_service import ThumbnailService
+                        thumbnail_service = ThumbnailService()
+                        
+                        # Download the thumbnail
+                        downloaded_path = thumbnail_service.download_artist_thumbnail(
+                            artist_name, thumbnail_url
+                        )
+                        
+                        if downloaded_path:
+                            # Update artist with thumbnail
+                            artist = session.query(Artist).filter(Artist.id == artist_id).first()
+                            if artist:
+                                artist.thumbnail_url = f"/api/artists/{artist_id}/thumbnail"
+                                session.commit()
+                                updated_count += 1
+                                logger.info(f"Successfully updated thumbnail for {artist_name}")
+                        else:
+                            logger.warning(f"Failed to download thumbnail for {artist_name}")
+                            
+                    except Exception as e:
+                        logger.warning(f"Failed to download thumbnail for {artist_name}: {e}")
+                else:
+                    logger.info(f"No suitable thumbnail found for {artist_name}")
                         
             except Exception as e:
-                logger.warning(f"Failed to update thumbnail for {artist_name}: {e}")
+                logger.error(f"Error processing thumbnail for {artist_name}: {e}")
                 continue
         
         return {
