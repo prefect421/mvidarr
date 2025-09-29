@@ -241,7 +241,8 @@ def enrich_artist_metadata_task(
         finally:
             loop.close()
 
-        self.update_progress(task_id, 95, "Processing enrichment results...")
+        # Note: Progress is now at 100% from the metadata enrichment service
+        # Don't override the 100% completion with a lower percentage
 
         # Brief pause to ensure WebSocket transmission
         import time

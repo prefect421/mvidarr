@@ -325,12 +325,17 @@ class MetadataEnrichmentService:
         unified_metadata = self._aggregate_metadata(metadata_sources)
 
         # Update artist record using the SAME session
+        if progress_callback:
+            progress_callback(90, "Updating artist record with enriched metadata...")
         # No need to re-query - we already have the artist object in this session
         updated_fields = self._update_artist_record(
             session, artist, unified_metadata, force_refresh
         )
 
         logger.info(f"Committing enriched metadata for {artist_name}: {updated_fields}")
+
+        if progress_callback:
+            progress_callback(95, "Saving changes to database...")
 
         # Flush changes to database before verification
         session.flush()
@@ -351,6 +356,9 @@ class MetadataEnrichmentService:
         if session.info.get("_created_by_enrich_artist"):
             session.commit()
             logger.info(f"Successfully committed enriched metadata for {artist_name}")
+
+        if progress_callback:
+            progress_callback(98, "Verifying saved data...")
 
         # Verify the data was actually saved
         session.refresh(verification)
@@ -402,6 +410,10 @@ class MetadataEnrichmentService:
         result.metadata_found = updated_fields
         result.confidence_score = unified_metadata.confidence
         result.processing_time = time.time() - start_time
+
+        # Final progress update
+        if progress_callback:
+            progress_callback(100, f"Enrichment completed! Updated: {', '.join(updated_fields)}")
 
         logger.info(
             f"Successfully enriched metadata for {artist_name} using sources: {result.sources_used}"
