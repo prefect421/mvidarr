@@ -1262,6 +1262,88 @@ class MetadataEnrichmentService:
 
         return min(weighted_confidence / total_weight if total_weight > 0 else 0.0, 1.0)
 
+    def _is_placeholder_image(self, image_url: str) -> bool:
+        """
+        Check if an image URL is a placeholder/generic image that should be filtered out
+        
+        Args:
+            image_url: The image URL to check
+            
+        Returns:
+            True if the image is a placeholder and should be blocked
+        """
+        if not image_url:
+            return True
+            
+        # Convert to lowercase for case-insensitive matching
+        url_lower = image_url.lower()
+        
+        # Known placeholder image patterns and URLs
+        placeholder_patterns = [
+            # Last.fm placeholder images
+            "2a96cbd8b46e442fc41c2b86b821562f.png",  # Specific Last.fm placeholder
+            "lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f",
+            
+            # General Last.fm placeholder patterns
+            "lastfm.freetls.fastly.net/i/u/300x300/4128a6eb29f94943c9d206c08e625904",
+            "lastfm.freetls.fastly.net/i/u/300x300/c6f59c1e5e7240a4c0d427abd71f3dbb", 
+            
+            # Common generic/placeholder image names
+            "placeholder",
+            "default",
+            "generic",
+            "no-image",
+            "blank",
+            "missing",
+            "unavailable",
+            "coming-soon",
+            "avatar-default",
+            "profile-default",
+            
+            # Music service specific placeholders
+            "default_artist",
+            "artist_placeholder", 
+            "music_placeholder",
+            "album_default",
+            "cover_default",
+            
+            # Common placeholder file patterns
+            "grey.gif",
+            "transparent.png", 
+            "1x1.png",
+            "spacer.gif",
+            "default.jpg",
+            "default.png",
+            "placeholder.jpg",
+            "placeholder.png",
+        ]
+        
+        # Check if URL contains any placeholder patterns
+        for pattern in placeholder_patterns:
+            if pattern in url_lower:
+                logger.info(f"Blocking placeholder image: {image_url} (matched pattern: {pattern})")
+                return True
+                
+        # Check for very small images (likely placeholders)
+        # Extract dimensions if they're in the URL
+        import re
+        size_match = re.search(r'/(\d+)x(\d+)/', image_url)
+        if size_match:
+            width, height = int(size_match.group(1)), int(size_match.group(2))
+            # Block very small images (likely placeholders/spacers)
+            if width < 50 or height < 50:
+                logger.info(f"Blocking small placeholder image: {image_url} ({width}x{height})")
+                return True
+                
+        # Check for single-pixel or tiny images in filename
+        tiny_patterns = ['1x1', '2x2', '10x10', '16x16', '32x32']
+        for pattern in tiny_patterns:
+            if pattern in url_lower:
+                logger.info(f"Blocking tiny image: {image_url} (matched: {pattern})")
+                return True
+                
+        return False
+
     def _update_artist_record(
         self,
         session: Session,
@@ -1488,24 +1570,45 @@ class MetadataEnrichmentService:
                             elif not best_image:
                                 best_image = image
 
+                # Find the best non-placeholder image
+                selected_image = None
+                selected_image_url = None
+                
+                # Sort images by preference (best_image first, then others)
+                image_candidates = []
                 if best_image:
-                    # Get URL from either standard or LastFM format
-                    best_image_url = best_image.get("url") or best_image.get("#text")
-                    if best_image_url:
-                        # Store thumbnail URL for later background download (avoid hanging here)
-                        artist.thumbnail_url = best_image_url
-                        updated_fields["thumbnail_url"] = artist.thumbnail_url
-                        
-                        # Store thumbnail info in metadata for later processing
-                        existing_metadata["thumbnail_pending"] = True
-                        existing_metadata["thumbnail_source"] = best_image.get(
-                            "source", "unknown"
-                        )
-                        existing_metadata["best_thumbnail_url"] = best_image_url
-                        
-                        logger.info(
-                            f"Stored thumbnail URL for artist {artist.name}: {best_image_url}"
-                        )
+                    image_candidates.append(best_image)
+                
+                # Add other images as fallbacks
+                for image in images:
+                    if isinstance(image, dict) and image != best_image:
+                        image_candidates.append(image)
+                
+                # Find first non-placeholder image
+                for candidate in image_candidates:
+                    candidate_url = candidate.get("url") or candidate.get("#text")
+                    if candidate_url and not self._is_placeholder_image(candidate_url):
+                        selected_image = candidate
+                        selected_image_url = candidate_url
+                        break
+                
+                if selected_image_url:
+                    # Store thumbnail URL for later background download (avoid hanging here)
+                    artist.thumbnail_url = selected_image_url
+                    updated_fields["thumbnail_url"] = artist.thumbnail_url
+                    
+                    # Store thumbnail info in metadata for later processing
+                    existing_metadata["thumbnail_pending"] = True
+                    existing_metadata["thumbnail_source"] = selected_image.get(
+                        "source", "unknown"
+                    )
+                    existing_metadata["best_thumbnail_url"] = selected_image_url
+                    
+                    logger.info(
+                        f"Stored thumbnail URL for artist {artist.name}: {selected_image_url}"
+                    )
+                else:
+                    logger.info(f"No valid (non-placeholder) thumbnail found for artist {artist.name}")
 
             except Exception as e:
                 logger.error(f"Error processing artist thumbnail metadata: {e}")
