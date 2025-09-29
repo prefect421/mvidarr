@@ -1237,9 +1237,37 @@ async def set_artist_thumbnail(
         if not artist:
             raise HTTPException(status_code=404, detail="Artist not found")
 
+        # Check if this is a delete request
+        remove_thumbnail = thumbnail_data.get("remove_thumbnail", False)
+        
+        if remove_thumbnail:
+            # Handle thumbnail deletion
+            try:
+                from src.services.thumbnail_service import ThumbnailService
+                thumbnail_service = ThumbnailService()
+                
+                # Delete existing thumbnail files if they exist
+                if artist.thumbnail_path:
+                    thumbnail_service.delete_thumbnail_files(artist.thumbnail_path)
+                
+                # Clear thumbnail references
+                artist.thumbnail_url = None
+                artist.thumbnail_path = None
+                session.commit()
+                
+                logger.info(f"Successfully deleted thumbnail for artist {artist.name}")
+                return {
+                    "success": True,
+                    "message": "Thumbnail deleted successfully"
+                }
+                
+            except Exception as e:
+                logger.error(f"Error deleting thumbnail for artist {artist_id}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to delete thumbnail: {str(e)}")
+
         thumbnail_url = thumbnail_data.get("thumbnail_url")
         if not thumbnail_url:
-            raise HTTPException(status_code=400, detail="thumbnail_url is required")
+            raise HTTPException(status_code=400, detail="thumbnail_url is required for setting thumbnail")
 
         # Download the thumbnail from the URL
         try:
