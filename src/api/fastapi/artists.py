@@ -617,25 +617,33 @@ async def create_artist(
         session.add(artist)
         session.flush()  # Get the ID
 
-        # Auto-discover videos if requested
+        # Always run auto-processing for new artists (auto-match, metadata, thumbnails)
+        try:
+            from src.services.artist_auto_processing_service import (
+                artist_auto_processing_service,
+            )
+
+            # Run auto-processing pipeline for all new artists
+            auto_results = artist_auto_processing_service.process_new_artist(
+                artist, session
+            )
+            logger.info(
+                f"Auto-processing results for {artist.name}: {auto_results}"
+            )
+
+        except ImportError:
+            logger.warning("Artist auto-processing service not available")
+        except Exception as e:
+            logger.error(f"Auto-processing failed for {artist.name}: {e}")
+
+        # Auto-discover videos if specifically requested
         if artist_data.auto_discover:
             try:
-                from src.services.artist_auto_processing_service import (
-                    artist_auto_processing_service,
-                )
-
-                # Run auto-processing pipeline
-                auto_results = artist_auto_processing_service.process_new_artist(
-                    artist, session
-                )
-                logger.info(
-                    f"Auto-processing results for {artist.name}: {auto_results}"
-                )
-
-            except ImportError:
-                logger.warning("Artist auto-processing service not available")
+                # Add video discovery logic here if needed
+                logger.info(f"Video auto-discovery requested for {artist.name}")
+                # TODO: Implement video discovery if not already covered by auto-processing
             except Exception as e:
-                logger.error(f"Auto-processing failed for {artist.name}: {e}")
+                logger.error(f"Video discovery failed for {artist.name}: {e}")
 
         session.commit()
         session.refresh(artist)
@@ -1045,20 +1053,28 @@ async def import_artist_from_imvdb(
         session.add(artist)
         session.flush()  # Get the ID
 
-        # Auto-discover videos if requested
+        # Always run auto-processing for new artists (auto-match, metadata, thumbnails)
+        try:
+            from src.services.artist_auto_processing_service import (
+                artist_auto_processing_service,
+            )
+
+            auto_results = artist_auto_processing_service.process_new_artist(
+                artist, session
+            )
+            logger.info(f"Auto-processing results for {artist.name}: {auto_results}")
+
+        except Exception as e:
+            logger.error(f"Auto-processing failed for {artist.name}: {e}")
+
+        # Auto-discover videos if specifically requested
         if import_request.auto_discover_videos:
             try:
-                from src.services.artist_auto_processing_service import (
-                    artist_auto_processing_service,
-                )
-
-                auto_results = artist_auto_processing_service.process_new_artist(
-                    artist, session
-                )
-                logger.info(f"Auto-discovery results for {artist.name}: {auto_results}")
-
+                # Add video discovery logic here if needed
+                logger.info(f"Video auto-discovery requested for {artist.name}")
+                # TODO: Implement video discovery if not already covered by auto-processing
             except Exception as e:
-                logger.error(f"Auto-discovery failed for {artist.name}: {e}")
+                logger.error(f"Video discovery failed for {artist.name}: {e}")
 
         session.commit()
         session.refresh(artist)
@@ -2304,6 +2320,152 @@ async def discover_artist_videos(
     except Exception as e:
         logger.error(f"Error discovering videos for artist {artist_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Video discovery failed: {str(e)}")
+
+
+@router.post("/{artist_id}/auto-process")
+async def manually_process_artist(
+    artist_id: int,
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Manually run auto-processing (auto-match, metadata enrichment, thumbnails) for an existing artist"""
+    try:
+        # Get the artist
+        artist = session.query(Artist).filter(Artist.id == artist_id).first()
+        if not artist:
+            raise HTTPException(status_code=404, detail=f"Artist {artist_id} not found")
+
+        logger.info(f"Manually running auto-processing for artist {artist.name} (ID: {artist_id})")
+
+        # Run the auto-processing pipeline
+        from src.services.artist_auto_processing_service import (
+            artist_auto_processing_service,
+        )
+
+        auto_results = artist_auto_processing_service.process_new_artist(
+            artist, session
+        )
+        
+        session.commit()
+        
+        logger.info(f"Manual auto-processing completed for {artist.name}: {auto_results}")
+
+        return {
+            "success": True,
+            "artist_id": artist_id,
+            "artist_name": artist.name,
+            "results": auto_results,
+            "message": f"Auto-processing completed for {artist.name}"
+        }
+
+    except Exception as e:
+        logger.error(f"Error manually processing artist {artist_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/bulk-auto-process")
+async def bulk_auto_process_artists(
+    force_refresh: bool = False,
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Run auto-processing for all artists that are missing metadata or thumbnails"""
+    try:
+        from sqlalchemy import or_, and_
+
+        # Find artists that need auto-processing
+        if force_refresh:
+            # Process all artists if force refresh is requested
+            artists_to_process = session.query(Artist).all()
+            logger.info(f"Force refresh requested - processing all {len(artists_to_process)} artists")
+        else:
+            # Find artists missing critical data (no external service IDs, no metadata, no thumbnails)
+            artists_to_process = (
+                session.query(Artist)
+                .filter(
+                    and_(
+                        or_(
+                            Artist.imvdb_id.is_(None),
+                            Artist.spotify_id.is_(None),
+                            Artist.lastfm_name.is_(None),
+                            Artist.musicbrainz_id.is_(None),
+                            Artist.biography.is_(None),
+                            Artist.thumbnail_url.is_(None)
+                        )
+                    )
+                )
+                .all()
+            )
+            logger.info(f"Found {len(artists_to_process)} artists needing auto-processing")
+
+        if not artists_to_process:
+            return {
+                "success": True,
+                "processed_count": 0,
+                "message": "No artists need auto-processing"
+            }
+
+        # Import the auto-processing service
+        from src.services.artist_auto_processing_service import (
+            artist_auto_processing_service,
+        )
+
+        processed_count = 0
+        success_count = 0
+        error_count = 0
+        results = []
+
+        # Process each artist
+        for artist in artists_to_process:
+            try:
+                logger.info(f"Auto-processing artist: {artist.name} (ID: {artist.id})")
+                
+                auto_results = artist_auto_processing_service.process_new_artist(
+                    artist, session
+                )
+                
+                processed_count += 1
+                if auto_results.get("errors"):
+                    error_count += 1
+                else:
+                    success_count += 1
+                
+                results.append({
+                    "artist_id": artist.id,
+                    "artist_name": artist.name,
+                    "success": len(auto_results.get("errors", [])) == 0,
+                    "auto_match_count": auto_results.get("auto_match", {}).get("match_count", 0),
+                    "metadata_enriched": auto_results.get("metadata_enrichment", {}).get("success", False),
+                    "thumbnail_found": auto_results.get("thumbnail_generation", {}).get("success", False)
+                })
+                
+                # Commit after each artist to avoid losing progress on errors
+                session.commit()
+                
+            except Exception as e:
+                error_count += 1
+                logger.error(f"Error processing artist {artist.name} (ID: {artist.id}): {e}")
+                results.append({
+                    "artist_id": artist.id,
+                    "artist_name": artist.name,
+                    "success": False,
+                    "error": str(e)
+                })
+
+        logger.info(f"Bulk auto-processing completed: {processed_count} processed, {success_count} successful, {error_count} errors")
+
+        return {
+            "success": True,
+            "processed_count": processed_count,
+            "success_count": success_count,
+            "error_count": error_count,
+            "results": results,
+            "message": f"Processed {processed_count} artists ({success_count} successful, {error_count} errors)"
+        }
+
+    except Exception as e:
+        logger.error(f"Error in bulk auto-processing: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/scan-missing-thumbnails")
