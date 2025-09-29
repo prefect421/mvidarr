@@ -72,4 +72,4 @@ bleach==6.1.0
 humanize==4.9.0
 
 # Video processing (legacy support)
-yt-dlp>=2024.1.0
+yt-dlp>=2024.12.0

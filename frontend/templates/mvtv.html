@@ -840,12 +840,23 @@ class MvTVPlayer {
             this.isPaused = false;
             this.updatePlaybackStatus('playing', 'Playing');
             this.updateControls();
+            // Update video info when playing to ensure sync
+            if (this.playlist && this.playlist[this.currentIndex]) {
+                this.updateVideoInfo(this.playlist[this.currentIndex]);
+            }
         });
         
         this.videoPlayer.addEventListener('pause', () => {
             this.isPaused = true;
             this.updatePlaybackStatus('paused', 'Paused');
             this.updateControls();
+        });
+        
+        this.videoPlayer.addEventListener('loadstart', () => {
+            // Update video info when starting to load new video
+            if (this.playlist && this.playlist[this.currentIndex]) {
+                this.updateVideoInfo(this.playlist[this.currentIndex]);
+            }
         });
         
         this.videoPlayer.addEventListener('error', (e) => {
@@ -1200,6 +1211,11 @@ class MvTVPlayer {
             nextIndex = (this.currentIndex + 1) % this.playlist.length;
         }
         
+        // Immediately update video info for responsive UI
+        if (this.playlist[nextIndex]) {
+            this.updateVideoInfo(this.playlist[nextIndex]);
+        }
+        
         await this.loadVideo(nextIndex);
         
         // Auto-play if currently playing and not in cinematic mode
@@ -1222,6 +1238,11 @@ class MvTVPlayer {
             if (prevIndex < 0) {
                 prevIndex = this.playlist.length - 1; // Wrap to end
             }
+        }
+        
+        // Immediately update video info for responsive UI
+        if (this.playlist[prevIndex]) {
+            this.updateVideoInfo(this.playlist[prevIndex]);
         }
         
         await this.loadVideo(prevIndex);

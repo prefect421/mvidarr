@@ -251,62 +251,61 @@ class AsyncTemplateSystem:
         """Get current theme data for server-side rendering to prevent FOUC"""
         try:
             # Import here to avoid circular imports
+            from sqlalchemy.orm import Session
+
             from src.api.fastapi.themes import router as themes_router
             from src.database.connection import get_db_session
-            from src.database.models import Setting, CustomTheme
-            from sqlalchemy.orm import Session
-            
+            from src.database.models import CustomTheme, Setting
+
             # Get database session
             session_gen = get_db_session()
             session = next(session_gen)
-            
+
             try:
                 # Get current theme setting
-                theme_setting = session.query(Setting).filter(Setting.key == "ui_theme").first()
+                theme_setting = (
+                    session.query(Setting).filter(Setting.key == "ui_theme").first()
+                )
                 current_theme_name = theme_setting.value if theme_setting else "default"
-                
+
                 # Look for theme in database
-                theme = session.query(CustomTheme).filter(
-                    CustomTheme.name == current_theme_name
-                ).first()
-                
+                theme = (
+                    session.query(CustomTheme)
+                    .filter(CustomTheme.name == current_theme_name)
+                    .first()
+                )
+
                 if theme and theme.theme_data:
                     return {
                         "name": theme.name,
                         "variables": theme.theme_data,
-                        "display_name": theme.display_name or theme.name
+                        "display_name": theme.display_name or theme.name,
                     }
-                
+
                 # Fallback for built-in themes without database records
                 if current_theme_name != "default":
                     # Try to extract built-in theme data
-                    logger.info(f"Extracting built-in theme data for: {current_theme_name}")
-                    
+                    logger.info(
+                        f"Extracting built-in theme data for: {current_theme_name}"
+                    )
+
                     # Get default theme variables for fallback
                     return {
                         "name": current_theme_name,
                         "variables": {},  # Will fall back to CSS defaults
-                        "display_name": current_theme_name.title()
+                        "display_name": current_theme_name.title(),
                     }
-                
+
                 # Default theme
-                return {
-                    "name": "default",
-                    "variables": {},
-                    "display_name": "Default"
-                }
-                
+                return {"name": "default", "variables": {}, "display_name": "Default"}
+
             finally:
                 session.close()
-                
+
         except Exception as e:
             logger.error(f"Error getting current theme for SSR: {e}")
             # Fallback to default theme
-            return {
-                "name": "default", 
-                "variables": {},
-                "display_name": "Default"
-            }
+            return {"name": "default", "variables": {}, "display_name": "Default"}
 
     async def _get_auth_context(self, request: Request) -> Dict[str, Any]:
         """Get authentication context for templates"""

@@ -4,13 +4,16 @@ Lidarr API integration for MVidarr
 """
 
 import json
-import requests
 from typing import Any, Dict, List, Optional
 
+import requests
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_legacy,
+    require_authentication_legacy,
+)
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.services.settings_service import SettingsService
@@ -32,6 +35,7 @@ logger = get_logger("mvidarr.api.fastapi.lidarr")
 # AUTHENTICATION
 # ========================================================================================
 
+
 async def get_current_user():
     """Get current authenticated user"""
     return await get_current_user_legacy()
@@ -45,6 +49,7 @@ async def require_authentication(current_user: dict = Depends(get_current_user))
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================
+
 
 class LidarrTestResponse(BaseModel):
     status: str
@@ -88,38 +93,45 @@ class WantedAlbumsResponse(BaseModel):
 # HELPER FUNCTIONS
 # ========================================================================================
 
+
 def get_lidarr_settings():
     """Get Lidarr settings from database"""
     server_url = SettingsService.get("lidarr_server_url")
     api_key = SettingsService.get("lidarr_api_key")
-    
+
     if not server_url or not api_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Lidarr server URL or API key not configured"
+            detail="Lidarr server URL or API key not configured",
         )
-    
+
     return server_url.rstrip("/"), api_key
 
 
-def make_lidarr_request(endpoint: str, server_url: str, api_key: str, timeout: int = 30):
+def make_lidarr_request(
+    endpoint: str, server_url: str, api_key: str, timeout: int = 30
+):
     """Make a request to Lidarr API"""
     headers = {"X-Api-Key": api_key}
-    url = f"{server_url}/api/v1{endpoint}" if not endpoint.startswith("/api/v1") else f"{server_url}{endpoint}"
-    
+    url = (
+        f"{server_url}/api/v1{endpoint}"
+        if not endpoint.startswith("/api/v1")
+        else f"{server_url}{endpoint}"
+    )
+
     try:
         response = requests.get(url, headers=headers, timeout=timeout)
         if response.status_code != 200:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Lidarr API request failed: HTTP {response.status_code}"
+                detail=f"Lidarr API request failed: HTTP {response.status_code}",
             )
         return response.json()
     except requests.exceptions.RequestException as e:
         logger.error(f"Lidarr request failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Connection failed: {str(e)}"
+            detail=f"Connection failed: {str(e)}",
         )
 
 
@@ -127,10 +139,9 @@ def make_lidarr_request(endpoint: str, server_url: str, api_key: str, timeout: i
 # TEST AND CONFIGURATION ENDPOINTS
 # ========================================================================================
 
+
 @router.post("/test", response_model=LidarrTestResponse)
-async def test_lidarr_connection(
-    current_user: dict = Depends(require_authentication)
-):
+async def test_lidarr_connection(current_user: dict = Depends(require_authentication)):
     """Test Lidarr server connection and API key"""
     try:
         server_url, api_key = get_lidarr_settings()
@@ -164,25 +175,20 @@ async def test_lidarr_connection(
     except requests.exceptions.RequestException as e:
         logger.error(f"Lidarr connection test failed: {e}")
         return LidarrTestResponse(
-            status="error",
-            message=f"Connection failed: {str(e)}"
+            status="error", message=f"Connection failed: {str(e)}"
         )
     except Exception as e:
         logger.error(f"Lidarr test error: {e}")
-        return LidarrTestResponse(
-            status="error",
-            message=f"Test failed: {str(e)}"
-        )
+        return LidarrTestResponse(status="error", message=f"Test failed: {str(e)}")
 
 
 # ========================================================================================
 # LIBRARY SYNC ENDPOINTS
 # ========================================================================================
 
+
 @router.post("/sync-library", response_model=SyncLibraryResponse)
-async def sync_lidarr_library(
-    current_user: dict = Depends(require_authentication)
-):
+async def sync_lidarr_library(current_user: dict = Depends(require_authentication)):
     """Sync artist library from Lidarr to MVidarr"""
     try:
         server_url, api_key = get_lidarr_settings()
@@ -249,14 +255,12 @@ async def sync_lidarr_library(
             message="Sync failed",
             processed_count=0,
             synced_count=0,
-            error=str(e)
+            error=str(e),
         )
 
 
 @router.post("/import-artists", response_model=ImportArtistsResponse)
-async def import_lidarr_artists(
-    current_user: dict = Depends(require_authentication)
-):
+async def import_lidarr_artists(current_user: dict = Depends(require_authentication)):
     """Import monitored artists from Lidarr and search for their music videos"""
     try:
         server_url, api_key = get_lidarr_settings()
@@ -328,14 +332,12 @@ async def import_lidarr_artists(
             total_artists=0,
             monitored_artists=0,
             imported_count=0,
-            error=str(e)
+            error=str(e),
         )
 
 
 @router.post("/sync-albums", response_model=SyncAlbumsResponse)
-async def sync_lidarr_albums(
-    current_user: dict = Depends(require_authentication)
-):
+async def sync_lidarr_albums(current_user: dict = Depends(require_authentication)):
     """Sync album information from Lidarr to help identify wanted music videos"""
     try:
         server_url, api_key = get_lidarr_settings()
@@ -348,7 +350,9 @@ async def sync_lidarr_albums(
         for album in albums:
             try:
                 # Get artist name from artist ID
-                artist_data = make_lidarr_request(f"/artist/{album['artistId']}", server_url, api_key, timeout=10)
+                artist_data = make_lidarr_request(
+                    f"/artist/{album['artistId']}", server_url, api_key, timeout=10
+                )
                 artist_name = artist_data["artistName"]
 
                 # Check if artist exists in MVidarr
@@ -389,7 +393,7 @@ async def sync_lidarr_albums(
             message="Album sync failed",
             total_albums=0,
             processed_count=0,
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -397,10 +401,9 @@ async def sync_lidarr_albums(
 # WANTED ALBUMS ENDPOINT
 # ========================================================================================
 
+
 @router.get("/wanted-albums", response_model=WantedAlbumsResponse)
-async def get_wanted_albums(
-    current_user: dict = Depends(require_authentication)
-):
+async def get_wanted_albums(current_user: dict = Depends(require_authentication)):
     """Get list of wanted/missing albums from Lidarr for video discovery"""
     try:
         server_url, api_key = get_lidarr_settings()
@@ -412,7 +415,9 @@ async def get_wanted_albums(
         for album in data.get("records", []):
             try:
                 # Get artist name from artist ID
-                artist_data = make_lidarr_request(f"/artist/{album['artistId']}", server_url, api_key, timeout=10)
+                artist_data = make_lidarr_request(
+                    f"/artist/{album['artistId']}", server_url, api_key, timeout=10
+                )
                 wanted_albums.append(
                     {
                         "artist": artist_data["artistName"],
@@ -439,8 +444,5 @@ async def get_wanted_albums(
     except Exception as e:
         logger.error(f"Lidarr wanted albums request failed: {e}")
         return WantedAlbumsResponse(
-            success=False,
-            wanted_albums=[],
-            total_wanted=0,
-            error=str(e)
+            success=False, wanted_albums=[], total_wanted=0, error=str(e)
         )

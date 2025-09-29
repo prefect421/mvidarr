@@ -101,7 +101,7 @@ class BulkOperationsEnhanced {
                 return this.previewBulkDownload(selectedIds);
             }
 
-            return this.executeBulkOperation('/api/videos/bulk/enhanced-download', {
+            return this.executeBulkOperation('/api/videos/bulk/download', {
                 video_ids: selectedIds,
                 preview: false
             }, 'Downloading selected videos...');
@@ -119,7 +119,7 @@ class BulkOperationsEnhanced {
                 return this.previewStatusUpdate(selectedIds, newStatus);
             }
 
-            return this.executeBulkOperation('/api/videos/bulk/enhanced-status', {
+            return this.executeBulkOperation('/api/videos/bulk/status', {
                 video_ids: selectedIds,
                 status: newStatus,
                 preview: false
@@ -138,7 +138,7 @@ class BulkOperationsEnhanced {
                 return this.previewBulkEdit(selectedIds, editData);
             }
 
-            return this.executeBulkOperation('/api/videos/bulk/enhanced-edit', {
+            return this.executeBulkOperation('/api/videos/bulk/edit', {
                 video_ids: selectedIds,
                 ...editData,
                 preview: false
@@ -163,7 +163,7 @@ class BulkOperationsEnhanced {
 
             if (!confirm(confirmMsg)) return;
 
-            return this.executeBulkOperation('/api/videos/bulk/enhanced-delete', {
+            return this.executeBulkOperation('/api/videos/bulk/delete', {
                 video_ids: selectedIds,
                 delete_files: deleteFiles,
                 preview: false
@@ -213,7 +213,7 @@ class BulkOperationsEnhanced {
 
         this.progressInterval = setInterval(async () => {
             try {
-                const response = await fetch(`/api/bulk/operations/${this.currentOperation}/progress`);
+                const response = await fetch(`/api/bulk-operations/operations/${this.currentOperation}/status`);
                 const progress = await response.json();
 
                 this.updateProgressDisplay(progress);
@@ -330,7 +330,7 @@ class BulkOperationsEnhanced {
         if (!this.currentOperation) return;
 
         try {
-            const response = await fetch(`/api/bulk/operations/${this.currentOperation}/cancel`, {
+            const response = await fetch(`/api/bulk-operations/operations/${this.currentOperation}/cancel`, {
                 method: 'POST'
             });
             const result = await response.json();
@@ -359,7 +359,7 @@ class BulkOperationsEnhanced {
         }
 
         try {
-            const response = await fetch(`/api/bulk/operations/${this.currentOperation}/undo`, {
+            const response = await fetch(`/api/bulk-operations/operations/${this.currentOperation}/undo`, {
                 method: 'POST'
             });
             const result = await response.json();

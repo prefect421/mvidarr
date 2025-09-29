@@ -235,7 +235,7 @@ class MetadataEnrichmentWorker(HybridWorker):
 
             # Convert EnrichmentResult to dictionary format expected by the worker
             if enrichment_result and enrichment_result.success:
-                return {
+                result_data = {
                     "sources_updated": enrichment_result.sources_used or [],
                     "external_ids_added": [
                         k
@@ -250,6 +250,7 @@ class MetadataEnrichmentWorker(HybridWorker):
                     "processing_time": enrichment_result.processing_time or 0.0,
                     "success": True,
                 }
+                return result_data
             else:
                 # Enrichment failed or returned no results
                 error_msg = "No metadata sources provided updates"

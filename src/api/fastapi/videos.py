@@ -923,6 +923,14 @@ async def delete_video(
                     f"Failed to delete video file {getattr(video, 'file_path', video.local_path)}: {e}"
                 )
 
+        # Delete foreign key references first to avoid constraint errors
+        
+        # Remove from any playlists
+        from src.database.models import PlaylistEntry
+        playlist_entries = session.query(PlaylistEntry).filter(PlaylistEntry.video_id == video_id).all()
+        for entry in playlist_entries:
+            session.delete(entry)
+        
         # Delete from database
         session.delete(video)
         session.commit()
@@ -3575,6 +3583,214 @@ async def serve_video_subtitle(
             f"Failed to serve subtitle {subtitle_filename} for video {video_id}: {e}"
         )
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ========================================================================================
+# BLACKLIST OPERATIONS
+# ========================================================================================
+
+
+@router.get("/blacklist")
+async def get_blacklist(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
+    search: str = Query("", description="Search blacklisted videos"),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Get all blacklisted YouTube URLs"""
+    try:
+        from sqlalchemy import or_
+        from src.database.models import VideoBlacklist
+        
+        # Build query
+        query = session.query(VideoBlacklist)
+        
+        if search.strip():
+            search_filter = f"%{search}%"
+            query = query.filter(
+                or_(
+                    VideoBlacklist.title.ilike(search_filter),
+                    VideoBlacklist.artist_name.ilike(search_filter),
+                    VideoBlacklist.youtube_url.ilike(search_filter),
+                )
+            )
+        
+        # Get total count for pagination
+        total_count = query.count()
+        
+        # Apply pagination and ordering
+        blacklist_entries = (
+            query.order_by(VideoBlacklist.created_at.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+        
+        # Format response
+        entries = []
+        for entry in blacklist_entries:
+            entries.append({
+                "id": entry.id,
+                "youtube_url": entry.youtube_url,
+                "title": entry.title,
+                "artist_name": entry.artist_name,
+                "reason": entry.reason,
+                "created_at": entry.created_at.isoformat() if entry.created_at else None,
+            })
+        
+        return {
+            "blacklist_entries": entries,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total_count,
+                "pages": (total_count + per_page - 1) // per_page,
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting blacklist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/blacklist")
+async def add_to_blacklist(
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Add a YouTube URL to blacklist"""
+    try:
+        from src.database.models import VideoBlacklist
+        
+        youtube_url = request.get("youtube_url", "").strip()
+        title = request.get("title", "").strip()
+        artist_name = request.get("artist_name", "").strip()
+        reason = request.get("reason", "").strip()
+        
+        if not youtube_url:
+            raise HTTPException(status_code=422, detail="YouTube URL is required")
+        
+        # Check if already blacklisted
+        existing = session.query(VideoBlacklist).filter(
+            VideoBlacklist.youtube_url == youtube_url
+        ).first()
+        
+        if existing:
+            raise HTTPException(
+                status_code=409, 
+                detail=f"URL already blacklisted: {youtube_url}"
+            )
+        
+        # Add to blacklist
+        blacklist_entry = VideoBlacklist(
+            youtube_url=youtube_url,
+            title=title or None,
+            artist_name=artist_name or None,
+            reason=reason or "User blacklisted",
+        )
+        
+        session.add(blacklist_entry)
+        session.commit()
+        
+        logger.info(f"Added {youtube_url} to blacklist")
+        
+        return {
+            "success": True,
+            "message": f"Added to blacklist: {youtube_url}",
+            "blacklist_entry": {
+                "id": blacklist_entry.id,
+                "youtube_url": blacklist_entry.youtube_url,
+                "title": blacklist_entry.title,
+                "artist_name": blacklist_entry.artist_name,
+                "reason": blacklist_entry.reason,
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding to blacklist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/blacklist/{blacklist_id}")
+async def remove_from_blacklist(
+    blacklist_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Remove a YouTube URL from blacklist"""
+    try:
+        from src.database.models import VideoBlacklist
+        
+        blacklist_entry = session.query(VideoBlacklist).filter(
+            VideoBlacklist.id == blacklist_id
+        ).first()
+        
+        if not blacklist_entry:
+            raise HTTPException(status_code=404, detail="Blacklist entry not found")
+        
+        youtube_url = blacklist_entry.youtube_url
+        session.delete(blacklist_entry)
+        session.commit()
+        
+        logger.info(f"Removed {youtube_url} from blacklist")
+        
+        return {
+            "success": True,
+            "message": f"Removed from blacklist: {youtube_url}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing from blacklist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/blacklist/check")
+async def check_blacklist(
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Check if a YouTube URL is blacklisted"""
+    try:
+        from src.database.models import VideoBlacklist
+        
+        youtube_url = request.get("youtube_url", "").strip()
+        
+        if not youtube_url:
+            raise HTTPException(status_code=422, detail="YouTube URL is required")
+        
+        blacklist_entry = session.query(VideoBlacklist).filter(
+            VideoBlacklist.youtube_url == youtube_url
+        ).first()
+        
+        is_blacklisted = blacklist_entry is not None
+        
+        response = {
+            "youtube_url": youtube_url,
+            "is_blacklisted": is_blacklisted,
+        }
+        
+        if is_blacklisted:
+            response["blacklist_info"] = {
+                "title": blacklist_entry.title,
+                "artist_name": blacklist_entry.artist_name,
+                "reason": blacklist_entry.reason,
+                "created_at": blacklist_entry.created_at.isoformat() if blacklist_entry.created_at else None,
+            }
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking blacklist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Note: This completes the core video operations migration including:

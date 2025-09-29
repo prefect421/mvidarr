@@ -371,6 +371,10 @@
 
 <script>
 // Global function definitions for immediate availability
+
+// Toast notification functions are now handled by global toast system (toast.js)
+// Functions showSuccessMessage, showErrorMessage are defined globally
+
 window.toggleSearchPanel = window.toggleSearchPanel || function() {
     const searchPanel = document.getElementById('videoSearchPanel');
     if (searchPanel) {
@@ -4286,7 +4290,7 @@ async function loadVideos(page = 1, size = 50, resetPage = false) {
         if (!response.ok) {
             if (response.status === 401) {
                 // Handle authentication required
-                window.location.href = '/simple-login';
+                window.location.href = '/auth/login';
                 return;
             }
             throw new Error(`HTTP error! status: ${response.status}`);

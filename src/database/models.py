@@ -541,7 +541,7 @@ class PlaylistMonitor(Base):
     channel_title = Column(String(255), nullable=True)  # Channel that owns the playlist
     channel_id = Column(String(100), nullable=True)  # YouTube channel ID
     auto_download = Column(Boolean, default=True)  # Auto-download new videos
-    quality = Column(String(50), default="720p")  # Download quality preference
+    quality = Column(String(50), default="1080p")  # Download quality preference
     keywords = Column(JSON, nullable=True)  # Keywords to filter videos
     last_check = Column(DateTime, nullable=True)  # Last time playlist was checked
     last_video_count = Column(Integer, default=0)  # Track video count changes

@@ -76,11 +76,12 @@ health_router = APIRouter(prefix="/health", tags=["health"])
 
 
 @health_router.get("/", response_model=HealthResponse)
-async def health_check(session = Depends(get_db_session)):
+async def health_check(session=Depends(get_db_session)):
     """Simple health check endpoint for Docker health checks"""
     try:
         # Quick database connectivity check
         from sqlalchemy import text
+
         session.execute(text("SELECT 1"))
         return HealthResponse(status="healthy")
 
@@ -92,7 +93,7 @@ async def health_check(session = Depends(get_db_session)):
 
 
 @health_router.get("/status", response_model=DetailedHealthResponse)
-async def get_health_status(session = Depends(get_db_session)):
+async def get_health_status(session=Depends(get_db_session)):
     """Get overall system health status"""
     try:
         status = {
@@ -104,6 +105,7 @@ async def get_health_status(session = Depends(get_db_session)):
         # Check database health
         try:
             from sqlalchemy import text
+
             session.execute(text("SELECT 1"))
             logger.debug("Database health check passed")
         except Exception as e:
@@ -126,7 +128,7 @@ async def get_health_status(session = Depends(get_db_session)):
 
 
 @health_router.get("/database", response_model=DatabaseHealthResponse)
-async def check_database(session = Depends(get_db_session)):
+async def check_database(session=Depends(get_db_session)):
     """Check database connectivity and health"""
     try:
         from sqlalchemy import text
@@ -323,7 +325,7 @@ async def get_system_metrics():
 
 
 @health_router.get("/production", response_model=ProductionHealthResponse)
-async def get_production_health(session = Depends(get_db_session)):
+async def get_production_health(session=Depends(get_db_session)):
     """Comprehensive health check for self-hosted production monitoring"""
     try:
         overall_status = "healthy"
@@ -438,11 +440,12 @@ async def get_production_health(session = Depends(get_db_session)):
 
 
 @health_router.get("/readiness")
-async def readiness_check(session = Depends(get_db_session)):
+async def readiness_check(session=Depends(get_db_session)):
     """Kubernetes-style readiness check for load balancers"""
     try:
         # Check database connectivity
         from sqlalchemy import text
+
         session.execute(text("SELECT 1"))
 
         return {"status": "ready", "timestamp": datetime.utcnow().isoformat()}

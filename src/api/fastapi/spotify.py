@@ -425,7 +425,7 @@ async def test_spotify_integration():
                 "success": False,
                 "service": "Spotify",
                 "status": "unavailable",
-                "error": "Spotify service not configured"
+                "error": "Spotify service not configured",
             }
 
         # Don't test actual Spotify connection to avoid OAuth complexities

@@ -1416,7 +1416,7 @@ function proceedAddArtistFromImvdb(imvdbId, artistName) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            imvdb_id: imvdbId,
+            imvdb_id: parseInt(imvdbId),
             monitored: true,
             auto_download: false
         })
@@ -1574,7 +1574,7 @@ function importArtist(imvdbId, artistName) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                imvdb_id: imvdbId,
+                imvdb_id: parseInt(imvdbId),
                 monitored: true,
                 auto_download: false
             })

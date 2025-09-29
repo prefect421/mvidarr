@@ -16,7 +16,7 @@ sys.path.insert(0, '/home/mike/mvidarr')
 
 from src.database.connection import get_db
 from src.database.models import Video, VideoStatus, Artist, Download
-from src.jobs.simple_download_task import _update_video_after_download
+# Note: _update_video_after_download was removed during Celery consolidation
 
 class DownloadAutoFixer:
     def __init__(self, check_interval=30):

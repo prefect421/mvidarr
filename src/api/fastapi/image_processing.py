@@ -106,8 +106,7 @@ class ImageProcessingStatsResponse(BaseModel):
 # Endpoints
 @router.post("/thumbnails/generate", response_model=Dict[str, str])
 async def generate_thumbnails(
-    request: ThumbnailGenerationRequest, 
-    background_tasks: BackgroundTasks
+    request: ThumbnailGenerationRequest, background_tasks: BackgroundTasks
 ):
     """
     Generate thumbnails for multiple images concurrently

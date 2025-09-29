@@ -19,11 +19,13 @@ from src.jobs.base_task import (
 )
 from src.jobs.celery_app import check_celery_health, job_manager
 from src.jobs.redis_manager import check_redis_health, redis_manager
-from src.jobs.video_download_tasks import (
-    submit_playlist_download,
-    submit_video_download,
-    submit_video_info_extraction,
-)
+
+# DISABLED: Broken video_download_tasks module
+# from src.jobs.video_download_tasks import (
+#     submit_playlist_download,
+#     submit_video_download,
+#     submit_video_info_extraction,
+# )
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.fastapi.job_management")

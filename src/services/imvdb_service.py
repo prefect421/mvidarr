@@ -378,8 +378,10 @@ class IMVDbService:
                     # Check for exact match or if one name contains the other
                     # Also handle special cases like "blink-182" vs "blink 182"
                     normalized_artist = artist_lower.replace("-", " ").replace("_", " ")
-                    normalized_video_artist = artist_video_name.replace("-", " ").replace("_", " ")
-                    
+                    normalized_video_artist = artist_video_name.replace(
+                        "-", " "
+                    ).replace("_", " ")
+
                     if (
                         artist_lower == artist_video_name
                         or artist_lower in artist_video_name

@@ -8,7 +8,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_legacy,
+    require_authentication_legacy,
+)
 from src.services.imvdb_analytics_service import imvdb_analytics_service
 from src.services.imvdb_discovery_service import imvdb_discovery_service
 from src.services.imvdb_service import imvdb_service
@@ -30,6 +33,7 @@ logger = get_logger("mvidarr.api.fastapi.imvdb")
 # AUTHENTICATION
 # ========================================================================================
 
+
 async def get_current_user():
     """Get current authenticated user"""
     return await get_current_user_legacy()
@@ -43,6 +47,7 @@ async def require_authentication(current_user: dict = Depends(get_current_user))
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================
+
 
 class SearchResponse(BaseModel):
     success: bool
@@ -195,17 +200,18 @@ class ComprehensiveReportResponse(BaseModel):
 # SEARCH ENDPOINTS
 # ========================================================================================
 
+
 @router.get("/search-artist", response_model=SearchResponse)
 async def search_artist(
     q: str = Query(..., description="Search query"),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Search for artists in IMVDb"""
     try:
         if not q.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Query parameter 'q' is required"
+                detail="Query parameter 'q' is required",
             )
 
         # Search for multiple artists
@@ -218,8 +224,7 @@ async def search_artist(
     except Exception as e:
         logger.error(f"Error searching IMVDb artists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -227,14 +232,14 @@ async def search_artist(
 async def search_videos(
     q: str = Query(..., description="Search query"),
     artist_id: Optional[str] = Query(None, description="Filter by artist ID"),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Search for videos in IMVDb"""
     try:
         if not q.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Query parameter 'q' is required"
+                detail="Query parameter 'q' is required",
             )
 
         if artist_id:
@@ -252,15 +257,13 @@ async def search_videos(
     except Exception as e:
         logger.error(f"Error searching IMVDb videos: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/artist/{artist_id}", response_model=ArtistDetailResponse)
 async def get_artist_details(
-    artist_id: int,
-    current_user: dict = Depends(require_authentication)
+    artist_id: int, current_user: dict = Depends(require_authentication)
 ):
     """Get detailed artist information from IMVDb"""
     try:
@@ -268,8 +271,7 @@ async def get_artist_details(
 
         if not artist:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Artist not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Artist not found"
             )
 
         return ArtistDetailResponse(success=True, artist=artist)
@@ -279,15 +281,13 @@ async def get_artist_details(
     except Exception as e:
         logger.error(f"Error getting IMVDb artist details: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/video/{video_id}", response_model=VideoDetailResponse)
 async def get_video_details(
-    video_id: int,
-    current_user: dict = Depends(require_authentication)
+    video_id: int, current_user: dict = Depends(require_authentication)
 ):
     """Get detailed video information from IMVDb"""
     try:
@@ -295,8 +295,7 @@ async def get_video_details(
 
         if not video:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Video not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Video not found"
             )
 
         return VideoDetailResponse(success=True, video=video)
@@ -306,30 +305,31 @@ async def get_video_details(
     except Exception as e:
         logger.error(f"Error getting IMVDb video details: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/advanced-search", response_model=AdvancedSearchResponse)
 async def advanced_search(
     filters: AdvancedSearchRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Advanced video search with filtering"""
     try:
         # Validate required parameters
         filters_dict = filters.dict(exclude_none=True)
-        if not filters_dict.get("query") and not any([
-            filters_dict.get("genre"),
-            filters_dict.get("year_min"),
-            filters_dict.get("year_max"),
-            filters_dict.get("directors"),
-            filters_dict.get("artists"),
-        ]):
+        if not filters_dict.get("query") and not any(
+            [
+                filters_dict.get("genre"),
+                filters_dict.get("year_min"),
+                filters_dict.get("year_max"),
+                filters_dict.get("directors"),
+                filters_dict.get("artists"),
+            ]
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="At least one search criteria is required"
+                detail="At least one search criteria is required",
             )
 
         result = imvdb_service.advanced_search_videos(filters_dict)
@@ -341,8 +341,7 @@ async def advanced_search(
     except Exception as e:
         logger.error(f"Error in advanced search: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -350,23 +349,20 @@ async def advanced_search(
 async def search_by_genre(
     genre: str = Query(..., description="Genre to search for"),
     limit: int = Query(50, ge=1, le=100),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Search videos by genre"""
     try:
         if not genre.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Genre parameter is required"
+                detail="Genre parameter is required",
             )
 
         videos = imvdb_service.search_videos_by_genre(genre, limit)
 
         return GenreSearchResponse(
-            success=True,
-            results=videos,
-            count=len(videos),
-            genre=genre
+            success=True, results=videos, count=len(videos), genre=genre
         )
 
     except HTTPException:
@@ -374,8 +370,7 @@ async def search_by_genre(
     except Exception as e:
         logger.error(f"Error searching by genre: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -384,14 +379,14 @@ async def search_by_year(
     year_min: Optional[int] = Query(None, description="Minimum year"),
     year_max: Optional[int] = Query(None, description="Maximum year"),
     limit: int = Query(50, ge=1, le=100),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Search videos by year range"""
     try:
         if not year_min and not year_max:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="At least year_min or year_max is required"
+                detail="At least year_min or year_max is required",
             )
 
         videos = imvdb_service.search_videos_by_year_range(
@@ -410,8 +405,7 @@ async def search_by_year(
     except Exception as e:
         logger.error(f"Error searching by year: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -419,14 +413,14 @@ async def search_by_year(
 async def search_by_director(
     director: str = Query(..., description="Director name"),
     limit: int = Query(50, ge=1, le=100),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Search videos by director"""
     try:
         if not director.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Director parameter is required"
+                detail="Director parameter is required",
             )
 
         videos = imvdb_service.search_videos_by_director(director, limit)
@@ -443,8 +437,7 @@ async def search_by_director(
     except Exception as e:
         logger.error(f"Error searching by director: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -452,7 +445,7 @@ async def search_by_director(
 async def get_trending(
     days: int = Query(7, ge=1, le=365),
     limit: int = Query(20, ge=1, le=100),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Get trending/popular videos"""
     try:
@@ -468,8 +461,7 @@ async def get_trending(
     except Exception as e:
         logger.error(f"Error getting trending videos: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -477,10 +469,11 @@ async def get_trending(
 # DISCOVERY ENDPOINTS
 # ========================================================================================
 
+
 @router.post("/discovery/run", response_model=DiscoveryResponse)
 async def run_discovery(
     request: DiscoveryRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Run automated video discovery"""
     try:
@@ -493,15 +486,14 @@ async def run_discovery(
     except Exception as e:
         logger.error(f"Error running discovery: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/discovery/trending", response_model=TrendingDiscoveryResponse)
 async def discover_trending(
     limit: int = Query(20, ge=1, le=100),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Discover trending videos and suggest new artists"""
     try:
@@ -512,16 +504,17 @@ async def discover_trending(
     except Exception as e:
         logger.error(f"Error discovering trending: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
-@router.get("/discovery/similar-artists/{artist_id}", response_model=SimilarArtistsResponse)
+@router.get(
+    "/discovery/similar-artists/{artist_id}", response_model=SimilarArtistsResponse
+)
 async def discover_similar_artists(
     artist_id: int,
     limit: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Discover artists similar to a given artist"""
     try:
@@ -532,15 +525,12 @@ async def discover_similar_artists(
     except Exception as e:
         logger.error(f"Error discovering similar artists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/discovery/stats", response_model=DiscoveryStatsResponse)
-async def get_discovery_stats(
-    current_user: dict = Depends(require_authentication)
-):
+async def get_discovery_stats(current_user: dict = Depends(require_authentication)):
     """Get discovery statistics"""
     try:
         stats = imvdb_discovery_service.get_discovery_statistics()
@@ -550,8 +540,7 @@ async def get_discovery_stats(
     except Exception as e:
         logger.error(f"Error getting discovery stats: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -559,10 +548,11 @@ async def get_discovery_stats(
 # QUALITY TRACKING ENDPOINTS
 # ========================================================================================
 
+
 @router.post("/quality/analyze", response_model=QualityAnalysisResponse)
 async def analyze_video_quality(
     request: QualityAnalysisRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Analyze quality of IMVDb video data"""
     try:
@@ -573,15 +563,14 @@ async def analyze_video_quality(
     except Exception as e:
         logger.error(f"Error analyzing video quality: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/quality/rank-videos", response_model=VideoRankingResponse)
 async def rank_videos_by_quality(
     request: VideoRankingRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Rank videos by quality and user preferences"""
     try:
@@ -598,15 +587,14 @@ async def rank_videos_by_quality(
     except Exception as e:
         logger.error(f"Error ranking videos by quality: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/quality/statistics", response_model=QualityStatsResponse)
 async def get_quality_statistics(
     request: QualityStatsRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Get quality statistics for a list of videos"""
     try:
@@ -617,15 +605,14 @@ async def get_quality_statistics(
     except Exception as e:
         logger.error(f"Error getting quality statistics: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/quality/preferences", response_model=UserPreferencesResponse)
 async def get_user_preferences(
     user_id: Optional[int] = Query(None, description="User ID"),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Get user preferences for video quality and sources"""
     try:
@@ -636,8 +623,7 @@ async def get_user_preferences(
     except Exception as e:
         logger.error(f"Error getting user preferences: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -645,7 +631,7 @@ async def get_user_preferences(
 async def discover_trending_with_quality(
     limit: int = Query(20, ge=1, le=100),
     user_id: Optional[int] = Query(None, description="User ID"),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Discover trending videos with quality filtering"""
     try:
@@ -656,14 +642,13 @@ async def discover_trending_with_quality(
     except Exception as e:
         logger.error(f"Error discovering trending videos with quality: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/discovery/quality-patterns", response_model=QualityPatternsResponse)
 async def get_quality_discovery_patterns(
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Get quality patterns in discovery history"""
     try:
@@ -674,8 +659,7 @@ async def get_quality_discovery_patterns(
     except Exception as e:
         logger.error(f"Error getting quality discovery patterns: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -683,10 +667,11 @@ async def get_quality_discovery_patterns(
 # ANALYTICS ENDPOINTS
 # ========================================================================================
 
+
 @router.get("/analytics/discovery-performance", response_model=AnalyticsResponse)
 async def analyze_discovery_performance(
     days: int = Query(30, ge=1, le=365),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Analyze discovery performance over time"""
     try:
@@ -697,15 +682,16 @@ async def analyze_discovery_performance(
     except Exception as e:
         logger.error(f"Error analyzing discovery performance: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
-@router.get("/analytics/comprehensive-report", response_model=ComprehensiveReportResponse)
+@router.get(
+    "/analytics/comprehensive-report", response_model=ComprehensiveReportResponse
+)
 async def generate_comprehensive_report(
     days: int = Query(30, ge=1, le=365),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Generate comprehensive discovery analysis report"""
     try:
@@ -716,6 +702,5 @@ async def generate_comprehensive_report(
     except Exception as e:
         logger.error(f"Error generating comprehensive report: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

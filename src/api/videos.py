@@ -5,6 +5,7 @@ Videos API endpoints
 import json
 import mimetypes
 import os
+import shutil
 import subprocess
 import threading
 from datetime import datetime
@@ -25,6 +26,17 @@ from src.utils.performance_monitor import monitor_performance
 
 videos_bp = Blueprint("videos", __name__, url_prefix="/videos")
 logger = get_logger("mvidarr.api.videos")
+
+
+def get_ytdlp_path():
+    """Get the best available yt-dlp executable path"""
+    return (
+        "/root/.local/bin/yt-dlp"  # pipx installed (latest)
+        if os.path.exists("/root/.local/bin/yt-dlp")
+        else shutil.which("yt-dlp")
+        or shutil.which("yt-dlp.exe")
+        or "/usr/local/bin/yt-dlp"
+    )
 
 
 def _safe_parse_genres(genres):
@@ -85,7 +97,7 @@ def resolve_video_url(video, session):
 
         # Use yt-dlp to search YouTube
         cmd = [
-            "/usr/local/bin/yt-dlp",  # Use the system-installed version
+            get_ytdlp_path(),  # Use the best available version
             "--dump-json",
             "--no-download",
             "--playlist-items",
@@ -228,8 +240,8 @@ def _trigger_video_download(video_id):
                 }
 
             # Import ytdlp service and settings
+            from src.services.download_service_adapter import ytdlp_service
             from src.services.settings_service import settings
-            from src.services.ytdlp_service import ytdlp_service
 
             # Check if video is already downloaded
             status_value = (
@@ -763,75 +775,43 @@ def get_video(video_id):
 
 @videos_bp.route("/<int:video_id>/download", methods=["POST"])
 def download_video(video_id):
-    """Queue video for download using background job"""
+    """Queue video for download using YT-DLP service"""
     try:
         logger.info(f"Starting download for video {video_id}")
 
-        # Get video details to validate
-        with get_db() as session:
-            video = session.query(Video).filter(Video.id == video_id).first()
+        # Use the working YT-DLP trigger function that properly links files immediately
+        result = _trigger_video_download(video_id)
 
-            if not video:
-                logger.warning(f"Video {video_id} not found")
-                return jsonify({"error": "Video not found"}), 404
-
-            video_title = video.title or f"Video {video_id}"
-            artist_name = video.artist.name if video.artist else "Unknown Artist"
-
-            # Resolve video URL using helper function
-            video_url = resolve_video_url(video, session)
-            if not video_url:
-                logger.warning(f"No URL found for video {video_id}")
-                return (
-                    jsonify(
-                        {
-                            "error": "Video has no URL to download and could not resolve one"
-                        }
-                    ),
-                    400,
-                )
-
-        # Get quality preference from request data if provided
-        request_data = request.get_json() if request.is_json else {}
-        quality = request_data.get("quality", "best")
-        force_redownload = request_data.get("force_redownload", False)
-
-        # Import new Celery job system
-        from src.jobs.video_download_tasks import submit_video_download
-
-        # Prepare download options for Celery task
-        download_options = {
-            "video_id": video_id,
-            "quality": quality,
-            "force_redownload": force_redownload,
-            "format": f"best[height<=720]" if quality == "best" else quality,
-        }
-
-        # Submit background job using new Celery system
-        job_id = submit_video_download(video_url, download_options)
-
-        # Update video status to indicate download queued
-        with get_db() as session:
-            video = session.query(Video).filter(Video.id == video_id).first()
-            if video:
-                video.status = VideoStatus.DOWNLOADING
-                session.commit()
-
-        logger.info(f"Queued download job {job_id} for video {video_id}: {video_title}")
-
-        return (
-            jsonify(
-                {
-                    "success": True,
-                    "job_id": job_id,
-                    "video_id": video_id,
-                    "message": f'Download job queued for "{video_title}" by {artist_name}',
-                    "video_title": video_title,
-                    "artist_name": artist_name,
-                }
-            ),
-            202,
-        )  # 202 Accepted - processing started
+        if result.get("success"):
+            logger.info(
+                f"Queued download for video {video_id}: {result.get('message')}"
+            )
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "video_id": video_id,
+                        "download_id": result.get("download_id"),
+                        "message": result.get(
+                            "message", "Download queued successfully"
+                        ),
+                    }
+                ),
+                202,
+            )  # 202 Accepted - processing started
+        else:
+            logger.error(
+                f"Failed to queue download for video {video_id}: {result.get('error')}"
+            )
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": result.get("error", "Unknown error occurred"),
+                    }
+                ),
+                400,
+            )
 
     except Exception as e:
         logger.error(f"Failed to queue video download job: {e}")
@@ -3895,50 +3875,41 @@ def bulk_download_videos():
         quality = data.get("quality", "best")
         force_redownload = data.get("force_redownload", False)
 
-        # Import new Celery job system
-        from src.jobs.video_download_tasks import submit_bulk_download
+        # Use the working YT-DLP trigger function for each video
+        results = []
+        successful_downloads = 0
+        failed_downloads = 0
 
-        # Get video information and resolve URLs
-        video_data = []
-        with get_db() as session:
-            for video_id in video_ids:
-                video = session.query(Video).filter(Video.id == video_id).first()
-                if video:
-                    video_url = resolve_video_url(video, session)
-                    if video_url:
-                        video_data.append(
-                            {
-                                "video_id": video_id,
-                                "url": video_url,
-                                "title": video.title or f"Video {video_id}",
-                            }
-                        )
-
-        if not video_data:
-            return (
-                jsonify({"error": "No valid videos found or could not resolve URLs"}),
-                400,
+        for video_id in video_ids:
+            result = _trigger_video_download(video_id)
+            results.append(
+                {
+                    "video_id": video_id,
+                    "success": result.get("success", False),
+                    "message": result.get(
+                        "message", result.get("error", "Unknown result")
+                    ),
+                }
             )
 
-        # Prepare download options for Celery task
-        download_options = {
-            "quality": quality,
-            "force_redownload": force_redownload,
-            "format": f"best[height<=720]" if quality == "best" else quality,
-        }
+            if result.get("success"):
+                successful_downloads += 1
+            else:
+                failed_downloads += 1
 
-        # Submit bulk download job using new Celery system
-        job_id = submit_bulk_download(video_data, download_options)
-
-        logger.info(f"Queued bulk download job {job_id} for {len(video_data)} videos")
+        logger.info(
+            f"Bulk download completed: {successful_downloads} successful, {failed_downloads} failed"
+        )
 
         return (
             jsonify(
                 {
                     "success": True,
-                    "job_id": job_id,
-                    "total_videos": len(video_data),
-                    "message": f"Bulk download job queued for {len(video_data)} videos. Job ID: {job_id}",
+                    "total_videos": len(video_ids),
+                    "successful_downloads": successful_downloads,
+                    "failed_downloads": failed_downloads,
+                    "results": results,
+                    "message": f"Bulk download completed: {successful_downloads} successful, {failed_downloads} failed",
                 }
             ),
             202,
@@ -4024,7 +3995,7 @@ def download_all_wanted_videos_internal(limit=50):
                         continue
 
                     # Import yt-dlp service
-                    from src.services.ytdlp_service import ytdlp_service
+                    from src.services.download_service_adapter import ytdlp_service
 
                     # Queue download
                     result = ytdlp_service.add_music_video_download(
@@ -7501,7 +7472,7 @@ def import_video_from_youtube_auto():
                 # If auto_download is enabled, add to download queue
                 if auto_download:
                     try:
-                        from src.services.ytdlp_service import ytdlp_service
+                        from src.services.download_service_adapter import ytdlp_service
 
                         download_result = ytdlp_service.add_music_video_download(
                             artist_name_final,

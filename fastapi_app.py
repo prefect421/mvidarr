@@ -105,6 +105,14 @@ async def lifespan(app: FastAPI):
         logger.info("🔄 Starting advanced job scheduler...")
         await start_job_scheduler()
         logger.info("✅ Advanced job scheduler started")
+        
+        # Initialize ytdlp_service and resume pending downloads
+        logger.info("🔄 Initializing ytdlp_service and resuming pending downloads...")
+        try:
+            ytdlp_service._resume_pending_downloads()
+            logger.info("✅ ytdlp_service initialized and pending downloads resumed")
+        except Exception as e:
+            logger.error(f"Failed to initialize ytdlp_service: {e}")
 
         yield  # Application is running
 
@@ -310,7 +318,9 @@ app.include_router(lidarr_router)
 
 # Health Check Router - Comprehensive Production Health Monitoring
 from src.api.fastapi.health import health_router
+from src.api.fastapi.oauth_setup import router as oauth_setup_router
 app.include_router(health_router, prefix="/api")
+app.include_router(oauth_setup_router, prefix="/api/oauth")
 
 logger.info(
     "✅ Phase 3 Week 29 services integrated: Personal Cloud Backup, YouTube Import, Network Sharing, Sync Manager, Mobile Access"
@@ -412,7 +422,11 @@ structured_logger.info("Structured logging middleware enabled for production mon
 # Static files and templates
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 app.mount("/css", StaticFiles(directory="frontend/CSS"), name="css")
-templates = Jinja2Templates(directory="frontend/templates")
+
+# Use AsyncTemplateSystem instead of basic Jinja2Templates for Flask compatibility
+from src.api.fastapi.template_system import get_template_system
+template_system = get_template_system()
+templates = template_system.templates
 
 from src.api.fastapi.advanced_image_processing import router as advanced_image_router
 from src.api.fastapi.image_processing import router as image_processing_router
@@ -1390,7 +1404,7 @@ async def dynamic_logout():
         content={
             "success": True,
             "message": "Logged out successfully",
-            "redirect_url": "/simple-login",
+            "redirect_url": "/auth/login",
         }
     )
     response.delete_cookie(key="mvidarr_session")

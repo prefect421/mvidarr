@@ -8,7 +8,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_legacy,
+    require_authentication_legacy,
+)
 from src.services.plex_service import plex_service
 from src.utils.logger import get_logger
 
@@ -28,6 +31,7 @@ logger = get_logger("mvidarr.api.fastapi.plex")
 # AUTHENTICATION
 # ========================================================================================
 
+
 async def get_current_user():
     """Get current authenticated user"""
     return await get_current_user_legacy()
@@ -41,6 +45,7 @@ async def require_authentication(current_user: dict = Depends(get_current_user))
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================
+
 
 class PlexStatusResponse(BaseModel):
     configured: bool
@@ -170,10 +175,9 @@ class ImportArtistsResponse(BaseModel):
 # STATUS AND CONFIGURATION ENDPOINTS
 # ========================================================================================
 
+
 @router.get("/status", response_model=PlexStatusResponse)
-async def get_status(
-    current_user: dict = Depends(require_authentication)
-):
+async def get_status(current_user: dict = Depends(require_authentication)):
     """Get Plex integration status"""
     try:
         # Check if Plex is configured
@@ -211,15 +215,12 @@ async def get_status(
     except Exception as e:
         logger.error(f"Failed to get Plex status: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/test-connection", response_model=ConnectionTestResponse)
-async def test_connection(
-    current_user: dict = Depends(require_authentication)
-):
+async def test_connection(current_user: dict = Depends(require_authentication)):
     """Test connection to Plex server"""
     try:
         result = plex_service.test_connection()
@@ -229,15 +230,12 @@ async def test_connection(
     except Exception as e:
         logger.error(f"Failed to test Plex connection: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/test", response_model=TestIntegrationResponse)
-async def test_plex_integration(
-    current_user: dict = Depends(require_authentication)
-):
+async def test_plex_integration(current_user: dict = Depends(require_authentication)):
     """Test Plex integration for settings page"""
     try:
         # Check if Plex is configured
@@ -276,10 +274,9 @@ async def test_plex_integration(
 # LIBRARY ENDPOINTS
 # ========================================================================================
 
+
 @router.get("/libraries", response_model=LibrariesResponse)
-async def get_libraries(
-    current_user: dict = Depends(require_authentication)
-):
+async def get_libraries(current_user: dict = Depends(require_authentication)):
     """Get all Plex libraries"""
     try:
         libraries = plex_service.get_libraries()
@@ -289,15 +286,12 @@ async def get_libraries(
     except Exception as e:
         logger.error(f"Failed to get Plex libraries: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/music-library", response_model=MusicLibraryResponse)
-async def get_music_library(
-    current_user: dict = Depends(require_authentication)
-):
+async def get_music_library(current_user: dict = Depends(require_authentication)):
     """Get the music library from Plex"""
     try:
         music_library = plex_service.get_music_library()
@@ -306,15 +300,13 @@ async def get_music_library(
             return MusicLibraryResponse(found=True, library=music_library)
         else:
             return MusicLibraryResponse(
-                found=False,
-                message="No music library found in Plex"
+                found=False, message="No music library found in Plex"
             )
 
     except Exception as e:
         logger.error(f"Failed to get music library: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -322,7 +314,7 @@ async def get_music_library(
 async def get_artists(
     library_key: Optional[str] = Query(None, description="Library key to filter by"),
     limit: int = Query(100, ge=1, le=1000),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Get artists from Plex music library"""
     try:
@@ -337,15 +329,13 @@ async def get_artists(
     except Exception as e:
         logger.error(f"Failed to get Plex artists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/artists/{artist_key}/albums", response_model=AlbumsResponse)
 async def get_artist_albums(
-    artist_key: str,
-    current_user: dict = Depends(require_authentication)
+    artist_key: str, current_user: dict = Depends(require_authentication)
 ):
     """Get albums for a specific artist"""
     try:
@@ -356,15 +346,13 @@ async def get_artist_albums(
     except Exception as e:
         logger.error(f"Failed to get artist albums: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/albums/{album_key}/tracks", response_model=TracksResponse)
 async def get_album_tracks(
-    album_key: str,
-    current_user: dict = Depends(require_authentication)
+    album_key: str, current_user: dict = Depends(require_authentication)
 ):
     """Get tracks for a specific album"""
     try:
@@ -375,8 +363,7 @@ async def get_album_tracks(
     except Exception as e:
         logger.error(f"Failed to get album tracks: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -384,7 +371,7 @@ async def get_album_tracks(
 async def search_library(
     query: str = Query(..., description="Search query"),
     library_key: Optional[str] = Query(None, description="Library key to search in"),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Search Plex library"""
     try:
@@ -395,8 +382,7 @@ async def search_library(
     except Exception as e:
         logger.error(f"Failed to search Plex library: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -404,10 +390,11 @@ async def search_library(
 # SYNCHRONIZATION ENDPOINTS
 # ========================================================================================
 
+
 @router.post("/sync/from-plex", response_model=SyncFromPlexResponse)
 async def sync_from_plex(
     request: SyncFromPlexRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Sync artists from Plex to MVidarr"""
     try:
@@ -424,15 +411,12 @@ async def sync_from_plex(
     except Exception as e:
         logger.error(f"Failed to sync from Plex: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/sync/to-plex", response_model=SyncToPlexResponse)
-async def sync_to_plex(
-    current_user: dict = Depends(require_authentication)
-):
+async def sync_to_plex(current_user: dict = Depends(require_authentication)):
     """Sync MVidarr artists to Plex for matching"""
     try:
         logger.info("Starting sync to Plex for artist matching")
@@ -448,15 +432,14 @@ async def sync_to_plex(
     except Exception as e:
         logger.error(f"Failed to sync to Plex: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/sync-library", response_model=SyncLibraryResponse)
 async def sync_library(
     request: SyncLibraryRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Sync Plex library for settings page"""
     try:
@@ -477,14 +460,14 @@ async def sync_library(
             processed_count=0,
             imported_count=0,
             message="Failed to sync library",
-            error=str(e)
+            error=str(e),
         )
 
 
 @router.post("/import-artists", response_model=ImportArtistsResponse)
 async def import_artists(
     request: ImportArtistsRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Import artists from Plex for settings page"""
     try:
@@ -505,7 +488,7 @@ async def import_artists(
             imported_count=0,
             total_artists=0,
             message="Failed to import artists",
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -513,10 +496,10 @@ async def import_artists(
 # STATISTICS AND ANALYTICS ENDPOINTS
 # ========================================================================================
 
+
 @router.get("/artist/{artist_name}/stats", response_model=ArtistStatsResponse)
 async def get_artist_stats(
-    artist_name: str,
-    current_user: dict = Depends(require_authentication)
+    artist_name: str, current_user: dict = Depends(require_authentication)
 ):
     """Get listening statistics for an artist"""
     try:
@@ -527,37 +510,32 @@ async def get_artist_stats(
     except Exception as e:
         logger.error(f"Failed to get artist stats: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/recently-played", response_model=RecentlyPlayedResponse)
 async def get_recently_played(
     limit: int = Query(50, ge=1, le=200),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Get recently played tracks from Plex"""
     try:
         recently_played = plex_service.get_recently_played(limit)
 
         return RecentlyPlayedResponse(
-            tracks=recently_played,
-            count=len(recently_played)
+            tracks=recently_played, count=len(recently_played)
         )
 
     except Exception as e:
         logger.error(f"Failed to get recently played: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/library/stats", response_model=LibraryStatsResponse)
-async def get_library_stats(
-    current_user: dict = Depends(require_authentication)
-):
+async def get_library_stats(current_user: dict = Depends(require_authentication)):
     """Get overall library statistics"""
     try:
         stats = plex_service.get_library_stats()
@@ -567,8 +545,7 @@ async def get_library_stats(
     except Exception as e:
         logger.error(f"Failed to get library stats: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -576,10 +553,11 @@ async def get_library_stats(
 # PLAYLIST ENDPOINTS
 # ========================================================================================
 
+
 @router.post("/playlists", response_model=CreatePlaylistResponse)
 async def create_playlist(
     request: CreatePlaylistRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Create a playlist in Plex"""
     try:
@@ -589,17 +567,15 @@ async def create_playlist(
             return CreatePlaylistResponse(
                 success=True,
                 message=f"Created playlist: {request.name}",
-                playlist_id=result.get("playlist_id")
+                playlist_id=result.get("playlist_id"),
             )
         else:
             return CreatePlaylistResponse(
-                success=False,
-                error=result.get("error", "Failed to create playlist")
+                success=False, error=result.get("error", "Failed to create playlist")
             )
 
     except Exception as e:
         logger.error(f"Failed to create playlist: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

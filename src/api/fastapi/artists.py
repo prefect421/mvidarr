@@ -76,7 +76,9 @@ class ArtistResponse(BaseModel):
     spotify_id: Optional[str] = None
     monitored: Optional[bool] = None
     auto_download: Optional[bool] = None
-    imvdb_metadata: Optional[Dict[str, Any]] = None  # Include metadata for song recommendations
+    imvdb_metadata: Optional[Dict[str, Any]] = (
+        None  # Include metadata for song recommendations
+    )
     video_count: int = 0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -147,7 +149,11 @@ class IMVDbImportRequest(BaseModel):
 # AUTHENTICATION - PROPER IMPLEMENTATION
 # ========================================================================================
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_legacy,
+    require_authentication_legacy,
+)
+
 
 async def get_current_user():
     """Get current authenticated user"""
@@ -203,15 +209,23 @@ async def list_artists(
     sort_order: str = Query("asc", pattern="^(asc|desc)$"),
     order: str = Query("asc", description="Sort order (alternative name)"),
     limit: int = Query(50, ge=1, le=500),
-    per_page: int = Query(50, ge=1, le=500, description="Items per page (alternative name)"),
+    per_page: int = Query(
+        50, ge=1, le=500, description="Items per page (alternative name)"
+    ),
     offset: int = Query(0, ge=0),
     page: int = Query(1, ge=1, description="Page number"),
     has_videos: Optional[bool] = Query(None, description="Filter by video existence"),
     has_imvdb: Optional[bool] = Query(None, description="Filter by IMVDb link"),
-    has_imvdb_id: Optional[bool] = Query(None, description="Filter by IMVDb ID (alternative name)"),
-    has_thumbnail: Optional[bool] = Query(None, description="Filter by thumbnail existence"),
+    has_imvdb_id: Optional[bool] = Query(
+        None, description="Filter by IMVDb ID (alternative name)"
+    ),
+    has_thumbnail: Optional[bool] = Query(
+        None, description="Filter by thumbnail existence"
+    ),
     monitored: Optional[bool] = Query(None, description="Filter by monitoring status"),
-    auto_download: Optional[bool] = Query(None, description="Filter by auto-download status"),
+    auto_download: Optional[bool] = Query(
+        None, description="Filter by auto-download status"
+    ),
     genre: Optional[str] = Query(None, description="Filter by genre"),
     min_videos: Optional[int] = Query(None, description="Minimum video count"),
     max_videos: Optional[int] = Query(None, description="Maximum video count"),
@@ -229,11 +243,11 @@ async def list_artists(
         sort_direction = sort_order if sort_order != "asc" else order
         items_per_page = per_page if per_page != 50 else limit
         has_imvdb_filter = has_imvdb if has_imvdb is not None else has_imvdb_id
-        
+
         # Convert page-based pagination to offset-based
         if page > 1:
             offset = (page - 1) * items_per_page
-        
+
         # Start with optimized query approach
         try:
             from src.database.performance_optimizations import (
@@ -270,7 +284,8 @@ async def list_artists(
         # Apply search filter
         if search_query:
             search_filter = or_(
-                Artist.name.ilike(f"%{search_query}%"), Artist.name.ilike(f"%{search_query}%")
+                Artist.name.ilike(f"%{search_query}%"),
+                Artist.name.ilike(f"%{search_query}%"),
             )
             base_query = base_query.filter(search_filter)
 
@@ -303,11 +318,16 @@ async def list_artists(
         if has_thumbnail is not None:
             if has_thumbnail:
                 base_query = base_query.filter(
-                    or_(Artist.thumbnail_path.isnot(None), Artist.thumbnail_url.isnot(None))
+                    or_(
+                        Artist.thumbnail_path.isnot(None),
+                        Artist.thumbnail_url.isnot(None),
+                    )
                 )
             else:
                 base_query = base_query.filter(
-                    and_(Artist.thumbnail_path.is_(None), Artist.thumbnail_url.is_(None))
+                    and_(
+                        Artist.thumbnail_path.is_(None), Artist.thumbnail_url.is_(None)
+                    )
                 )
 
         # Apply video count filters
@@ -315,7 +335,7 @@ async def list_artists(
             base_query = base_query.having(
                 func.coalesce(video_count_subquery.c.video_count, 0) >= min_videos
             )
-        
+
         if max_videos is not None:
             base_query = base_query.having(
                 func.coalesce(video_count_subquery.c.video_count, 0) <= max_videos
@@ -362,16 +382,15 @@ async def list_artists(
 
             # Check if artist has thumbnail
             has_thumbnail = bool(
-                getattr(artist, "thumbnail_path", None) or 
-                getattr(artist, "thumbnail_url", None)
+                getattr(artist, "thumbnail_path", None)
+                or getattr(artist, "thumbnail_url", None)
             )
-            
+
             # Check if artist has IMVDB data
             has_imvdb_data = bool(
-                artist.imvdb_id or 
-                getattr(artist, "imvdb_metadata", None)
+                artist.imvdb_id or getattr(artist, "imvdb_metadata", None)
             )
-            
+
             artist_dict = {
                 "id": artist.id,
                 "name": artist.name,
@@ -389,8 +408,12 @@ async def list_artists(
                 "wikipedia_url": getattr(artist, "wikipedia_url", None),
                 "musicbrainz_id": getattr(artist, "musicbrainz_id", None),
                 "spotify_id": artist.spotify_id,
-                "monitored": getattr(artist, "monitored", True),  # Default to True for compatibility
-                "auto_download": getattr(artist, "auto_download", False),  # Default to False
+                "monitored": getattr(
+                    artist, "monitored", True
+                ),  # Default to True for compatibility
+                "auto_download": getattr(
+                    artist, "auto_download", False
+                ),  # Default to False
                 "has_thumbnail": has_thumbnail,
                 "has_imvdb_data": has_imvdb_data,
                 "video_count": video_count or 0,
@@ -406,7 +429,7 @@ async def list_artists(
         # Calculate pagination info for frontend compatibility
         total_pages = (total_count + items_per_page - 1) // items_per_page
         current_page = (offset // items_per_page) + 1
-        
+
         return {
             "artists": artists,
             "count": len(artists),
@@ -417,7 +440,7 @@ async def list_artists(
             "search": {
                 "query": search_query,
                 "filters": {
-                    "has_videos": has_videos, 
+                    "has_videos": has_videos,
                     "has_imvdb": has_imvdb_filter,
                     "has_thumbnail": has_thumbnail,
                     "monitored": monitored,
@@ -438,6 +461,64 @@ async def list_artists(
 
     except Exception as e:
         logger.error(f"Error listing artists: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/discover")
+async def discover_artists(
+    q: str = Query(..., description="Search term for artist discovery"),
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of results"),
+    current_user: dict = Depends(require_authentication),
+):
+    """Discover artists from IMVDb by search term"""
+    try:
+        from src.services.imvdb_service import imvdb_service
+        
+        search_term = q.strip()
+        if not search_term:
+            raise HTTPException(status_code=400, detail="Search term is required")
+
+        # Search IMVDb for artists
+        results = imvdb_service.search_artists(search_term, limit=limit)
+
+        if not results:
+            return {"artists": [], "count": 0, "search_term": search_term}
+
+        # Format results for frontend
+        artists_list = []
+        for artist_data in results:
+            # Extract name from slug if name is None
+            name = artist_data.get("name")
+            # Ensure name is a string if it exists (fix for integer name issue)
+            if name:
+                name = str(name)
+            if not name and artist_data.get("slug"):
+                # Convert slug to readable name (replace dashes with spaces, title case)
+                slug = str(artist_data.get("slug"))
+                name = slug.replace("-", " ").title()
+            elif not name:
+                # Skip artists without name or slug
+                continue
+
+            artist_entry = {
+                "imvdb_id": artist_data.get("id"),
+                "name": name,
+                "slug": artist_data.get("slug"),
+                "video_count": artist_data.get("video_count", 0),
+                "image": artist_data.get("image"),
+                "genres": artist_data.get("genres", []),
+                "featured_video": artist_data.get("featured_video"),
+            }
+            artists_list.append(artist_entry)
+
+        return {
+            "artists": artists_list,
+            "count": len(artists_list),
+            "search_term": search_term
+        }
+
+    except Exception as e:
+        logger.error(f"Error discovering artists: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -481,7 +562,9 @@ async def get_artist(
             wikipedia_url=getattr(artist, "wikipedia_url", None),
             musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
-            monitored=getattr(artist, "monitored", True),  # Default to True for compatibility
+            monitored=getattr(
+                artist, "monitored", True
+            ),  # Default to True for compatibility
             auto_download=getattr(artist, "auto_download", False),  # Default to False
             imvdb_metadata=artist.imvdb_metadata,  # Include metadata for song recommendations
             video_count=video_count or 0,
@@ -648,7 +731,7 @@ async def update_artist(
         return {
             "success": True,
             "message": f"Artist '{artist.name}' updated successfully",
-            "artist": artist_response.dict()
+            "artist": artist_response.dict(),
         }
 
     except HTTPException:
@@ -822,16 +905,15 @@ async def advanced_search(
         for artist, video_count in results:
             # Check if artist has thumbnail
             has_thumbnail = bool(
-                getattr(artist, "thumbnail_path", None) or 
-                getattr(artist, "thumbnail_url", None)
+                getattr(artist, "thumbnail_path", None)
+                or getattr(artist, "thumbnail_url", None)
             )
-            
+
             # Check if artist has IMVDB data
             has_imvdb_data = bool(
-                artist.imvdb_id or 
-                getattr(artist, "imvdb_metadata", None)
+                artist.imvdb_id or getattr(artist, "imvdb_metadata", None)
             )
-            
+
             artist_dict = {
                 "id": artist.id,
                 "name": artist.name,
@@ -840,8 +922,12 @@ async def advanced_search(
                 "imvdb_id": artist.imvdb_id,
                 "formed_year": getattr(artist, "formed_year", None),
                 "location": getattr(artist, "location", None),
-                "monitored": getattr(artist, "monitored", True),  # Default to True for compatibility
-                "auto_download": getattr(artist, "auto_download", False),  # Default to False
+                "monitored": getattr(
+                    artist, "monitored", True
+                ),  # Default to True for compatibility
+                "auto_download": getattr(
+                    artist, "auto_download", False
+                ),  # Default to False
                 "has_thumbnail": has_thumbnail,
                 "has_imvdb_data": has_imvdb_data,
                 "video_count": video_count or 0,
@@ -928,7 +1014,7 @@ async def import_artist_from_imvdb(
 
         # Get artist data from IMVDb
         try:
-            imvdb_data = imvdb_service.get_artist_by_id(import_request.imvdb_id)
+            imvdb_data = imvdb_service.get_artist(str(import_request.imvdb_id))
 
             if not imvdb_data:
                 raise HTTPException(
@@ -945,12 +1031,10 @@ async def import_artist_from_imvdb(
         # Create artist from IMVDb data
         artist = Artist(
             name=imvdb_data.get("name"),
-            imvdb_id=import_request.imvdb_id,
-            imvdb_slug=imvdb_data.get("slug"),
-            biography=imvdb_data.get("description"),
-            formed_year=imvdb_data.get("formed_year"),
-            location=imvdb_data.get("location"),
-            website=imvdb_data.get("website"),
+            imvdb_id=str(import_request.imvdb_id),
+            monitored=True,
+            auto_download=False,
+            source="imvdb",
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -1019,7 +1103,7 @@ async def preview_imvdb_artist(
     """Get artist preview from IMVDb without importing"""
     try:
         # Get artist data from IMVDb
-        imvdb_data = imvdb_service.get_artist_by_id(imvdb_id)
+        imvdb_data = imvdb_service.get_artist(str(imvdb_id))
 
         if not imvdb_data:
             raise HTTPException(
@@ -1069,13 +1153,13 @@ async def get_artist_thumbnail_info(
     """Get thumbnail information for artist"""
     try:
         artist = session.query(Artist).filter(Artist.id == artist_id).first()
-        
+
         if not artist:
             raise HTTPException(status_code=404, detail="Artist not found")
-        
+
         # Check if artist has thumbnail
         has_thumbnail = bool(artist.thumbnail_path)
-        
+
         response = {
             "has_thumbnail": has_thumbnail,
             "thumbnail_path": artist.thumbnail_path,
@@ -1083,25 +1167,26 @@ async def get_artist_thumbnail_info(
             "thumbnail_uploaded_at": getattr(artist, "thumbnail_uploaded_at", None),
             "metadata": getattr(artist, "thumbnail_metadata", None),
         }
-        
+
         # Add file info if thumbnail exists
         if has_thumbnail and artist.thumbnail_path:
             try:
                 from pathlib import Path
+
                 thumb_path = Path(artist.thumbnail_path)
                 if thumb_path.exists():
                     stat = thumb_path.stat()
                     response["file_info"] = {
                         "size": stat.st_size,
                         "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                        "modified": stat.st_mtime
+                        "modified": stat.st_mtime,
                     }
             except Exception:
                 # If file doesn't exist, don't include file_info
                 pass
-        
+
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1129,57 +1214,61 @@ async def set_artist_thumbnail(
     """Set artist thumbnail from URL or search result"""
     try:
         from datetime import datetime
+
         import requests
-        
+
         artist = session.query(Artist).filter(Artist.id == artist_id).first()
         if not artist:
             raise HTTPException(status_code=404, detail="Artist not found")
-        
-        thumbnail_url = thumbnail_data.get('thumbnail_url')
+
+        thumbnail_url = thumbnail_data.get("thumbnail_url")
         if not thumbnail_url:
             raise HTTPException(status_code=400, detail="thumbnail_url is required")
-        
+
         # Download the thumbnail from the URL
         try:
             response = requests.get(thumbnail_url, timeout=30)
             response.raise_for_status()
-            
+
             # Create thumbnails directory if it doesn't exist
             thumbnail_dir = Path("data/thumbnails/artists")
             thumbnail_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Generate filename
             import uuid
             from urllib.parse import urlparse
+
             parsed_url = urlparse(thumbnail_url)
-            file_ext = Path(parsed_url.path).suffix or '.jpg'
+            file_ext = Path(parsed_url.path).suffix or ".jpg"
             artist_name_safe = artist.name.lower().replace(" ", "_").replace("-", "_")
             filename = f"{artist_name_safe}_{uuid.uuid4().hex[:12]}{file_ext}"
             file_path = thumbnail_dir / filename
-            
+
             # Save downloaded file
             with open(file_path, "wb") as f:
                 f.write(response.content)
-            
+
             # Update artist record
             artist.thumbnail_path = str(file_path)
             artist.thumbnail_url = str(file_path)
             artist.thumbnail_source = "manual"
             artist.thumbnail_uploaded_at = datetime.utcnow()
-            
+
             session.commit()
-            
+
             return {
                 "success": True,
                 "message": "Thumbnail set successfully",
                 "thumbnail_path": str(file_path),
-                "thumbnail_url": thumbnail_url
+                "thumbnail_url": thumbnail_url,
             }
-            
+
         except Exception as e:
             logger.error(f"Error downloading thumbnail from {thumbnail_url}: {e}")
-            raise HTTPException(status_code=400, detail=f"Failed to download thumbnail: {str(e)}")
-        
+            raise HTTPException(
+                status_code=400, detail=f"Failed to download thumbnail: {str(e)}"
+            )
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1215,10 +1304,12 @@ async def _get_artist_thumbnail_impl(
 
         # Look for files matching the artist name pattern (both jpg and png)
         if thumbnail_dir.exists():
-            for ext in ['jpg', 'png', 'jpeg']:
+            for ext in ["jpg", "png", "jpeg"]:
                 for thumbnail_file in thumbnail_dir.glob(f"{artist_name_safe}_*.{ext}"):
                     if thumbnail_file.exists():
-                        media_type = "image/jpeg" if ext in ['jpg', 'jpeg'] else "image/png"
+                        media_type = (
+                            "image/jpeg" if ext in ["jpg", "jpeg"] else "image/png"
+                        )
                         return FileResponse(
                             thumbnail_file,
                             media_type=media_type,
@@ -1251,46 +1342,49 @@ async def upload_artist_thumbnail(
     """Upload a custom thumbnail for an artist"""
     try:
         from datetime import datetime
-        
+
         artist = session.query(Artist).filter(Artist.id == artist_id).first()
         if not artist:
             raise HTTPException(status_code=404, detail="Artist not found")
-        
+
         # Validate file type
-        if not thumbnail.content_type or not thumbnail.content_type.startswith('image/'):
+        if not thumbnail.content_type or not thumbnail.content_type.startswith(
+            "image/"
+        ):
             raise HTTPException(status_code=400, detail="File must be an image")
-        
+
         # Create thumbnails directory if it doesn't exist
         thumbnail_dir = Path("data/thumbnails/artists")
         thumbnail_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Generate filename
         import uuid
-        file_ext = Path(thumbnail.filename).suffix if thumbnail.filename else '.jpg'
+
+        file_ext = Path(thumbnail.filename).suffix if thumbnail.filename else ".jpg"
         artist_name_safe = artist.name.lower().replace(" ", "_").replace("-", "_")
         filename = f"{artist_name_safe}_{uuid.uuid4().hex[:12]}{file_ext}"
         file_path = thumbnail_dir / filename
-        
+
         # Save uploaded file
         content = await thumbnail.read()
         with open(file_path, "wb") as f:
             f.write(content)
-        
+
         # Update artist record
         artist.thumbnail_path = str(file_path)
         artist.thumbnail_url = str(file_path)
         artist.thumbnail_source = "manual"
         artist.thumbnail_uploaded_at = datetime.utcnow()
-        
+
         session.commit()
-        
+
         return {
             "success": True,
             "message": "Thumbnail uploaded successfully",
             "thumbnail_path": str(file_path),
-            "filename": filename
+            "filename": filename,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1377,81 +1471,95 @@ async def set_artist_thumbnail(
 ):
     """Set artist thumbnail from URL or search result"""
     try:
-        from datetime import datetime
-        import httpx
         import uuid
-        
+        from datetime import datetime
+
+        import httpx
+
         # Debug logging
-        logger.info(f"PUT thumbnail request for artist {artist_id}, data: {thumbnail_data}")
-        
+        logger.info(
+            f"PUT thumbnail request for artist {artist_id}, data: {thumbnail_data}"
+        )
+
         artist = session.query(Artist).filter(Artist.id == artist_id).first()
         if not artist:
             raise HTTPException(status_code=404, detail="Artist not found")
-        
+
         # Get thumbnail URL from request
         thumbnail_url = thumbnail_data.get("thumbnail_url")
-        logger.info(f"Extracted thumbnail_url: {thumbnail_url} (type: {type(thumbnail_url)})")
-        
+        logger.info(
+            f"Extracted thumbnail_url: {thumbnail_url} (type: {type(thumbnail_url)})"
+        )
+
         if not thumbnail_url:
             raise HTTPException(status_code=400, detail="thumbnail_url is required")
-        
+
         if not isinstance(thumbnail_url, str) or not thumbnail_url.strip():
-            raise HTTPException(status_code=400, detail="thumbnail_url must be a non-empty string")
-        
+            raise HTTPException(
+                status_code=400, detail="thumbnail_url must be a non-empty string"
+            )
+
         # Create thumbnails directory if it doesn't exist
         thumbnail_dir = Path("data/thumbnails/artists")
         thumbnail_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Download the image
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(thumbnail_url)
                 response.raise_for_status()
-                
+
                 # Determine file extension from content type or URL
-                content_type = response.headers.get('content-type', '')
-                if 'jpeg' in content_type or 'jpg' in content_type:
-                    file_ext = '.jpg'
-                elif 'png' in content_type:
-                    file_ext = '.png'
-                elif 'webp' in content_type:
-                    file_ext = '.webp'
+                content_type = response.headers.get("content-type", "")
+                if "jpeg" in content_type or "jpg" in content_type:
+                    file_ext = ".jpg"
+                elif "png" in content_type:
+                    file_ext = ".png"
+                elif "webp" in content_type:
+                    file_ext = ".webp"
                 else:
                     # Fallback to extension from URL
                     from urllib.parse import urlparse
+
                     parsed_url = urlparse(thumbnail_url)
-                    file_ext = Path(parsed_url.path).suffix or '.jpg'
-                
+                    file_ext = Path(parsed_url.path).suffix or ".jpg"
+
                 # Generate filename
-                artist_name_safe = artist.name.lower().replace(" ", "_").replace("-", "_")
+                artist_name_safe = (
+                    artist.name.lower().replace(" ", "_").replace("-", "_")
+                )
                 filename = f"{artist_name_safe}_{uuid.uuid4().hex[:12]}{file_ext}"
                 file_path = thumbnail_dir / filename
-                
+
                 # Save the image
                 with open(file_path, "wb") as f:
                     f.write(response.content)
         except Exception as e:
             logger.error(f"Error downloading thumbnail from {thumbnail_url}: {e}")
-            raise HTTPException(status_code=400, detail=f"Failed to download thumbnail: {e}")
-        
+            raise HTTPException(
+                status_code=400, detail=f"Failed to download thumbnail: {e}"
+            )
+
         # Update artist record
         artist.thumbnail_path = str(file_path)
         artist.thumbnail_url = str(file_path)
         artist.thumbnail_source = thumbnail_data.get("source", "manual")
         artist.thumbnail_uploaded_at = datetime.utcnow()
-        
+
         session.commit()
-        
-        logger.info(f"Set thumbnail for artist {artist.name} (ID: {artist_id}) from URL: {thumbnail_url}")
-        
+
+        logger.info(
+            f"Set thumbnail for artist {artist.name} (ID: {artist_id}) from URL: {thumbnail_url}"
+        )
+
         return {
             "success": True,
             "message": "Thumbnail set successfully",
             "thumbnail_path": str(file_path),
             "filename": filename,
-            "source": thumbnail_data.get("source", "manual")
+            "source": thumbnail_data.get("source", "manual"),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1531,7 +1639,7 @@ async def bulk_delete_artists(
                 logger.info(f"Bulk deleted artist: {artist_name} (ID: {artist_id})")
 
             except Exception as e:
-                artist_id = getattr(artist, 'id', 'unknown')  # Safe ID retrieval
+                artist_id = getattr(artist, "id", "unknown")  # Safe ID retrieval
                 errors.append(f"Artist {artist_id}: {str(e)}")
                 logger.error(f"Error deleting artist {artist_id}: {e}")
 
@@ -1912,31 +2020,49 @@ async def discover_artist_videos(
             imvdb_videos = []
             try:
                 from src.services.imvdb_service import imvdb_service
-                
+
                 if artist_imvdb_id:
-                    logger.info(f"Using IMVDb ID {artist_imvdb_id} for video discovery for artist {artist_name}")
-                    videos_data = await asyncio.to_thread(imvdb_service.get_artist_videos_by_id, artist_imvdb_id, limit)
+                    logger.info(
+                        f"Using IMVDb ID {artist_imvdb_id} for video discovery for artist {artist_name}"
+                    )
+                    videos_data = await asyncio.to_thread(
+                        imvdb_service.get_artist_videos_by_id, artist_imvdb_id, limit
+                    )
                 else:
-                    logger.info(f"Using name search for video discovery for artist {artist_name}")
-                    videos_data = await asyncio.to_thread(imvdb_service.search_artist_videos, artist_name, limit)
+                    logger.info(
+                        f"Using name search for video discovery for artist {artist_name}"
+                    )
+                    videos_data = await asyncio.to_thread(
+                        imvdb_service.search_artist_videos, artist_name, limit
+                    )
 
                 if videos_data and videos_data.get("videos"):
                     imvdb_videos = videos_data["videos"]
-                    logger.info(f"Found {len(imvdb_videos)} videos from IMVDb for {artist_name}")
-                    
+                    logger.info(
+                        f"Found {len(imvdb_videos)} videos from IMVDb for {artist_name}"
+                    )
+
                     # Set source field for all IMVDb videos
                     for video in imvdb_videos:
                         video["source"] = "imvdb"
-                    
-                    # Debug: Log sample video structure 
+
+                    # Debug: Log sample video structure
                     if imvdb_videos:
                         sample_video = imvdb_videos[0]
                         logger.debug(f"Sample IMVDb video structure: {sample_video}")
-                        logger.debug(f"Sample video fields: {list(sample_video.keys())}")
-                        logger.debug(f"Sample video title: {sample_video.get('song_title')} / {sample_video.get('title')}")
-                        logger.debug(f"Sample video imvdb_id: {sample_video.get('imvdb_id')} / {sample_video.get('id')}")
+                        logger.debug(
+                            f"Sample video fields: {list(sample_video.keys())}"
+                        )
+                        logger.debug(
+                            f"Sample video title: {sample_video.get('song_title')} / {sample_video.get('title')}"
+                        )
+                        logger.debug(
+                            f"Sample video imvdb_id: {sample_video.get('imvdb_id')} / {sample_video.get('id')}"
+                        )
                 else:
-                    logger.warning(f"No videos returned from IMVDb for {artist_name}, response: {videos_data}")
+                    logger.warning(
+                        f"No videos returned from IMVDb for {artist_name}, response: {videos_data}"
+                    )
             except Exception as e:
                 logger.warning(f"IMVDb video discovery failed for {artist_name}: {e}")
             return imvdb_videos
@@ -1945,15 +2071,20 @@ async def discover_artist_videos(
             youtube_videos = []
             try:
                 from src.services.youtube_search_service import youtube_search_service
+
                 logger.info(f"Searching YouTube for videos by {artist_name}")
-                
+
                 # Search YouTube for music videos by this artist
-                youtube_results = await asyncio.to_thread(youtube_search_service.search_artist_videos, artist_name, limit)
-                
+                youtube_results = await asyncio.to_thread(
+                    youtube_search_service.search_artist_videos, artist_name, limit
+                )
+
                 if youtube_results and youtube_results.get("videos"):
                     yt_video_list = youtube_results["videos"]
-                    logger.info(f"Found {len(yt_video_list)} videos from YouTube for {artist_name}")
-                    
+                    logger.info(
+                        f"Found {len(yt_video_list)} videos from YouTube for {artist_name}"
+                    )
+
                     # Convert YouTube results to our standard format
                     for yt_video in yt_video_list:
                         youtube_id = yt_video.get("youtube_id")
@@ -1970,33 +2101,44 @@ async def discover_artist_videos(
                             "image_url": yt_video.get("thumbnail_url"),
                             "view_count": yt_video.get("view_count"),
                             "channel": yt_video.get("channel_title"),
-                            "source": "youtube"
+                            "source": "youtube",
                         }
                         youtube_videos.append(youtube_video)
-                        
-                    logger.info(f"Converted {len(youtube_videos)} YouTube videos to standard format")
+
+                    logger.info(
+                        f"Converted {len(youtube_videos)} YouTube videos to standard format"
+                    )
                 else:
                     logger.warning(f"No YouTube results found for {artist_name}")
-                    
+
             except Exception as e:
                 logger.warning(f"YouTube video search failed for {artist_name}: {e}")
             return youtube_videos
 
         # Execute both searches in parallel
         logger.info(f"Starting parallel search on IMVDb and YouTube for {artist_name}")
-        imvdb_videos, youtube_videos = await asyncio.gather(search_imvdb(), search_youtube())
+        imvdb_videos, youtube_videos = await asyncio.gather(
+            search_imvdb(), search_youtube()
+        )
 
         # Combine IMVDb and YouTube results
         all_discovered_videos = imvdb_videos + youtube_videos
-        logger.info(f"Total discovered videos: {len(all_discovered_videos)} (IMVDb: {len(imvdb_videos)}, YouTube: {len(youtube_videos)})")
+        logger.info(
+            f"Total discovered videos: {len(all_discovered_videos)} (IMVDb: {len(imvdb_videos)}, YouTube: {len(youtube_videos)})"
+        )
 
         # Get existing videos from database
         existing_videos = []
         try:
             from src.database.models import Video
+
             db_videos = session.query(Video).filter(Video.artist_id == artist_id).all()
-            existing_videos = [{"id": v.id, "title": v.title, "url": v.youtube_url} for v in db_videos]
-            logger.info(f"Found {len(existing_videos)} existing videos for {artist_name}")
+            existing_videos = [
+                {"id": v.id, "title": v.title, "url": v.youtube_url} for v in db_videos
+            ]
+            logger.info(
+                f"Found {len(existing_videos)} existing videos for {artist_name}"
+            )
         except Exception as e:
             logger.warning(f"Failed to get existing videos for {artist_name}: {e}")
 
@@ -2009,19 +2151,21 @@ async def discover_artist_videos(
             "youtube_results": len(youtube_videos),
             "with_thumbnails": 0,
             "high_quality": 0,
-            "available_for_import": 0
+            "available_for_import": 0,
         }
 
         # Note: Discovery shows only external results (IMVDb/YouTube), not database videos
         # Database videos are used only for existence checking and filtering
 
         # Process all discovered videos (IMVDb + YouTube)
-        logger.info(f"Processing {len(all_discovered_videos)} discovered videos for enrichment")
+        logger.info(
+            f"Processing {len(all_discovered_videos)} discovered videos for enrichment"
+        )
         for video in all_discovered_videos:
             # Check if video already exists
             video_exists = any(
-                existing_video.get("url") == video.get("url") or 
-                existing_video.get("title").lower() == video.get("title", "").lower()
+                existing_video.get("url") == video.get("url")
+                or existing_video.get("title").lower() == video.get("title", "").lower()
                 for existing_video in existing_videos
             )
 
@@ -2039,58 +2183,87 @@ async def discover_artist_videos(
             # Apply directors filtering
             if directors_filter:
                 video_directors = video.get("directors", [])
-                if not any(director in video_directors for director in directors_filter):
+                if not any(
+                    director in video_directors for director in directors_filter
+                ):
                     continue
 
             # Determine video source and ensure proper ID fields
             video_source = video.get("source", "imvdb")
             youtube_id = video.get("youtube_id")
-            logger.debug(f"Processing video: {video.get('song_title', video.get('title', 'Unknown'))} | Source: {video_source} | Has ID: {video.get('id')} | Has youtube_id: {youtube_id}")
-            
+            logger.debug(
+                f"Processing video: {video.get('song_title', video.get('title', 'Unknown'))} | Source: {video_source} | Has ID: {video.get('id')} | Has youtube_id: {youtube_id}"
+            )
+
             # For IMVDb videos, ensure we have a valid ID
             if video_source == "imvdb":
                 # IMVDb API returns videos with 'id' field - map this to 'imvdb_id' for frontend
                 raw_id = video.get("id")
                 existing_imvdb_id = video.get("imvdb_id")
                 video_id_field = video.get("video_id")
-                
-                print(f"DEBUG: IMVDb video processing - title: {video.get('song_title', 'Unknown')}")
-                print(f"DEBUG: Raw fields - id: {raw_id}, imvdb_id: {existing_imvdb_id}, video_id: {video_id_field}")
-                
+
+                print(
+                    f"DEBUG: IMVDb video processing - title: {video.get('song_title', 'Unknown')}"
+                )
+                print(
+                    f"DEBUG: Raw fields - id: {raw_id}, imvdb_id: {existing_imvdb_id}, video_id: {video_id_field}"
+                )
+
                 imvdb_id = existing_imvdb_id or raw_id or video_id_field
                 # Convert to string if it's a number (IMVDb IDs are large integers)
                 if imvdb_id is not None:
                     imvdb_id = str(imvdb_id)
                     print(f"DEBUG: Final imvdb_id: {imvdb_id}")
-                    logger.debug(f"IMVDb video ID assignment successful: {video.get('song_title', 'Unknown')} -> imvdb_id: {imvdb_id}")
+                    logger.debug(
+                        f"IMVDb video ID assignment successful: {video.get('song_title', 'Unknown')} -> imvdb_id: {imvdb_id}"
+                    )
                 else:
-                    print(f"DEBUG: No valid ID found for IMVDb video: {video.get('song_title', 'Unknown')}")
-                    logger.warning(f"IMVDb video missing ID field: {video.get('song_title', 'Unknown')}")
+                    print(
+                        f"DEBUG: No valid ID found for IMVDb video: {video.get('song_title', 'Unknown')}"
+                    )
+                    logger.warning(
+                        f"IMVDb video missing ID field: {video.get('song_title', 'Unknown')}"
+                    )
             else:
                 imvdb_id = video.get("imvdb_id")
-            
+
             # Enrich video data - normalize field names for frontend compatibility
             enriched_video = {
                 **video,
-                "title": video.get("song_title") or video.get("title", "Unknown"),  # Normalize title field
-                "song_title": video.get("song_title", "Unknown"),  # Keep original for compatibility
+                "title": video.get("song_title")
+                or video.get("title", "Unknown"),  # Normalize title field
+                "song_title": video.get(
+                    "song_title", "Unknown"
+                ),  # Keep original for compatibility
                 "exists_in_library": video_exists,
                 "already_exists": video_exists,  # Frontend compatibility
                 "imported": False,  # New videos are not imported yet
                 "youtube_id": youtube_id,  # Frontend expects this field
-                "imvdb_id": imvdb_id,  # Frontend expects this field  
-                "can_import": not video_exists and (video.get("url") or video.get("youtube_url") or imvdb_id),
-                "thumbnail_available": bool(video.get("image_url") or video.get("image")),
-                "thumbnail_url": video.get("image_url") or (video.get("image", {}).get("o") if isinstance(video.get("image"), dict) else None),
+                "imvdb_id": imvdb_id,  # Frontend expects this field
+                "can_import": not video_exists
+                and (video.get("url") or video.get("youtube_url") or imvdb_id),
+                "thumbnail_available": bool(
+                    video.get("image_url") or video.get("image")
+                ),
+                "thumbnail_url": video.get("image_url")
+                or (
+                    video.get("image", {}).get("o")
+                    if isinstance(video.get("image"), dict)
+                    else None
+                ),
                 "quality_indicator": video.get("quality", "unknown"),
-                "source": video_source
+                "source": video_source,
             }
-            
+
             # Debug: Verify the enriched video has the correct fields
             if video_source == "imvdb":
-                print(f"DEBUG: Final enriched video - title: {enriched_video.get('song_title', 'Unknown')}, imvdb_id: {enriched_video.get('imvdb_id')}")
-                logger.info(f"ENRICHED VIDEO DEBUG - {enriched_video.get('song_title', 'Unknown')} | imvdb_id set to: {enriched_video.get('imvdb_id')} | source: {enriched_video.get('source')}")
-            
+                print(
+                    f"DEBUG: Final enriched video - title: {enriched_video.get('song_title', 'Unknown')}, imvdb_id: {enriched_video.get('imvdb_id')}"
+                )
+                logger.info(
+                    f"ENRICHED VIDEO DEBUG - {enriched_video.get('song_title', 'Unknown')} | imvdb_id set to: {enriched_video.get('imvdb_id')} | source: {enriched_video.get('source')}"
+                )
+
             discovered_videos.append(enriched_video)
 
             # Update stats
@@ -2104,16 +2277,17 @@ async def discover_artist_videos(
         # Sort results
         if sort_by == "year":
             discovered_videos.sort(
-                key=lambda x: int(x.get("year", 0) or 0),
-                reverse=(sort_order == "desc")
+                key=lambda x: int(x.get("year", 0) or 0), reverse=(sort_order == "desc")
             )
         elif sort_by == "title":
             discovered_videos.sort(
                 key=lambda x: (x.get("song_title") or x.get("title", "")).lower(),
-                reverse=(sort_order == "desc")
+                reverse=(sort_order == "desc"),
             )
 
-        logger.info(f"Video discovery completed for {artist_name}: {len(discovered_videos)} videos after filtering")
+        logger.info(
+            f"Video discovery completed for {artist_name}: {len(discovered_videos)} videos after filtering"
+        )
 
         return {
             "success": True,
@@ -2122,7 +2296,7 @@ async def discover_artist_videos(
             "discovered_videos": discovered_videos,
             "stats": stats,
             "filters_applied": filter_options,
-            "sort_config": {"sort_by": sort_by, "sort_order": sort_order}
+            "sort_config": {"sort_by": sort_by, "sort_order": sort_order},
         }
 
     except HTTPException:
@@ -2130,6 +2304,68 @@ async def discover_artist_videos(
     except Exception as e:
         logger.error(f"Error discovering videos for artist {artist_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Video discovery failed: {str(e)}")
+
+
+@router.post("/scan-missing-thumbnails")
+async def scan_missing_thumbnails(
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Scan all artists missing thumbnails and try to find images"""
+    try:
+        from sqlalchemy import or_
+        
+        # Get artists without thumbnails
+        artists_without_thumbnails = (
+            session.query(Artist.id, Artist.name)
+            .filter(
+                or_(
+                    Artist.thumbnail_url.is_(None),
+                    Artist.thumbnail_url == "",
+                    Artist.thumbnail_path.is_(None),
+                    Artist.thumbnail_path == "",
+                )
+            )
+            .all()
+        )
+        
+        missing_count = len(artists_without_thumbnails)
+        updated_count = 0
+        
+        logger.info(f"Starting thumbnail scan for {missing_count} artists without thumbnails")
+        
+        # Process each artist
+        for artist_data in artists_without_thumbnails:
+            try:
+                artist_id, artist_name = artist_data
+                
+                # Try to find thumbnail through IMVDb service
+                if hasattr(imvdb_service, 'get_artist_thumbnail'):
+                    thumbnail_url = await imvdb_service.get_artist_thumbnail(artist_name)
+                    if thumbnail_url:
+                        # Update artist with found thumbnail
+                        artist = session.query(Artist).filter(Artist.id == artist_id).first()
+                        if artist:
+                            artist.thumbnail_url = thumbnail_url
+                            session.commit()
+                            updated_count += 1
+                            logger.info(f"Updated thumbnail for {artist_name}")
+                        
+            except Exception as e:
+                logger.warning(f"Failed to update thumbnail for {artist_name}: {e}")
+                continue
+        
+        return {
+            "success": True,
+            "message": f"Thumbnail scan completed",
+            "missing_count": missing_count,
+            "updated_count": updated_count,
+            "found_rate": f"{(updated_count/missing_count*100):.1f}%" if missing_count > 0 else "0%"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error scanning missing thumbnails: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ========================================================================================

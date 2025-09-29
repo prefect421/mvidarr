@@ -37,12 +37,12 @@ class QualityLevel(Enum):
     def from_height(cls, height: int) -> "QualityLevel":
         """Convert pixel height to quality level"""
         if height is None:
-            return cls.STANDARD  # Default fallback
+            return cls.FULL_HD  # Default to 1080p instead of 360p
 
         try:
             height = int(height)  # Ensure it's an integer
         except (ValueError, TypeError):
-            return cls.STANDARD  # Default fallback
+            return cls.FULL_HD  # Default to 1080p instead of 360p
 
         if height <= 144:
             return cls.ULTRA_LOW

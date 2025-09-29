@@ -463,7 +463,7 @@ async def get_listening_stats(
 @router.post("/import/top-artists")
 async def import_top_artists(
     request: ImportArtistsRequest,
-    current_user: dict = Depends(require_authentication_legacy)
+    current_user: dict = Depends(require_authentication_legacy),
 ):
     """Import user's top artists to MVidarr"""
     try:

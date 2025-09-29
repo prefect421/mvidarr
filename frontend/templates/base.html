@@ -1265,10 +1265,6 @@
                     <iconify-icon icon="tabler:device-tv" class="sidebar-icon"></iconify-icon>
                     <span class="sidebar-text">MvTV</span>
                 </a></li>
-                 <li><a href="{{ url_for('frontend.jobs') }}" class="sidebar-item">
-                    <iconify-icon icon="tabler:activity" class="sidebar-icon"></iconify-icon>
-                    <span class="sidebar-text">Background Jobs</span>
-                </a></li>
                  <li><a href="{{ url_for('frontend.settings') }}" class="sidebar-item">
                     <iconify-icon icon="tabler:settings" class="sidebar-icon"></iconify-icon>
                     <span class="sidebar-text">Settings</span>
@@ -1713,7 +1709,7 @@
                             if (logoutEndpoint === '/simple-auth/logout') {
                                 window.location.href = '/simple-auth/login';
                             } else if (logoutEndpoint === '/auth/dynamic-logout') {
-                                window.location.href = '/simple-login';
+                                window.location.href = '/auth/login';
                             } else {
                                 window.location.href = '/';
                             }

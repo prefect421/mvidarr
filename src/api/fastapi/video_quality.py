@@ -46,11 +46,14 @@ class UpgradeableVideosResponse(BaseModel):
 
 
 class BulkUpgradeRequest(BaseModel):
-    video_ids: List[int] = Field(..., min_items=1, description="List of video IDs to upgrade")
+    video_ids: List[int] = Field(
+        ..., min_items=1, description="List of video IDs to upgrade"
+    )
 
 
 # Authentication dependencies
 from src.api.fastapi.auth_dependencies import get_current_user_legacy
+
 
 async def get_current_user():
     """Get current authenticated user"""
@@ -68,18 +71,25 @@ async def upgrade_video_quality(
     try:
         # Process upgrade using the VideoQualityService directly
         from src.services.video_quality_service import video_quality_service
-        
+
         # Process upgrade directly (this will now use Celery for the download)
-        upgrade_result = video_quality_service.upgrade_video_quality(video_id, request.user_id)
-        
+        upgrade_result = video_quality_service.upgrade_video_quality(
+            video_id, request.user_id
+        )
+
         if not upgrade_result.get("success"):
             raise HTTPException(
-                status_code=400, 
-                detail={"success": False, "error": upgrade_result.get("error", "Upgrade failed")}
+                status_code=400,
+                detail={
+                    "success": False,
+                    "error": upgrade_result.get("error", "Upgrade failed"),
+                },
             )
-        
+
         job_id = upgrade_result.get("download_job_id", f"upgrade-{video_id}")
-        logger.info(f"Processed video quality upgrade for video {video_id}: {upgrade_result}")
+        logger.info(
+            f"Processed video quality upgrade for video {video_id}: {upgrade_result}"
+        )
 
         return VideoUpgradeResponse(
             success=True,
@@ -178,10 +188,12 @@ async def bulk_upgrade_videos(
 
         # Process bulk upgrade using the VideoQualityService directly
         from src.services.video_quality_service import video_quality_service
-        
+
         # Process upgrades directly (this will now use Celery for individual downloads)
-        upgrade_results = video_quality_service.bulk_upgrade_videos(video_ids, user_id=None)
-        
+        upgrade_results = video_quality_service.bulk_upgrade_videos(
+            video_ids, user_id=None
+        )
+
         logger.info(
             f"Processed bulk video quality upgrade for {len(video_ids)} videos: {upgrade_results}"
         )
@@ -190,7 +202,7 @@ async def bulk_upgrade_videos(
             "success": upgrade_results.get("success", False),
             "job_id": f"bulk-upgrade-{len(video_ids)}-videos",  # Placeholder ID
             "message": f"Bulk video quality upgrade processed: {upgrade_results.get('successful_upgrades', 0)} successful, {upgrade_results.get('failed_upgrades', 0)} failed",
-            "details": upgrade_results
+            "details": upgrade_results,
         }
 
     except HTTPException:

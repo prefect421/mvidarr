@@ -397,26 +397,32 @@ class LastFmService:
                 track_list = [track_list]
 
             for track_data in track_list:
-                tracks.append({
-                    "name": track_data.get("name"),
-                    "playcount": int(track_data.get("playcount", 0)),
-                    "listeners": int(track_data.get("listeners", 0)),
-                    "mbid": track_data.get("mbid"),
-                    "url": track_data.get("url"),
-                    "image": track_data.get("image", []),
-                    "rank": int(track_data.get("@attr", {}).get("rank", 0)),
-                })
+                tracks.append(
+                    {
+                        "name": track_data.get("name"),
+                        "playcount": int(track_data.get("playcount", 0)),
+                        "listeners": int(track_data.get("listeners", 0)),
+                        "mbid": track_data.get("mbid"),
+                        "url": track_data.get("url"),
+                        "image": track_data.get("image", []),
+                        "rank": int(track_data.get("@attr", {}).get("rank", 0)),
+                    }
+                )
 
-            logger.debug(f"🎵 LAST.FM: Found {len(tracks)} top tracks for {artist_name}")
+            logger.debug(
+                f"🎵 LAST.FM: Found {len(tracks)} top tracks for {artist_name}"
+            )
             return {
                 "toptracks": {
                     "track": tracks,
-                    "@attr": top_tracks_data.get("@attr", {})
+                    "@attr": top_tracks_data.get("@attr", {}),
                 }
             }
 
         except Exception as e:
-            logger.warning(f"🎵 LAST.FM: Could not get top tracks for {artist_name}: {e}")
+            logger.warning(
+                f"🎵 LAST.FM: Could not get top tracks for {artist_name}: {e}"
+            )
             return {"toptracks": {"track": []}}
 
     def get_similar_artists(self, artist_name: str, limit: int = 5) -> List[str]:

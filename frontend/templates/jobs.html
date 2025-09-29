@@ -421,7 +421,7 @@ function refreshAllJobs() {
 
 async function loadSystemStats() {
     try {
-        const response = await fetch('/api/jobs/status', {
+        const response = await fetch('/api/health/status', {
             credentials: 'include'
         });
         
@@ -508,7 +508,7 @@ async function refreshJobHistory() {
     const container = document.getElementById('recentJobsList');
     
     try {
-        const response = await fetch('/api/jobs', {
+        const response = await fetch('/api/metadata-enrichment/celery/inspect', {
             credentials: 'include'
         });
         

@@ -263,6 +263,18 @@ window.showWarning = (message, duration, options) => toastManager.warning(messag
 window.showInfo = (message, duration, options) => toastManager.info(message, duration, options);
 window.showLoading = (message, options) => toastManager.loading(message, options);
 
+// Additional aliases for legacy compatibility
+window.showSuccessMessage = (message, duration, options) => toastManager.success(message, duration, options);
+window.showErrorMessage = (message, duration, options) => toastManager.error(message, duration, options);
+window.showWarningMessage = (message, duration, options) => toastManager.warning(message, duration, options);
+window.showInfoMessage = (message, duration, options) => toastManager.info(message, duration, options);
+
+// Toast notification aliases
+window.showSuccessToast = (message, duration, options) => toastManager.success(message, duration, options);
+window.showErrorToast = (message, duration, options) => toastManager.error(message, duration, options);
+window.showWarningToast = (message, duration, options) => toastManager.warning(message, duration, options);
+window.showInfoToast = (message, duration, options) => toastManager.info(message, duration, options);
+
 // Utility function to replace common alert/confirm patterns
 window.toastConfirm = (message, onConfirm, onCancel = null) => {
     return toastManager.show(message, 'warning', 0, {

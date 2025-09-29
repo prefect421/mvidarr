@@ -96,7 +96,7 @@ class VideoDownloadWorker(BaseWorker):
                         title=video.title,
                         original_url=video.url or "Unknown URL",
                         status="downloading",
-                        progress=0
+                        progress=0,
                     )
                     session.add(download)
                 else:

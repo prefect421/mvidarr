@@ -5,11 +5,12 @@ Migrated from Flask src/api/themes.py
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File
+from fastapi import APIRouter, Body, Depends, File, HTTPException
 from fastapi import Path as FastAPIPath
+from fastapi import UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -32,7 +33,11 @@ router = APIRouter(
 # AUTHENTICATION - PROPER IMPLEMENTATION
 # ========================================================================================
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_legacy,
+    require_authentication_legacy,
+)
+
 
 # Use proper authentication dependencies
 async def get_current_user():
@@ -57,8 +62,8 @@ class ThemeData(BaseModel):
     theme_data: Optional[Dict[str, Any]] = None
     light_theme_data: Optional[Dict[str, Any]] = None
     is_public: bool = True
-    
-    
+
+
 class ThemeResponse(BaseModel):
     id: str
     name: str
@@ -126,7 +131,7 @@ async def get_themes(
 
         # Convert to response format
         all_themes = []
-        
+
         # Add all themes from database
         for theme in themes:
             theme_data = {
@@ -161,17 +166,19 @@ async def get_current_theme(
     try:
         # Get current theme setting from database
         from src.database.models import Setting
-        
+
         theme_setting = session.query(Setting).filter(Setting.key == "ui_theme").first()
         current_theme_name = theme_setting.value if theme_setting else "default"
-        
+
         logger.info(f"Current theme from settings: {current_theme_name}")
-        
+
         # Look for theme in database (all themes are now in database)
-        theme = session.query(CustomTheme).filter(
-            CustomTheme.name == current_theme_name
-        ).first()
-        
+        theme = (
+            session.query(CustomTheme)
+            .filter(CustomTheme.name == current_theme_name)
+            .first()
+        )
+
         if theme:
             # Return theme from database
             current_theme = {
@@ -187,13 +194,15 @@ async def get_current_theme(
             }
             logger.info(f"Returning theme from database: {current_theme['name']}")
             return current_theme
-        
+
         # Fallback to default theme from database
-        logger.warning(f"Theme '{current_theme_name}' not found, falling back to default")
-        default_theme = session.query(CustomTheme).filter(
-            CustomTheme.name == "default"
-        ).first()
-        
+        logger.warning(
+            f"Theme '{current_theme_name}' not found, falling back to default"
+        )
+        default_theme = (
+            session.query(CustomTheme).filter(CustomTheme.name == "default").first()
+        )
+
         if default_theme:
             current_theme = {
                 "id": str(default_theme.id),
@@ -210,7 +219,7 @@ async def get_current_theme(
             # Final fallback if default theme not in database
             current_theme = {
                 "id": "default",
-                "name": "default", 
+                "name": "default",
                 "display_name": "Default",
                 "description": "Default MVidarr theme",
                 "is_built_in": True,
@@ -219,7 +228,7 @@ async def get_current_theme(
                 "light_theme_data": None,
                 "is_active": True,
             }
-        
+
         return current_theme
 
     except Exception as e:
@@ -239,48 +248,58 @@ async def apply_theme(
         user_id = current_user.get("user_id", 6)
 
         logger.info(f"Applying theme '{theme_identifier}' for user {user_id}")
-        
+
         # Check if theme exists in database (by name OR by ID)
         theme = None
-        
+
         # First try to find by name
-        theme = session.query(CustomTheme).filter(
-            CustomTheme.name == theme_identifier,
-            or_(
-                CustomTheme.is_public == True,
-                CustomTheme.created_by == user_id,
-            )
-        ).first()
-        
-        # If not found by name, try by ID (in case frontend sends ID instead of name)
-        if not theme and theme_identifier.isdigit():
-            theme_id = int(theme_identifier)
-            theme = session.query(CustomTheme).filter(
-                CustomTheme.id == theme_id,
+        theme = (
+            session.query(CustomTheme)
+            .filter(
+                CustomTheme.name == theme_identifier,
                 or_(
                     CustomTheme.is_public == True,
                     CustomTheme.created_by == user_id,
+                ),
+            )
+            .first()
+        )
+
+        # If not found by name, try by ID (in case frontend sends ID instead of name)
+        if not theme and theme_identifier.isdigit():
+            theme_id = int(theme_identifier)
+            theme = (
+                session.query(CustomTheme)
+                .filter(
+                    CustomTheme.id == theme_id,
+                    or_(
+                        CustomTheme.is_public == True,
+                        CustomTheme.created_by == user_id,
+                    ),
                 )
-            ).first()
-        
+                .first()
+            )
+
         if not theme:
             logger.error(f"Theme '{theme_identifier}' not found for user {user_id}")
             raise HTTPException(status_code=404, detail="Theme not found")
 
         # Save the theme preference to settings
         from src.database.models import Setting
-        
+
         # Update or create ui_theme setting (always save the theme name, not ID)
         theme_setting = session.query(Setting).filter(Setting.key == "ui_theme").first()
         if theme_setting:
             theme_setting.value = theme.name
         else:
-            theme_setting = Setting(key="ui_theme", value=theme.name, description="Current UI theme")
+            theme_setting = Setting(
+                key="ui_theme", value=theme.name, description="Current UI theme"
+            )
             session.add(theme_setting)
-        
+
         session.commit()
         logger.info(f"Theme preference saved: {theme.name}")
-        
+
         return {
             "success": True,
             "message": f"Theme '{theme.name}' applied successfully",
@@ -303,11 +322,12 @@ async def extract_built_in_theme(
     """Extract theme data from database"""
     try:
         # Get theme from database
-        theme = session.query(CustomTheme).filter(
-            CustomTheme.name == theme_name,
-            CustomTheme.is_built_in == True
-        ).first()
-        
+        theme = (
+            session.query(CustomTheme)
+            .filter(CustomTheme.name == theme_name, CustomTheme.is_built_in == True)
+            .first()
+        )
+
         if not theme:
             # Return default theme data structure for unknown themes
             theme_data = {
@@ -341,16 +361,18 @@ async def create_theme(
     """Create a new custom theme"""
     try:
         user_id = current_user.get("user_id", 6)
-        
+
         # Check if theme name already exists
-        existing = session.query(CustomTheme).filter(
-            CustomTheme.name == theme_data.name
-        ).first()
-        
+        existing = (
+            session.query(CustomTheme)
+            .filter(CustomTheme.name == theme_data.name)
+            .first()
+        )
+
         if existing:
             raise HTTPException(
-                status_code=400, 
-                detail=f"Theme with name '{theme_data.name}' already exists"
+                status_code=400,
+                detail=f"Theme with name '{theme_data.name}' already exists",
             )
 
         # Create new theme
@@ -395,15 +417,19 @@ async def get_theme(
     """Get a specific theme by ID"""
     try:
         user_id = current_user.get("user_id", 6)
-        
-        theme = session.query(CustomTheme).filter(
-            CustomTheme.id == theme_id,
-            or_(
-                CustomTheme.is_public == True,
-                CustomTheme.created_by == user_id,
+
+        theme = (
+            session.query(CustomTheme)
+            .filter(
+                CustomTheme.id == theme_id,
+                or_(
+                    CustomTheme.is_public == True,
+                    CustomTheme.created_by == user_id,
+                ),
             )
-        ).first()
-        
+            .first()
+        )
+
         if not theme:
             raise HTTPException(status_code=404, detail="Theme not found")
 

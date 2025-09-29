@@ -71,12 +71,12 @@ class UserInfo:
 async def get_current_user_from_session(request: Request) -> UserInfo:
     """Get current user from session for simple auth system"""
     from src.api.fastapi.auth_dependencies import get_current_user_legacy
-    
+
     user_data = await get_current_user_legacy()
     return UserInfo(
         id=user_data.get("user_id", 1),
         username=user_data.get("username", "admin"),
-        role=UserRole.ADMIN.value  # Simple auth user has admin privileges
+        role=UserRole.ADMIN.value,  # Simple auth user has admin privileges
     )
 
 
@@ -380,7 +380,7 @@ async def create_playlist(
     try:
         # Get authenticated user
         current_user = await get_current_user_from_session(request)
-        
+
         # Only admins can create featured playlists
         if playlist_data.is_featured and not current_user.can_access_admin():
             raise HTTPException(

@@ -108,7 +108,7 @@ async def simple_login(
 
         # Use SimpleAuthService for authentication
         from src.services.simple_auth_service import SimpleAuthService
-        
+
         success, message = SimpleAuthService.authenticate(username, password)
         if success:
             # Set session data
@@ -153,7 +153,8 @@ async def simple_login(
             return response
         else:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail=message or "Invalid credentials"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=message or "Invalid credentials",
             )
 
     except HTTPException:
@@ -203,8 +204,10 @@ async def login(
             # Fallback to SimpleAuthService for authentication
             # This allows the system to work even when database is not initialized
             from src.services.simple_auth_service import SimpleAuthService
-            
-            simple_success, simple_message = SimpleAuthService.authenticate(username, password)
+
+            simple_success, simple_message = SimpleAuthService.authenticate(
+                username, password
+            )
 
             if simple_success:
                 # Create mock user data for simple auth
@@ -694,11 +697,13 @@ async def auth_health():
 # Legacy Router Endpoints (for backward compatibility)
 # ====================================
 
+
 @legacy_router.get("/credentials")
 async def get_credentials_legacy():
     """Get current stored username for simple auth (legacy endpoint)"""
     try:
         from src.services.simple_auth_service import SimpleAuthService
+
         username, has_credentials = SimpleAuthService.get_credentials()
         return {"username": username, "has_credentials": has_credentials}
     except Exception as e:

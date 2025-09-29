@@ -10,7 +10,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import or_
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_legacy,
+    require_authentication_legacy,
+)
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.services.spotify_service import spotify_service
@@ -33,6 +36,7 @@ logger = get_logger("mvidarr.api.fastapi.spotify_enhanced")
 # AUTHENTICATION
 # ========================================================================================
 
+
 async def get_current_user():
     """Get current authenticated user"""
     return await get_current_user_legacy()
@@ -46,6 +50,7 @@ async def require_authentication(current_user: dict = Depends(get_current_user))
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================
+
 
 class PlaylistSyncRequest(BaseModel):
     force_refresh: bool = False
@@ -214,16 +219,19 @@ class SimilarArtistsResponse(BaseModel):
 # PLAYLIST SYNC ENDPOINTS
 # ========================================================================================
 
+
 @router.post("/playlists/sync", response_model=PlaylistSyncResponse)
 async def sync_user_playlists(
     request: PlaylistSyncRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Sync all user playlists from Spotify to MVidarr"""
     try:
         logger.info("Starting Spotify playlist synchronization")
 
-        results = spotify_sync_service.sync_user_playlists(force_refresh=request.force_refresh)
+        results = spotify_sync_service.sync_user_playlists(
+            force_refresh=request.force_refresh
+        )
 
         # Calculate summary statistics
         successful_syncs = sum(1 for r in results if r.success)
@@ -236,7 +244,7 @@ async def sync_user_playlists(
             total_playlists=len(results),
             artists_discovered=total_artists,
             videos_matched=total_videos,
-            total_errors=total_errors
+            total_errors=total_errors,
         )
 
         sync_results = [
@@ -256,14 +264,13 @@ async def sync_user_playlists(
             success=successful_syncs > 0,
             message=f"Synced {successful_syncs} of {len(results)} playlists",
             summary=summary,
-            results=sync_results
+            results=sync_results,
         )
 
     except Exception as e:
         logger.error(f"Failed to sync Spotify playlists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -271,7 +278,7 @@ async def sync_user_playlists(
 async def export_playlist_to_spotify(
     playlist_id: str,
     request: PlaylistExportRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Export MVidarr playlist to Spotify"""
     try:
@@ -279,8 +286,7 @@ async def export_playlist_to_spotify(
             playlist_id_int = int(playlist_id)
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid playlist ID"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid playlist ID"
             )
 
         logger.info(f"Exporting MVidarr playlist {playlist_id} to Spotify")
@@ -309,15 +315,14 @@ async def export_playlist_to_spotify(
     except Exception as e:
         logger.error(f"Failed to export playlist to Spotify: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/recommendations", response_model=RecommendationsResponse)
 async def get_music_video_recommendations(
     limit: int = Query(20, ge=1, le=100),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Get music video recommendations based on Spotify listening history"""
     try:
@@ -330,15 +335,12 @@ async def get_music_video_recommendations(
     except Exception as e:
         logger.error(f"Failed to get music video recommendations: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/new-releases", response_model=NewReleasesResponse)
-async def check_new_releases(
-    current_user: dict = Depends(require_authentication)
-):
+async def check_new_releases(current_user: dict = Depends(require_authentication)):
     """Check for new releases from followed artists"""
     try:
         logger.info("Checking for new releases from followed Spotify artists")
@@ -350,15 +352,14 @@ async def check_new_releases(
     except Exception as e:
         logger.error(f"Failed to check for new releases: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/webhooks", response_model=WebhookResponse)
 async def handle_spotify_webhook(
     webhook_data: WebhookRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Handle incoming Spotify webhooks for real-time updates"""
     try:
@@ -371,15 +372,12 @@ async def handle_spotify_webhook(
     except Exception as e:
         logger.error(f"Failed to process Spotify webhook: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/sync/status", response_model=SyncStatusResponse)
-async def get_sync_status(
-    current_user: dict = Depends(require_authentication)
-):
+async def get_sync_status(current_user: dict = Depends(require_authentication)):
     """Get current Spotify synchronization status"""
     try:
         status_data = spotify_sync_service.get_sync_status()
@@ -389,29 +387,22 @@ async def get_sync_status(
     except Exception as e:
         logger.error(f"Failed to get sync status: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/sync/clear-cache")
-async def clear_sync_cache(
-    current_user: dict = Depends(require_authentication)
-):
+async def clear_sync_cache(current_user: dict = Depends(require_authentication)):
     """Clear Spotify synchronization cache"""
     try:
         spotify_sync_service.clear_sync_cache()
 
-        return {
-            "success": True,
-            "message": "Spotify sync cache cleared successfully"
-        }
+        return {"success": True, "message": "Spotify sync cache cleared successfully"}
 
     except Exception as e:
         logger.error(f"Failed to clear sync cache: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -419,11 +410,12 @@ async def clear_sync_cache(
 # ENHANCED SPOTIFY API METHODS
 # ========================================================================================
 
+
 @router.get("/tracks/search", response_model=TrackSearchResponse)
 async def search_tracks(
     q: str = Query(..., description="Search query"),
     limit: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Search for tracks on Spotify"""
     try:
@@ -434,15 +426,13 @@ async def search_tracks(
     except Exception as e:
         logger.error(f"Failed to search Spotify tracks: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/tracks/{track_id}/audio-features", response_model=AudioFeaturesResponse)
 async def get_track_audio_features(
-    track_id: str,
-    current_user: dict = Depends(require_authentication)
+    track_id: str, current_user: dict = Depends(require_authentication)
 ):
     """Get audio features for a Spotify track"""
     try:
@@ -453,15 +443,14 @@ async def get_track_audio_features(
     except Exception as e:
         logger.error(f"Failed to get track audio features: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/recommendations/generate")
 async def generate_recommendations(
     request: RecommendationsRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Generate Spotify recommendations with custom parameters"""
     try:
@@ -491,15 +480,14 @@ async def generate_recommendations(
     except Exception as e:
         logger.error(f"Failed to generate Spotify recommendations: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/playlists/create", response_model=CreatePlaylistResponse)
 async def create_spotify_playlist(
     request: CreatePlaylistRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Create a new Spotify playlist"""
     try:
@@ -516,7 +504,7 @@ async def create_spotify_playlist(
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create Spotify playlist"
+                detail="Failed to create Spotify playlist",
             )
 
     except HTTPException:
@@ -524,15 +512,14 @@ async def create_spotify_playlist(
     except Exception as e:
         logger.error(f"Failed to create Spotify playlist: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/discovery/artist-library", response_model=ArtistDiscoveryResponse)
 async def discover_artists_from_library(
     request: ArtistDiscoveryRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Discover new artists from user's Spotify library"""
     try:
@@ -545,7 +532,7 @@ async def discover_artists_from_library(
         if not saved_tracks_response or "items" not in saved_tracks_response:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to get saved tracks"
+                detail="Failed to get saved tracks",
             )
 
         saved_tracks = saved_tracks_response["items"]
@@ -608,7 +595,7 @@ async def discover_artists_from_library(
             success=True,
             message=f"Discovered {len(discovered_artists)} new artists",
             discovered_artists=discovered_artists,
-            total_discovered=len(discovered_artists)
+            total_discovered=len(discovered_artists),
         )
 
     except HTTPException:
@@ -616,15 +603,14 @@ async def discover_artists_from_library(
     except Exception as e:
         logger.error(f"Failed to discover artists from Spotify library: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/metadata/enhanced-matching", response_model=MetadataMatchingResponse)
 async def enhanced_metadata_matching(
     request: MetadataMatchingRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Perform enhanced metadata matching with Spotify catalog"""
     try:
@@ -635,7 +621,7 @@ async def enhanced_metadata_matching(
         if not track_search or "tracks" not in track_search:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No tracks found on Spotify"
+                detail="No tracks found on Spotify",
             )
 
         tracks = track_search["tracks"]["items"]
@@ -690,9 +676,7 @@ async def enhanced_metadata_matching(
             matches=matches,
             total_matches=len(matches),
             best_match_score=(
-                matches[0]["similarity_scores"]["overall_match"]
-                if matches
-                else 0
+                matches[0]["similarity_scores"]["overall_match"] if matches else 0
             ),
         )
 
@@ -701,8 +685,7 @@ async def enhanced_metadata_matching(
     except Exception as e:
         logger.error(f"Failed to perform enhanced metadata matching: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -710,9 +693,10 @@ async def enhanced_metadata_matching(
 # SPOTIFY CONNECT ENDPOINTS
 # ========================================================================================
 
+
 @router.get("/connect/devices", response_model=ConnectDevicesResponse)
 async def get_spotify_connect_devices(
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Get available Spotify Connect devices"""
     try:
@@ -728,24 +712,27 @@ async def get_spotify_connect_devices(
     except Exception as e:
         logger.error(f"Failed to get Spotify Connect devices: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/connect/play", response_model=ConnectPlayResponse)
 async def spotify_connect_play(
     request: ConnectPlayRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Control Spotify Connect playback"""
     try:
         from src.services.spotify_connect_service import spotify_connect_service
 
         if request.track_uris:
-            result = spotify_connect_service.play_tracks(request.track_uris, request.device_id)
+            result = spotify_connect_service.play_tracks(
+                request.track_uris, request.device_id
+            )
         elif request.context_uri:
-            result = spotify_connect_service.play_context(request.context_uri, request.device_id)
+            result = spotify_connect_service.play_context(
+                request.context_uri, request.device_id
+            )
         else:
             result = spotify_connect_service.resume_playback(request.device_id)
 
@@ -757,15 +744,16 @@ async def spotify_connect_play(
     except Exception as e:
         logger.error(f"Failed to control Spotify Connect playback: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/analytics/listening-stats", response_model=ListeningAnalyticsResponse)
 async def get_listening_analytics(
-    time_range: str = Query("medium_term", pattern="^(short_term|medium_term|long_term)$"),
-    current_user: dict = Depends(require_authentication)
+    time_range: str = Query(
+        "medium_term", pattern="^(short_term|medium_term|long_term)$"
+    ),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get analytics from Spotify listening data"""
     try:
@@ -801,22 +789,21 @@ async def get_listening_analytics(
     except Exception as e:
         logger.error(f"Failed to get listening analytics: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/discovery/similar-artists", response_model=SimilarArtistsResponse)
 async def discover_similar_artists(
     request: SimilarArtistsRequest = Body(...),
-    current_user: dict = Depends(require_authentication)
+    current_user: dict = Depends(require_authentication),
 ):
     """Discover similar artists based on Spotify data"""
     try:
         if not request.artist_ids:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="artist_ids are required"
+                detail="artist_ids are required",
             )
 
         # Get recommendations based on these artists
@@ -827,7 +814,7 @@ async def discover_similar_artists(
         if not recommendations or "tracks" not in recommendations:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to get recommendations"
+                detail="Failed to get recommendations",
             )
 
         # Extract unique artists from recommendations
@@ -863,6 +850,5 @@ async def discover_similar_artists(
     except Exception as e:
         logger.error(f"Failed to discover similar artists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

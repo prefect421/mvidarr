@@ -154,12 +154,16 @@ async def jobs(request: Request):
         raise HTTPException(status_code=500, detail="Failed to load jobs page")
 
 
-@frontend_router.get("/enrichment", response_class=HTMLResponse, name="frontend_enrichment")
+@frontend_router.get(
+    "/enrichment", response_class=HTMLResponse, name="frontend_enrichment"
+)
 async def enrichment(request: Request, user=Depends(require_authentication)):
     """Metadata enrichment dashboard page"""
     try:
         context = {"page_title": "Metadata Enrichment"}
-        return await template_system.render_response("enrichment.html", request, context)
+        return await template_system.render_response(
+            "enrichment.html", request, context
+        )
     except Exception as e:
         logger.error(f"Error rendering enrichment page: {e}")
         raise HTTPException(status_code=500, detail="Failed to load enrichment page")

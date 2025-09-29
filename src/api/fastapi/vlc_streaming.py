@@ -9,7 +9,10 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_legacy,
+    require_authentication_legacy,
+)
 from src.database.connection import get_db
 from src.database.models import Video
 from src.services.vlc_streaming_service import vlc_streaming_service
@@ -31,6 +34,7 @@ logger = get_logger("mvidarr.api.fastapi.vlc_streaming")
 # AUTHENTICATION
 # ========================================================================================
 
+
 async def get_current_user():
     """Get current authenticated user"""
     return await get_current_user_legacy()
@@ -44,6 +48,7 @@ async def require_authentication(current_user: dict = Depends(get_current_user))
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================
+
 
 class StreamResponse(BaseModel):
     success: bool
@@ -75,10 +80,10 @@ class CleanupResponse(BaseModel):
 # ENDPOINTS
 # ========================================================================================
 
+
 @router.post("/stream/{video_id}", response_model=StreamResponse)
 async def start_video_stream(
-    video_id: int,
-    current_user: dict = Depends(require_authentication)
+    video_id: int, current_user: dict = Depends(require_authentication)
 ):
     """Start a VLC stream for a video"""
     try:
@@ -87,14 +92,13 @@ async def start_video_stream(
 
             if not video:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Video not found"
+                    status_code=status.HTTP_404_NOT_FOUND, detail="Video not found"
                 )
 
             if not video.local_path:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="No local file available for streaming"
+                    detail="No local file available for streaming",
                 )
 
             # Construct absolute path
@@ -106,7 +110,7 @@ async def start_video_stream(
             if not os.path.exists(video_path):
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Video file not found on disk"
+                    detail="Video file not found on disk",
                 )
 
             # Start the stream
@@ -121,7 +125,7 @@ async def start_video_stream(
                 )
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=result.get('error', 'Failed to start VLC stream')
+                    detail=result.get("error", "Failed to start VLC stream"),
                 )
 
     except HTTPException:
@@ -129,15 +133,13 @@ async def start_video_stream(
     except Exception as e:
         logger.error(f"Error starting VLC stream for video {video_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.delete("/stream/{video_id}", response_model=StreamResponse)
 async def stop_video_stream(
-    video_id: int,
-    current_user: dict = Depends(require_authentication)
+    video_id: int, current_user: dict = Depends(require_authentication)
 ):
     """Stop a VLC stream for a video"""
     try:
@@ -149,7 +151,7 @@ async def stop_video_stream(
         else:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=result.get('error', 'Stream not found')
+                detail=result.get("error", "Stream not found"),
             )
 
     except HTTPException:
@@ -157,15 +159,13 @@ async def stop_video_stream(
     except Exception as e:
         logger.error(f"Error stopping VLC stream for video {video_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/stream/{video_id}", response_model=StreamInfo)
 async def get_stream_info(
-    video_id: int,
-    current_user: dict = Depends(require_authentication)
+    video_id: int, current_user: dict = Depends(require_authentication)
 ):
     """Get information about a video stream"""
     try:
@@ -175,15 +175,15 @@ async def get_stream_info(
             return StreamInfo(
                 success=True,
                 video_id=video_id,
-                stream_url=result.get('stream_url'),
-                stream_id=result.get('stream_id'),
-                is_active=result.get('is_active', False),
-                created_at=result.get('created_at')
+                stream_url=result.get("stream_url"),
+                stream_id=result.get("stream_id"),
+                is_active=result.get("is_active", False),
+                created_at=result.get("created_at"),
             )
         else:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=result.get('error', 'Stream not found')
+                detail=result.get("error", "Stream not found"),
             )
 
     except HTTPException:
@@ -191,35 +191,26 @@ async def get_stream_info(
     except Exception as e:
         logger.error(f"Error getting VLC stream info for video {video_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.get("/streams", response_model=ActiveStreamsResponse)
-async def list_active_streams(
-    current_user: dict = Depends(require_authentication)
-):
+async def list_active_streams(current_user: dict = Depends(require_authentication)):
     """List all active VLC streams"""
     try:
         streams = vlc_streaming_service.list_active_streams()
-        return ActiveStreamsResponse(
-            streams=streams,
-            count=len(streams)
-        )
+        return ActiveStreamsResponse(streams=streams, count=len(streams))
 
     except Exception as e:
         logger.error(f"Error listing VLC streams: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
 @router.post("/cleanup", response_model=CleanupResponse)
-async def cleanup_old_streams(
-    current_user: dict = Depends(require_authentication)
-):
+async def cleanup_old_streams(current_user: dict = Depends(require_authentication)):
     """Clean up old/expired VLC streams"""
     try:
         vlc_streaming_service.cleanup_old_streams()
@@ -228,6 +219,5 @@ async def cleanup_old_streams(
     except Exception as e:
         logger.error(f"Error cleaning up VLC streams: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

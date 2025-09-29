@@ -24,10 +24,10 @@ celery_app = Celery(
     broker=CELERY_BROKER_URL,
     backend=CELERY_RESULT_BACKEND,
     include=[
-        "src.jobs.simple_download_task",
-        "src.jobs.metadata_tasks", 
+        "src.jobs.metadata_tasks",
         "src.jobs.image_processing_tasks",
         "src.jobs.ffmpeg_processing_tasks",
+        "src.jobs.download_processor_task",
     ],
 )
 
@@ -73,13 +73,9 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     # Beat schedule (if using celery beat for periodic tasks)
     beat_schedule={
-        "cleanup-expired-jobs": {
-            "task": "src.jobs.maintenance_tasks.cleanup_expired_jobs",
-            "schedule": timedelta(hours=1),
-        },
-        "update-job-statistics": {
-            "task": "src.jobs.maintenance_tasks.update_job_statistics",
-            "schedule": timedelta(minutes=15),
+        "process-downloads": {
+            "task": "download_processor.process_downloads",
+            "schedule": timedelta(seconds=30),
         },
     },
     beat_schedule_filename="celerybeat-schedule",

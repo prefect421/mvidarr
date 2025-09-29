@@ -5,9 +5,9 @@ Migrated from Flask src/api/users.py - Essential user management features
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -30,7 +30,11 @@ router = APIRouter(
 # AUTHENTICATION - PROPER IMPLEMENTATION
 # ========================================================================================
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy, require_authentication_legacy
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_legacy,
+    require_authentication_legacy,
+)
+
 
 async def get_current_user():
     """Get current authenticated user"""
@@ -86,7 +90,7 @@ async def get_users(
         # Check if current user is admin
         if current_user.get("role") != "admin":
             raise HTTPException(status_code=403, detail="Admin access required")
-        
+
         users = session.query(User).all()
         return users
 
@@ -110,14 +114,14 @@ async def create_user(
             raise HTTPException(status_code=403, detail="Admin access required")
 
         # Check if username already exists
-        existing_user = session.query(User).filter(
-            User.username == user_data.username
-        ).first()
-        
+        existing_user = (
+            session.query(User).filter(User.username == user_data.username).first()
+        )
+
         if existing_user:
             raise HTTPException(
-                status_code=400, 
-                detail=f"Username '{user_data.username}' already exists"
+                status_code=400,
+                detail=f"Username '{user_data.username}' already exists",
             )
 
         # Create new user
@@ -163,12 +167,12 @@ async def get_user(
         # Users can only view their own profile, admins can view any
         current_user_id = current_user.get("user_id")
         is_admin = current_user.get("role") == "admin"
-        
+
         if not is_admin and current_user_id != user_id:
             raise HTTPException(status_code=403, detail="Access denied")
-        
+
         user = session.query(User).filter(User.id == user_id).first()
-        
+
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -193,14 +197,14 @@ async def update_user_role(
         # Check if current user is admin
         if current_user.get("role") != "admin":
             raise HTTPException(status_code=403, detail="Admin access required")
-        
+
         user = session.query(User).filter(User.id == user_id).first()
-        
+
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
         # Update role
-        user.is_admin = (role_data.role == "admin")
+        user.is_admin = role_data.role == "admin"
         session.commit()
 
         logger.info(f"Updated user {user_id} role to {role_data.role}")
@@ -231,9 +235,9 @@ async def deactivate_user(
         # Check if current user is admin
         if current_user.get("role") != "admin":
             raise HTTPException(status_code=403, detail="Admin access required")
-        
+
         user = session.query(User).filter(User.id == user_id).first()
-        
+
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -271,9 +275,9 @@ async def activate_user(
         # Check if current user is admin
         if current_user.get("role") != "admin":
             raise HTTPException(status_code=403, detail="Admin access required")
-        
+
         user = session.query(User).filter(User.id == user_id).first()
-        
+
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 

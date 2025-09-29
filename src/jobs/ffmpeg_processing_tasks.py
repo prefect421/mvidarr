@@ -1353,66 +1353,73 @@ def bulk_thumbnail_creation(
     """
     Generate thumbnails for multiple videos with progress tracking
     """
-    from src.jobs.redis_manager import redis_manager
     import asyncio
     from pathlib import Path
+
+    from src.jobs.redis_manager import redis_manager
     from src.services.ffmpeg_stream_manager import ffmpeg_stream_manager
-    
+
     if thumbnail_sizes is None:
         thumbnail_sizes = [(640, 480)]  # Standard thumbnail size
-    
+
     output_dir = Path(output_directory)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     total_videos = len(video_paths)
     processed_videos = 0
     successful_thumbnails = 0
     errors = []
-    
+
     # Update initial progress
     redis_manager.set_job_progress(
-        self.request.id, 
-        {"percent": 0, "message": f"Starting thumbnail generation for {total_videos} videos", "status": "STARTED"}
+        self.request.id,
+        {
+            "percent": 0,
+            "message": f"Starting thumbnail generation for {total_videos} videos",
+            "status": "STARTED",
+        },
     )
-    
+
     try:
         for i, video_path in enumerate(video_paths):
             try:
                 video_file = Path(video_path)
-                
+
                 # Update progress
                 progress = int((i / total_videos) * 100)
                 redis_manager.set_job_progress(
-                    self.request.id, 
+                    self.request.id,
                     {
-                        "percent": progress, 
-                        "message": f"Processing video {i+1} of {total_videos}: {video_file.name}", 
+                        "percent": progress,
+                        "message": f"Processing video {i+1} of {total_videos}: {video_file.name}",
                         "status": "PROGRESS",
-                        "current_step": f"Generating thumbnail for {video_file.name}"
-                    }
+                        "current_step": f"Generating thumbnail for {video_file.name}",
+                    },
                 )
-                
+
                 # Generate thumbnail filename
                 thumbnail_filename = f"{video_file.stem}_thumb.jpg"
                 thumbnail_path = output_dir / thumbnail_filename
-                
+
                 # Generate thumbnail synchronously (since we're in a Celery worker)
-                result = asyncio.run(ffmpeg_stream_manager.generate_thumbnail_async(
-                    video_path=video_file,
-                    output_path=thumbnail_path,
-                    timestamp=None,  # Auto-detect middle of video
-                    size="640x480",
-                ))
-                
+                result = asyncio.run(
+                    ffmpeg_stream_manager.generate_thumbnail_async(
+                        video_path=video_file,
+                        output_path=thumbnail_path,
+                        timestamp=None,  # Auto-detect middle of video
+                        size="640x480",
+                    )
+                )
+
                 if result.get("success"):
                     successful_thumbnails += 1
                     logger.info(f"Generated thumbnail for video: {thumbnail_path}")
-                    
+
                     # Update database with thumbnail path
                     try:
                         from src.database.connection import get_db
                         from src.database.models import Video
-                        
+
                         with get_db() as db_session:
                             # Find the video by matching the file path
                             video_record = (
@@ -1420,38 +1427,46 @@ def bulk_thumbnail_creation(
                                 .filter(Video.local_path.like(f"%{video_file.name}"))
                                 .first()
                             )
-                            
+
                             if video_record:
                                 video_record.thumbnail_path = str(thumbnail_path)
                                 db_session.commit()
-                                logger.info(f"Updated database thumbnail_path for video ID {video_record.id}: {thumbnail_path}")
+                                logger.info(
+                                    f"Updated database thumbnail_path for video ID {video_record.id}: {thumbnail_path}"
+                                )
                             else:
-                                logger.warning(f"Could not find video record for {video_file.name}")
-                                
+                                logger.warning(
+                                    f"Could not find video record for {video_file.name}"
+                                )
+
                     except Exception as db_error:
-                        logger.error(f"Failed to update database for {video_file.name}: {db_error}")
-                        
+                        logger.error(
+                            f"Failed to update database for {video_file.name}: {db_error}"
+                        )
+
                 else:
                     error_msg = result.get("error", "Unknown error")
                     errors.append(f"{video_file.name}: {error_msg}")
-                    logger.warning(f"Failed to generate thumbnail for {video_file.name}: {error_msg}")
-                
+                    logger.warning(
+                        f"Failed to generate thumbnail for {video_file.name}: {error_msg}"
+                    )
+
                 processed_videos += 1
-                
+
             except Exception as e:
                 errors.append(f"{video_path}: {str(e)}")
                 logger.error(f"Error generating thumbnail for {video_path}: {e}")
-        
+
         # Final progress update
         redis_manager.set_job_progress(
-            self.request.id, 
+            self.request.id,
             {
-                "percent": 100, 
-                "message": f"Completed thumbnail generation: {successful_thumbnails} successful, {len(errors)} errors", 
-                "status": "SUCCESS"
-            }
+                "percent": 100,
+                "message": f"Completed thumbnail generation: {successful_thumbnails} successful, {len(errors)} errors",
+                "status": "SUCCESS",
+            },
         )
-        
+
         return {
             "success": True,
             "processed_videos": processed_videos,
@@ -1459,11 +1474,11 @@ def bulk_thumbnail_creation(
             "total_videos": total_videos,
             "errors": errors,
         }
-        
+
     except Exception as e:
         redis_manager.set_job_progress(
-            self.request.id, 
-            {"percent": 0, "message": f"Task failed: {str(e)}", "status": "FAILURE"}
+            self.request.id,
+            {"percent": 0, "message": f"Task failed: {str(e)}", "status": "FAILURE"},
         )
         raise
 
@@ -1673,5 +1688,7 @@ def submit_bulk_thumbnail_creation_task(
         priority=priority,
         user_id=user_id,
     )
-    logger.info(f"Submitted bulk thumbnail creation job {task.id} for {len(video_paths)} videos")
+    logger.info(
+        f"Submitted bulk thumbnail creation job {task.id} for {len(video_paths)} videos"
+    )
     return task.id

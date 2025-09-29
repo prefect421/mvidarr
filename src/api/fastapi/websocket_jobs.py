@@ -14,6 +14,7 @@ from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconn
 from fastapi.responses import HTMLResponse
 
 from src.jobs.redis_manager import redis_manager
+
 # Authentication dependency removed for now - WebSocket auth handled separately
 from src.utils.logger import get_logger
 
@@ -51,7 +52,9 @@ class WebSocketJobManager:
             self.redis_subscriber.psubscribe("progress:*")
 
             self.subscription_task = asyncio.create_task(self._process_redis_messages())
-            logger.info("📡 Redis subscriber started for WebSocket job updates - listening on 'progress:*'")
+            logger.info(
+                "📡 Redis subscriber started for WebSocket job updates - listening on 'progress:*'"
+            )
 
         except Exception as e:
             logger.error(f"❌ Failed to start Redis subscriber: {e}")
@@ -96,7 +99,7 @@ class WebSocketJobManager:
                 channel = message["channel"]
                 if isinstance(channel, bytes):
                     channel = channel.decode()
-                    
+
                 data = message["data"]
                 if isinstance(data, bytes):
                     data = data.decode()
@@ -108,7 +111,9 @@ class WebSocketJobManager:
                     # Parse progress data
                     try:
                         progress_data = json.loads(data)
-                        logger.debug(f"📡 WEBSOCKET RECEIVED: Job {job_id} progress update: {progress_data.get('progress', 0)}% - {progress_data.get('message', '')}")
+                        logger.debug(
+                            f"📡 WEBSOCKET RECEIVED: Job {job_id} progress update: {progress_data.get('progress', 0)}% - {progress_data.get('message', '')}"
+                        )
                         await self._broadcast_job_update(job_id, progress_data)
                     except json.JSONDecodeError:
                         logger.warning(f"⚠️ Invalid JSON in Redis message: {data}")
@@ -141,7 +146,9 @@ class WebSocketJobManager:
                 logger.debug(f"❌ WebSocket send failed for job {job_id}: {send_error}")
                 disconnected_connections.add(connection)
 
-        logger.debug(f"📡 WEBSOCKET BROADCAST: Job {job_id} update sent to {successful_sends} clients: {progress_data.get('progress', 0)}% - {progress_data.get('message', '')}")
+        logger.debug(
+            f"📡 WEBSOCKET BROADCAST: Job {job_id} update sent to {successful_sends} clients: {progress_data.get('progress', 0)}% - {progress_data.get('message', '')}"
+        )
 
         # Clean up disconnected connections
         for connection in disconnected_connections:
@@ -313,7 +320,9 @@ def setup_websocket_routes(app: FastAPI):
             # Start Redis subscriber if not already running (fallback)
             # Note: This should normally be started during app startup now
             if not websocket_manager.subscription_task:
-                logger.info("🔄 Starting Redis subscriber as fallback (should have started at app startup)")
+                logger.info(
+                    "🔄 Starting Redis subscriber as fallback (should have started at app startup)"
+                )
                 await websocket_manager.start_redis_subscriber()
 
             while True:
@@ -677,13 +686,15 @@ def get_websocket_test_page() -> str:
 async def init_websocket_system(app: FastAPI):
     """Initialize WebSocket system on app startup"""
     setup_websocket_routes(app)
-    
+
     # FIX: Start Redis subscriber immediately on app startup
     # This prevents the race condition where progress updates are lost
     # if jobs start before WebSocket connections are made
     try:
         await websocket_manager.start_redis_subscriber()
-        logger.info("✅ FastAPI WebSocket job progress system initialized with Redis subscriber")
+        logger.info(
+            "✅ FastAPI WebSocket job progress system initialized with Redis subscriber"
+        )
     except Exception as e:
         logger.error(f"❌ Failed to start Redis subscriber during app startup: {e}")
         logger.info("⚠️ WebSocket job progress will start when first connection is made")

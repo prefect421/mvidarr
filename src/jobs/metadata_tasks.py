@@ -50,7 +50,9 @@ class CallbackTask(Task):
 
                 # Ensure Redis connection is established
                 if not redis_manager.ensure_connection():
-                    logger.warning(f"Redis connection failed, skipping progress broadcast for task {task_id}")
+                    logger.warning(
+                        f"Redis connection failed, skipping progress broadcast for task {task_id}"
+                    )
                     return
 
                 if redis_manager.redis_client:
@@ -69,13 +71,15 @@ class CallbackTask(Task):
                     logger.debug(
                         f"📡 PROGRESS BROADCAST: Published to Redis channel '{channel}' - {published_count} subscribers received update: {progress}% - {message}"
                     )
-                    
+
                     # Add small delay for final progress updates to ensure WebSocket transmission
                     if progress >= 95:
                         time.sleep(0.1)  # 100ms delay for critical final updates
 
             except Exception as redis_error:
-                logger.error(f"❌ REDIS PUBLISH FAILED for task {task_id}: {redis_error}")
+                logger.error(
+                    f"❌ REDIS PUBLISH FAILED for task {task_id}: {redis_error}"
+                )
 
             # Log progress for monitoring
             logger.info(f"📊 TASK PROGRESS: {task_id} → {progress}% - {message}")
@@ -104,12 +108,14 @@ def enrich_artist_metadata_task(
     """
     task_id = self.request.id
     logger.info(f"Starting metadata enrichment task {task_id} for artist {artist_id}")
-    logger.info(f"🔄 CELERY TASK DEBUG: force_refresh={force_refresh}, enrich_videos={enrich_videos}")
+    logger.info(
+        f"🔄 CELERY TASK DEBUG: force_refresh={force_refresh}, enrich_videos={enrich_videos}"
+    )
 
     try:
         # Initialize database for FastAPI/Celery context
         init_db_standalone()
-        
+
         # Update progress
         self.update_progress(task_id, 5, "Initializing enrichment service...")
 
@@ -130,39 +136,135 @@ def enrich_artist_metadata_task(
         def metadata_progress_callback(progress: int, message: str):
             """Forward progress updates from metadata service to WebSocket system"""
             self.update_progress(task_id, progress, message)
-        
+
         # Run actual metadata enrichment with progress callbacks
         self.update_progress(task_id, 25, "Gathering metadata from external sources...")
-        logger.info(f"🔄 CELERY TASK DEBUG: About to call enrichment_service.enrich_artist_metadata with force_refresh={force_refresh}")
-        
+        logger.info(
+            f"🔄 CELERY TASK DEBUG: About to call enrichment_service.enrich_artist_metadata with force_refresh={force_refresh}"
+        )
+
         # Initialize and run the enrichment service
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        
+        # Prepare safe result structure BEFORE any enrichment operations
+        safe_result = {
+            'success': False,
+            'sources_used': [],
+            'metadata_sources': [],
+            'enriched_fields': [],
+            'metadata_found': {},
+            'confidence_score': 0,
+            'processing_time': 0,
+            'errors': []
+        }
+        
         try:
             # Add timeout to prevent hanging (90 seconds - enough for external API calls)
             enrichment_result = loop.run_until_complete(
                 asyncio.wait_for(
                     enrichment_service.enrich_artist_metadata(
-                        artist_id, force_refresh=force_refresh, progress_callback=metadata_progress_callback
+                        artist_id,
+                        force_refresh=force_refresh,
+                        progress_callback=metadata_progress_callback,
                     ),
-                    timeout=90.0
+                    timeout=90.0,
                 )
             )
+            
+            # IMMEDIATELY convert enrichment_result to avoid SQLAlchemy session issues
+            # The enrichment service may return objects containing detached SQLAlchemy models
+            # We must be extremely defensive here because even accessing the object can trigger errors
+            
+            try:
+                # Extract fields one by one with maximum safety
+                # Don't use any truthiness checks or comparisons that might trigger SQLAlchemy loads
+                
+                logger.debug(f"Converting enrichment result of type: {type(enrichment_result).__name__}")
+                
+                if enrichment_result is not None:
+                    # Extract each field safely
+                    for field_name, default_value in [
+                        ('success', False),
+                        ('sources_used', []),
+                        ('metadata_sources', []),
+                        ('enriched_fields', []),
+                        ('metadata_found', {}),
+                        ('confidence_score', 0),
+                        ('processing_time', 0),
+                        ('errors', [])
+                    ]:
+                        try:
+                            # Use hasattr first to check if the attribute exists
+                            if hasattr(enrichment_result, field_name):
+                                value = getattr(enrichment_result, field_name, default_value)
+                                
+                                # Convert to appropriate types to ensure serialization
+                                if field_name in ['sources_used', 'metadata_sources', 'enriched_fields', 'errors']:
+                                    safe_result[field_name] = list(value) if value else []
+                                elif field_name == 'metadata_found':
+                                    safe_result[field_name] = dict(value) if value else {}
+                                elif field_name in ['confidence_score', 'processing_time']:
+                                    safe_result[field_name] = float(value) if value else 0.0
+                                elif field_name == 'success':
+                                    safe_result[field_name] = bool(value)
+                                else:
+                                    safe_result[field_name] = value
+                            else:
+                                safe_result[field_name] = default_value
+                                
+                        except Exception as field_error:
+                            error_msg = f"Could not extract field '{field_name}': {field_error}"
+                            logger.warning(error_msg)
+                            safe_result['errors'].append(error_msg)
+                            safe_result[field_name] = default_value
+                else:
+                    safe_result['errors'] = ['Enrichment service returned None']
+                    logger.warning("Enrichment result is None")
+                
+            except Exception as conversion_error:
+                error_msg = f"Failed to safely extract enrichment result: {conversion_error}"
+                logger.error(error_msg)
+                safe_result['errors'].append(error_msg)
+                safe_result['success'] = False
+            
+            # CRITICAL: Clear reference to original enrichment_result to prevent SQLAlchemy issues
+            enrichment_result = None
+            del enrichment_result
+            
+        except Exception as enrichment_error:
+            error_msg = f"Enrichment process failed: {enrichment_error}"
+            logger.error(error_msg)
+            safe_result['errors'].append(error_msg)
+            safe_result['success'] = False
+            
         finally:
             loop.close()
 
         self.update_progress(task_id, 95, "Processing enrichment results...")
-        
+
         # Brief pause to ensure WebSocket transmission
         import time
+
         time.sleep(0.5)
 
-        # Process results
-        if not enrichment_result or not enrichment_result.success:
-            error_msg = "Enrichment failed"
-            if enrichment_result and enrichment_result.errors:
-                error_msg = "; ".join(enrichment_result.errors)
-            raise Exception(error_msg)
+        # enrichment_result is now completely replaced with safe_result
+        enrichment_result = safe_result
+
+        # Now process the results - enrichment_result is now a safe dictionary
+        try:
+            # Check success status (enrichment_result is now a dictionary)
+            success = enrichment_result.get('success', False)
+            if not success:
+                error_msg = "Enrichment failed"
+                errors = enrichment_result.get('errors', [])
+                if errors:
+                    error_msg = "; ".join(str(e) for e in errors)
+                raise Exception(error_msg)
+                
+        except Exception as processing_error:
+            logger.error(f"Error processing enrichment result: {processing_error}")
+            raise Exception(f"Metadata enrichment failed: {processing_error}")
 
         # Skip video enrichment for testing
         enriched_videos_count = 0
@@ -173,7 +275,7 @@ def enrich_artist_metadata_task(
         self.update_progress(
             task_id, 100, f"Metadata enrichment completed for {artist_name}"
         )
-        
+
         # Brief pause to ensure final WebSocket transmission
         time.sleep(0.5)
 
@@ -182,13 +284,13 @@ def enrich_artist_metadata_task(
             "success": True,
             "artist_id": artist_id,
             "artist_name": artist_name,
-            "sources_updated": enrichment_result.sources_used or [],
-            "metadata_sources_used": enrichment_result.metadata_sources or [],
-            "metadata_fields_updated": enrichment_result.enriched_fields or [],
-            "metadata_found": enrichment_result.metadata_found or {},
+            "sources_updated": enrichment_result.get("sources_used", []),
+            "metadata_sources_used": enrichment_result.get("metadata_sources", []),
+            "metadata_fields_updated": enrichment_result.get("enriched_fields", []),
+            "metadata_found": enrichment_result.get("metadata_found", {}),
             "enriched_videos": enriched_videos_count,
-            "confidence_score": enrichment_result.confidence_score or 0,
-            "processing_time": enrichment_result.processing_time or 0,
+            "confidence_score": enrichment_result.get("confidence_score", 0),
+            "processing_time": enrichment_result.get("processing_time", 0),
         }
 
         logger.info(
@@ -498,93 +600,114 @@ def bulk_thumbnail_url_download(
     user_id=None,
 ):
     """Download thumbnails from source URLs with FFmpeg fallback"""
-    import httpx
     from pathlib import Path
     from urllib.parse import urlparse
-    
+
+    import httpx
+
     try:
         from src.jobs.redis_manager import redis_manager
-        
+
         task_id = self.request.id
         logger.info(f"Starting bulk thumbnail URL download task {task_id}")
-        
+
         # Initialize progress
-        redis_manager.set_job_progress(task_id, {
-            "percent": 0,
-            "message": "Starting thumbnail download process",
-            "status": "PROGRESS",
-            "current_step": "Initializing"
-        })
-        
+        redis_manager.set_job_progress(
+            task_id,
+            {
+                "percent": 0,
+                "message": "Starting thumbnail download process",
+                "status": "PROGRESS",
+                "current_step": "Initializing",
+            },
+        )
+
         init_db_standalone()
-        
+
         url_processed = 0
         ffmpeg_processed = 0
-        total_items = len(url_video_ids) + (len(ffmpeg_video_paths) if ffmpeg_video_paths else 0)
-        
+        total_items = len(url_video_ids) + (
+            len(ffmpeg_video_paths) if ffmpeg_video_paths else 0
+        )
+
         if total_items == 0:
-            redis_manager.set_job_progress(task_id, {
-                "percent": 100,
-                "message": "No videos to process",
-                "status": "SUCCESS"
-            })
+            redis_manager.set_job_progress(
+                task_id,
+                {
+                    "percent": 100,
+                    "message": "No videos to process",
+                    "status": "SUCCESS",
+                },
+            )
             return {"success": True, "url_processed": 0, "ffmpeg_processed": 0}
-        
+
         # Process URL videos first (faster)
         with get_db() as session:
             for i, video_id in enumerate(url_video_ids):
                 try:
                     progress = int((i / total_items) * 100)
-                    
+
                     video = session.query(Video).filter(Video.id == video_id).first()
                     if not video or not video.thumbnail_url:
                         continue
-                    
-                    redis_manager.set_job_progress(task_id, {
-                        "percent": progress,
-                        "message": f"Downloading thumbnail for {video.title[:50]}...",
-                        "status": "PROGRESS",
-                        "current_step": f"Processing video {i+1} of {len(url_video_ids)}"
-                    })
-                    
+
+                    redis_manager.set_job_progress(
+                        task_id,
+                        {
+                            "percent": progress,
+                            "message": f"Downloading thumbnail for {video.title[:50]}...",
+                            "status": "PROGRESS",
+                            "current_step": f"Processing video {i+1} of {len(url_video_ids)}",
+                        },
+                    )
+
                     # Download thumbnail from URL
                     thumbnail_dir = Path("/home/mike/mvidarr/data/thumbnails/videos")
                     thumbnail_dir.mkdir(parents=True, exist_ok=True)
-                    
+
                     parsed_url = urlparse(video.thumbnail_url)
-                    file_extension = Path(parsed_url.path).suffix.lower() or '.jpg'
-                    cached_thumbnail = thumbnail_dir / f"{video_id}_cached{file_extension}"
-                    
+                    file_extension = Path(parsed_url.path).suffix.lower() or ".jpg"
+                    cached_thumbnail = (
+                        thumbnail_dir / f"{video_id}_cached{file_extension}"
+                    )
+
                     # Download if not already cached
                     if not cached_thumbnail.exists():
                         with httpx.Client(timeout=10) as client:
                             response = client.get(video.thumbnail_url)
                             response.raise_for_status()
-                            with open(cached_thumbnail, 'wb') as f:
+                            with open(cached_thumbnail, "wb") as f:
                                 f.write(response.content)
-                    
+
                     # Update database
                     video.thumbnail_path = str(cached_thumbnail)
                     session.commit()
                     url_processed += 1
-                    
+
                 except Exception as e:
-                    logger.warning(f"Failed to download thumbnail for video {video_id}: {e}")
+                    logger.warning(
+                        f"Failed to download thumbnail for video {video_id}: {e}"
+                    )
                     continue
-        
+
         # Fallback to FFmpeg for videos without URLs
         if ffmpeg_video_paths:
-            from src.jobs.ffmpeg_processing_tasks import submit_bulk_thumbnail_creation_task
-            
+            from src.jobs.ffmpeg_processing_tasks import (
+                submit_bulk_thumbnail_creation_task,
+            )
+
             ffmpeg_progress_start = int((len(url_video_ids) / total_items) * 100)
-            
-            redis_manager.set_job_progress(task_id, {
-                "percent": ffmpeg_progress_start,
-                "message": f"Starting FFmpeg processing for {len(ffmpeg_video_paths)} videos",
-                "status": "PROGRESS",
-                "current_step": "FFmpeg thumbnail generation"
-            })
-            
+
+            redis_manager.set_job_progress(
+                task_id,
+                {
+                    "percent": ffmpeg_progress_start,
+                    "message": f"Starting FFmpeg processing for {len(ffmpeg_video_paths)} videos",
+                    "status": "PROGRESS",
+                    "current_step": "FFmpeg thumbnail generation",
+                },
+            )
+
             # Submit FFmpeg job and wait for completion
             ffmpeg_job_id = submit_bulk_thumbnail_creation_task(
                 video_paths=ffmpeg_video_paths,
@@ -595,36 +718,42 @@ def bulk_thumbnail_url_download(
                 priority=priority,
                 user_id=user_id,
             )
-            
+
             # For now, just mark as processed
             ffmpeg_processed = len(ffmpeg_video_paths)
-        
+
         # Final progress update
-        redis_manager.set_job_progress(task_id, {
-            "percent": 100,
-            "message": f"Completed: {url_processed} from URLs, {ffmpeg_processed} from FFmpeg",
-            "status": "SUCCESS",
-            "current_step": "Finished"
-        })
-        
+        redis_manager.set_job_progress(
+            task_id,
+            {
+                "percent": 100,
+                "message": f"Completed: {url_processed} from URLs, {ffmpeg_processed} from FFmpeg",
+                "status": "SUCCESS",
+                "current_step": "Finished",
+            },
+        )
+
         return {
             "success": True,
             "url_processed": url_processed,
             "ffmpeg_processed": ffmpeg_processed,
-            "total_processed": url_processed + ffmpeg_processed
+            "total_processed": url_processed + ffmpeg_processed,
         }
-        
+
     except Exception as e:
         error_msg = f"Bulk thumbnail download failed: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
-        
-        redis_manager.set_job_progress(task_id, {
-            "percent": 0,
-            "message": error_msg,
-            "status": "FAILURE",
-            "error": error_msg
-        })
-        
+
+        redis_manager.set_job_progress(
+            task_id,
+            {
+                "percent": 0,
+                "message": error_msg,
+                "status": "FAILURE",
+                "error": error_msg,
+            },
+        )
+
         raise Exception(error_msg)
 
 
@@ -641,6 +770,6 @@ def submit_bulk_thumbnail_url_download_task(
         priority=priority,
         user_id=user_id,
     )
-    
+
     logger.info(f"Submitted bulk thumbnail URL download task: {task.id}")
     return task.id

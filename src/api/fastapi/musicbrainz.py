@@ -163,7 +163,7 @@ async def test_connection(current_user: dict = Depends(require_authentication)):
                 "success": False,
                 "service": "MusicBrainz",
                 "status": "unavailable",
-                "error": "MusicBrainz service not available"
+                "error": "MusicBrainz service not available",
             }
 
         # Run connection test in background thread since it may be blocking

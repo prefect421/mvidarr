@@ -5491,7 +5491,7 @@ function renderDiscoverResults(data) {
                     
                     <div class="discovered-video-actions">
                         ${!video.already_exists && !video.imported ? `
-                            <button onclick="importSingleVideo('${video.youtube_id || video.imvdb_id}', '${video.youtube_id ? 'youtube' : 'imvdb'}', this)" class="btn btn-small btn-primary" data-video-data="${JSON.stringify(video).replace(/'/g, '&apos;')}" data-debug-source="${video.source || 'imvdb'}" data-debug-youtube="${video.youtube_id || 'none'}" data-debug-imvdb="${video.imvdb_id || 'none'}">🚀 Import</button>
+                            <button onclick="importSingleVideo('${video.youtube_id || video.imvdb_id}', '${video.youtube_id ? 'youtube' : 'imvdb'}', this)" class="btn btn-small btn-primary" data-video-data="${btoa(unescape(encodeURIComponent(JSON.stringify(video))))}" data-debug-source="${video.source || 'imvdb'}" data-debug-youtube="${video.youtube_id || 'none'}" data-debug-imvdb="${video.imvdb_id || 'none'}">🚀 Import</button>
                         ` : ''}
                         ${video.already_exists && video.existing_video_id ? `
                             <button onclick="viewVideoDetails(${video.existing_video_id})" class="btn btn-small btn-info">🔍 View Details</button>
@@ -6591,7 +6591,7 @@ function importSingleVideo(videoId, source = 'imvdb', buttonElement = null) {
     let videoData = null;
     if (buttonElement && buttonElement.dataset && buttonElement.dataset.videoData) {
         try {
-            videoData = JSON.parse(buttonElement.dataset.videoData);
+            videoData = JSON.parse(decodeURIComponent(escape(atob(buttonElement.dataset.videoData))));
         } catch (e) {
             console.error('Failed to parse video data:', e);
         }

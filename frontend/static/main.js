@@ -492,7 +492,7 @@ class AuthManager {
                 if (logoutEndpoint === '/simple-auth/logout') {
                     setTimeout(() => window.location.href = '/simple-auth/login', 1000);
                 } else if (logoutEndpoint === '/auth/dynamic-logout') {
-                    setTimeout(() => window.location.href = '/simple-login', 1000);
+                    setTimeout(() => window.location.href = '/auth/login', 1000);
                 } else {
                     setTimeout(() => window.location.reload(), 1000);
                 }
