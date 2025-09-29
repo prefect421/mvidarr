@@ -293,7 +293,44 @@ def enrich_artist_metadata_task(
         #     enriched_videos_count = self._enrich_artist_videos(artist_id, task_id)
 
         self.update_progress(
-            task_id, 100, f"Metadata enrichment completed for {artist_name}"
+            task_id, 95, f"Processing thumbnails for {artist_name}..."
+        )
+
+        # Auto-trigger thumbnail processing after successful enrichment
+        thumbnail_processed = False
+        try:
+            # Check if we found any thumbnail URLs during enrichment
+            from src.services.thumbnail_service import ThumbnailService
+            
+            # Re-query artist to get latest metadata with thumbnail URLs
+            with get_db() as session:
+                artist = session.query(Artist).filter(Artist.id == artist_id).first()
+                if artist and artist.imvdb_metadata:
+                    thumbnail_url = artist.imvdb_metadata.get("best_thumbnail_url")
+                    if thumbnail_url:
+                        logger.info(f"Auto-downloading thumbnail for {artist_name}: {thumbnail_url}")
+                        
+                        thumbnail_service = ThumbnailService()
+                        downloaded_path = thumbnail_service.download_artist_thumbnail(
+                            artist_name, thumbnail_url
+                        )
+                        
+                        if downloaded_path:
+                            # Update artist thumbnail URL
+                            artist.thumbnail_url = f"/api/artists/{artist_id}/thumbnail"
+                            session.commit()
+                            logger.info(f"Successfully downloaded and set thumbnail for {artist_name}: {downloaded_path}")
+                            thumbnail_processed = True
+                        else:
+                            logger.warning(f"Failed to download thumbnail for {artist_name}")
+                    else:
+                        logger.info(f"No thumbnail URL found in metadata for {artist_name}")
+        except Exception as e:
+            logger.warning(f"Error processing thumbnail for {artist_name}: {e}")
+
+        self.update_progress(
+            task_id, 100, f"Metadata enrichment completed for {artist_name}" + 
+            (" (thumbnail downloaded)" if thumbnail_processed else "")
         )
 
         # Brief pause to ensure final WebSocket transmission
@@ -311,6 +348,7 @@ def enrich_artist_metadata_task(
             "enriched_videos": enriched_videos_count,
             "confidence_score": enrichment_result.get("confidence_score", 0),
             "processing_time": enrichment_result.get("processing_time", 0),
+            "thumbnail_processed": thumbnail_processed,
         }
 
         logger.info(
