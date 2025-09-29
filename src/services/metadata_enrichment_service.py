@@ -1422,13 +1422,11 @@ class MetadataEnrichmentService:
             f"🔄 METADATA MERGE: After merge - final images: {len(existing_metadata.get('images', []))} items"
         )
 
-        # Assign artist thumbnail from collected images if not already set or force refresh
+        # Store thumbnail URL for later download (avoid network delays during enrichment)
         if (not artist.thumbnail_url or force_refresh) and existing_metadata.get(
             "images"
         ):
             try:
-                from src.services.thumbnail_service import thumbnail_service
-
                 images = existing_metadata["images"]
                 # Prefer high-quality images (largest size first)
                 best_image = None
@@ -1475,37 +1473,23 @@ class MetadataEnrichmentService:
                     # Get URL from either standard or LastFM format
                     best_image_url = best_image.get("url") or best_image.get("#text")
                     if best_image_url:
-                        # Download and set the artist thumbnail
-                        thumbnail_path = (
-                            self.thumbnail_service.download_artist_thumbnail(
-                                artist.name, best_image_url
-                            )
-                        )
-                        if thumbnail_path:
-                            # Store the local file path - the API will serve it via /api/artists/{id}/thumbnail
-                            artist.thumbnail_url = thumbnail_path
-                            artist.thumbnail_path = (
-                                thumbnail_path  # Also set thumbnail_path for the API
-                            )
-                            updated_fields["thumbnail_url"] = artist.thumbnail_url
-                            updated_fields["thumbnail_path"] = artist.thumbnail_path
-                            logger.info(
-                                f"Assigned thumbnail to artist {artist.name}: {artist.thumbnail_path}"
-                            )
-
-                        # Also store thumbnail info in metadata
-                        existing_metadata["thumbnail_assigned"] = True
+                        # Store thumbnail URL for later background download (avoid hanging here)
+                        artist.thumbnail_url = best_image_url
+                        updated_fields["thumbnail_url"] = artist.thumbnail_url
+                        
+                        # Store thumbnail info in metadata for later processing
+                        existing_metadata["thumbnail_pending"] = True
                         existing_metadata["thumbnail_source"] = best_image.get(
                             "source", "unknown"
                         )
-                        existing_metadata["thumbnail_url"] = artist.thumbnail_url
-                    else:
-                        logger.warning(
-                            f"Failed to download thumbnail for artist {artist.name}"
+                        existing_metadata["best_thumbnail_url"] = best_image_url
+                        
+                        logger.info(
+                            f"Stored thumbnail URL for artist {artist.name}: {best_image_url}"
                         )
 
             except Exception as e:
-                logger.error(f"Error assigning artist thumbnail: {e}")
+                logger.error(f"Error processing artist thumbnail metadata: {e}")
 
         # Ensure enrichment_date is always updated to show fresh data
         existing_metadata["enrichment_date"] = datetime.now().isoformat()
