@@ -1272,6 +1272,15 @@ class MetadataEnrichmentService:
         """Update artist record with aggregated metadata"""
         updated_fields = {}
 
+        # CRITICAL FIX: Ensure artist is attached to the session
+        # The artist object might be detached from the session, causing DetachedInstanceError
+        # when accessing lazy-loaded attributes. Re-attach it to the current session.
+        if artist not in session:
+            artist = session.merge(artist)
+        
+        # Alternatively, we can use session.add(artist) but merge is safer for detached objects
+        # session.add(artist)
+
         # Update external IDs
         if metadata.spotify_id and artist.spotify_id != metadata.spotify_id:
             artist.spotify_id = metadata.spotify_id
