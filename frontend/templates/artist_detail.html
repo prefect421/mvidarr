@@ -10200,25 +10200,20 @@ function searchGoogleImages(artistName) {
     // This is a placeholder implementation since we can't directly access Google Images API
     // In a real implementation, this would use Google Custom Search API or similar service
     return new Promise((resolve) => {
+        // Validate artistName to prevent "undefined" in URLs
+        if (!artistName || artistName === 'undefined' || artistName === 'null') {
+            console.warn('Invalid artist name for Google Images search:', artistName);
+            resolve([]); // Return empty results instead of broken placeholders
+            return;
+        }
+        
         // Simulate search delay
         setTimeout(() => {
-            // Generate some placeholder Google Images results
-            const placeholderResults = [
-                {
-                    url: `https://via.placeholder.com/300x300/0066cc/ffffff?text=${encodeURIComponent(artistName)}+1`,
-                    quality: 'high'
-                },
-                {
-                    url: `https://via.placeholder.com/400x400/cc6600/ffffff?text=${encodeURIComponent(artistName)}+2`, 
-                    quality: 'medium'
-                },
-                {
-                    url: `https://via.placeholder.com/350x350/009966/ffffff?text=${encodeURIComponent(artistName)}+3`,
-                    quality: 'high'
-                }
-            ];
-            resolve(placeholderResults);
-        }, 500);
+            // Since Google Images API requires licensing and this is just for development,
+            // we'll return empty results to avoid broken placeholder URLs
+            console.log('Google Images search placeholder - would search for:', artistName);
+            resolve([]); // Return empty array instead of placeholder images
+        }, 100);
     });
 }
 
