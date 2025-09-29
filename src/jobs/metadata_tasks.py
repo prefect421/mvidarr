@@ -111,26 +111,39 @@ def enrich_artist_metadata_task(
     logger.info(
         f"🔄 CELERY TASK DEBUG: force_refresh={force_refresh}, enrich_videos={enrich_videos}"
     )
+    logger.warning(f"🚨 DEBUG: CELERY TASK STARTED - Task ID: {task_id}, Artist: {artist_id}")
+    print(f"🚨 CONSOLE DEBUG: CELERY TASK STARTED - Task ID: {task_id}, Artist: {artist_id}")  # Force to console
 
     try:
         # Initialize database for FastAPI/Celery context
+        logger.warning(f"🚨 DEBUG: Initializing database...")
         init_db_standalone()
+        logger.warning(f"🚨 DEBUG: Database initialized successfully")
 
         # Update progress
+        logger.warning(f"🚨 DEBUG: Updating progress to 5%...")
         self.update_progress(task_id, 5, "Initializing enrichment service...")
+        logger.warning(f"🚨 DEBUG: Progress updated to 5%")
 
         # Get artist info (direct database access without Flask app context)
+        logger.warning(f"🚨 DEBUG: Querying database for artist {artist_id}...")
         with get_db() as session:
             artist = session.query(Artist).filter(Artist.id == artist_id).first()
             if not artist:
                 raise ValueError(f"Artist with ID {artist_id} not found")
 
             artist_name = artist.name
+        
+        logger.warning(f"🚨 DEBUG: Found artist: {artist_name}")
 
+        logger.warning(f"🚨 DEBUG: Updating progress to 10%...")
         self.update_progress(task_id, 10, f"Starting enrichment for {artist_name}...")
+        logger.warning(f"🚨 DEBUG: Progress updated to 10%")
 
         # Initialize enrichment service
+        logger.warning(f"🚨 DEBUG: Initializing enrichment service...")
         enrichment_service = MetadataEnrichmentService()
+        logger.warning(f"🚨 DEBUG: Enrichment service initialized")
 
         # Create progress callback that forwards to WebSocket system
         def metadata_progress_callback(progress: int, message: str):
@@ -138,14 +151,18 @@ def enrich_artist_metadata_task(
             self.update_progress(task_id, progress, message)
 
         # Run actual metadata enrichment with progress callbacks
+        logger.warning(f"🚨 DEBUG: Updating progress to 25%...")
         self.update_progress(task_id, 25, "Gathering metadata from external sources...")
-        logger.info(
-            f"🔄 CELERY TASK DEBUG: About to call enrichment_service.enrich_artist_metadata with force_refresh={force_refresh}"
+        logger.warning(f"🚨 DEBUG: Progress updated to 25%")
+        logger.warning(
+            f"🚨 DEBUG: About to call enrichment_service.enrich_artist_metadata with force_refresh={force_refresh}"
         )
 
         # Initialize and run the enrichment service
+        logger.warning(f"🚨 DEBUG: Creating new event loop...")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        logger.warning(f"🚨 DEBUG: Event loop created and set")
         
         # Prepare safe result structure BEFORE any enrichment operations
         safe_result = {
@@ -161,6 +178,7 @@ def enrich_artist_metadata_task(
         
         try:
             # Add timeout to prevent hanging (90 seconds - enough for external API calls)
+            logger.warning(f"🚨 DEBUG: Starting enrichment with timeout (90s)...")
             enrichment_result = loop.run_until_complete(
                 asyncio.wait_for(
                     enrichment_service.enrich_artist_metadata(
@@ -171,6 +189,7 @@ def enrich_artist_metadata_task(
                     timeout=90.0,
                 )
             )
+            logger.warning(f"🚨 DEBUG: Enrichment completed successfully!")
             
             # IMMEDIATELY convert enrichment_result to avoid SQLAlchemy session issues
             # The enrichment service may return objects containing detached SQLAlchemy models
