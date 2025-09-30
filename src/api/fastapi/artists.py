@@ -1458,8 +1458,25 @@ async def search_artist_thumbnail(
         if search_request.source in ["auto", "wikipedia"]:
             try:
                 logger.info(f"Searching Wikipedia for thumbnails: {search_query}")
-                wikipedia_url = wikipedia_service.search_artist_thumbnail(search_query)
-                logger.info(f"Wikipedia search result: {wikipedia_url}")
+                
+                # Try multiple search variations for better Wikipedia matches
+                search_terms = [search_query]
+                
+                # Add common variations for known problematic cases
+                if search_query.upper() == "REM":
+                    search_terms.extend(["R.E.M.", "R.E.M. band", "REM band"])
+                elif "." not in search_query and len(search_query.split()) == 1:
+                    # For single-word artists, try adding "band" or "musician"
+                    search_terms.extend([f"{search_query} band", f"{search_query} musician"])
+                
+                wikipedia_url = None
+                for term in search_terms:
+                    logger.debug(f"Trying Wikipedia search term: {term}")
+                    wikipedia_url = wikipedia_service.search_artist_thumbnail(term)
+                    if wikipedia_url:
+                        logger.info(f"Wikipedia search successful with term '{term}': {wikipedia_url}")
+                        break
+                
                 if wikipedia_url:
                     thumbnail_results.append(
                         {
@@ -1469,6 +1486,8 @@ async def search_artist_thumbnail(
                             "description": f"Wikipedia thumbnail for {search_query}",
                         }
                     )
+                else:
+                    logger.info(f"No Wikipedia thumbnail found for any variation of: {search_query}")
             except Exception as e:
                 logger.warning(f"Wikipedia thumbnail search failed: {e}")
 
@@ -1490,6 +1509,36 @@ async def search_artist_thumbnail(
                     )
             except Exception as e:
                 logger.warning(f"YouTube thumbnail search failed: {e}")
+
+        # Check for existing Spotify images in metadata
+        if search_request.source in ["auto", "spotify"]:
+            try:
+                logger.info(f"Checking existing Spotify images for: {search_query}")
+                if artist.spotify_metadata:
+                    spotify_data = artist.spotify_metadata
+                    spotify_images = spotify_data.get("images", [])
+                    
+                    # Add Spotify images to results (prefer larger images)
+                    for img in spotify_images:
+                        if img.get("url"):
+                            thumbnail_results.append(
+                                {
+                                    "source": "spotify",
+                                    "url": img["url"],
+                                    "title": f"{search_query} - Spotify Artist Image",
+                                    "width": img.get("width", 0),
+                                    "height": img.get("height", 0),
+                                }
+                            )
+                    
+                    if spotify_images:
+                        logger.info(f"Found {len(spotify_images)} Spotify images for {search_query}")
+                    else:
+                        logger.debug(f"No Spotify images found in metadata for {search_query}")
+                else:
+                    logger.debug(f"No Spotify metadata available for {search_query}")
+            except Exception as e:
+                logger.warning(f"Spotify image retrieval failed: {e}")
 
         return {
             "artist_id": artist_id,
