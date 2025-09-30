@@ -394,6 +394,14 @@ class YouTubeDownloadStrategy(DownloadStrategy):
 
     def _get_quality_format(self, quality: str) -> str:
         """Get optimized format string for YouTube downloads"""
+        # If quality contains yt-dlp format selectors, use it directly (for custom format strings)
+        if any(
+            selector in quality
+            for selector in ["bestvideo", "bestaudio", "bv", "ba", "bv*", "ba*", "+"]
+        ):
+            return quality
+
+        # Simple quality presets
         if quality == "best":
             # Prioritize combined formats to avoid audio/video sync issues
             return "bv*[height<=2160]+ba/best[height<=2160]/bv+ba/best"

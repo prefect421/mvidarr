@@ -58,6 +58,7 @@ class DownloadServiceAdapter:
         download_subtitles: bool = False,
         video_id: Optional[int] = None,
         download_id: Optional[int] = None,
+        format_string: Optional[str] = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -74,12 +75,14 @@ class DownloadServiceAdapter:
             anti_detection_level = self._get_anti_detection_level()
 
             # Create download context
+            # Use custom format string if provided (for quality upgrades), otherwise use quality
             context = DownloadContext(
                 video_id=video_id or 0,
                 url=url,
                 title=FilenameCleanup.sanitize_filename(title),
                 artist=artist,
-                quality=quality,
+                quality=format_string
+                or quality,  # Pass format_string as quality if provided
                 output_path=output_path,
                 cookies_path=(
                     self.cookies_path if os.path.exists(self.cookies_path) else None

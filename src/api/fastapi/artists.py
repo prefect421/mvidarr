@@ -473,7 +473,7 @@ async def discover_artists(
     """Discover artists from IMVDb by search term"""
     try:
         from src.services.imvdb_service import imvdb_service
-        
+
         search_term = q.strip()
         if not search_term:
             raise HTTPException(status_code=400, detail="Search term is required")
@@ -514,7 +514,7 @@ async def discover_artists(
         return {
             "artists": artists_list,
             "count": len(artists_list),
-            "search_term": search_term
+            "search_term": search_term,
         }
 
     except Exception as e:
@@ -627,9 +627,7 @@ async def create_artist(
             auto_results = artist_auto_processing_service.process_new_artist(
                 artist, session
             )
-            logger.info(
-                f"Auto-processing results for {artist.name}: {auto_results}"
-            )
+            logger.info(f"Auto-processing results for {artist.name}: {auto_results}")
 
         except ImportError:
             logger.warning("Artist auto-processing service not available")
@@ -1239,62 +1237,59 @@ async def set_artist_thumbnail(
 
         # Check if this is a delete request
         remove_thumbnail = thumbnail_data.get("remove_thumbnail", False)
-        
+
         if remove_thumbnail:
             # Handle thumbnail deletion
             try:
                 from src.services.thumbnail_service import ThumbnailService
+
                 thumbnail_service = ThumbnailService()
-                
+
                 # Delete existing thumbnail files if they exist
                 if artist.thumbnail_path:
                     thumbnail_service.delete_thumbnail_files(artist.thumbnail_path)
-                
+
                 # Clear thumbnail references
                 artist.thumbnail_url = None
                 artist.thumbnail_path = None
                 session.commit()
-                
+
                 logger.info(f"Successfully deleted thumbnail for artist {artist.name}")
-                return {
-                    "success": True,
-                    "message": "Thumbnail deleted successfully"
-                }
-                
+                return {"success": True, "message": "Thumbnail deleted successfully"}
+
             except Exception as e:
                 logger.error(f"Error deleting thumbnail for artist {artist_id}: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to delete thumbnail: {str(e)}")
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to delete thumbnail: {str(e)}"
+                )
 
         thumbnail_url = thumbnail_data.get("thumbnail_url")
         if not thumbnail_url:
-            raise HTTPException(status_code=400, detail="thumbnail_url is required for setting thumbnail")
+            raise HTTPException(
+                status_code=400,
+                detail="thumbnail_url is required for setting thumbnail",
+            )
 
-        # Download the thumbnail from the URL
+        # Download the thumbnail using ThumbnailService (with proper headers for Wikipedia)
         try:
-            response = requests.get(thumbnail_url, timeout=30)
-            response.raise_for_status()
+            from src.services.thumbnail_service import ThumbnailService
 
-            # Create thumbnails directory if it doesn't exist
-            thumbnail_dir = Path("data/thumbnails/artists")
-            thumbnail_dir.mkdir(parents=True, exist_ok=True)
+            thumbnail_service = ThumbnailService()
 
-            # Generate filename
-            import uuid
-            from urllib.parse import urlparse
+            # Use ThumbnailService which has proper User-Agent headers for Wikipedia and other sources
+            downloaded_path = thumbnail_service.download_artist_thumbnail(
+                artist.name, thumbnail_url
+            )
 
-            parsed_url = urlparse(thumbnail_url)
-            file_ext = Path(parsed_url.path).suffix or ".jpg"
-            artist_name_safe = artist.name.lower().replace(" ", "_").replace("-", "_")
-            filename = f"{artist_name_safe}_{uuid.uuid4().hex[:12]}{file_ext}"
-            file_path = thumbnail_dir / filename
-
-            # Save downloaded file
-            with open(file_path, "wb") as f:
-                f.write(response.content)
+            if not downloaded_path:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Failed to download thumbnail - may be a placeholder or invalid image",
+                )
 
             # Update artist record
-            artist.thumbnail_path = str(file_path)
-            artist.thumbnail_url = str(file_path)
+            artist.thumbnail_path = downloaded_path
+            artist.thumbnail_url = f"/api/artists/{artist_id}/thumbnail"
             artist.thumbnail_source = "manual"
             artist.thumbnail_uploaded_at = datetime.utcnow()
 
@@ -1303,8 +1298,8 @@ async def set_artist_thumbnail(
             return {
                 "success": True,
                 "message": "Thumbnail set successfully",
-                "thumbnail_path": str(file_path),
-                "thumbnail_url": thumbnail_url,
+                "thumbnail_path": downloaded_path,
+                "thumbnail_url": f"/api/artists/{artist_id}/thumbnail",
             }
 
         except Exception as e:
@@ -1458,25 +1453,29 @@ async def search_artist_thumbnail(
         if search_request.source in ["auto", "wikipedia"]:
             try:
                 logger.info(f"Searching Wikipedia for thumbnails: {search_query}")
-                
+
                 # Try multiple search variations for better Wikipedia matches
                 search_terms = [search_query]
-                
+
                 # Add common variations for known problematic cases
                 if search_query.upper() == "REM":
                     search_terms.extend(["R.E.M.", "R.E.M. band", "REM band"])
                 elif "." not in search_query and len(search_query.split()) == 1:
                     # For single-word artists, try adding "band" or "musician"
-                    search_terms.extend([f"{search_query} band", f"{search_query} musician"])
-                
+                    search_terms.extend(
+                        [f"{search_query} band", f"{search_query} musician"]
+                    )
+
                 wikipedia_url = None
                 for term in search_terms:
                     logger.debug(f"Trying Wikipedia search term: {term}")
                     wikipedia_url = wikipedia_service.search_artist_thumbnail(term)
                     if wikipedia_url:
-                        logger.info(f"Wikipedia search successful with term '{term}': {wikipedia_url}")
+                        logger.info(
+                            f"Wikipedia search successful with term '{term}': {wikipedia_url}"
+                        )
                         break
-                
+
                 if wikipedia_url:
                     thumbnail_results.append(
                         {
@@ -1487,7 +1486,9 @@ async def search_artist_thumbnail(
                         }
                     )
                 else:
-                    logger.info(f"No Wikipedia thumbnail found for any variation of: {search_query}")
+                    logger.info(
+                        f"No Wikipedia thumbnail found for any variation of: {search_query}"
+                    )
             except Exception as e:
                 logger.warning(f"Wikipedia thumbnail search failed: {e}")
 
@@ -1517,7 +1518,7 @@ async def search_artist_thumbnail(
                 if artist.imvdb_metadata:
                     metadata = artist.imvdb_metadata
                     images = metadata.get("images", [])
-                    
+
                     # Helper function to check if image is a placeholder
                     def is_placeholder_image(url):
                         if not url:
@@ -1526,35 +1527,54 @@ async def search_artist_thumbnail(
                             "2a96cbd8b46e442fc41c2b86b821562f.png",
                             "4128a6eb29f94943c9d206c08e625904",
                             "c6f59c1e5e7240a4c0d427abd71f3dbb",
-                            "placeholder", "default", "generic", "no-image"
+                            "placeholder",
+                            "default",
+                            "generic",
+                            "no-image",
                         ]
-                        return any(pattern in url.lower() for pattern in placeholder_patterns)
-                    
+                        return any(
+                            pattern in url.lower() for pattern in placeholder_patterns
+                        )
+
                     # Process Last.fm/metadata images
                     valid_images = []
                     for img in images:
                         img_url = None
                         img_size = "unknown"
-                        
+
                         # Handle different image formats
                         if isinstance(img, dict):
                             img_url = img.get("#text") or img.get("url")
                             img_size = img.get("size", "unknown")
                         elif isinstance(img, str):
                             img_url = img
-                        
+
                         # Skip placeholder images
                         if img_url and not is_placeholder_image(img_url):
-                            valid_images.append({
-                                "url": img_url,
-                                "size": img_size,
-                                "source": "lastfm" if "lastfm" in img_url else "metadata"
-                            })
-                    
+                            valid_images.append(
+                                {
+                                    "url": img_url,
+                                    "size": img_size,
+                                    "source": (
+                                        "lastfm" if "lastfm" in img_url else "metadata"
+                                    ),
+                                }
+                            )
+
                     # Add valid images to results (prefer larger sizes)
-                    size_priority = {"mega": 5, "extralarge": 4, "large": 3, "medium": 2, "small": 1, "": 0, "unknown": 0}
-                    valid_images.sort(key=lambda x: size_priority.get(x["size"], 0), reverse=True)
-                    
+                    size_priority = {
+                        "mega": 5,
+                        "extralarge": 4,
+                        "large": 3,
+                        "medium": 2,
+                        "small": 1,
+                        "": 0,
+                        "unknown": 0,
+                    }
+                    valid_images.sort(
+                        key=lambda x: size_priority.get(x["size"], 0), reverse=True
+                    )
+
                     for img in valid_images[:3]:  # Limit to top 3 images
                         thumbnail_results.append(
                             {
@@ -1564,11 +1584,15 @@ async def search_artist_thumbnail(
                                 "size": img["size"],
                             }
                         )
-                    
+
                     if valid_images:
-                        logger.info(f"Found {len(valid_images)} valid metadata images for {search_query}")
+                        logger.info(
+                            f"Found {len(valid_images)} valid metadata images for {search_query}"
+                        )
                     else:
-                        logger.debug(f"No valid (non-placeholder) metadata images found for {search_query}")
+                        logger.debug(
+                            f"No valid (non-placeholder) metadata images found for {search_query}"
+                        )
                 else:
                     logger.debug(f"No metadata available for {search_query}")
             except Exception as e:
@@ -1614,31 +1638,31 @@ async def set_artist_thumbnail(
 
         # Check if this is a delete request
         remove_thumbnail = thumbnail_data.get("remove_thumbnail", False)
-        
+
         if remove_thumbnail:
             # Handle thumbnail deletion
             try:
                 from src.services.thumbnail_service import ThumbnailService
+
                 thumbnail_service = ThumbnailService()
-                
+
                 # Delete existing thumbnail files if they exist
                 if artist.thumbnail_path:
                     thumbnail_service.delete_thumbnail_files(artist.thumbnail_path)
-                
+
                 # Clear thumbnail references
                 artist.thumbnail_url = None
                 artist.thumbnail_path = None
                 session.commit()
-                
+
                 logger.info(f"Successfully deleted thumbnail for artist {artist.name}")
-                return {
-                    "success": True,
-                    "message": "Thumbnail deleted successfully"
-                }
-                
+                return {"success": True, "message": "Thumbnail deleted successfully"}
+
             except Exception as e:
                 logger.error(f"Error deleting thumbnail for artist {artist_id}: {e}")
-                raise HTTPException(status_code=500, detail=f"Failed to delete thumbnail: {str(e)}")
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to delete thumbnail: {str(e)}"
+                )
 
         # Get thumbnail URL from request for setting thumbnail
         thumbnail_url = thumbnail_data.get("thumbnail_url")
@@ -1647,7 +1671,10 @@ async def set_artist_thumbnail(
         )
 
         if not thumbnail_url:
-            raise HTTPException(status_code=400, detail="thumbnail_url is required for setting thumbnail")
+            raise HTTPException(
+                status_code=400,
+                detail="thumbnail_url is required for setting thumbnail",
+            )
 
         if not isinstance(thumbnail_url, str) or not thumbnail_url.strip():
             raise HTTPException(
@@ -2474,7 +2501,9 @@ async def manually_process_artist(
         if not artist:
             raise HTTPException(status_code=404, detail=f"Artist {artist_id} not found")
 
-        logger.info(f"Manually running auto-processing for artist {artist.name} (ID: {artist_id})")
+        logger.info(
+            f"Manually running auto-processing for artist {artist.name} (ID: {artist_id})"
+        )
 
         # Run the auto-processing pipeline
         from src.services.artist_auto_processing_service import (
@@ -2484,17 +2513,19 @@ async def manually_process_artist(
         auto_results = artist_auto_processing_service.process_new_artist(
             artist, session
         )
-        
+
         session.commit()
-        
-        logger.info(f"Manual auto-processing completed for {artist.name}: {auto_results}")
+
+        logger.info(
+            f"Manual auto-processing completed for {artist.name}: {auto_results}"
+        )
 
         return {
             "success": True,
             "artist_id": artist_id,
             "artist_name": artist.name,
             "results": auto_results,
-            "message": f"Auto-processing completed for {artist.name}"
+            "message": f"Auto-processing completed for {artist.name}",
         }
 
     except Exception as e:
@@ -2510,13 +2541,15 @@ async def bulk_auto_process_artists(
 ):
     """Run auto-processing for all artists that are missing metadata or thumbnails"""
     try:
-        from sqlalchemy import or_, and_
+        from sqlalchemy import and_, or_
 
         # Find artists that need auto-processing
         if force_refresh:
             # Process all artists if force refresh is requested
             artists_to_process = session.query(Artist).all()
-            logger.info(f"Force refresh requested - processing all {len(artists_to_process)} artists")
+            logger.info(
+                f"Force refresh requested - processing all {len(artists_to_process)} artists"
+            )
         else:
             # Find artists missing critical data (no external service IDs, no metadata, no thumbnails)
             artists_to_process = (
@@ -2529,19 +2562,21 @@ async def bulk_auto_process_artists(
                             Artist.lastfm_name.is_(None),
                             Artist.musicbrainz_id.is_(None),
                             Artist.biography.is_(None),
-                            Artist.thumbnail_url.is_(None)
+                            Artist.thumbnail_url.is_(None),
                         )
                     )
                 )
                 .all()
             )
-            logger.info(f"Found {len(artists_to_process)} artists needing auto-processing")
+            logger.info(
+                f"Found {len(artists_to_process)} artists needing auto-processing"
+            )
 
         if not artists_to_process:
             return {
                 "success": True,
                 "processed_count": 0,
-                "message": "No artists need auto-processing"
+                "message": "No artists need auto-processing",
             }
 
         # Import the auto-processing service
@@ -2558,40 +2593,54 @@ async def bulk_auto_process_artists(
         for artist in artists_to_process:
             try:
                 logger.info(f"Auto-processing artist: {artist.name} (ID: {artist.id})")
-                
+
                 auto_results = artist_auto_processing_service.process_new_artist(
                     artist, session
                 )
-                
+
                 processed_count += 1
                 if auto_results.get("errors"):
                     error_count += 1
                 else:
                     success_count += 1
-                
-                results.append({
-                    "artist_id": artist.id,
-                    "artist_name": artist.name,
-                    "success": len(auto_results.get("errors", [])) == 0,
-                    "auto_match_count": auto_results.get("auto_match", {}).get("match_count", 0),
-                    "metadata_enriched": auto_results.get("metadata_enrichment", {}).get("success", False),
-                    "thumbnail_found": auto_results.get("thumbnail_generation", {}).get("success", False)
-                })
-                
+
+                results.append(
+                    {
+                        "artist_id": artist.id,
+                        "artist_name": artist.name,
+                        "success": len(auto_results.get("errors", [])) == 0,
+                        "auto_match_count": auto_results.get("auto_match", {}).get(
+                            "match_count", 0
+                        ),
+                        "metadata_enriched": auto_results.get(
+                            "metadata_enrichment", {}
+                        ).get("success", False),
+                        "thumbnail_found": auto_results.get(
+                            "thumbnail_generation", {}
+                        ).get("success", False),
+                    }
+                )
+
                 # Commit after each artist to avoid losing progress on errors
                 session.commit()
-                
+
             except Exception as e:
                 error_count += 1
-                logger.error(f"Error processing artist {artist.name} (ID: {artist.id}): {e}")
-                results.append({
-                    "artist_id": artist.id,
-                    "artist_name": artist.name,
-                    "success": False,
-                    "error": str(e)
-                })
+                logger.error(
+                    f"Error processing artist {artist.name} (ID: {artist.id}): {e}"
+                )
+                results.append(
+                    {
+                        "artist_id": artist.id,
+                        "artist_name": artist.name,
+                        "success": False,
+                        "error": str(e),
+                    }
+                )
 
-        logger.info(f"Bulk auto-processing completed: {processed_count} processed, {success_count} successful, {error_count} errors")
+        logger.info(
+            f"Bulk auto-processing completed: {processed_count} processed, {success_count} successful, {error_count} errors"
+        )
 
         return {
             "success": True,
@@ -2599,7 +2648,7 @@ async def bulk_auto_process_artists(
             "success_count": success_count,
             "error_count": error_count,
             "results": results,
-            "message": f"Processed {processed_count} artists ({success_count} successful, {error_count} errors)"
+            "message": f"Processed {processed_count} artists ({success_count} successful, {error_count} errors)",
         }
 
     except Exception as e:
@@ -2611,26 +2660,41 @@ def _is_placeholder_url(url: str) -> bool:
     """Check if URL is a known placeholder image"""
     if not url:
         return True
-        
+
     url_lower = url.lower()
-    
+
     # Known placeholder patterns
     placeholder_patterns = [
         # Last.fm placeholder images
         "2a96cbd8b46e442fc41c2b86b821562f.png",
         "lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f",
-        
         # Generic placeholders
-        "placeholder", "default", "generic", "no-image", "blank",
-        "missing", "unavailable", "coming-soon", "avatar-default",
-        "profile-default", "default_artist", "artist_placeholder",
-        "music_placeholder", "album_default", "cover_default",
-        
+        "placeholder",
+        "default",
+        "generic",
+        "no-image",
+        "blank",
+        "missing",
+        "unavailable",
+        "coming-soon",
+        "avatar-default",
+        "profile-default",
+        "default_artist",
+        "artist_placeholder",
+        "music_placeholder",
+        "album_default",
+        "cover_default",
         # Common placeholder files
-        "grey.gif", "transparent.png", "1x1.png", "spacer.gif",
-        "default.jpg", "default.png", "placeholder.jpg", "placeholder.png",
+        "grey.gif",
+        "transparent.png",
+        "1x1.png",
+        "spacer.gif",
+        "default.jpg",
+        "default.png",
+        "placeholder.jpg",
+        "placeholder.png",
     ]
-    
+
     return any(pattern in url_lower for pattern in placeholder_patterns)
 
 
@@ -2642,7 +2706,7 @@ async def scan_missing_thumbnails(
     """Scan all artists missing thumbnails and try to find images"""
     try:
         from sqlalchemy import or_
-        
+
         # Get artists without thumbnails
         artists_without_thumbnails = (
             session.query(Artist.id, Artist.name)
@@ -2656,80 +2720,110 @@ async def scan_missing_thumbnails(
             )
             .all()
         )
-        
+
         missing_count = len(artists_without_thumbnails)
         updated_count = 0
-        
-        logger.info(f"Starting thumbnail scan for {missing_count} artists without thumbnails")
-        
+
+        logger.info(
+            f"Starting thumbnail scan for {missing_count} artists without thumbnails"
+        )
+
         # Process each artist
         for artist_data in artists_without_thumbnails:
             try:
                 artist_id, artist_name = artist_data
-                logger.info(f"Searching thumbnails for artist: {artist_name} (ID: {artist_id})")
-                
+                logger.info(
+                    f"Searching thumbnails for artist: {artist_name} (ID: {artist_id})"
+                )
+
                 thumbnail_url = None
-                
+
                 # Try multiple sources for thumbnails
                 # 1. Try Wikipedia first (usually high quality)
                 try:
-                    wikipedia_url = wikipedia_service.search_artist_thumbnail(artist_name)
+                    wikipedia_url = wikipedia_service.search_artist_thumbnail(
+                        artist_name
+                    )
                     if wikipedia_url and not _is_placeholder_url(wikipedia_url):
                         thumbnail_url = wikipedia_url
-                        logger.info(f"Found Wikipedia thumbnail for {artist_name}: {wikipedia_url}")
+                        logger.info(
+                            f"Found Wikipedia thumbnail for {artist_name}: {wikipedia_url}"
+                        )
                 except Exception as e:
                     logger.debug(f"Wikipedia search failed for {artist_name}: {e}")
-                
+
                 # 2. Try YouTube channel thumbnail if Wikipedia didn't work
                 if not thumbnail_url:
                     try:
-                        from src.services.youtube_search_service import search_artist_channel_thumbnail
+                        from src.services.youtube_search_service import (
+                            search_artist_channel_thumbnail,
+                        )
+
                         youtube_url = search_artist_channel_thumbnail(artist_name)
                         if youtube_url and not _is_placeholder_url(youtube_url):
                             thumbnail_url = youtube_url
-                            logger.info(f"Found YouTube thumbnail for {artist_name}: {youtube_url}")
+                            logger.info(
+                                f"Found YouTube thumbnail for {artist_name}: {youtube_url}"
+                            )
                     except Exception as e:
                         logger.debug(f"YouTube search failed for {artist_name}: {e}")
-                
+
                 # 3. If we found a thumbnail, download and set it
                 if thumbnail_url:
                     try:
                         from src.services.thumbnail_service import ThumbnailService
+
                         thumbnail_service = ThumbnailService()
-                        
+
                         # Download the thumbnail
                         downloaded_path = thumbnail_service.download_artist_thumbnail(
                             artist_name, thumbnail_url
                         )
-                        
+
                         if downloaded_path:
                             # Update artist with thumbnail
-                            artist = session.query(Artist).filter(Artist.id == artist_id).first()
+                            artist = (
+                                session.query(Artist)
+                                .filter(Artist.id == artist_id)
+                                .first()
+                            )
                             if artist:
-                                artist.thumbnail_url = f"/api/artists/{artist_id}/thumbnail"
+                                artist.thumbnail_url = (
+                                    f"/api/artists/{artist_id}/thumbnail"
+                                )
                                 session.commit()
                                 updated_count += 1
-                                logger.info(f"Successfully updated thumbnail for {artist_name}")
+                                logger.info(
+                                    f"Successfully updated thumbnail for {artist_name}"
+                                )
                         else:
-                            logger.warning(f"Failed to download thumbnail for {artist_name}")
-                            
+                            logger.warning(
+                                f"Failed to download thumbnail for {artist_name}"
+                            )
+
                     except Exception as e:
-                        logger.warning(f"Failed to download thumbnail for {artist_name}: {e}")
+                        logger.warning(
+                            f"Failed to download thumbnail for {artist_name}: {e}"
+                        )
                 else:
                     logger.info(f"No suitable thumbnail found for {artist_name}")
-                        
+
             except Exception as e:
                 logger.error(f"Error processing thumbnail for {artist_name}: {e}")
                 continue
-        
+
         return {
             "success": True,
             "message": f"Thumbnail scan completed",
             "missing_count": missing_count,
             "updated_count": updated_count,
-            "found_rate": f"{(updated_count/missing_count*100):.1f}%" if missing_count > 0 else "0%"
+            "found_rate": (
+                f"{(updated_count/missing_count*100):.1f}%"
+                if missing_count > 0
+                else "0%"
+            ),
         }
-        
+
     except Exception as e:
         logger.error(f"Error scanning missing thumbnails: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -15,6 +15,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from src.api.fastapi.logging_middleware import setup_logging_middleware
+
 # OpenAPI documentation configuration
 from src.api.openapi_config import (
     add_openapi_metadata_to_routers,
@@ -28,12 +30,12 @@ from src.database.connection import DatabaseManager, get_db
 
 # Database initialization
 from src.database.init_db import initialize_database
+
 # Old Flask job system imports removed - using Celery now
 from src.services.settings_service import SettingsService
 from src.services.ytdlp_service import ytdlp_service
 from src.utils.logger import get_logger
-from src.utils.structured_logger import setup_structured_logging, get_structured_logger
-from src.api.fastapi.logging_middleware import setup_logging_middleware
+from src.utils.structured_logger import get_structured_logger, setup_structured_logging
 
 # Setup structured logging
 setup_structured_logging()
@@ -95,17 +97,17 @@ async def lifespan(app: FastAPI):
         logger.info("🔄 Initializing background job system...")
         # Background jobs are now handled by Celery + Redis system
         logger.info("✅ Background jobs handled by Celery + Redis system")
-        
+
         # Initialize WebSocket system for real-time job progress
         logger.info("🔄 Initializing WebSocket job progress system...")
         await init_websocket_system(app)
         logger.info("✅ WebSocket job progress system initialized")
-        
+
         # Start job scheduler for advanced job features
         logger.info("🔄 Starting advanced job scheduler...")
         await start_job_scheduler()
         logger.info("✅ Advanced job scheduler started")
-        
+
         # Initialize ytdlp_service and resume pending downloads
         logger.info("🔄 Initializing ytdlp_service and resuming pending downloads...")
         try:
@@ -129,12 +131,12 @@ async def lifespan(app: FastAPI):
             logger.info("🔄 Stopping advanced job scheduler...")
             await stop_job_scheduler()
             logger.info("✅ Advanced job scheduler stopped")
-            
+
             # Cleanup WebSocket system
             logger.info("🔄 Stopping WebSocket job progress system...")
             await cleanup_websocket_system()
             logger.info("✅ WebSocket system stopped")
-            
+
             # Celery workers are managed independently
             logger.info("✅ Background job system (Celery) managed independently")
 
@@ -238,11 +240,11 @@ app = FastAPI(
 from src.api.fastapi.mobile_access import mobile_router
 
 # Phase 3 Week 29 Integration - Personal Cloud Backup & Basic Integrations
+from src.api.fastapi.week29_integration import youtube_router  # Re-enabled
 from src.api.fastapi.week29_integration import (
     backup_router,
     network_router,
     sync_router,
-    youtube_router,  # Re-enabled
 )
 
 # Include Week 29 API routers
@@ -253,72 +255,91 @@ app.include_router(sync_router, prefix="/api")
 app.include_router(mobile_router)
 
 # Enhanced Artist Discovery Router
-from src.api.fastapi.enhanced_artist_discovery import router as enhanced_discovery_router
+from src.api.fastapi.enhanced_artist_discovery import (
+    router as enhanced_discovery_router,
+)
+
 app.include_router(enhanced_discovery_router)
 
 # YouTube Playlists Router
 from src.api.fastapi.youtube_playlists import router as youtube_playlists_router
+
 app.include_router(youtube_playlists_router)
 
 # Enhanced Scheduler Router
 from src.api.fastapi.enhanced_scheduler import router as enhanced_scheduler_router
+
 app.include_router(enhanced_scheduler_router)
 
 # Webhooks Router
 from src.api.fastapi.webhooks import router as webhooks_router
+
 app.include_router(webhooks_router)
 
 # Video Discovery Router
 from src.api.fastapi.video_discovery import router as video_discovery_router
+
 app.include_router(video_discovery_router)
 
 # Security Router
 from src.api.fastapi.security import router as security_router
+
 app.include_router(security_router)
 
 # Video Organization Router
 from src.api.fastapi.video_organization import router as video_org_router
+
 app.include_router(video_org_router)
 
 # Video Indexing Router
 from src.api.fastapi.video_indexing import router as video_indexing_router
+
 app.include_router(video_indexing_router)
 
 # MeTube Router
 from src.api.fastapi.metube import router as metube_router
+
 app.include_router(metube_router)
 
 # YTDLP Router
 from src.api.fastapi.ytdlp import router as ytdlp_router
+
 app.include_router(ytdlp_router)
 
 # Optimization Router
 from src.api.fastapi.optimization import router as optimization_router
+
 app.include_router(optimization_router)
 
 # VLC Streaming Router
 from src.api.fastapi.vlc_streaming import router as vlc_router
+
 app.include_router(vlc_router)
 
 # Spotify Enhanced Router
 from src.api.fastapi.spotify_enhanced import router as spotify_enhanced_router
+
 app.include_router(spotify_enhanced_router)
 
 # IMVDb Router
 from src.api.fastapi.imvdb import router as imvdb_router
+
 app.include_router(imvdb_router)
 
 # Plex Router
 from src.api.fastapi.plex import router as plex_router
+
 app.include_router(plex_router)
 
 # Lidarr Router
 from src.api.fastapi.lidarr import router as lidarr_router
+
 app.include_router(lidarr_router)
 
 # Health Check Router - Comprehensive Production Health Monitoring
 from src.api.fastapi.health import health_router
 from src.api.fastapi.oauth_setup import router as oauth_setup_router
+
 app.include_router(health_router, prefix="/api")
 app.include_router(oauth_setup_router, prefix="/api/oauth")
 
@@ -394,7 +415,7 @@ try:
         refresh_token_expire_days=7,  # Shorter refresh period
         algorithm="HS256",
     )
-    
+
     app.add_middleware(JWTAuthMiddleware, config=basic_token_config)
     logger.info("✅ JWT Authentication middleware enabled with safe configuration")
 except Exception as e:
@@ -404,7 +425,9 @@ except Exception as e:
 
 # Setup structured logging middleware for production monitoring
 setup_logging_middleware(app)
-structured_logger.info("Structured logging middleware enabled for production monitoring")
+structured_logger.info(
+    "Structured logging middleware enabled for production monitoring"
+)
 
 # TODO: Re-enable other middleware after fixing MediaCacheManager and Redis issues
 # app.add_middleware(CircuitBreakerMiddleware, config=CircuitBreakerConfig())
@@ -425,15 +448,16 @@ app.mount("/css", StaticFiles(directory="frontend/CSS"), name="css")
 
 # Use AsyncTemplateSystem instead of basic Jinja2Templates for Flask compatibility
 from src.api.fastapi.template_system import get_template_system
+
 template_system = get_template_system()
 templates = template_system.templates
 
 from src.api.fastapi.advanced_image_processing import router as advanced_image_router
+from src.api.fastapi.advanced_jobs import router as advanced_jobs_router
 from src.api.fastapi.image_processing import router as image_processing_router
 
 # Include API routers - Re-enabling critical endpoints
 from src.api.fastapi.jobs import router as jobs_router
-from src.api.fastapi.advanced_jobs import router as advanced_jobs_router
 from src.api.fastapi.media_processing import router as media_processing_router
 
 # Re-enable critical missing routers
@@ -455,8 +479,8 @@ except Exception as e:
 from src.api.fastapi.admin import router as fastapi_admin_router
 from src.api.fastapi.api_gateway_management import router as gateway_router
 from src.api.fastapi.artists import router as fastapi_artists_router
-from src.api.fastapi.auth import router as fastapi_auth_router
 from src.api.fastapi.auth import legacy_router as fastapi_auth_legacy_router
+from src.api.fastapi.auth import router as fastapi_auth_router
 from src.api.fastapi.frontend_router import frontend_router
 from src.api.fastapi.genres import router as fastapi_genres_router
 from src.api.fastapi.monitoring_dashboard import router as dashboard_router
@@ -495,6 +519,7 @@ app.include_router(fastapi_auth_router)
 app.include_router(fastapi_auth_legacy_router)
 app.include_router(frontend_router)
 
+from src.api.fastapi.advanced_search import router as advanced_search_router
 from src.api.fastapi.lastfm import router as lastfm_router
 
 # Metadata enrichment routers
@@ -502,9 +527,8 @@ from src.api.fastapi.metadata_enrichment import router as metadata_enrichment_ro
 from src.api.fastapi.musicbrainz import router as musicbrainz_router
 from src.api.fastapi.spotify import router as spotify_router
 from src.api.fastapi.themes import router as themes_router
-from src.api.fastapi.users import router as users_router
-from src.api.fastapi.advanced_search import router as advanced_search_router
 from src.api.fastapi.two_factor_auth import router as two_factor_router
+from src.api.fastapi.users import router as users_router
 
 app.include_router(metadata_enrichment_router)
 app.include_router(spotify_router)
@@ -1086,6 +1110,7 @@ async def get_metube_history(limit: int = 10):
 async def clear_stuck_downloads(force: bool = False):
     """Clear downloads stuck in processing state"""
     import asyncio
+
     try:
         from datetime import datetime, timedelta
 
@@ -1156,11 +1181,20 @@ async def clear_stuck_downloads(force: bool = False):
 
 
 @app.post("/api/metube/download/{download_id}/retry")
-async def retry_download(download_id: int):
+async def retry_download(download_id: str):
     """Retry a failed download"""
     try:
-        result = ytdlp_service.retry_download(download_id)
+        # Handle download IDs with 'db_' prefix from frontend
+        if download_id.startswith("db_"):
+            actual_download_id = int(download_id[3:])  # Remove 'db_' prefix
+        else:
+            actual_download_id = int(download_id)
+
+        result = ytdlp_service.retry_download(actual_download_id)
         return result
+    except ValueError as e:
+        logger.error(f"Invalid download ID format: {download_id}")
+        return {"success": False, "error": f"Invalid download ID format: {download_id}"}
     except Exception as e:
         logger.error(f"Error retrying download {download_id}: {e}")
         return {"success": False, "error": str(e)}
@@ -1171,36 +1205,42 @@ async def delete_download(download_id: int):
     """Delete a queued download"""
     try:
         from sqlalchemy.orm import Session
+
         from src.database.connection import get_db_session
         from src.database.models import Download
 
         session_gen = get_db_session()
         session: Session = next(session_gen)
-        
+
         try:
             # Find the download
-            download = session.query(Download).filter(Download.id == download_id).first()
-            
+            download = (
+                session.query(Download).filter(Download.id == download_id).first()
+            )
+
             if not download:
                 return {"success": False, "error": "Download not found"}
-            
+
             # Only allow deletion of queued, failed, or completed downloads
             if download.status not in ["queued", "failed", "completed", "cancelled"]:
-                return {"success": False, "error": f"Cannot delete download with status: {download.status}"}
-            
+                return {
+                    "success": False,
+                    "error": f"Cannot delete download with status: {download.status}",
+                }
+
             # Delete the download
             session.delete(download)
             session.commit()
-            
+
             logger.info(f"Deleted download {download_id}: {download.title}")
             return {
-                "success": True, 
-                "message": f"Download {download_id} deleted successfully"
+                "success": True,
+                "message": f"Download {download_id} deleted successfully",
             }
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         logger.error(f"Error deleting download {download_id}: {e}")
         return {"success": False, "error": str(e)}
@@ -1258,7 +1298,7 @@ async def search_imvdb_videos(q: str = Query(...)):
                 "artist": f"Artist {i+1}",
                 "year": 2020 + i,
                 "director": f"Director {i+1}",
-                "imvdb_url": f"https://imvdb.com/video/mock_{i}"
+                "imvdb_url": f"https://imvdb.com/video/mock_{i}",
             }
             for i in range(3)
         ]
@@ -1267,17 +1307,12 @@ async def search_imvdb_videos(q: str = Query(...)):
             "success": True,
             "query": q,
             "results": mock_results,
-            "total": len(mock_results)
+            "total": len(mock_results),
         }
 
     except Exception as e:
         logger.error(f"IMVDb search failed: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "results": [],
-            "total": 0
-        }
+        return {"success": False, "error": str(e), "results": [], "total": 0}
 
 
 @app.post("/api/metube/process-queue")
@@ -1413,11 +1448,13 @@ async def dynamic_logout():
 
 
 # WebSocket routes imported from dedicated module
-from src.api.fastapi.websocket_jobs import init_websocket_system, cleanup_websocket_system
+from src.api.fastapi.websocket_jobs import (
+    cleanup_websocket_system,
+    init_websocket_system,
+)
 
 # Job scheduler for advanced job features
 from src.services.job_scheduler import start_job_scheduler, stop_job_scheduler
-
 
 if __name__ == "__main__":
     import uvicorn

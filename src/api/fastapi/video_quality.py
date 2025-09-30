@@ -3,9 +3,9 @@ FastAPI Video Quality API Router
 Native asyncio support for video quality analysis and upgrades
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 # Removed background job imports - now using Celery directly
@@ -52,20 +52,14 @@ class BulkUpgradeRequest(BaseModel):
 
 
 # Authentication dependencies
-from src.api.fastapi.auth_dependencies import get_current_user_legacy
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    user = await get_current_user_legacy()
-    return user.get("username", "admin")
+from src.api.fastapi.auth_dependencies import require_authentication_legacy
 
 
 @router.post("/upgrade/{video_id}")
 async def upgrade_video_quality(
     video_id: int,
-    request: VideoUpgradeRequest,
-    current_user: str = Depends(get_current_user),
+    upgrade_request: VideoUpgradeRequest,
+    current_user: dict = Depends(require_authentication_legacy),
 ):
     """Upgrade a video to higher quality (background job)"""
     try:
@@ -74,7 +68,7 @@ async def upgrade_video_quality(
 
         # Process upgrade directly (this will now use Celery for the download)
         upgrade_result = video_quality_service.upgrade_video_quality(
-            video_id, request.user_id
+            video_id, current_user.get("user_id")
         )
 
         if not upgrade_result.get("success"):
@@ -86,7 +80,7 @@ async def upgrade_video_quality(
                 },
             )
 
-        job_id = upgrade_result.get("download_job_id", f"upgrade-{video_id}")
+        job_id = str(upgrade_result.get("download_job_id", f"upgrade-{video_id}"))
         logger.info(
             f"Processed video quality upgrade for video {video_id}: {upgrade_result}"
         )
@@ -104,7 +98,7 @@ async def upgrade_video_quality(
 
 @router.post("/analyze/{video_id}")
 async def analyze_video_quality(
-    video_id: int, current_user: str = Depends(get_current_user)
+    video_id: int, current_user: dict = Depends(require_authentication_legacy)
 ):
     """Analyze the quality of a specific video (background job)"""
     try:
@@ -176,7 +170,8 @@ async def find_upgradeable_videos() -> UpgradeableVideosResponse:
 
 @router.post("/bulk-upgrade")
 async def bulk_upgrade_videos(
-    request: BulkUpgradeRequest, current_user: str = Depends(get_current_user)
+    request: BulkUpgradeRequest,
+    current_user: dict = Depends(require_authentication_legacy),
 ):
     """Upgrade multiple videos to higher quality (background job)"""
     try:

@@ -63,6 +63,8 @@ class YtDlpService:
         subtitle_languages: str = "en,en-US",
         artist_folder_path: str = None,
         user_id: int = None,
+        format_string: str = None,
+        upgrade_mode: bool = False,
     ) -> Dict:
         """
         Add a music video download using yt-dlp CLI directly
@@ -77,6 +79,7 @@ class YtDlpService:
             subtitle_languages: Language codes for subtitles (e.g., "en,en-US,fr")
             artist_folder_path: Optional custom folder path for the artist (overrides artist name)
             user_id: Optional user ID for quality preferences
+            upgrade_mode: Whether this is a quality upgrade (replaces existing file)
 
         Returns:
             Dictionary with download submission result
@@ -160,35 +163,44 @@ class YtDlpService:
                     "error": f"Directory creation failed: {str(e)}",
                 }
 
-            # Get quality format string from quality service
-            try:
-                from src.services.video_quality_service import video_quality_service
+            # Get quality format string - use provided format_string if available (for upgrades)
+            if format_string:
+                quality_format_string = format_string
+                logger.info(
+                    f"Using provided format string: {quality_format_string[:100]}..."
+                )
+            else:
+                # Get quality format string from quality service
+                try:
+                    from src.services.video_quality_service import video_quality_service
 
-                # Find artist ID if video_id is provided
-                artist_id = None
-                if video_id:
-                    with get_db() as temp_session:
-                        from src.database.models import Video as VideoModel
+                    # Find artist ID if video_id is provided
+                    artist_id = None
+                    if video_id:
+                        with get_db() as temp_session:
+                            from src.database.models import Video as VideoModel
 
-                        video_obj = (
-                            temp_session.query(VideoModel)
-                            .filter(VideoModel.id == video_id)
-                            .first()
+                            video_obj = (
+                                temp_session.query(VideoModel)
+                                .filter(VideoModel.id == video_id)
+                                .first()
+                            )
+                            if video_obj:
+                                artist_id = video_obj.artist_id
+
+                    quality_format_string = (
+                        video_quality_service.generate_ytdlp_format_string(
+                            user_id, artist_id
                         )
-                        if video_obj:
-                            artist_id = video_obj.artist_id
-
-                quality_format_string = (
-                    video_quality_service.generate_ytdlp_format_string(
-                        user_id, artist_id
                     )
-                )
-                logger.info(f"Using quality format string: {quality_format_string}")
-            except Exception as quality_error:
-                logger.warning(
-                    f"Failed to get quality format string, using default: {quality_error}"
-                )
-                quality_format_string = "bv*[height<=1080]+ba/best[height<=1080]/18/worst"  # Restore quality preference with fallback
+                    logger.info(
+                        f"Using generated quality format string: {quality_format_string[:100]}..."
+                    )
+                except Exception as quality_error:
+                    logger.warning(
+                        f"Failed to get quality format string, using default: {quality_error}"
+                    )
+                    quality_format_string = "bv*[height<=1080]+ba/best[height<=1080]/18/worst"  # Restore quality preference with fallback
 
             # Check for existing active downloads for this video
             if video_id:
@@ -230,6 +242,7 @@ class YtDlpService:
                 "file_path": None,
                 "file_size": None,
                 "db_download_id": None,  # Track corresponding database ID
+                "upgrade_mode": upgrade_mode,  # Track if this is a quality upgrade
             }
 
             # Create database record for persistent history
@@ -598,18 +611,31 @@ class YtDlpService:
             # Check video metadata for upgrade flag
             if hasattr(video, "video_metadata") and video.video_metadata:
                 is_upgrade = video.video_metadata.get("upgrade_requested", False)
+                logger.info(f"Video {video.id} upgrade_requested flag: {is_upgrade}")
 
             # Also check if this looks like an upgrade based on file paths
             # (new file in same directory, different filename)
             if not is_upgrade and original_file_path and new_file_path:
                 original_dir = os.path.dirname(original_file_path)
                 new_dir = os.path.dirname(new_file_path)
+                original_basename = os.path.basename(original_file_path)
+                new_basename = os.path.basename(new_file_path)
+
                 # Same directory but different files suggests upgrade
-                is_upgrade = original_dir == new_dir and os.path.basename(
-                    original_file_path
-                ) != os.path.basename(new_file_path)
+                is_upgrade = (
+                    original_dir == new_dir and original_basename != new_basename
+                )
+
+                if is_upgrade:
+                    logger.info(
+                        f"Video {video.id} detected as upgrade based on file paths: "
+                        f"{original_basename} -> {new_basename}"
+                    )
 
             if not is_upgrade:
+                logger.debug(
+                    f"Not a quality upgrade for video {video.id}, skipping cleanup"
+                )
                 return  # Not a quality upgrade, don't delete anything
 
             # Check user preference for auto-deletion

@@ -737,15 +737,16 @@ class VideoQualityService:
                 download = Download(
                     artist_id=video_artist_id,
                     video_id=video_id,
-                    title=f"{video_title} (Quality Upgrade)",
+                    title=video_title,  # Use original title so file has same name
                     original_url=video_url_for_download,
                     status="pending",
                     priority=1,  # High priority for upgrades
-                    quality="best",
+                    quality=user_prefs.get("default_quality", "best"),
                     download_metadata={
                         "upgrade_mode": True,
                         "original_quality": current_analysis.get("current_quality"),
                         "target_quality": user_prefs.get("default_quality"),
+                        "format_string": new_format_string,  # Store for debugging
                     },
                 )
                 session.add(download)
@@ -753,28 +754,30 @@ class VideoQualityService:
 
                 # Create download options for Celery task
                 download_options = {
-                    "quality": "best",
+                    "quality": user_prefs.get("default_quality", "best"),
+                    "format_string": new_format_string,  # Pass the sophisticated format string
                     "download_subtitles": False,
                     "download_id": download.id,
                     "video_id": video_id,
                     "artist_id": video_artist_id,
                     "artist": artist_name,
-                    "title": f"{video_title} (Quality Upgrade)",
+                    "title": video_title,  # Use original title so file has same name
                     "upgrade_mode": True,
                     "target_quality": user_prefs.get("default_quality"),
                 }
 
-                # Queue the download using Celery
+                # Queue the download using Celery with the custom format string
                 result = ytdlp_service.add_music_video_download(
-                    artist=artist_name_for_download,
+                    artist=artist_name,
                     title=video_title,
                     url=video_url_for_download,
-                    quality=target_quality,
+                    quality=user_prefs.get("default_quality", "best"),
+                    format_string=new_format_string,  # Pass the sophisticated format string!
                     download_subtitles=False,
                     video_id=video_id,
-                    download_id=download.id,
+                    upgrade_mode=True,  # Mark as upgrade so file replacement works correctly
                 )
-                download_job_id = task_result.id
+                download_job_id = result.get("id", "unknown")
 
                 self.logger.info(
                     f"Queued Celery download task {download_job_id} for quality upgrade of video {video_id}"

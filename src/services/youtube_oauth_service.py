@@ -312,7 +312,7 @@ class YouTubeOAuthService:
             "--add-header",
             f"Authorization:Bearer {self.access_token}",
             "--extractor-args",
-            "youtube:player_client=web",
+            "youtube:player_client=tv,android",  # Use TV/Android clients for better format availability (web client forces SABR streaming)
         ]
 
     def _get_fallback_args(self) -> list:
