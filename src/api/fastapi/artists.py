@@ -1510,35 +1510,69 @@ async def search_artist_thumbnail(
             except Exception as e:
                 logger.warning(f"YouTube thumbnail search failed: {e}")
 
-        # Check for existing Spotify images in metadata
-        if search_request.source in ["auto", "spotify"]:
+        # Check for existing metadata images (Spotify, Last.fm, etc.)
+        if search_request.source in ["auto", "spotify", "lastfm", "metadata"]:
             try:
-                logger.info(f"Checking existing Spotify images for: {search_query}")
-                if artist.spotify_metadata:
-                    spotify_data = artist.spotify_metadata
-                    spotify_images = spotify_data.get("images", [])
+                logger.info(f"Checking existing metadata images for: {search_query}")
+                if artist.imvdb_metadata:
+                    metadata = artist.imvdb_metadata
+                    images = metadata.get("images", [])
                     
-                    # Add Spotify images to results (prefer larger images)
-                    for img in spotify_images:
-                        if img.get("url"):
-                            thumbnail_results.append(
-                                {
-                                    "source": "spotify",
-                                    "url": img["url"],
-                                    "title": f"{search_query} - Spotify Artist Image",
-                                    "width": img.get("width", 0),
-                                    "height": img.get("height", 0),
-                                }
-                            )
+                    # Helper function to check if image is a placeholder
+                    def is_placeholder_image(url):
+                        if not url:
+                            return True
+                        placeholder_patterns = [
+                            "2a96cbd8b46e442fc41c2b86b821562f.png",
+                            "4128a6eb29f94943c9d206c08e625904",
+                            "c6f59c1e5e7240a4c0d427abd71f3dbb",
+                            "placeholder", "default", "generic", "no-image"
+                        ]
+                        return any(pattern in url.lower() for pattern in placeholder_patterns)
                     
-                    if spotify_images:
-                        logger.info(f"Found {len(spotify_images)} Spotify images for {search_query}")
+                    # Process Last.fm/metadata images
+                    valid_images = []
+                    for img in images:
+                        img_url = None
+                        img_size = "unknown"
+                        
+                        # Handle different image formats
+                        if isinstance(img, dict):
+                            img_url = img.get("#text") or img.get("url")
+                            img_size = img.get("size", "unknown")
+                        elif isinstance(img, str):
+                            img_url = img
+                        
+                        # Skip placeholder images
+                        if img_url and not is_placeholder_image(img_url):
+                            valid_images.append({
+                                "url": img_url,
+                                "size": img_size,
+                                "source": "lastfm" if "lastfm" in img_url else "metadata"
+                            })
+                    
+                    # Add valid images to results (prefer larger sizes)
+                    size_priority = {"mega": 5, "extralarge": 4, "large": 3, "medium": 2, "small": 1, "": 0, "unknown": 0}
+                    valid_images.sort(key=lambda x: size_priority.get(x["size"], 0), reverse=True)
+                    
+                    for img in valid_images[:3]:  # Limit to top 3 images
+                        thumbnail_results.append(
+                            {
+                                "source": img["source"],
+                                "url": img["url"],
+                                "title": f"{search_query} - {img['source'].title()} Image ({img['size']})",
+                                "size": img["size"],
+                            }
+                        )
+                    
+                    if valid_images:
+                        logger.info(f"Found {len(valid_images)} valid metadata images for {search_query}")
                     else:
-                        logger.debug(f"No Spotify images found in metadata for {search_query}")
+                        logger.debug(f"No valid (non-placeholder) metadata images found for {search_query}")
                 else:
-                    logger.debug(f"No Spotify metadata available for {search_query}")
+                    logger.debug(f"No metadata available for {search_query}")
             except Exception as e:
-                logger.warning(f"Spotify image retrieval failed: {e}")
+                logger.warning(f"Metadata image retrieval failed: {e}")
 
         return {
             "artist_id": artist_id,
