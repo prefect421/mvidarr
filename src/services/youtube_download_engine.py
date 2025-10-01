@@ -304,6 +304,24 @@ class YouTubeDownloadEngine:
                 downloaded_file = self._find_downloaded_file(
                     output_template, output_lines
                 )
+
+                # Handle .temp files that couldn't be renamed (filesystem issues)
+                if downloaded_file and downloaded_file.endswith(".temp.mp4"):
+                    final_file = downloaded_file.replace(".temp.mp4", ".mp4")
+                    try:
+                        # Try force rename with multiple strategies
+                        if self._force_rename_temp_file(downloaded_file, final_file):
+                            downloaded_file = final_file
+                            logger.info(f"Successfully renamed temp file: {final_file}")
+                        else:
+                            logger.warning(
+                                f"Could not rename temp file, using as-is: {downloaded_file}"
+                            )
+                    except Exception as rename_error:
+                        logger.warning(
+                            f"Temp file rename failed, using as-is: {rename_error}"
+                        )
+
                 if downloaded_file and os.path.exists(downloaded_file):
                     file_size = os.path.getsize(downloaded_file)
 
@@ -485,6 +503,61 @@ class YouTubeDownloadEngine:
                 return os.path.join(base_dir, found_files[0])
 
         return None
+
+    def _force_rename_temp_file(self, temp_file: str, final_file: str) -> bool:
+        """
+        Force rename a .temp file to final file using multiple strategies
+        Handles filesystem issues like unlinked inodes or locked files
+        """
+        import time
+
+        try:
+            # Strategy 1: Simple rename (works most of the time)
+            if not os.path.exists(final_file):
+                os.rename(temp_file, final_file)
+                return True
+
+            # Strategy 2: Final file exists - remove it first then rename
+            logger.warning(f"Final file exists, attempting to remove: {final_file}")
+            try:
+                os.remove(final_file)
+                time.sleep(0.1)  # Brief pause for filesystem
+                os.rename(temp_file, final_file)
+                return True
+            except (OSError, PermissionError) as e:
+                logger.warning(f"Could not remove existing file: {e}")
+
+            # Strategy 3: Use shutil.move (handles cross-device links)
+            try:
+                if os.path.exists(final_file):
+                    os.remove(final_file)
+                shutil.move(temp_file, final_file)
+                return True
+            except Exception as e:
+                logger.warning(f"shutil.move failed: {e}")
+
+            # Strategy 4: Copy then delete (last resort, preserves temp if fails)
+            try:
+                if os.path.exists(final_file):
+                    os.remove(final_file)
+                shutil.copy2(temp_file, final_file)
+                # Verify copy succeeded before deleting temp
+                if os.path.exists(final_file) and os.path.getsize(
+                    final_file
+                ) == os.path.getsize(temp_file):
+                    os.remove(temp_file)
+                    logger.info("Used copy+delete strategy for temp file")
+                    return True
+            except Exception as e:
+                logger.warning(f"copy+delete failed: {e}")
+
+            # All strategies failed - temp file will be used as-is
+            logger.error(f"All rename strategies failed for {temp_file}")
+            return False
+
+        except Exception as e:
+            logger.error(f"Unexpected error in _force_rename_temp_file: {e}")
+            return False
 
     def _extract_metadata(self, file_path: str) -> Optional[Dict]:
         """Extract metadata from info.json"""
