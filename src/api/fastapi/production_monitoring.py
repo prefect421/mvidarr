@@ -4,12 +4,14 @@ Comprehensive production monitoring, health checks, and system status endpoints
 """
 
 import asyncio
+import os
 import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import psutil
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from src.database.async_connection import get_async_db_manager

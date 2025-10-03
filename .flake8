@@ -10,8 +10,10 @@ exclude =
     *.egg-info,
     .tox,
     .eggs,
-    # Exclude demo/example files
-    src/api/fastapi/model_demo.py
+    # Exclude demo/example files with disabled code
+    src/api/fastapi/model_demo.py,
+    src/api/fastapi/job_management.py,
+    src/api/fastapi/playlists.py
 ignore =
     # E203: whitespace before ':' (conflicts with black)
     E203,

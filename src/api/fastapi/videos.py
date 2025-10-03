@@ -23,6 +23,7 @@ from fastapi import (
     Depends,
     File,
     HTTPException,
+    status,
 )
 from fastapi import Path as FastAPIPath
 from fastapi import (
@@ -128,6 +129,7 @@ class VideoResponse(BaseModel):
 class VideoUpdateRequest(BaseModel):
     title: Optional[str] = None
     artist_id: Optional[int] = None
+    artist_name: Optional[str] = None  # Allow updating by artist name
     url: Optional[str] = None
     youtube_url: Optional[str] = None
     status: Optional[str] = None
@@ -776,6 +778,47 @@ async def search_videos(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/search-artists")
+async def search_artists(
+    q: str = Query("", min_length=0),
+    session: Session = Depends(get_db_session)
+):
+    """Search for existing artists by name"""
+    try:
+        query = q.strip()
+
+        if not query or len(query) < 2:
+            return {"artists": []}
+
+        # Search for artists whose names contain the query (case-insensitive)
+        artists = (
+            session.query(Artist)
+            .filter(Artist.name.ilike(f"%{query}%"))
+            .filter(Artist.name != "Unknown Artist")
+            .order_by(Artist.name)
+            .limit(10)
+            .all()
+        )
+
+        # Format results
+        results = []
+        for artist in artists:
+            # Count videos for this artist
+            video_count = session.query(Video).filter(Video.artist_id == artist.id).count()
+
+            results.append({
+                "id": artist.id,
+                "name": artist.name,
+                "video_count": video_count
+            })
+
+        return {"artists": results}
+
+    except Exception as e:
+        logger.error(f"Error searching artists: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{video_id}", response_model=VideoResponse)
 async def get_video(
     video_id: int = FastAPIPath(..., ge=1), session: Session = Depends(get_db_session)
@@ -841,6 +884,19 @@ async def update_video(
 
         # Update fields if provided
         update_fields = update_data.dict(exclude_unset=True)
+
+        # Handle artist_name - find or create artist and set artist_id
+        if "artist_name" in update_fields:
+            artist_name = update_fields.pop("artist_name")
+            if artist_name:
+                # Find or create artist
+                artist = session.query(Artist).filter(Artist.name == artist_name).first()
+                if not artist:
+                    artist = Artist(name=artist_name)
+                    session.add(artist)
+                    session.flush()  # Get the artist ID
+                video.artist_id = artist.id
+                logger.info(f"Updated video {video_id} artist to: {artist_name} (ID: {artist.id})")
 
         for field, value in update_fields.items():
             if field == "genres" and value:

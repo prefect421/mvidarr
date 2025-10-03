@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-# Removed background job imports - now using Celery directly
+from src.services.job_queue import BackgroundJob, JobPriority, JobType, get_job_queue
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.fastapi.video_quality")
