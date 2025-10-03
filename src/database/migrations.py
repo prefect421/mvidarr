@@ -265,12 +265,92 @@ class MigrationManager:
     """Manages database migrations"""
 
     def __init__(self):
+        # Legacy class-based migrations (kept for compatibility)
         self.migrations: List[Migration] = [
             Migration_001_AddPlaylistThumbnailUrl(),
             Migration_002_AddDynamicPlaylists(),
             Migration_003_AddArtistLabelsMembers(),
-            # Add new migrations here
         ]
+
+        # Load file-based migrations from migrations/ directory
+        self._load_file_migrations()
+
+    def _load_file_migrations(self):
+        """Load file-based migrations from migrations/ directory"""
+        import importlib.util
+        import sys
+        from pathlib import Path
+
+        migrations_dir = Path(__file__).parent.parent.parent / "migrations"
+
+        if not migrations_dir.exists():
+            logger.warning(f"Migrations directory not found: {migrations_dir}")
+            return
+
+        # Find all migration files (format: NNN_*.py)
+        migration_files = sorted(migrations_dir.glob("[0-9][0-9][0-9]_*.py"))
+
+        for migration_file in migration_files:
+            try:
+                # Extract version number from filename (e.g., "010" from "010_add_video_enrichment_fields.py")
+                version = migration_file.stem[:3]
+
+                # Skip if this migration version is already loaded (class-based)
+                if any(m.version == version for m in self.migrations):
+                    logger.debug(f"Migration {version} already loaded (class-based), skipping file")
+                    continue
+
+                # Load the migration module dynamically
+                spec = importlib.util.spec_from_file_location(f"migration_{version}", migration_file)
+                if spec and spec.loader:
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules[f"migration_{version}"] = module
+                    spec.loader.exec_module(module)
+
+                    # Check if module has upgrade/downgrade functions
+                    if not hasattr(module, 'upgrade'):
+                        logger.warning(f"Migration {migration_file.name} missing upgrade() function")
+                        continue
+
+                    # Create a wrapper Migration object for the file-based migration
+                    description = migration_file.stem[4:].replace('_', ' ').title()
+                    file_migration = self._create_file_migration_wrapper(version, description, module)
+                    self.migrations.append(file_migration)
+
+                    logger.debug(f"Loaded file-based migration: {version} - {description}")
+
+            except Exception as e:
+                logger.error(f"Failed to load migration {migration_file.name}: {e}")
+
+        # Sort migrations by version
+        self.migrations.sort(key=lambda m: m.version)
+        logger.info(f"Loaded {len(self.migrations)} total migrations")
+
+    def _create_file_migration_wrapper(self, version: str, description: str, module) -> Migration:
+        """Create a Migration wrapper for file-based migrations"""
+
+        class FileMigration(Migration):
+            def __init__(self, v, d, mod):
+                super().__init__(v, d)
+                self.module = mod
+
+            def up(self, connection):
+                """Execute the upgrade() function from the migration file"""
+                # File-based migrations manage their own sessions, so we don't pass connection
+                # They use get_db() internally
+                if hasattr(self.module, 'upgrade'):
+                    self.module.upgrade()
+                else:
+                    raise NotImplementedError(f"Migration {self.version} missing upgrade() function")
+
+            def down(self, connection):
+                """Execute the downgrade() function from the migration file"""
+                if hasattr(self.module, 'downgrade'):
+                    self.module.downgrade()
+                else:
+                    logger.warning(f"Migration {self.version} has no downgrade() function")
+
+        return FileMigration(version, description, module)
 
     def ensure_migrations_table(self, connection):
         """Create migrations table if it doesn't exist"""
