@@ -94,16 +94,16 @@ sys.path.insert(0, '/app')
 sys.path.insert(0, '/app/src')
 print('Running database migrations...')
 try:
-    from migrations.run_migrations import run_all_migrations
+    from src.database.migrations import run_migrations
     print('✅ Migration module loaded')
-    result = run_all_migrations()
+    result = run_migrations()
     if result:
         print('✅ Migrations completed successfully')
     else:
-        print('⚠️ Migrations returned False (may be already applied)')
+        print('⚠️ No pending migrations')
 except ImportError as e:
     print(f'⚠️ Migration module not found: {e}')
-    print('Skipping migrations - ensure migrations directory is in Docker image')
+    print('Skipping migrations - will run during database init')
 except Exception as e:
     print(f'⚠️ Migration error: {e}')
     print('Continuing with application startup...')
