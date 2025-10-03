@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main
-      - dev
+      # Disabled for dev - Kubernetes deployment not needed for self-hosted target audience
+      # - dev
     paths:
       - 'kubernetes/**'
       - 'docker/**'
@@ -14,7 +15,8 @@ on:
   pull_request:
     branches:
       - main
-      - dev
+      # Disabled for dev
+      # - dev
     paths:
       - 'kubernetes/**'
       - 'docker/**'

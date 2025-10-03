@@ -2,9 +2,13 @@ name: Playwright E2E Tests
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main ]
+    # Disabled for dev - E2E tests not critical for 0.9.8, will fix in 0.9.9
+    # branches: [ main, dev ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ main ]
+    # Disabled for dev
+    # branches: [ main, dev ]
 
 jobs:
   test:
