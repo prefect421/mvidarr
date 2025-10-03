@@ -22,7 +22,8 @@ class RedisManager:
 
     def __init__(self, redis_url: Optional[str] = None, auto_connect: bool = False):
         self.redis_url = redis_url or os.environ.get(
-            "REDIS_URL", "redis://localhost:6379/0"
+            "REDIS_URL",
+            os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
         )
         self.redis_client = None
         self.connection_pool = None
