@@ -17,19 +17,21 @@ from src.utils.logger import get_logger
 logger = get_logger("mvidarr.migration_004")
 
 
-def upgrade():
+def upgrade(connection):
     """Add thumbnail metadata and source tracking columns"""
     logger.info("Running migration 004: Add thumbnail metadata and source tracking")
 
     try:
-        with get_db() as session:
+        # Use the connection provided by the migration system
+        # DO NOT use get_db() as it will close the connection
+        if True:  # Keep indentation for minimal changes
             # Check and add thumbnail metadata columns to artists table
             # Check if thumbnail_source already exists
-            result = session.execute(
+            result = connection.execute(
                 text("SHOW COLUMNS FROM artists LIKE 'thumbnail_source'")
             )
             if not result.fetchone():
-                session.execute(
+                connection.execute(
                     text(
                         """
                     ALTER TABLE artists
@@ -44,11 +46,11 @@ def upgrade():
                 logger.info("Thumbnail metadata columns already exist in artists table")
 
             # Check and add thumbnail metadata columns to videos table
-            result = session.execute(
+            result = connection.execute(
                 text("SHOW COLUMNS FROM videos LIKE 'thumbnail_source'")
             )
             if not result.fetchone():
-                session.execute(
+                connection.execute(
                     text(
                         """
                     ALTER TABLE videos
@@ -63,7 +65,7 @@ def upgrade():
                 logger.info("Thumbnail metadata columns already exist in videos table")
 
             # Set default source for existing thumbnails
-            session.execute(
+            connection.execute(
                 text(
                     """
                 UPDATE artists
@@ -73,7 +75,7 @@ def upgrade():
                 )
             )
 
-            session.execute(
+            connection.execute(
                 text(
                     """
                 UPDATE videos
@@ -92,14 +94,15 @@ def upgrade():
         raise
 
 
-def downgrade():
+def downgrade(connection):
     """Remove thumbnail metadata and source tracking columns"""
     logger.info("Running downgrade for migration 004")
 
     try:
-        with get_db() as session:
+        # Use the connection provided by the migration system
+        if True:  # Keep indentation for minimal changes
             # Remove thumbnail metadata columns from artists table
-            session.execute(
+            connection.execute(
                 text(
                     """
                 ALTER TABLE artists
@@ -111,7 +114,7 @@ def downgrade():
             )
 
             # Remove thumbnail metadata columns from videos table
-            session.execute(
+            connection.execute(
                 text(
                     """
                 ALTER TABLE videos

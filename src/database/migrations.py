@@ -348,23 +348,40 @@ class MigrationManager:
 
             def up(self, connection):
                 """Execute the upgrade() function from the migration file"""
-                # File-based migrations manage their own sessions, so we don't pass connection
-                # They use get_db() internally
-                if hasattr(self.module, "upgrade"):
-                    self.module.upgrade()
-                else:
+                # Check if migration upgrade() accepts a connection parameter
+                import inspect
+
+                if not hasattr(self.module, "upgrade"):
                     raise NotImplementedError(
                         f"Migration {self.version} missing upgrade() function"
                     )
 
+                upgrade_sig = inspect.signature(self.module.upgrade)
+                if len(upgrade_sig.parameters) > 0:
+                    # Migration accepts connection parameter - pass it
+                    self.module.upgrade(connection)
+                else:
+                    # Migration uses get_db() internally (legacy)
+                    self.module.upgrade()
+
             def down(self, connection):
                 """Execute the downgrade() function from the migration file"""
-                if hasattr(self.module, "downgrade"):
-                    self.module.downgrade()
-                else:
+                if not hasattr(self.module, "downgrade"):
                     logger.warning(
                         f"Migration {self.version} has no downgrade() function"
                     )
+                    return
+
+                # Check if downgrade() accepts a connection parameter
+                import inspect
+
+                downgrade_sig = inspect.signature(self.module.downgrade)
+                if len(downgrade_sig.parameters) > 0:
+                    # Migration accepts connection parameter - pass it
+                    self.module.downgrade(connection)
+                else:
+                    # Migration uses get_db() internally (legacy)
+                    self.module.downgrade()
 
         return FileMigration(version, description, module)
 
