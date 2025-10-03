@@ -297,27 +297,37 @@ class MigrationManager:
 
                 # Skip if this migration version is already loaded (class-based)
                 if any(m.version == version for m in self.migrations):
-                    logger.debug(f"Migration {version} already loaded (class-based), skipping file")
+                    logger.debug(
+                        f"Migration {version} already loaded (class-based), skipping file"
+                    )
                     continue
 
                 # Load the migration module dynamically
-                spec = importlib.util.spec_from_file_location(f"migration_{version}", migration_file)
+                spec = importlib.util.spec_from_file_location(
+                    f"migration_{version}", migration_file
+                )
                 if spec and spec.loader:
                     module = importlib.util.module_from_spec(spec)
                     sys.modules[f"migration_{version}"] = module
                     spec.loader.exec_module(module)
 
                     # Check if module has upgrade/downgrade functions
-                    if not hasattr(module, 'upgrade'):
-                        logger.warning(f"Migration {migration_file.name} missing upgrade() function")
+                    if not hasattr(module, "upgrade"):
+                        logger.warning(
+                            f"Migration {migration_file.name} missing upgrade() function"
+                        )
                         continue
 
                     # Create a wrapper Migration object for the file-based migration
-                    description = migration_file.stem[4:].replace('_', ' ').title()
-                    file_migration = self._create_file_migration_wrapper(version, description, module)
+                    description = migration_file.stem[4:].replace("_", " ").title()
+                    file_migration = self._create_file_migration_wrapper(
+                        version, description, module
+                    )
                     self.migrations.append(file_migration)
 
-                    logger.debug(f"Loaded file-based migration: {version} - {description}")
+                    logger.debug(
+                        f"Loaded file-based migration: {version} - {description}"
+                    )
 
             except Exception as e:
                 logger.error(f"Failed to load migration {migration_file.name}: {e}")
@@ -326,7 +336,9 @@ class MigrationManager:
         self.migrations.sort(key=lambda m: m.version)
         logger.info(f"Loaded {len(self.migrations)} total migrations")
 
-    def _create_file_migration_wrapper(self, version: str, description: str, module) -> Migration:
+    def _create_file_migration_wrapper(
+        self, version: str, description: str, module
+    ) -> Migration:
         """Create a Migration wrapper for file-based migrations"""
 
         class FileMigration(Migration):
@@ -338,17 +350,21 @@ class MigrationManager:
                 """Execute the upgrade() function from the migration file"""
                 # File-based migrations manage their own sessions, so we don't pass connection
                 # They use get_db() internally
-                if hasattr(self.module, 'upgrade'):
+                if hasattr(self.module, "upgrade"):
                     self.module.upgrade()
                 else:
-                    raise NotImplementedError(f"Migration {self.version} missing upgrade() function")
+                    raise NotImplementedError(
+                        f"Migration {self.version} missing upgrade() function"
+                    )
 
             def down(self, connection):
                 """Execute the downgrade() function from the migration file"""
-                if hasattr(self.module, 'downgrade'):
+                if hasattr(self.module, "downgrade"):
                     self.module.downgrade()
                 else:
-                    logger.warning(f"Migration {self.version} has no downgrade() function")
+                    logger.warning(
+                        f"Migration {self.version} has no downgrade() function"
+                    )
 
         return FileMigration(version, description, module)
 

@@ -25,11 +25,12 @@ class RedisManager:
         if not self._connected:
             try:
                 import os
+
                 import redis.asyncio as redis
 
                 redis_url = os.environ.get(
                     "REDIS_URL",
-                    os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+                    os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0"),
                 )
                 self.redis_client = redis.Redis.from_url(
                     redis_url,
