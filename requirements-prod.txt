@@ -57,6 +57,7 @@ schedule==1.2.0
 beautifulsoup4==4.12.3
 lxml==5.1.0
 netifaces==0.11.0
+zeroconf==0.132.2
 
 # Monitoring and Logging
 prometheus-client==0.19.0
