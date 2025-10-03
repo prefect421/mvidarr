@@ -74,8 +74,8 @@ class AsyncTemplateSystem:
                 "frontend.artists": "/artists",
                 "frontend.playlists": "/playlists",
                 "frontend.settings": "/settings",
-                "frontend.jobs": "/frontend.jobs",
-                "frontend.mvtv": "/frontend.mvtv",
+                "frontend.jobs": "/jobs",
+                "frontend.mvtv": "/mvtv",
                 # Detail pages
                 "frontend.video_detail": "/video",
                 "frontend.artist_detail": "/artist",

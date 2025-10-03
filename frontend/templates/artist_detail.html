@@ -5471,8 +5471,9 @@ function renderDiscoverResults(data) {
                 <div class="discovered-video-info">
                     <h5>${video.title}</h5>
                     <div class="discovered-video-metadata">
+                        ${video.artist_name ? '<span class="meta-artist">🎤 ' + video.artist_name + '</span>' : ''}
+                        ${video.source === 'youtube' && (video.channel_title || video.channel) ? '<span class="meta-channel">📺 ' + (video.channel_title || video.channel) + '</span>' : ''}
                         ${video.year ? '<span class="meta-year">📅 ' + video.year + '</span>' : ''}
-                        ${video.source === 'youtube' && video.channel_title ? '<span class="meta-channel">📺 ' + video.channel_title + '</span>' : ''}
                         ${video.source === 'youtube' && video.view_count ? '<span class="meta-views">👁️ ' + formatNumber(video.view_count) + ' views</span>' : ''}
                         ${video.source === 'youtube' && video.like_count ? '<span class="meta-likes">👍 ' + formatNumber(video.like_count) + '</span>' : ''}
                         ${video.source === 'youtube' && video.published_at ? '<span class="meta-published">📅 ' + new Date(video.published_at).toLocaleDateString() + '</span>' : ''}

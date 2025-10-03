@@ -1672,6 +1672,7 @@ def discover_artist_videos(artist_id):
                     "source": "imvdb",
                     "imvdb_id": video_metadata["imvdb_id"],
                     "title": video_metadata["title"],
+                    "artist_name": artist_name,  # Add artist name for display
                     "year": video_metadata["year"],
                     "directors": video_metadata["directors"],
                     "producers": video_metadata["producers"],
@@ -1760,6 +1761,7 @@ def discover_artist_videos(artist_id):
                     "youtube_id": youtube_video["youtube_id"],
                     "youtube_url": youtube_video["youtube_url"],
                     "title": youtube_video["title"],
+                    "artist_name": artist_name,  # Add artist name for display
                     "year": video_year,
                     "channel_title": youtube_video.get("channel_title"),
                     "channel_id": youtube_video.get("channel_id"),

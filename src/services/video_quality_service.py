@@ -578,6 +578,16 @@ class VideoQualityService:
                 target_quality = user_preferences.get("default_quality", "1080p")
 
                 for video in videos:
+                    # Eagerly access all attributes we need while in session
+                    video_id = video.id
+                    video_title = video.title
+                    video_artist_id = video.artist_id
+                    video_quality = video.quality
+                    video_max_available = video.max_available_quality
+                    video_check_date = video.quality_check_date
+                    video_check_status = video.quality_check_status
+                    video_local_path = video.local_path
+
                     # Use YouTube quality check data if available
                     if not youtube_quality_check_service.is_video_upgradeable(video):
                         continue
@@ -649,6 +659,12 @@ class VideoQualityService:
 
         # Bonus for very small file sizes (likely low bitrate)
         file_size_mb = analysis.get("file_size_mb", 0)
+        # Ensure file_size_mb is numeric for comparisons
+        try:
+            file_size_mb = float(file_size_mb) if file_size_mb else 0
+        except (ValueError, TypeError):
+            file_size_mb = 0
+
         if file_size_mb < 50:  # Very small files likely low quality
             priority += 20
         elif file_size_mb < 100:

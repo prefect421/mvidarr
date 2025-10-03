@@ -2417,6 +2417,7 @@ async def discover_artist_videos(
                 "song_title": video.get(
                     "song_title", "Unknown"
                 ),  # Keep original for compatibility
+                "artist_name": artist_name,  # Add artist name for display
                 "exists_in_library": video_exists,
                 "already_exists": video_exists,  # Frontend compatibility
                 "imported": False,  # New videos are not imported yet

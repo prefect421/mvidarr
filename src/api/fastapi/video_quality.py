@@ -30,13 +30,13 @@ class VideoUpgradeResponse(BaseModel):
 class UpgradeableVideo(BaseModel):
     video_id: int
     title: str
-    artist_name: str
+    artist_name: Optional[str] = None
     current_quality: str
-    current_height: int
+    current_height: Optional[int] = None
     recommended_quality: str
     upgrade_priority: int
-    quality_score: int
-    file_size_mb: float
+    quality_score: Optional[int] = None
+    file_size_mb: Optional[float] = None
 
 
 class UpgradeableVideosResponse(BaseModel):
