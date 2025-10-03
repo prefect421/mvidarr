@@ -25,11 +25,13 @@ from src.utils.sort_name_generator import generate_sort_name
 logger = get_logger("mvidarr.migration.006")
 
 
-def add_sort_name_column():
+def add_sort_name_column(connection):
     """Add sort_name column to artists table"""
     try:
-        # Add the column using raw SQL
-        with engine.connect() as conn:
+        # Use the connection provided by the migration system
+        # DO NOT use engine.connect() as it creates a separate connection
+        if True:  # Keep indentation for minimal changes
+            conn = connection
             # Check if column already exists
             result = conn.execute(
                 text(
@@ -74,12 +76,17 @@ def add_sort_name_column():
         return False
 
 
-def populate_sort_names():
+def populate_sort_names(connection):
     """
     Populate sort names for all existing artists
     """
     try:
-        with get_db() as session:
+        # Use the connection provided by the migration system
+        # Create a session from the connection
+        from sqlalchemy.orm import Session
+
+        session = Session(bind=connection)
+        if True:  # Keep indentation for minimal changes
             logger.info("Starting sort name population for existing artists")
 
             # Get all artists
@@ -166,18 +173,18 @@ def populate_sort_names():
         return False
 
 
-def upgrade():
+def upgrade(connection):
     """
     Main migration function (required by migration system)
     """
     logger.info("Starting migration 006: Add sort name field to artists")
 
     # Step 1: Add the column
-    if not add_sort_name_column():
+    if not add_sort_name_column(connection):
         raise Exception("Failed to add sort_name column")
 
     # Step 2: Populate sort names for existing artists
-    if not populate_sort_names():
+    if not populate_sort_names(connection):
         raise Exception("Failed to populate sort names")
 
     logger.info("✅ Migration 006 completed successfully")
