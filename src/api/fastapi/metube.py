@@ -163,11 +163,18 @@ async def get_download_queue(
 
         logger.info(f"Getting download queue for user {current_user.get('username')}")
 
-        # Get queue from ytdlp service (legacy downloads)
+        # Get queue from ytdlp service (in-memory downloads)
         legacy_result = ytdlp_service.get_queue()
         queue_items = legacy_result.get("queue", [])
 
-        # Also check for recent downloads that might be processing
+        # Track database download IDs already in the in-memory queue to avoid duplicates
+        existing_db_ids = set()
+        for item in queue_items:
+            db_download_id = item.get("db_download_id")
+            if db_download_id:
+                existing_db_ids.add(db_download_id)
+
+        # Also check for recent downloads that might be processing but not in memory
         try:
             from datetime import datetime, timedelta
 
@@ -188,21 +195,24 @@ async def get_download_queue(
                 .all()
             )
 
+            # Only add downloads that aren't already in the in-memory queue
             for download, artist_name in recent_downloads:
-                queue_entry = {
-                    "id": f"db_{download.id}",
-                    "title": download.title,
-                    "artist": artist_name,
-                    "url": download.original_url,
-                    "status": download.status,
-                    "progress": download.progress or 0,
-                    "quality": download.quality or "best",
-                    "created_at": (
-                        download.created_at.isoformat() if download.created_at else None
-                    ),
-                    "task_type": "database",
-                }
-                queue_items.append(queue_entry)
+                if download.id not in existing_db_ids:
+                    queue_entry = {
+                        "id": f"db_{download.id}",
+                        "title": download.title,
+                        "artist": artist_name,
+                        "url": download.original_url,
+                        "status": download.status,
+                        "progress": download.progress or 0,
+                        "quality": download.quality or "best",
+                        "created_at": (
+                            download.created_at.isoformat() if download.created_at else None
+                        ),
+                        "task_type": "database",
+                        "db_download_id": download.id,
+                    }
+                    queue_items.append(queue_entry)
 
         except Exception as db_error:
             logger.warning(f"Failed to get recent database downloads: {db_error}")

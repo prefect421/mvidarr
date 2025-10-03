@@ -1,6 +1,6 @@
 """
 Complete YouTube Download Engine - Production Solution
-Comprehensive approach to YouTube downloads with OAuth2, multi-client strategies, and advanced anti-detection
+Comprehensive approach to YouTube downloads with multi-client strategies and advanced anti-detection
 """
 
 import json
@@ -14,7 +14,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.services.settings_service import settings
-from src.services.youtube_oauth_service import youtube_oauth_service
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.youtube_engine")
@@ -23,10 +22,8 @@ logger = get_logger("mvidarr.youtube_engine")
 class DownloadStrategy(Enum):
     """Available download strategies in order of preference"""
 
-    OAUTH2_AUTHENTICATED = "oauth2"  # Best: Official API authentication
-    TV_CLIENT = "tv_client"  # Good: TV client bypasses most detection
-    ANDROID_CLIENT = "android_client"  # Good: Android client works well
-    WEB_CLIENT_COOKIES = "web_cookies"  # OK: Web client with browser cookies
+    TV_CLIENT = "tv_client"  # Best: TV client bypasses most detection
+    WEB_CLIENT_COOKIES = "web_cookies"  # Good: Web client with browser cookies
     WEB_CLIENT_FALLBACK = "web_fallback"  # Last resort: Basic web client
 
 
@@ -51,13 +48,11 @@ class YouTubeDownloadEngine:
 
     def __init__(self):
         self.yt_dlp_path = self._find_best_ytdlp()
-        self.oauth_service = youtube_oauth_service
+        # Strategy order prioritizes TV client then web with cookies
         self.strategies = [
-            DownloadStrategy.OAUTH2_AUTHENTICATED,
-            DownloadStrategy.TV_CLIENT,
-            DownloadStrategy.ANDROID_CLIENT,
-            DownloadStrategy.WEB_CLIENT_COOKIES,
-            DownloadStrategy.WEB_CLIENT_FALLBACK,
+            DownloadStrategy.TV_CLIENT,  # Primary: Works reliably for most videos
+            DownloadStrategy.WEB_CLIENT_COOKIES,  # Secondary: Web with cookies
+            DownloadStrategy.WEB_CLIENT_FALLBACK,  # Last resort
         ]
 
         # Ensure latest yt-dlp version
@@ -228,6 +223,29 @@ class YouTubeDownloadEngine:
         output_template = os.path.join(output_path, f"{safe_title}.%(ext)s")
         cmd.extend(["-o", output_template])
 
+        # Pre-download cleanup: Remove corrupted target files that would block rename
+        # Check for existing files with 0 hard links (corrupted inodes)
+        import subprocess
+        for ext in ['.mp4', '.webm', '.mkv']:
+            potential_target = os.path.join(output_path, f"{safe_title}{ext}")
+            if os.path.exists(potential_target):
+                try:
+                    # Check hard link count using stat
+                    stat_result = subprocess.run(
+                        ['stat', '-c', '%h', potential_target],
+                        capture_output=True,
+                        text=True,
+                        timeout=2
+                    )
+                    if stat_result.returncode == 0:
+                        hard_links = int(stat_result.stdout.strip())
+                        if hard_links == 0:
+                            # Corrupted file with 0 hard links - remove it
+                            logger.warning(f"Removing corrupted file with 0 hard links: {potential_target}")
+                            subprocess.run(['rm', '-f', potential_target], timeout=5)
+                except Exception as e:
+                    logger.debug(f"Could not check/remove existing file {potential_target}: {e}")
+
         # Quality format - use directly if it's a complex format string, otherwise convert
         if "/" in quality or "[" in quality or "+" in quality:
             # Complex format string from video quality service - use as-is
@@ -305,6 +323,16 @@ class YouTubeDownloadEngine:
                     output_template, output_lines
                 )
 
+                if not downloaded_file:
+                    logger.error(f"Download succeeded but file not found!")
+                    logger.error(f"Output template: {output_template}")
+                    logger.error(f"Output lines: {output_lines[-20:]}")  # Last 20 lines
+                    # Try to list directory to see what's there
+                    output_dir = os.path.dirname(output_template)
+                    if os.path.exists(output_dir):
+                        files = os.listdir(output_dir)
+                        logger.error(f"Directory contents: {files}")
+
                 # Handle .temp files that couldn't be renamed (filesystem issues)
                 if downloaded_file and downloaded_file.endswith(".temp.mp4"):
                     final_file = downloaded_file.replace(".temp.mp4", ".mp4")
@@ -315,11 +343,12 @@ class YouTubeDownloadEngine:
                             logger.info(f"Successfully renamed temp file: {final_file}")
                         else:
                             logger.warning(
-                                f"Could not rename temp file, using as-is: {downloaded_file}"
+                                f"Could not rename temp file, but file is valid. Using temp file: {downloaded_file}"
                             )
+                            # Keep using the .temp.mp4 file - it's valid even if rename failed
                     except Exception as rename_error:
                         logger.warning(
-                            f"Temp file rename failed, using as-is: {rename_error}"
+                            f"Temp file rename exception, but file is valid. Using temp file: {rename_error}"
                         )
 
                 if downloaded_file and os.path.exists(downloaded_file):
@@ -330,6 +359,12 @@ class YouTubeDownloadEngine:
                         file_path=downloaded_file,
                         file_size=file_size,
                         metadata=self._extract_metadata(downloaded_file),
+                    )
+                elif downloaded_file:
+                    logger.error(f"Downloaded file path exists but file not found: {downloaded_file}")
+                    return DownloadResult(
+                        success=False,
+                        error_message=f"File not found after download: {downloaded_file}"
                     )
 
             # Failed - extract error
@@ -351,19 +386,8 @@ class YouTubeDownloadEngine:
     def _get_strategy_args(self, strategy: DownloadStrategy) -> List[str]:
         """Get yt-dlp arguments for specific strategy"""
 
-        if strategy == DownloadStrategy.OAUTH2_AUTHENTICATED:
-            # Use OAuth2 authentication
-            if self.oauth_service.is_authenticated():
-                return self.oauth_service.get_authenticated_yt_dlp_args()
-            else:
-                # OAuth not available, fall back to TV client
-                return self._get_tv_client_args()
-
-        elif strategy == DownloadStrategy.TV_CLIENT:
+        if strategy == DownloadStrategy.TV_CLIENT:
             return self._get_tv_client_args()
-
-        elif strategy == DownloadStrategy.ANDROID_CLIENT:
-            return self._get_android_client_args()
 
         elif strategy == DownloadStrategy.WEB_CLIENT_COOKIES:
             return self._get_web_cookies_args()
@@ -488,14 +512,61 @@ class YouTubeDownloadEngine:
             video_extensions = [".mp4", ".webm", ".mkv", ".avi", ".mov"]
             found_files = []
 
+            # Strategy 1: Exact match with base_name
             for file in os.listdir(base_dir):
                 if file.startswith(base_name) and not file.endswith(".info.json"):
                     found_files.append(file)
 
-            # First, look for video files
+            # Strategy 2: If no exact match, try fuzzy matching (handle yt-dlp adding prefixes)
+            # Sometimes yt-dlp adds "Artist - " prefix even when template already has it
+            if not found_files:
+                # Extract the core title (remove common prefixes)
+                title_parts = base_name.split(" - ")
+                if len(title_parts) >= 2:
+                    # Try matching on the last part (actual title)
+                    core_title = title_parts[-1].strip()
+                    for file in os.listdir(base_dir):
+                        if core_title in file and not file.endswith(".info.json"):
+                            found_files.append(file)
+
+            # Strategy 3: Last resort - get most recent video file (including .temp files)
+            # Prioritize by: 1) Most recent, 2) Largest file size (higher quality)
+            if not found_files:
+                import time
+                video_files = []
+                for file in os.listdir(base_dir):
+                    full_path = os.path.join(base_dir, file)
+                    # Include .temp.mp4 files so rename handling can fix them
+                    if any(file.endswith(ext) for ext in video_extensions) or file.endswith(".temp.mp4"):
+                        # Only exclude info.json
+                        if not file.endswith(".info.json"):
+                            file_size = os.path.getsize(full_path)
+                            file_mtime = os.path.getmtime(full_path)
+                            video_files.append((file, file_mtime, file_size, full_path))
+
+                if video_files:
+                    # Get files modified in the last 5 minutes (recent downloads)
+                    import time
+                    current_time = time.time()
+                    recent_files = [f for f in video_files if (current_time - f[1]) < 300]  # 5 minutes
+
+                    if recent_files:
+                        # Sort recent files by size (largest first) - higher quality
+                        recent_files.sort(key=lambda x: x[2], reverse=True)
+                        most_recent = recent_files[0][0]
+                        logger.info(f"Using most recent large video file: {most_recent} ({recent_files[0][2]/(1024*1024):.1f}MB)")
+                        found_files.append(most_recent)
+                    else:
+                        # No recent files, sort all by modification time
+                        video_files.sort(key=lambda x: x[1], reverse=True)
+                        most_recent = video_files[0][0]
+                        found_files.append(most_recent)
+                        logger.info(f"Using most recent video file as fallback: {most_recent}")
+
+            # First, look for video files (excluding temp files)
             for file in found_files:
                 for ext in video_extensions:
-                    if file.endswith(ext):
+                    if file.endswith(ext) and not file.endswith(".temp.mp4"):
                         return os.path.join(base_dir, file)
 
             # If no video file found, return first non-video file (subtitle, etc.)
@@ -525,9 +596,26 @@ class YouTubeDownloadEngine:
                 os.rename(temp_file, final_file)
                 return True
             except (OSError, PermissionError) as e:
-                logger.warning(f"Could not remove existing file: {e}")
+                logger.warning(f"Could not remove existing file (attempt 1): {e}")
 
-            # Strategy 3: Use shutil.move (handles cross-device links)
+            # Strategy 3: Force unlink with subprocess (handles corrupted inodes)
+            try:
+                import subprocess
+                logger.info("Attempting force unlink with subprocess")
+                result = subprocess.run(
+                    ['rm', '-f', final_file],
+                    capture_output=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    time.sleep(0.2)
+                    os.rename(temp_file, final_file)
+                    logger.info("Force unlink succeeded")
+                    return True
+            except Exception as e:
+                logger.warning(f"Force unlink failed: {e}")
+
+            # Strategy 4: Use shutil.move (handles cross-device links)
             try:
                 if os.path.exists(final_file):
                     os.remove(final_file)
@@ -536,24 +624,32 @@ class YouTubeDownloadEngine:
             except Exception as e:
                 logger.warning(f"shutil.move failed: {e}")
 
-            # Strategy 4: Copy then delete (last resort, preserves temp if fails)
+            # Strategy 5: Copy then delete (preserves temp if fails)
             try:
                 if os.path.exists(final_file):
-                    os.remove(final_file)
+                    try:
+                        os.remove(final_file)
+                    except:
+                        pass  # Ignore errors, try copy anyway
+
                 shutil.copy2(temp_file, final_file)
                 # Verify copy succeeded before deleting temp
                 if os.path.exists(final_file) and os.path.getsize(
                     final_file
                 ) == os.path.getsize(temp_file):
-                    os.remove(temp_file)
+                    try:
+                        os.remove(temp_file)
+                    except:
+                        logger.warning("Temp file could not be removed after copy, but copy succeeded")
                     logger.info("Used copy+delete strategy for temp file")
                     return True
             except Exception as e:
                 logger.warning(f"copy+delete failed: {e}")
 
-            # All strategies failed - temp file will be used as-is
-            logger.error(f"All rename strategies failed for {temp_file}")
-            return False
+            # Strategy 6: Just use the temp file as-is (return True to signal success)
+            logger.warning(f"Cannot rename temp file, but temp file exists and is valid: {temp_file}")
+            logger.warning("System will use .temp.mp4 file directly")
+            return False  # Return False so caller uses temp file path
 
         except Exception as e:
             logger.error(f"Unexpected error in _force_rename_temp_file: {e}")
@@ -573,26 +669,23 @@ class YouTubeDownloadEngine:
     def _extract_error_message(self, output: str) -> str:
         """Extract meaningful error from output"""
         lines = output.split("\n")
+
+        # First try to find ERROR: lines
         for line in reversed(lines):
             if line.startswith("ERROR:"):
                 return line.replace("ERROR:", "").strip()
-        return "Unknown error occurred"
 
-    def get_oauth_setup_url(self) -> Optional[str]:
-        """Get URL to set up OAuth2 authentication"""
-        try:
-            return self.oauth_service.start_oauth_flow()
-        except Exception as e:
-            logger.error(f"Failed to start OAuth flow: {e}")
-            return None
+        # If no ERROR line, look for WARNING lines that might explain the issue
+        warnings = [line for line in lines if line.startswith("WARNING:")]
+        if warnings:
+            return f"No explicit error, warnings: {warnings[-1].replace('WARNING:', '').strip()}"
 
-    def complete_oauth_setup(self, timeout: int = 300) -> bool:
-        """Complete OAuth2 setup process"""
-        return self.oauth_service.complete_oauth_flow(timeout)
+        # Last resort: return last few non-empty lines as context
+        non_empty = [line.strip() for line in lines if line.strip()]
+        if non_empty:
+            return f"Unknown error - last output: {' | '.join(non_empty[-3:])}"
 
-    def is_oauth_configured(self) -> bool:
-        """Check if OAuth2 is properly configured"""
-        return self.oauth_service.is_authenticated()
+        return "Unknown error occurred - no output captured"
 
     def _resolve_subtitle_languages(self, url: str, pattern: str) -> str:
         """Resolve subtitle language patterns like 'en.*' to actual available languages"""

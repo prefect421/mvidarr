@@ -352,6 +352,10 @@ class YtDlpService:
                 logger.info(f"Download {download_id}: File: {result.file_path}")
                 logger.info(f"Download {download_id}: Duration: {result.duration:.1f}s")
 
+                # Clean up old quality versions if this is an upgrade
+                if download_entry.get("upgrade_mode"):
+                    self._cleanup_old_quality_versions(result.file_path, result.file_size)
+
                 # Update database with success
                 self._update_video_status_in_database(
                     video_id,
@@ -783,7 +787,7 @@ class YtDlpService:
                 # Keep the entry with the latest created_at for each unique download
                 if (
                     key not in seen_downloads
-                    or created_at > seen_downloads[key]["created_at"]
+                    or created_at > seen_downloads[key].get("created_at", "")
                 ):
                     seen_downloads[key] = entry
 
@@ -1843,6 +1847,81 @@ class YtDlpService:
 
         except Exception as e:
             logger.error(f"Failed to resume pending downloads: {e}")
+
+    def _cleanup_old_quality_versions(self, new_file_path: str, new_file_size: int):
+        """
+        Clean up old lower-quality versions after successful quality upgrade
+        Keeps only the newest/largest version to save disk space
+        """
+        try:
+            import os
+            import re
+
+            if not new_file_path or not os.path.exists(new_file_path):
+                logger.warning(f"Cannot cleanup: new file doesn't exist: {new_file_path}")
+                return
+
+            # Get directory and base filename
+            directory = os.path.dirname(new_file_path)
+            new_filename = os.path.basename(new_file_path)
+            new_basename = os.path.splitext(new_filename)[0]
+
+            # Remove "(Quality Upgrade)" suffix if present for matching
+            base_pattern = re.sub(r'\s*\(Quality Upgrade\)', '', new_basename)
+
+            logger.info(f"Cleaning up old quality versions for: {base_pattern}")
+
+            # Find all related files (same base name, different quality)
+            related_files = []
+            for file in os.listdir(directory):
+                if file == new_filename:
+                    continue  # Skip the new file itself
+
+                # Match files with same base pattern
+                file_basename = os.path.splitext(file)[0]
+                file_pattern = re.sub(r'\s*\(Quality Upgrade\)', '', file_basename)
+
+                if file_pattern == base_pattern or base_pattern in file_pattern:
+                    full_path = os.path.join(directory, file)
+                    if os.path.isfile(full_path):
+                        file_size = os.path.getsize(full_path)
+                        # Only consider video files smaller than the new file
+                        if file.endswith(('.mp4', '.webm', '.mkv', '.avi', '.mov')) and file_size < new_file_size:
+                            related_files.append((full_path, file, file_size))
+
+            if not related_files:
+                logger.info("No old quality versions found to clean up")
+                return
+
+            # Delete old quality versions
+            deleted_count = 0
+            space_freed = 0
+            for file_path, filename, file_size in related_files:
+                try:
+                    os.remove(file_path)
+                    deleted_count += 1
+                    space_freed += file_size
+                    logger.info(f"Deleted old quality version: {filename} ({file_size/(1024*1024):.1f}MB)")
+
+                    # Also delete associated files (.info.json, .vtt, etc.)
+                    base_path = os.path.splitext(file_path)[0]
+                    for ext in ['.info.json', '.vtt', '.srt', '.webp', '.jpg', '.meta']:
+                        assoc_file = base_path + ext
+                        if os.path.exists(assoc_file):
+                            try:
+                                os.remove(assoc_file)
+                                logger.debug(f"Deleted associated file: {os.path.basename(assoc_file)}")
+                            except:
+                                pass
+
+                except Exception as e:
+                    logger.warning(f"Failed to delete old version {filename}: {e}")
+
+            if deleted_count > 0:
+                logger.info(f"Cleanup complete: Deleted {deleted_count} old versions, freed {space_freed/(1024*1024):.1f}MB")
+
+        except Exception as e:
+            logger.error(f"Error during old quality cleanup: {e}")
 
 
 # Global instance

@@ -400,8 +400,20 @@ class VideoIndexingService:
             if imvdb_metadata.get("title"):
                 video.title = imvdb_metadata["title"]
 
-            # Download thumbnail if available
-            if imvdb_metadata.get("thumbnail_url"):
+        # Fallback: Extract year from YouTube upload_date if not set by IMVDb
+        if not video.year and video.video_metadata:
+            upload_date = video.video_metadata.get("upload_date")
+            if upload_date:
+                try:
+                    # upload_date format is YYYYMMDD
+                    if isinstance(upload_date, str) and len(upload_date) >= 4:
+                        video.year = int(upload_date[:4])
+                        logger.info(f"Extracted year {video.year} from YouTube upload_date for: {video.title}")
+                except (ValueError, TypeError) as e:
+                    logger.debug(f"Could not extract year from upload_date '{upload_date}': {e}")
+
+        # Download thumbnail if available
+        if imvdb_metadata and imvdb_metadata.get("thumbnail_url"):
                 try:
                     thumbnail_path = thumbnail_service.download_video_thumbnail(
                         artist.name, video.title, imvdb_metadata["thumbnail_url"]

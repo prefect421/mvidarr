@@ -2416,6 +2416,19 @@ class MetadataEnrichmentService:
                                 except (ValueError, IndexError):
                                     pass
 
+                            # Fallback: Extract year from YouTube upload_date if not set by MusicBrainz
+                            if not video.year and video.video_metadata:
+                                upload_date = video.video_metadata.get("upload_date")
+                                if upload_date:
+                                    try:
+                                        # upload_date format is YYYYMMDD
+                                        if isinstance(upload_date, str) and len(upload_date) >= 4:
+                                            video.year = int(upload_date[:4])
+                                            updated_fields.append("year")
+                                            logger.info(f"Extracted year {video.year} from YouTube upload_date for video {video_id}")
+                                    except (ValueError, TypeError) as e:
+                                        logger.debug(f"Could not extract year from upload_date '{upload_date}': {e}")
+
                             # Extract track duration
                             if not video.duration and best_track.get("duration_ms"):
                                 video.duration = (

@@ -71,12 +71,35 @@ class UserInfo:
 async def get_current_user_from_session(request: Request) -> UserInfo:
     """Get current user from session for simple auth system"""
     from src.api.fastapi.auth_dependencies import get_current_user_legacy
+    from src.database.connection import get_db
 
     user_data = await get_current_user_legacy()
+    username = user_data.get("username", "admin")
+
+    # Look up the actual user ID from the database based on username
+    with get_db() as db_session:
+        user = db_session.query(User).filter(User.username == username).first()
+        if user:
+            user_id = user.id
+            role = user.role.value
+        else:
+            # Fallback: find any admin user
+            admin_user = (
+                db_session.query(User).filter(User.role == UserRole.ADMIN).first()
+            )
+            if admin_user:
+                user_id = admin_user.id
+                role = UserRole.ADMIN.value
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail="No admin user found in database. Please run database initialization.",
+                )
+
     return UserInfo(
-        id=user_data.get("user_id", 1),
-        username=user_data.get("username", "admin"),
-        role=UserRole.ADMIN.value,  # Simple auth user has admin privileges
+        id=user_id,
+        username=username,
+        role=role,
     )
 
 
@@ -154,6 +177,11 @@ class FilterUpdateRequest(BaseModel):
     filter_criteria: Dict[str, Any] = Field(..., min_items=1)
 
 
+class DynamicPlaylistPreviewRequest(BaseModel):
+    filter_criteria: Dict[str, Any] = Field(..., min_items=1)
+    limit: int = Field(default=50, ge=1, le=100)
+
+
 # ========================================================================================
 # UTILITY FUNCTIONS
 # ========================================================================================
@@ -163,6 +191,23 @@ def playlist_to_dict(
     playlist: Playlist, include_entries: bool = False, user: UserInfo = None
 ) -> Dict[str, Any]:
     """Convert playlist to dictionary representation"""
+    # Check if playlist is dynamic by calling the method or checking the type
+    try:
+        is_dynamic = (
+            playlist.is_dynamic()
+            if callable(getattr(playlist, "is_dynamic", None))
+            else False
+        )
+    except:
+        is_dynamic = False
+
+    # Determine if user can modify playlist
+    # In single-user mode, authenticated users can modify all playlists
+    can_modify = False
+    if user:
+        # User is authenticated - allow modification
+        can_modify = True
+
     data = {
         "id": playlist.id,
         "name": playlist.name,
@@ -171,7 +216,8 @@ def playlist_to_dict(
         "username": playlist.user.username if playlist.user else None,
         "is_public": playlist.is_public,
         "is_featured": playlist.is_featured,
-        "is_dynamic": getattr(playlist, "is_dynamic", False),
+        "is_dynamic": is_dynamic,
+        "filter_criteria": playlist.filter_criteria if hasattr(playlist, "filter_criteria") else None,
         "video_count": getattr(playlist, "video_count", 0),
         "total_duration": getattr(playlist, "total_duration", 0),
         "thumbnail_url": (
@@ -179,7 +225,7 @@ def playlist_to_dict(
         ),
         "created_at": playlist.created_at.isoformat() if playlist.created_at else None,
         "updated_at": playlist.updated_at.isoformat() if playlist.updated_at else None,
-        "can_modify": False,  # Simplified auth
+        "can_modify": can_modify,
     }
 
     if include_entries and hasattr(playlist, "entries"):
@@ -198,6 +244,13 @@ def playlist_to_dict(
                         ),
                         "duration": entry.video.duration,
                         "thumbnail_url": f"/api/videos/{entry.video.id}/thumbnail",
+                        "local_path": entry.video.local_path,
+                        "status": entry.video.status.value if hasattr(entry.video.status, 'value') else entry.video.status,
+                        "quality": entry.video.quality,
+                        "year": entry.video.year,
+                        "release_date": entry.video.release_date.isoformat() if entry.video.release_date else None,
+                        "youtube_id": entry.video.youtube_id,
+                        "youtube_url": entry.video.youtube_url,
                     }
                     if entry.video
                     else None
@@ -278,8 +331,9 @@ async def get_playlists(
     try:
         offset = (page - 1) * per_page
 
-        # Get all public playlists (simplified auth for now)
-        query = session.query(Playlist).filter(Playlist.is_public == True)
+        # Show all playlists (user owns all playlists in single-user system)
+        # In multi-user system, this would filter by user_id or is_public
+        query = session.query(Playlist)
 
         total_count = query.count()
 
@@ -334,15 +388,18 @@ async def get_playlists(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Temporarily disabled to debug
-# @router.get("/{playlist_id}", response_model=Dict[str, Any])
+@router.get("/{playlist_id}", response_model=Dict[str, Any])
 async def get_playlist(
+    request: Request,
     playlist_id: int = FastAPIPath(..., ge=1),
     include_entries: bool = Query(True),
     session: Session = Depends(get_db_session),
 ):
     """Get specific playlist with optional entries"""
     try:
+        # Get current user for permission checking
+        current_user = await get_current_user_from_session(request)
+
         query = session.query(Playlist).options(joinedload(Playlist.user))
 
         if include_entries:
@@ -357,11 +414,14 @@ async def get_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        # Simplified access check - only allow public playlists for now
-        if not playlist.is_public:
-            raise HTTPException(status_code=403, detail="Access denied")
+        # Allow access to all playlists (single-user system)
+        # In multi-user system, would check: playlist.user_id == current_user.id or playlist.is_public
 
-        return playlist_to_dict(playlist, include_entries=include_entries, user=None)
+        playlist_data = playlist_to_dict(
+            playlist, include_entries=include_entries, user=current_user
+        )
+
+        return {"success": True, "playlist": playlist_data}
 
     except HTTPException:
         raise
@@ -413,7 +473,7 @@ async def create_playlist(
             name=playlist.name,
             description=playlist.description,
             user_id=playlist.user_id,
-            username=user.username,
+            username=current_user.username,
             is_public=playlist.is_public,
             is_featured=playlist.is_featured,
             is_dynamic=False,
@@ -464,15 +524,25 @@ async def update_playlist(
 
         logger.info(f"Updated playlist {playlist_id}: {playlist.name}")
 
+        # Check if playlist is dynamic by calling the method
+        try:
+            is_dynamic = (
+                playlist.is_dynamic()
+                if callable(getattr(playlist, "is_dynamic", None))
+                else False
+            )
+        except:
+            is_dynamic = False
+
         return PlaylistResponse(
             id=playlist.id,
             name=playlist.name,
             description=playlist.description,
             user_id=playlist.user_id,
-            username=user.username,
+            username=playlist.user.username if playlist.user else None,
             is_public=playlist.is_public,
             is_featured=playlist.is_featured,
-            is_dynamic=getattr(playlist, "is_dynamic", False),
+            is_dynamic=is_dynamic,
             video_count=getattr(playlist, "video_count", 0),
             total_duration=getattr(playlist, "total_duration", 0),
             thumbnail_url=f"/api/playlists/{playlist.id}/thumbnail",
@@ -832,6 +902,86 @@ async def bulk_delete_playlists(
 # ========================================================================================
 
 
+@router.post("/dynamic/preview")
+async def preview_dynamic_playlist(
+    preview_data: DynamicPlaylistPreviewRequest = Body(...),
+    session: Session = Depends(get_db_session),
+):
+    """Preview videos matching dynamic playlist filter criteria"""
+    try:
+        # Import dynamic playlist service
+        try:
+            from src.services.dynamic_playlist_service import dynamic_playlist_service
+        except ImportError:
+            raise HTTPException(
+                status_code=501, detail="Dynamic playlist service not available"
+            )
+
+        # Validate filter criteria
+        if hasattr(dynamic_playlist_service, "validate_filter_criteria"):
+            is_valid, error = dynamic_playlist_service.validate_filter_criteria(
+                preview_data.filter_criteria
+            )
+            if not is_valid:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid filter criteria: {error}"
+                )
+
+        # Apply filters to get matching videos
+        if hasattr(dynamic_playlist_service, "apply_filters"):
+            video_ids = dynamic_playlist_service.apply_filters(
+                session, preview_data.filter_criteria
+            )
+        else:
+            # Fallback: Basic filter implementation
+            video_ids = []
+
+        # Get video details for preview
+        total_matches = len(video_ids)
+        preview_video_ids = video_ids[: preview_data.limit]
+
+        preview_videos = []
+        if preview_video_ids:
+            videos = (
+                session.query(Video)
+                .options(joinedload(Video.artist))
+                .filter(Video.id.in_(preview_video_ids))
+                .all()
+            )
+
+            for video in videos:
+                preview_videos.append(
+                    {
+                        "id": video.id,
+                        "title": video.title,
+                        "artist_name": video.artist.name if video.artist else None,
+                        "duration": video.duration,
+                        "thumbnail_url": (
+                            f"/api/videos/{video.id}/thumbnail" if video.id else None
+                        ),
+                    }
+                )
+
+        logger.info(
+            f"Dynamic playlist preview: {total_matches} matches, showing {len(preview_videos)}"
+        )
+
+        return {
+            "success": True,
+            "preview": {
+                "total_matches": total_matches,
+                "preview_videos": preview_videos,
+                "limit": preview_data.limit,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error previewing dynamic playlist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/dynamic", response_model=PlaylistResponse)
 async def create_dynamic_playlist(
     request: Request,
@@ -861,12 +1011,14 @@ async def create_dynamic_playlist(
                 )
 
         # Create dynamic playlist
+        from src.database.models import PlaylistType
+
         playlist = Playlist(
             name=playlist_data.name,
             description=playlist_data.description,
             user_id=current_user.id,
             is_public=playlist_data.is_public,
-            is_dynamic=True,
+            playlist_type=PlaylistType.DYNAMIC,
             filter_criteria=playlist_data.filter_criteria,
             auto_update=playlist_data.auto_update,
         )
@@ -901,7 +1053,7 @@ async def create_dynamic_playlist(
             name=playlist.name,
             description=playlist.description,
             user_id=playlist.user_id,
-            username=user.username,
+            username=current_user.username,
             is_public=playlist.is_public,
             is_featured=False,
             is_dynamic=True,
@@ -972,9 +1124,154 @@ async def refresh_dynamic_playlist(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.put("/{playlist_id}/filters")
+async def update_dynamic_playlist_filters(
+    request: Request,
+    playlist_id: int = FastAPIPath(..., ge=1),
+    filter_data: FilterUpdateRequest = Body(...),
+    session: Session = Depends(get_db_session),
+):
+    """Update dynamic playlist filter criteria"""
+    try:
+        # Get current user
+        current_user = await get_current_user_from_session(request)
+
+        playlist = session.query(Playlist).filter(Playlist.id == playlist_id).first()
+
+        if not playlist:
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
+        # Check if playlist is dynamic
+        try:
+            is_dynamic = (
+                playlist.is_dynamic()
+                if callable(getattr(playlist, "is_dynamic", None))
+                else False
+            )
+        except:
+            is_dynamic = False
+
+        if not is_dynamic:
+            raise HTTPException(status_code=400, detail="Playlist is not dynamic")
+
+        # Import dynamic playlist service
+        try:
+            from src.services.dynamic_playlist_service import dynamic_playlist_service
+        except ImportError:
+            raise HTTPException(
+                status_code=501, detail="Dynamic playlist service not available"
+            )
+
+        # Validate filter criteria
+        if hasattr(dynamic_playlist_service, "validate_filter_criteria"):
+            is_valid, error = dynamic_playlist_service.validate_filter_criteria(
+                filter_data.filter_criteria
+            )
+            if not is_valid:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid filter criteria: {error}"
+                )
+
+        # Update filter criteria
+        playlist.filter_criteria = filter_data.filter_criteria
+
+        # Clear existing entries
+        session.query(PlaylistEntry).filter(
+            PlaylistEntry.playlist_id == playlist_id
+        ).delete()
+
+        # Apply new filters to get matching videos
+        if hasattr(dynamic_playlist_service, "apply_filters"):
+            video_ids = dynamic_playlist_service.apply_filters(
+                session, filter_data.filter_criteria
+            )
+
+            # Add new entries
+            for i, video_id in enumerate(video_ids):
+                entry = PlaylistEntry(
+                    playlist_id=playlist.id, video_id=video_id, position=i + 1
+                )
+                session.add(entry)
+
+        # Update stats
+        if hasattr(playlist, "update_stats"):
+            playlist.update_stats()
+
+        session.commit()
+        session.refresh(playlist)
+
+        logger.info(
+            f"Updated filters for dynamic playlist {playlist_id}: {playlist.name}"
+        )
+
+        return {
+            "success": True,
+            "message": "Dynamic playlist filters updated successfully",
+            "playlist_id": playlist_id,
+            "video_count": len(video_ids) if "video_ids" in locals() else 0,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating dynamic playlist filters {playlist_id}: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ========================================================================================
 # THUMBNAIL OPERATIONS
 # ========================================================================================
+
+
+@router.get("/{playlist_id}/thumbnail")
+async def get_playlist_thumbnail(
+    playlist_id: int = FastAPIPath(..., ge=1),
+    session: Session = Depends(get_db_session),
+):
+    """Get playlist thumbnail (or generate from first video)"""
+    try:
+        from pathlib import Path
+
+        from fastapi.responses import FileResponse, RedirectResponse
+
+        playlist = session.query(Playlist).filter(Playlist.id == playlist_id).first()
+
+        if not playlist:
+            raise HTTPException(status_code=404, detail="Playlist not found")
+
+        # If playlist has a custom thumbnail_url, try to serve it
+        if playlist.thumbnail_url:
+            # Check if it's a relative path to thumbnails directory
+            if playlist.thumbnail_url.startswith("/thumbnails/"):
+                # Redirect to the static thumbnail route
+                return RedirectResponse(url=playlist.thumbnail_url, status_code=302)
+            elif playlist.thumbnail_url.startswith("http"):
+                # External URL, redirect to it
+                return RedirectResponse(url=playlist.thumbnail_url, status_code=302)
+
+        # Otherwise, try to get thumbnail from first video in playlist
+        first_entry = (
+            session.query(PlaylistEntry)
+            .filter(PlaylistEntry.playlist_id == playlist_id)
+            .order_by(PlaylistEntry.position)
+            .first()
+        )
+
+        if first_entry and first_entry.video_id:
+            # Redirect to the first video's thumbnail
+            return RedirectResponse(
+                url=f"/api/videos/{first_entry.video_id}/thumbnail", status_code=302
+            )
+
+        # No thumbnail available
+        raise HTTPException(status_code=404, detail="No thumbnail available")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting thumbnail for playlist {playlist_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/{playlist_id}/thumbnail/upload")

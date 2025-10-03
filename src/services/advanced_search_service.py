@@ -748,7 +748,7 @@ class AdvancedSearchService:
                         .all()
                     )
                     return [result[0] for result in results if result[0]]
-                
+
                 elif field == "artist":
                     results = (
                         db.query(Artist.name)
@@ -758,7 +758,7 @@ class AdvancedSearchService:
                         .all()
                     )
                     return [result[0] for result in results if result[0]]
-                
+
                 elif field == "genre":
                     results = (
                         db.query(Video.genre)
@@ -769,7 +769,7 @@ class AdvancedSearchService:
                         .all()
                     )
                     return [result[0] for result in results if result[0]]
-                
+
                 elif field == "description":
                     results = (
                         db.query(Video.description)
@@ -779,12 +779,15 @@ class AdvancedSearchService:
                         .limit(limit)
                         .all()
                     )
-                    return [result[0][:100] + "..." if len(result[0]) > 100 else result[0] 
-                           for result in results if result[0]]
-                
+                    return [
+                        result[0][:100] + "..." if len(result[0]) > 100 else result[0]
+                        for result in results
+                        if result[0]
+                    ]
+
                 else:
                     return []
-                    
+
         except Exception as e:
             logger.error(f"Error getting search suggestions: {str(e)}")
             return []

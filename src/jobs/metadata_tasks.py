@@ -111,8 +111,12 @@ def enrich_artist_metadata_task(
     logger.info(
         f"🔄 CELERY TASK DEBUG: force_refresh={force_refresh}, enrich_videos={enrich_videos}"
     )
-    logger.warning(f"🚨 DEBUG: CELERY TASK STARTED - Task ID: {task_id}, Artist: {artist_id}")
-    print(f"🚨 CONSOLE DEBUG: CELERY TASK STARTED - Task ID: {task_id}, Artist: {artist_id}")  # Force to console
+    logger.warning(
+        f"🚨 DEBUG: CELERY TASK STARTED - Task ID: {task_id}, Artist: {artist_id}"
+    )
+    print(
+        f"🚨 CONSOLE DEBUG: CELERY TASK STARTED - Task ID: {task_id}, Artist: {artist_id}"
+    )  # Force to console
 
     try:
         # Initialize database for FastAPI/Celery context
@@ -133,7 +137,7 @@ def enrich_artist_metadata_task(
                 raise ValueError(f"Artist with ID {artist_id} not found")
 
             artist_name = artist.name
-        
+
         logger.warning(f"🚨 DEBUG: Found artist: {artist_name}")
 
         logger.warning(f"🚨 DEBUG: Updating progress to 10%...")
@@ -163,19 +167,19 @@ def enrich_artist_metadata_task(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         logger.warning(f"🚨 DEBUG: Event loop created and set")
-        
+
         # Prepare safe result structure BEFORE any enrichment operations
         safe_result = {
-            'success': False,
-            'sources_used': [],
-            'metadata_sources': [],
-            'enriched_fields': [],
-            'metadata_found': {},
-            'confidence_score': 0,
-            'processing_time': 0,
-            'errors': []
+            "success": False,
+            "sources_used": [],
+            "metadata_sources": [],
+            "enriched_fields": [],
+            "metadata_found": {},
+            "confidence_score": 0,
+            "processing_time": 0,
+            "errors": [],
         }
-        
+
         try:
             # Add timeout to prevent hanging (90 seconds - enough for external API calls)
             logger.warning(f"🚨 DEBUG: Starting enrichment with timeout (90s)...")
@@ -190,73 +194,95 @@ def enrich_artist_metadata_task(
                 )
             )
             logger.warning(f"🚨 DEBUG: Enrichment completed successfully!")
-            
+
             # IMMEDIATELY convert enrichment_result to avoid SQLAlchemy session issues
             # The enrichment service may return objects containing detached SQLAlchemy models
             # We must be extremely defensive here because even accessing the object can trigger errors
-            
+
             try:
                 # Extract fields one by one with maximum safety
                 # Don't use any truthiness checks or comparisons that might trigger SQLAlchemy loads
-                
-                logger.debug(f"Converting enrichment result of type: {type(enrichment_result).__name__}")
-                
+
+                logger.debug(
+                    f"Converting enrichment result of type: {type(enrichment_result).__name__}"
+                )
+
                 if enrichment_result is not None:
                     # Extract each field safely
                     for field_name, default_value in [
-                        ('success', False),
-                        ('sources_used', []),
-                        ('metadata_sources', []),
-                        ('enriched_fields', []),
-                        ('metadata_found', {}),
-                        ('confidence_score', 0),
-                        ('processing_time', 0),
-                        ('errors', [])
+                        ("success", False),
+                        ("sources_used", []),
+                        ("metadata_sources", []),
+                        ("enriched_fields", []),
+                        ("metadata_found", {}),
+                        ("confidence_score", 0),
+                        ("processing_time", 0),
+                        ("errors", []),
                     ]:
                         try:
                             # Use hasattr first to check if the attribute exists
                             if hasattr(enrichment_result, field_name):
-                                value = getattr(enrichment_result, field_name, default_value)
-                                
+                                value = getattr(
+                                    enrichment_result, field_name, default_value
+                                )
+
                                 # Convert to appropriate types to ensure serialization
-                                if field_name in ['sources_used', 'metadata_sources', 'enriched_fields', 'errors']:
-                                    safe_result[field_name] = list(value) if value else []
-                                elif field_name == 'metadata_found':
-                                    safe_result[field_name] = dict(value) if value else {}
-                                elif field_name in ['confidence_score', 'processing_time']:
-                                    safe_result[field_name] = float(value) if value else 0.0
-                                elif field_name == 'success':
+                                if field_name in [
+                                    "sources_used",
+                                    "metadata_sources",
+                                    "enriched_fields",
+                                    "errors",
+                                ]:
+                                    safe_result[field_name] = (
+                                        list(value) if value else []
+                                    )
+                                elif field_name == "metadata_found":
+                                    safe_result[field_name] = (
+                                        dict(value) if value else {}
+                                    )
+                                elif field_name in [
+                                    "confidence_score",
+                                    "processing_time",
+                                ]:
+                                    safe_result[field_name] = (
+                                        float(value) if value else 0.0
+                                    )
+                                elif field_name == "success":
                                     safe_result[field_name] = bool(value)
                                 else:
                                     safe_result[field_name] = value
                             else:
                                 safe_result[field_name] = default_value
-                                
+
                         except Exception as field_error:
-                            error_msg = f"Could not extract field '{field_name}': {field_error}"
+                            error_msg = (
+                                f"Could not extract field '{field_name}': {field_error}"
+                            )
                             logger.warning(error_msg)
-                            safe_result['errors'].append(error_msg)
+                            safe_result["errors"].append(error_msg)
                             safe_result[field_name] = default_value
                 else:
-                    safe_result['errors'] = ['Enrichment service returned None']
+                    safe_result["errors"] = ["Enrichment service returned None"]
                     logger.warning("Enrichment result is None")
-                
+
             except Exception as conversion_error:
-                error_msg = f"Failed to safely extract enrichment result: {conversion_error}"
+                error_msg = (
+                    f"Failed to safely extract enrichment result: {conversion_error}"
+                )
                 logger.error(error_msg)
-                safe_result['errors'].append(error_msg)
-                safe_result['success'] = False
-            
+                safe_result["errors"].append(error_msg)
+                safe_result["success"] = False
+
             # CRITICAL: Clear reference to original enrichment_result to prevent SQLAlchemy issues
             enrichment_result = None
             del enrichment_result
-            
+
         except Exception as enrichment_error:
             error_msg = f"Enrichment process failed: {enrichment_error}"
             logger.error(error_msg)
-            safe_result['errors'].append(error_msg)
-            safe_result['success'] = False
-            
+            safe_result["errors"].append(error_msg)
+            safe_result["success"] = False
+
         finally:
             loop.close()
 
@@ -274,14 +300,14 @@ def enrich_artist_metadata_task(
         # Now process the results - enrichment_result is now a safe dictionary
         try:
             # Check success status (enrichment_result is now a dictionary)
-            success = enrichment_result.get('success', False)
+            success = enrichment_result.get("success", False)
             if not success:
                 error_msg = "Enrichment failed"
-                errors = enrichment_result.get('errors', [])
+                errors = enrichment_result.get("errors", [])
                 if errors:
                     error_msg = "; ".join(str(e) for e in errors)
                 raise Exception(error_msg)
-                
+
         except Exception as processing_error:
             logger.error(f"Error processing enrichment result: {processing_error}")
             raise Exception(f"Metadata enrichment failed: {processing_error}")
@@ -292,45 +318,53 @@ def enrich_artist_metadata_task(
         #     self.update_progress(task_id, 85, "Enriching associated videos...")
         #     enriched_videos_count = self._enrich_artist_videos(artist_id, task_id)
 
-        self.update_progress(
-            task_id, 95, f"Processing thumbnails for {artist_name}..."
-        )
+        self.update_progress(task_id, 95, f"Processing thumbnails for {artist_name}...")
 
         # Auto-trigger thumbnail processing after successful enrichment
         thumbnail_processed = False
         try:
             # Check if we found any thumbnail URLs during enrichment
             from src.services.thumbnail_service import ThumbnailService
-            
+
             # Re-query artist to get latest metadata with thumbnail URLs
             with get_db() as session:
                 artist = session.query(Artist).filter(Artist.id == artist_id).first()
                 if artist and artist.imvdb_metadata:
                     thumbnail_url = artist.imvdb_metadata.get("best_thumbnail_url")
                     if thumbnail_url:
-                        logger.info(f"Auto-downloading thumbnail for {artist_name}: {thumbnail_url}")
-                        
+                        logger.info(
+                            f"Auto-downloading thumbnail for {artist_name}: {thumbnail_url}"
+                        )
+
                         thumbnail_service = ThumbnailService()
                         downloaded_path = thumbnail_service.download_artist_thumbnail(
                             artist_name, thumbnail_url
                         )
-                        
+
                         if downloaded_path:
                             # Update artist thumbnail URL
                             artist.thumbnail_url = f"/api/artists/{artist_id}/thumbnail"
                             session.commit()
-                            logger.info(f"Successfully downloaded and set thumbnail for {artist_name}: {downloaded_path}")
+                            logger.info(
+                                f"Successfully downloaded and set thumbnail for {artist_name}: {downloaded_path}"
+                            )
                             thumbnail_processed = True
                         else:
-                            logger.warning(f"Failed to download thumbnail for {artist_name}")
+                            logger.warning(
+                                f"Failed to download thumbnail for {artist_name}"
+                            )
                     else:
-                        logger.info(f"No thumbnail URL found in metadata for {artist_name}")
+                        logger.info(
+                            f"No thumbnail URL found in metadata for {artist_name}"
+                        )
         except Exception as e:
             logger.warning(f"Error processing thumbnail for {artist_name}: {e}")
 
         self.update_progress(
-            task_id, 100, f"Metadata enrichment completed for {artist_name}" + 
-            (" (thumbnail downloaded)" if thumbnail_processed else "")
+            task_id,
+            100,
+            f"Metadata enrichment completed for {artist_name}"
+            + (" (thumbnail downloaded)" if thumbnail_processed else ""),
         )
 
         # Brief pause to ensure final WebSocket transmission

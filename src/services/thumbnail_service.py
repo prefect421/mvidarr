@@ -61,9 +61,9 @@ class ThumbnailService:
         """Check if URL is a known placeholder image"""
         if not url:
             return True
-            
+
         url_lower = url.lower()
-        
+
         # Known placeholder patterns (same as metadata service)
         placeholder_patterns = [
             # Last.fm placeholder images
@@ -71,18 +71,33 @@ class ThumbnailService:
             "lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f",
             "lastfm.freetls.fastly.net/i/u/300x300/4128a6eb29f94943c9d206c08e625904",
             "lastfm.freetls.fastly.net/i/u/300x300/c6f59c1e5e7240a4c0d427abd71f3dbb",
-            
             # Generic placeholders
-            "placeholder", "default", "generic", "no-image", "blank",
-            "missing", "unavailable", "coming-soon", "avatar-default",
-            "profile-default", "default_artist", "artist_placeholder",
-            "music_placeholder", "album_default", "cover_default",
-            
+            "placeholder",
+            "default",
+            "generic",
+            "no-image",
+            "blank",
+            "missing",
+            "unavailable",
+            "coming-soon",
+            "avatar-default",
+            "profile-default",
+            "default_artist",
+            "artist_placeholder",
+            "music_placeholder",
+            "album_default",
+            "cover_default",
             # Common placeholder files
-            "grey.gif", "transparent.png", "1x1.png", "spacer.gif",
-            "default.jpg", "default.png", "placeholder.jpg", "placeholder.png",
+            "grey.gif",
+            "transparent.png",
+            "1x1.png",
+            "spacer.gif",
+            "default.jpg",
+            "default.png",
+            "placeholder.jpg",
+            "placeholder.png",
         ]
-        
+
         return any(pattern in url_lower for pattern in placeholder_patterns)
 
     def generate_filename(self, url: str, prefix: str = "") -> str:
@@ -234,7 +249,9 @@ class ThumbnailService:
         """
         # Additional safety check - don't download known placeholders
         if self._is_placeholder_url(url):
-            logger.info(f"Refusing to download placeholder thumbnail for {artist_name}: {url}")
+            logger.info(
+                f"Refusing to download placeholder thumbnail for {artist_name}: {url}"
+            )
             return None
         # Sanitize artist name for filename
         safe_name = "".join(

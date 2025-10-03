@@ -323,18 +323,24 @@ async def restart_application(current_user: UserInfo = Depends(require_admin_acc
                         timeout=5,
                     )
                     if result.returncode == 0 and result.stdout.strip():
-                        worker_pids = result.stdout.strip().split('\n')
+                        worker_pids = result.stdout.strip().split("\n")
                         for pid in worker_pids:
                             if pid.strip():
                                 try:
-                                    subprocess.run(["kill", "-TERM", pid.strip()], timeout=5)
-                                    logger.info(f"Terminated Celery worker PID: {pid.strip()}")
+                                    subprocess.run(
+                                        ["kill", "-TERM", pid.strip()], timeout=5
+                                    )
+                                    logger.info(
+                                        f"Terminated Celery worker PID: {pid.strip()}"
+                                    )
                                 except Exception as e:
-                                    logger.warning(f"Failed to terminate Celery worker {pid}: {e}")
-                        
+                                    logger.warning(
+                                        f"Failed to terminate Celery worker {pid}: {e}"
+                                    )
+
                         # Wait a moment for workers to shut down gracefully
                         time.sleep(2)
-                        
+
                         logger.info("Celery workers stopped successfully")
                     else:
                         logger.info("No Celery workers found to stop")
@@ -385,12 +391,19 @@ async def restart_application(current_user: UserInfo = Depends(require_admin_acc
                 if os.path.exists(script_path) and os.access(script_path, os.X_OK):
                     logger.info("Restarting via manage_service.sh...")
                     try:
-                        result = subprocess.run([script_path, "restart"], timeout=60, capture_output=True, text=True)
+                        result = subprocess.run(
+                            [script_path, "restart"],
+                            timeout=60,
+                            capture_output=True,
+                            text=True,
+                        )
                         if result.returncode == 0:
                             logger.info("Manage service script restart successful")
                             return
                         else:
-                            logger.warning(f"Manage service script failed: {result.stderr}")
+                            logger.warning(
+                                f"Manage service script failed: {result.stderr}"
+                            )
                     except subprocess.TimeoutExpired:
                         logger.warning("Manage service script restart timed out")
                     except Exception as e:

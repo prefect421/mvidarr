@@ -117,6 +117,25 @@ async def playlists(request: Request):
         raise HTTPException(status_code=500, detail="Failed to load playlists page")
 
 
+@frontend_router.get(
+    "/playlist/{playlist_id}",
+    response_class=HTMLResponse,
+    name="frontend_playlist_detail",
+)
+async def playlist_detail(request: Request, playlist_id: int = Path(..., ge=1)):
+    """Playlist detail page"""
+    try:
+        context = {"playlist_id": playlist_id, "page_title": "Playlist Details"}
+        return await template_system.render_response(
+            "playlist_detail.html", request, context
+        )
+    except Exception as e:
+        logger.error(f"Error rendering playlist detail page: {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to load playlist detail page"
+        )
+
+
 @frontend_router.get("/discover", response_class=HTMLResponse, name="frontend_discover")
 async def discover(request: Request, q: Optional[str] = Query(None)):
     """Universal search/discover page"""
@@ -128,13 +147,14 @@ async def discover(request: Request, q: Optional[str] = Query(None)):
         raise HTTPException(status_code=500, detail="Failed to load discover page")
 
 
-@frontend_router.get(
-    "/frontend.mvtv", response_class=HTMLResponse, name="frontend_mvtv"
-)
-async def mvtv(request: Request):
+@frontend_router.get("/mvtv", response_class=HTMLResponse, name="frontend_mvtv")
+async def mvtv(request: Request, playlist: Optional[int] = Query(None)):
     """MvTV continuous video player page"""
     try:
-        context = {"page_title": "MvTV - Continuous Video Player"}
+        context = {
+            "page_title": "MvTV - Continuous Video Player",
+            "playlist_id": playlist,
+        }
         return await template_system.render_response("mvtv.html", request, context)
     except Exception as e:
         logger.error(f"Error rendering MvTV page: {e}")

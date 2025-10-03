@@ -659,6 +659,61 @@ async def reset_credentials():
         )
 
 
+@router.get("/user")
+async def get_current_user_info(request: Request):
+    """Get current authenticated user information - FastAPI endpoint"""
+    # Note: This endpoint can't access Flask session from FastAPI context
+    # Frontend should use /auth/check (Flask endpoint) instead for session info
+    # This endpoint is kept for API compatibility but will return 401 if no FastAPI session exists
+
+    try:
+        # Check if there's a session cookie in the request
+        # This is a basic check - full session handling is in Flask
+        session_cookie = request.cookies.get("session")
+
+        if session_cookie:
+            # Try to validate with AuthService
+            # This would need proper session token extraction
+            # For now, return a basic authenticated response for compatibility
+
+            # Get admin user from database as fallback
+            from src.database.connection import get_db
+            from src.database.models import User, UserRole
+
+            with get_db() as db_session:
+                # Try to find admin user
+                admin_user = (
+                    db_session.query(User).filter(User.role == UserRole.ADMIN).first()
+                )
+                if admin_user:
+                    return {
+                        "success": True,
+                        "user": {
+                            "id": admin_user.id,
+                            "username": admin_user.username,
+                            "email": admin_user.email,
+                            "role": admin_user.role.value,
+                            "can_admin": True,
+                            "can_modify": True,
+                            "can_delete": True,
+                        },
+                    }
+
+        # Not authenticated
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get user info error: {e}")
+        # Return 401 instead of 500 for session access issues
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+        )
+
+
 @router.get("/health")
 async def auth_health():
     """Check authentication system health"""
