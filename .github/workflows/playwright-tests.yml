@@ -65,9 +65,9 @@ jobs:
       run: |
         export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
         python -c "
-        from src.database.connection import get_database_connection, init_database
+        from src.database.connection import init_db_standalone
         try:
-            init_database()
+            init_db_standalone()
             print('Database initialized successfully')
         except Exception as e:
             print(f'Database initialization error: {e}')
@@ -77,42 +77,33 @@ jobs:
       run: |
         export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
         python -c "
-        from src.database.connection import get_database_connection
+        from src.database.connection import get_engine
+        from src.database.models import User
         from werkzeug.security import generate_password_hash
-        import mysql.connector
-        
+        from sqlalchemy.orm import Session
+
         try:
-            conn = get_database_connection()
-            cursor = conn.cursor()
-            
-            # Create users table if it doesn't exist
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    username VARCHAR(80) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    email VARCHAR(120),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Create admin user
-            admin_password = generate_password_hash('mvidarr')
-            cursor.execute('''
-                INSERT IGNORE INTO users (username, password_hash, email) 
-                VALUES (%s, %s, %s)
-            ''', ('admin', admin_password, 'admin@mvidarr.test'))
-            
-            conn.commit()
-            print('Test user created successfully')
-            
+            engine = get_engine()
+            with Session(engine) as session:
+                # Check if admin user exists
+                existing_user = session.query(User).filter_by(username='admin').first()
+                if not existing_user:
+                    # Create admin user
+                    admin_password = generate_password_hash('mvidarr')
+                    admin_user = User(
+                        username='admin',
+                        password_hash=admin_password,
+                        email='admin@mvidarr.test'
+                    )
+                    session.add(admin_user)
+                    session.commit()
+                    print('Test user created successfully')
+                else:
+                    print('Test user already exists')
         except Exception as e:
             print(f'Test user creation error: {e}')
-        finally:
-            if 'cursor' in locals():
-                cursor.close()
-            if 'conn' in locals():
-                conn.close()
+            import traceback
+            traceback.print_exc()
         "
     
     - name: Start MVidarr application
@@ -231,9 +222,9 @@ jobs:
       run: |
         export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
         python -c "
-        from src.database.connection import get_database_connection, init_database
+        from src.database.connection import init_db_standalone
         try:
-            init_database()
+            init_db_standalone()
             print('Database initialized for ${{ matrix.project }}')
         except Exception as e:
             print(f'Database initialization error: {e}')
@@ -243,39 +234,33 @@ jobs:
       run: |
         export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
         python -c "
-        from src.database.connection import get_database_connection
+        from src.database.connection import get_engine
+        from src.database.models import User
         from werkzeug.security import generate_password_hash
-        
+        from sqlalchemy.orm import Session
+
         try:
-            conn = get_database_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    username VARCHAR(80) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    email VARCHAR(120),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            admin_password = generate_password_hash('mvidarr')
-            cursor.execute('''
-                INSERT IGNORE INTO users (username, password_hash, email) 
-                VALUES (%s, %s, %s)
-            ''', ('admin', admin_password, 'admin@mvidarr.test'))
-            
-            conn.commit()
-            print('Test user created for ${{ matrix.project }}')
-            
+            engine = get_engine()
+            with Session(engine) as session:
+                # Check if admin user exists
+                existing_user = session.query(User).filter_by(username='admin').first()
+                if not existing_user:
+                    # Create admin user
+                    admin_password = generate_password_hash('mvidarr')
+                    admin_user = User(
+                        username='admin',
+                        password_hash=admin_password,
+                        email='admin@mvidarr.test'
+                    )
+                    session.add(admin_user)
+                    session.commit()
+                    print('Test user created for ${{ matrix.project }}')
+                else:
+                    print('Test user already exists for ${{ matrix.project }}')
         except Exception as e:
             print(f'Test user creation error: {e}')
-        finally:
-            if 'cursor' in locals():
-                cursor.close()
-            if 'conn' in locals():
-                conn.close()
+            import traceback
+            traceback.print_exc()
         "
     
     - name: Start MVidarr application
