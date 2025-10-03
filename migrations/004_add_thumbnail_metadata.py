@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sqlalchemy import text
+
 from src.database.connection import get_db
 from src.utils.logger import get_logger
 
@@ -22,29 +23,44 @@ def upgrade():
 
     try:
         with get_db() as session:
-            # Add thumbnail metadata columns to artists table
-            session.execute(
-                text(
-                    """
-                ALTER TABLE artists
-                ADD COLUMN thumbnail_source VARCHAR(50) DEFAULT NULL,
-                ADD COLUMN thumbnail_metadata JSON DEFAULT NULL,
-                ADD COLUMN thumbnail_uploaded_at DATETIME DEFAULT NULL
-            """
-                )
+            # Check and add thumbnail metadata columns to artists table
+            # Check if thumbnail_source already exists
+            result = session.execute(
+                text("SHOW COLUMNS FROM artists LIKE 'thumbnail_source'")
             )
+            if not result.fetchone():
+                session.execute(
+                    text(
+                        """
+                    ALTER TABLE artists
+                    ADD COLUMN thumbnail_source VARCHAR(50) DEFAULT NULL,
+                    ADD COLUMN thumbnail_metadata JSON DEFAULT NULL,
+                    ADD COLUMN thumbnail_uploaded_at DATETIME DEFAULT NULL
+                """
+                    )
+                )
+                logger.info("Added thumbnail metadata columns to artists table")
+            else:
+                logger.info("Thumbnail metadata columns already exist in artists table")
 
-            # Add thumbnail metadata columns to videos table
-            session.execute(
-                text(
-                    """
-                ALTER TABLE videos
-                ADD COLUMN thumbnail_source VARCHAR(50) DEFAULT NULL,
-                ADD COLUMN thumbnail_metadata JSON DEFAULT NULL,
-                ADD COLUMN thumbnail_uploaded_at DATETIME DEFAULT NULL
-            """
-                )
+            # Check and add thumbnail metadata columns to videos table
+            result = session.execute(
+                text("SHOW COLUMNS FROM videos LIKE 'thumbnail_source'")
             )
+            if not result.fetchone():
+                session.execute(
+                    text(
+                        """
+                    ALTER TABLE videos
+                    ADD COLUMN thumbnail_source VARCHAR(50) DEFAULT NULL,
+                    ADD COLUMN thumbnail_metadata JSON DEFAULT NULL,
+                    ADD COLUMN thumbnail_uploaded_at DATETIME DEFAULT NULL
+                """
+                    )
+                )
+                logger.info("Added thumbnail metadata columns to videos table")
+            else:
+                logger.info("Thumbnail metadata columns already exist in videos table")
 
             # Set default source for existing thumbnails
             session.execute(
