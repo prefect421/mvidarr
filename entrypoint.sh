@@ -92,5 +92,5 @@ echo "📍 Working directory: $(pwd)"
 echo "🐍 Python path: $PYTHONPATH"
 
 # Start application with error output
-echo "▶️ Executing: python3 app.py"
-exec python3 app.py
+echo "▶️ Executing: python3 fastapi_app.py"
+exec python3 fastapi_app.py

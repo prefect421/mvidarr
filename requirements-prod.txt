@@ -54,6 +54,8 @@ colorama==0.4.6
 tqdm==4.66.3
 psutil==5.9.6
 schedule==1.2.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
 
 # Monitoring and Logging
 prometheus-client==0.19.0
