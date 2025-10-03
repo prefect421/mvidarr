@@ -1003,9 +1003,8 @@ function refreshThumbnails() {
             if (result.error) {
                 showError('Error: ' + result.error);
             } else if (result.job_id) {
-                // Show progress bar for background job
-                showThumbnailProgress(result.job_id, result.valid_videos);
-                showSuccess(`${result.message} - Job ID: ${result.job_id}`);
+                // Background job started - show success message (progress tracking will be added in future release)
+                showSuccess(`${result.message} - Job ID: ${result.job_id}. Thumbnails will be generated in the background.`);
             } else {
                 showSuccess(result.message || 'Thumbnail refresh completed');
                 loadVideos(); // Refresh the video list
@@ -1018,7 +1017,9 @@ function refreshThumbnails() {
     });
 }
 
-function showThumbnailProgress(jobId, totalVideos) {
+// DISABLED: Progress tracking requires WebSocket infrastructure (planned for future release)
+// Keeping function for future implementation
+function showThumbnailProgress_DISABLED(jobId, totalVideos) {
     // Create progress bar UI
     const progressContainer = document.createElement('div');
     progressContainer.id = `thumbnail-progress-${jobId}`;
@@ -1053,7 +1054,7 @@ function showThumbnailProgress(jobId, totalVideos) {
     }
 }
 
-function updateThumbnailProgress(jobId, jobData, totalVideos) {
+function updateThumbnailProgress_DISABLED(jobId, jobData, totalVideos) {
     const progressBar = document.getElementById(`thumbnail-progress-bar-${jobId}`);
     const statsElement = document.getElementById(`thumbnail-stats-${jobId}`);
     const detailsElement = document.getElementById(`thumbnail-details-${jobId}`);
@@ -2151,7 +2152,7 @@ function loadModalSubtitleTracks() {
                     <div class="url-upload-form">
                         <div class="form-group">
                             <label for="videoThumbnailUrlInput">Image URL:</label>
-                            <input type="url" id="videoThumbnailUrlInput" placeholder="https://example.com/image.jpg" class="form-control">
+                            <input type="text" id="videoThumbnailUrlInput" placeholder="https://example.com/image.jpg" class="form-control">
                         </div>
                         <div class="form-actions">
                             <button onclick="previewVideoUrlImage()" class="btn btn-info">🔍 Preview</button>

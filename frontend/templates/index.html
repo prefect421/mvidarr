@@ -274,12 +274,6 @@ function loadDownloadQueue() {
                                     }
                                 </div>
                             </div>
-                            <div class="download-progress">
-                                <div class="progress-bar">
-                                    <div class="progress" style="width: ${download.progress || 0}%"></div>
-                                </div>
-                                <div class="progress-text">${download.progress || 0}%</div>
-                            </div>
                             ${download.error_message ? `<div class="error-msg">${download.error_message}</div>` : ''}
                         </div>
                     </div>
