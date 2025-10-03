@@ -76,7 +76,7 @@ COPY --chown=mvidarr:mvidarr src/ /app/src/
 COPY --chown=mvidarr:mvidarr frontend/ /app/frontend/
 COPY --chown=mvidarr:mvidarr migrations/ /app/migrations/
 COPY --chown=mvidarr:mvidarr scripts/ /app/scripts/
-COPY --chown=mvidarr:mvidarr app.py version.json /app/
+COPY --chown=mvidarr:mvidarr fastapi_app.py version.json /app/
 
 # Expose the application port
 EXPOSE 5000
