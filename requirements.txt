@@ -32,7 +32,9 @@ moviepy==1.0.3
 python-dateutil==2.8.2
 python-dotenv==1.0.0
 pydantic==2.5.0
+pydantic-settings==2.1.0
 marshmallow==3.20.1
+PyYAML==6.0.1
 
 # HTML Parsing (for AllMusic web scraping)
 beautifulsoup4==4.12.2
@@ -47,6 +49,8 @@ flower==2.0.1
 bcrypt==4.1.2
 cryptography>=42.0.0
 PyJWT==2.8.0
+python-jose[cryptography]==3.3.0
+passlib==1.7.4
 pyotp==2.9.0
 qrcode==7.4.2
 defusedxml==0.7.1
