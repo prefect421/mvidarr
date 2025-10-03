@@ -217,7 +217,9 @@ def playlist_to_dict(
         "is_public": playlist.is_public,
         "is_featured": playlist.is_featured,
         "is_dynamic": is_dynamic,
-        "filter_criteria": playlist.filter_criteria if hasattr(playlist, "filter_criteria") else None,
+        "filter_criteria": (
+            playlist.filter_criteria if hasattr(playlist, "filter_criteria") else None
+        ),
         "video_count": getattr(playlist, "video_count", 0),
         "total_duration": getattr(playlist, "total_duration", 0),
         "thumbnail_url": (
@@ -245,10 +247,18 @@ def playlist_to_dict(
                         "duration": entry.video.duration,
                         "thumbnail_url": f"/api/videos/{entry.video.id}/thumbnail",
                         "local_path": entry.video.local_path,
-                        "status": entry.video.status.value if hasattr(entry.video.status, 'value') else entry.video.status,
+                        "status": (
+                            entry.video.status.value
+                            if hasattr(entry.video.status, "value")
+                            else entry.video.status
+                        ),
                         "quality": entry.video.quality,
                         "year": entry.video.year,
-                        "release_date": entry.video.release_date.isoformat() if entry.video.release_date else None,
+                        "release_date": (
+                            entry.video.release_date.isoformat()
+                            if entry.video.release_date
+                            else None
+                        ),
                         "youtube_id": entry.video.youtube_id,
                         "youtube_url": entry.video.youtube_url,
                     }

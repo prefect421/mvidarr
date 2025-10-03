@@ -226,25 +226,30 @@ class YouTubeDownloadEngine:
         # Pre-download cleanup: Remove corrupted target files that would block rename
         # Check for existing files with 0 hard links (corrupted inodes)
         import subprocess
-        for ext in ['.mp4', '.webm', '.mkv']:
+
+        for ext in [".mp4", ".webm", ".mkv"]:
             potential_target = os.path.join(output_path, f"{safe_title}{ext}")
             if os.path.exists(potential_target):
                 try:
                     # Check hard link count using stat
                     stat_result = subprocess.run(
-                        ['stat', '-c', '%h', potential_target],
+                        ["stat", "-c", "%h", potential_target],
                         capture_output=True,
                         text=True,
-                        timeout=2
+                        timeout=2,
                     )
                     if stat_result.returncode == 0:
                         hard_links = int(stat_result.stdout.strip())
                         if hard_links == 0:
                             # Corrupted file with 0 hard links - remove it
-                            logger.warning(f"Removing corrupted file with 0 hard links: {potential_target}")
-                            subprocess.run(['rm', '-f', potential_target], timeout=5)
+                            logger.warning(
+                                f"Removing corrupted file with 0 hard links: {potential_target}"
+                            )
+                            subprocess.run(["rm", "-f", potential_target], timeout=5)
                 except Exception as e:
-                    logger.debug(f"Could not check/remove existing file {potential_target}: {e}")
+                    logger.debug(
+                        f"Could not check/remove existing file {potential_target}: {e}"
+                    )
 
         # Quality format - use directly if it's a complex format string, otherwise convert
         if "/" in quality or "[" in quality or "+" in quality:
@@ -361,10 +366,12 @@ class YouTubeDownloadEngine:
                         metadata=self._extract_metadata(downloaded_file),
                     )
                 elif downloaded_file:
-                    logger.error(f"Downloaded file path exists but file not found: {downloaded_file}")
+                    logger.error(
+                        f"Downloaded file path exists but file not found: {downloaded_file}"
+                    )
                     return DownloadResult(
                         success=False,
-                        error_message=f"File not found after download: {downloaded_file}"
+                        error_message=f"File not found after download: {downloaded_file}",
                     )
 
             # Failed - extract error
@@ -533,11 +540,14 @@ class YouTubeDownloadEngine:
             # Prioritize by: 1) Most recent, 2) Largest file size (higher quality)
             if not found_files:
                 import time
+
                 video_files = []
                 for file in os.listdir(base_dir):
                     full_path = os.path.join(base_dir, file)
                     # Include .temp.mp4 files so rename handling can fix them
-                    if any(file.endswith(ext) for ext in video_extensions) or file.endswith(".temp.mp4"):
+                    if any(
+                        file.endswith(ext) for ext in video_extensions
+                    ) or file.endswith(".temp.mp4"):
                         # Only exclude info.json
                         if not file.endswith(".info.json"):
                             file_size = os.path.getsize(full_path)
@@ -547,21 +557,28 @@ class YouTubeDownloadEngine:
                 if video_files:
                     # Get files modified in the last 5 minutes (recent downloads)
                     import time
+
                     current_time = time.time()
-                    recent_files = [f for f in video_files if (current_time - f[1]) < 300]  # 5 minutes
+                    recent_files = [
+                        f for f in video_files if (current_time - f[1]) < 300
+                    ]  # 5 minutes
 
                     if recent_files:
                         # Sort recent files by size (largest first) - higher quality
                         recent_files.sort(key=lambda x: x[2], reverse=True)
                         most_recent = recent_files[0][0]
-                        logger.info(f"Using most recent large video file: {most_recent} ({recent_files[0][2]/(1024*1024):.1f}MB)")
+                        logger.info(
+                            f"Using most recent large video file: {most_recent} ({recent_files[0][2]/(1024*1024):.1f}MB)"
+                        )
                         found_files.append(most_recent)
                     else:
                         # No recent files, sort all by modification time
                         video_files.sort(key=lambda x: x[1], reverse=True)
                         most_recent = video_files[0][0]
                         found_files.append(most_recent)
-                        logger.info(f"Using most recent video file as fallback: {most_recent}")
+                        logger.info(
+                            f"Using most recent video file as fallback: {most_recent}"
+                        )
 
             # First, look for video files (excluding temp files)
             for file in found_files:
@@ -601,11 +618,10 @@ class YouTubeDownloadEngine:
             # Strategy 3: Force unlink with subprocess (handles corrupted inodes)
             try:
                 import subprocess
+
                 logger.info("Attempting force unlink with subprocess")
                 result = subprocess.run(
-                    ['rm', '-f', final_file],
-                    capture_output=True,
-                    timeout=5
+                    ["rm", "-f", final_file], capture_output=True, timeout=5
                 )
                 if result.returncode == 0:
                     time.sleep(0.2)
@@ -640,14 +656,18 @@ class YouTubeDownloadEngine:
                     try:
                         os.remove(temp_file)
                     except:
-                        logger.warning("Temp file could not be removed after copy, but copy succeeded")
+                        logger.warning(
+                            "Temp file could not be removed after copy, but copy succeeded"
+                        )
                     logger.info("Used copy+delete strategy for temp file")
                     return True
             except Exception as e:
                 logger.warning(f"copy+delete failed: {e}")
 
             # Strategy 6: Just use the temp file as-is (return True to signal success)
-            logger.warning(f"Cannot rename temp file, but temp file exists and is valid: {temp_file}")
+            logger.warning(
+                f"Cannot rename temp file, but temp file exists and is valid: {temp_file}"
+            )
             logger.warning("System will use .temp.mp4 file directly")
             return False  # Return False so caller uses temp file path
 

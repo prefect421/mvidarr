@@ -408,25 +408,29 @@ class VideoIndexingService:
                     # upload_date format is YYYYMMDD
                     if isinstance(upload_date, str) and len(upload_date) >= 4:
                         video.year = int(upload_date[:4])
-                        logger.info(f"Extracted year {video.year} from YouTube upload_date for: {video.title}")
+                        logger.info(
+                            f"Extracted year {video.year} from YouTube upload_date for: {video.title}"
+                        )
                 except (ValueError, TypeError) as e:
-                    logger.debug(f"Could not extract year from upload_date '{upload_date}': {e}")
+                    logger.debug(
+                        f"Could not extract year from upload_date '{upload_date}': {e}"
+                    )
 
         # Download thumbnail if available
         if imvdb_metadata and imvdb_metadata.get("thumbnail_url"):
-                try:
-                    thumbnail_path = thumbnail_service.download_video_thumbnail(
-                        artist.name, video.title, imvdb_metadata["thumbnail_url"]
+            try:
+                thumbnail_path = thumbnail_service.download_video_thumbnail(
+                    artist.name, video.title, imvdb_metadata["thumbnail_url"]
+                )
+                if thumbnail_path:
+                    video.thumbnail_path = thumbnail_path
+                    logger.info(
+                        f"Downloaded thumbnail for: {artist.name} - {video.title}"
                     )
-                    if thumbnail_path:
-                        video.thumbnail_path = thumbnail_path
-                        logger.info(
-                            f"Downloaded thumbnail for: {artist.name} - {video.title}"
-                        )
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to download thumbnail for {artist.name} - {video.title}: {e}"
-                    )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to download thumbnail for {artist.name} - {video.title}: {e}"
+                )
 
         session.add(video)
         session.flush()  # Get the ID

@@ -207,7 +207,9 @@ async def get_download_queue(
                         "progress": download.progress or 0,
                         "quality": download.quality or "best",
                         "created_at": (
-                            download.created_at.isoformat() if download.created_at else None
+                            download.created_at.isoformat()
+                            if download.created_at
+                            else None
                         ),
                         "task_type": "database",
                         "db_download_id": download.id,
