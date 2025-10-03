@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, validator
 
 from .base import (
     BaseRequest,

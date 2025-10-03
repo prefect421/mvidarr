@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 import aiohttp
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from src.database.async_connection import get_async_session
 from src.database.models import Artist, Video
