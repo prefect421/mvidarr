@@ -86,6 +86,29 @@ else
     echo "✅ Database already initialized (marker file exists)"
 fi
 
+# Run database migrations
+echo "🔄 Running database migrations..."
+python3 -c "
+import sys
+sys.path.insert(0, '/app')
+sys.path.insert(0, '/app/src')
+print('Running database migrations...')
+try:
+    from migrations.run_migrations import run_all_migrations
+    print('✅ Migration module loaded')
+    result = run_all_migrations()
+    if result:
+        print('✅ Migrations completed successfully')
+    else:
+        print('⚠️ Migrations returned False (may be already applied)')
+except ImportError as e:
+    print(f'⚠️ Migration module not found: {e}')
+    print('Skipping migrations - ensure migrations directory is in Docker image')
+except Exception as e:
+    print(f'⚠️ Migration error: {e}')
+    print('Continuing with application startup...')
+"
+
 # Start the application
 echo "🚀 Starting MVidarr application..."
 echo "📍 Working directory: $(pwd)"
