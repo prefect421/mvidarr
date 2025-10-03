@@ -83,7 +83,8 @@ def upgrade():
                 )
             )
 
-            session.commit()
+            # DO NOT commit here - migration system handles the commit
+            # session.commit() would close the connection that the migration system needs
             logger.info("Migration 004 completed successfully")
 
     except Exception as e:
@@ -121,7 +122,7 @@ def downgrade():
                 )
             )
 
-            session.commit()
+            # DO NOT commit here - migration system handles the commit
             logger.info("Migration 004 downgrade completed successfully")
 
     except Exception as e:
