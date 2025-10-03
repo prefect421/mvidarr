@@ -22,8 +22,9 @@ WORKDIR /app
 RUN pip install --no-cache-dir --upgrade pip
 
 # Copy requirements and install with increased timeout
-COPY requirements-prod.txt .
-RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements-prod.txt
+COPY requirements-prod.txt requirements-fastapi.txt ./
+RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements-prod.txt && \
+    pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements-fastapi.txt
 
 #################################
 # Stage 2: Runtime Environment
