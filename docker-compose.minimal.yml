@@ -24,7 +24,7 @@ services:
         touch /app/data/database/.initialized || true;
         echo 'Starting MVidarr application...';
         umask \$${UMASK_SET:-022};
-        cd /app && su mvidarr -c 'python3 app.py';
+        cd /app && su mvidarr -c 'python3 fastapi_app.py';
       "
     container_name: mvidarr
     ports:
