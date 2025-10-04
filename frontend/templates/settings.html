@@ -2260,13 +2260,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (downloadsTabBtn) {
         downloadsTabBtn.addEventListener('click', function() {
             setTimeout(loadQualityStatistics, 100);
-            setTimeout(checkOAuth2Status, 200); // Check OAuth2 status
         });
-    }
-    
-    // Check OAuth2 status if we're starting on the downloads tab
-    if (window.location.hash === '#downloads' || document.getElementById('downloads-tab')?.classList.contains('active')) {
-        setTimeout(checkOAuth2Status, 300);
     }
 });
 
