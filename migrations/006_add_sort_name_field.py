@@ -82,30 +82,23 @@ def populate_sort_names(connection):
     """
     try:
         # Use the connection provided by the migration system
-        # Create a session from the connection
-        from sqlalchemy.orm import Session
-
-        session = Session(bind=connection)
+        # Use raw SQL to avoid SQLAlchemy model attribute issues
         if True:  # Keep indentation for minimal changes
             logger.info("Starting sort name population for existing artists")
 
-            # Get all artists
-            all_artists = session.query(Artist).all()
-            logger.info(f"Found {len(all_artists)} total artists")
-
-            # Find artists without sort names
-            artists_without_sort_names = []
-            artists_with_empty_sort_names = []
-
-            for artist in all_artists:
-                if not artist.sort_name:
-                    artists_without_sort_names.append(artist)
-                elif artist.sort_name.strip() == "":
-                    artists_with_empty_sort_names.append(artist)
-
-            total_to_fix = len(artists_without_sort_names) + len(
-                artists_with_empty_sort_names
+            # Get artists needing sort names using raw SQL
+            result = connection.execute(
+                text(
+                    """
+                SELECT id, name
+                FROM artists
+                WHERE sort_name IS NULL OR sort_name = ''
+            """
+                )
             )
+
+            artists_to_fix = result.fetchall()
+            total_to_fix = len(artists_to_fix)
 
             if total_to_fix == 0:
                 logger.info(
@@ -113,33 +106,36 @@ def populate_sort_names(connection):
                 )
                 return True
 
-            logger.info(
-                f"Found {len(artists_without_sort_names)} artists with NULL sort_name"
-            )
-            logger.info(
-                f"Found {len(artists_with_empty_sort_names)} artists with empty sort_name"
-            )
-            logger.info(f"Total artists to fix: {total_to_fix}")
+            logger.info(f"Found {total_to_fix} artists needing sort names")
 
-            # Generate sort names
+            # Generate and update sort names using raw SQL
             fixed_count = 0
 
-            for artist in artists_without_sort_names + artists_with_empty_sort_names:
+            for artist_id, artist_name in artists_to_fix:
                 try:
                     # Generate sort name using the utility function
-                    sort_name = generate_sort_name(artist.name)
+                    sort_name = generate_sort_name(artist_name)
 
-                    # Update the artist
-                    artist.sort_name = sort_name
+                    # Update using raw SQL
+                    connection.execute(
+                        text(
+                            """
+                        UPDATE artists
+                        SET sort_name = :sort_name
+                        WHERE id = :artist_id
+                    """
+                        ),
+                        {"sort_name": sort_name, "artist_id": artist_id},
+                    )
 
                     logger.info(
-                        f"Generated sort name for artist ID {artist.id}: '{artist.name}' -> '{sort_name}'"
+                        f"Generated sort name for artist ID {artist_id}: '{artist_name}' -> '{sort_name}'"
                     )
                     fixed_count += 1
 
                 except Exception as e:
                     logger.error(
-                        f"Failed to generate sort name for artist {artist.id} '{artist.name}': {e}"
+                        f"Failed to generate sort name for artist {artist_id} '{artist_name}': {e}"
                     )
                     continue
 
@@ -149,12 +145,17 @@ def populate_sort_names(connection):
                 f"✅ Generated sort names for {fixed_count}/{total_to_fix} artists"
             )
 
-            # Verify the fix
-            remaining_without_sort_names = (
-                session.query(Artist)
-                .filter((Artist.sort_name.is_(None)) | (Artist.sort_name == ""))
-                .count()
+            # Verify the fix using raw SQL
+            result = connection.execute(
+                text(
+                    """
+                SELECT COUNT(*) as count
+                FROM artists
+                WHERE sort_name IS NULL OR sort_name = ''
+            """
+                )
             )
+            remaining_without_sort_names = result.fetchone()[0]
 
             if remaining_without_sort_names == 0:
                 logger.info("✅ Verification passed: All artists now have sort names")
