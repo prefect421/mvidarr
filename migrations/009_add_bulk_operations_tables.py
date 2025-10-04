@@ -29,13 +29,13 @@ def upgrade(connection):
         if True:  # Keep indentation for minimal changes
             logger.info("Starting migration 009: Adding bulk operations tables")
 
-            # Create bulk_operations table
+            # Create bulk_operations table (MySQL/MariaDB syntax)
             connection.execute(
                 text(
                     """
                 CREATE TABLE IF NOT EXISTS bulk_operations (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                    user_id INTEGER NOT NULL,
                     operation_type VARCHAR(50) NOT NULL,
                     operation_name VARCHAR(255) NOT NULL,
                     description TEXT,
@@ -46,7 +46,7 @@ def upgrade(connection):
                     processed_items INTEGER DEFAULT 0,
                     successful_items INTEGER DEFAULT 0,
                     failed_items INTEGER DEFAULT 0,
-                    progress_percentage REAL DEFAULT 0.0,
+                    progress_percentage FLOAT DEFAULT 0.0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     started_at DATETIME,
                     completed_at DATETIME,
@@ -56,9 +56,11 @@ def upgrade(connection):
                     is_undoable BOOLEAN DEFAULT 1,
                     undo_data JSON,
                     undone_at DATETIME,
-                    undone_by INTEGER REFERENCES users(id),
+                    undone_by INTEGER,
                     is_preview BOOLEAN DEFAULT 0,
-                    preview_results JSON
+                    preview_results JSON,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (undone_by) REFERENCES users(id) ON DELETE SET NULL
                 )
             """
                 )
@@ -103,16 +105,17 @@ def upgrade(connection):
                 text(
                     """
                 CREATE TABLE IF NOT EXISTS bulk_operation_progress (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    operation_id INTEGER NOT NULL REFERENCES bulk_operations(id),
+                    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                    operation_id INTEGER NOT NULL,
                     current_item_id VARCHAR(100),
                     current_item_name VARCHAR(500),
                     stage VARCHAR(100),
-                    stage_progress REAL DEFAULT 0.0,
-                    items_per_second REAL,
+                    stage_progress FLOAT DEFAULT 0.0,
+                    items_per_second FLOAT,
                     estimated_time_remaining INTEGER,
                     status_message TEXT,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (operation_id) REFERENCES bulk_operations(id) ON DELETE CASCADE
                 )
             """
                 )
@@ -137,8 +140,8 @@ def upgrade(connection):
                 text(
                     """
                 CREATE TABLE IF NOT EXISTS bulk_operation_audit (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    operation_id INTEGER NOT NULL REFERENCES bulk_operations(id),
+                    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                    operation_id INTEGER NOT NULL,
                     item_type VARCHAR(50) NOT NULL,
                     item_id INTEGER NOT NULL,
                     action VARCHAR(50) NOT NULL,
@@ -148,7 +151,8 @@ def upgrade(connection):
                     change_reason VARCHAR(255),
                     batch_sequence INTEGER,
                     change_metadata JSON,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (operation_id) REFERENCES bulk_operations(id) ON DELETE CASCADE
                 )
             """
                 )
@@ -183,8 +187,8 @@ def upgrade(connection):
                 text(
                     """
                 CREATE TABLE IF NOT EXISTS bulk_operation_templates (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER REFERENCES users(id),
+                    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                    user_id INTEGER,
                     name VARCHAR(255) NOT NULL,
                     description TEXT,
                     operation_type VARCHAR(50) NOT NULL,
@@ -194,8 +198,9 @@ def upgrade(connection):
                     is_system BOOLEAN DEFAULT 0,
                     usage_count INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    last_used_at DATETIME
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    last_used_at DATETIME,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             """
                 )
