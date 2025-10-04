@@ -29,13 +29,13 @@ def upgrade(connection):
         if True:  # Keep indentation for minimal changes
             logger.info("Starting migration 008: Adding advanced search tables")
 
-            # Create search_presets table
+            # Create search_presets table (MySQL/MariaDB syntax)
             connection.execute(
                 text(
                     """
                 CREATE TABLE IF NOT EXISTS search_presets (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER REFERENCES users(id),
+                    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                    user_id INTEGER,
                     name VARCHAR(255) NOT NULL,
                     description TEXT,
                     search_criteria JSON NOT NULL,
@@ -45,7 +45,8 @@ def upgrade(connection):
                     usage_count INTEGER DEFAULT 0,
                     last_used_at DATETIME,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             """
                 )
@@ -85,25 +86,27 @@ def upgrade(connection):
 
             logger.info("Created search_presets table with indexes")
 
-            # Create search_analytics table
+            # Create search_analytics table (MySQL/MariaDB syntax)
             connection.execute(
                 text(
                     """
                 CREATE TABLE IF NOT EXISTS search_analytics (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER REFERENCES users(id),
+                    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                    user_id INTEGER,
                     session_id VARCHAR(255),
                     event_type VARCHAR(50) NOT NULL,
                     search_query TEXT,
                     search_criteria JSON,
-                    preset_id INTEGER REFERENCES search_presets(id),
+                    preset_id INTEGER,
                     response_time_ms INTEGER,
                     result_count INTEGER,
                     user_agent TEXT,
                     ip_address VARCHAR(45),
                     referrer VARCHAR(500),
                     event_metadata JSON,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (preset_id) REFERENCES search_presets(id) ON DELETE SET NULL
                 )
             """
                 )
@@ -143,12 +146,12 @@ def upgrade(connection):
 
             logger.info("Created search_analytics table with indexes")
 
-            # Create search_result_cache table
+            # Create search_result_cache table (MySQL/MariaDB syntax)
             connection.execute(
                 text(
                     """
                 CREATE TABLE IF NOT EXISTS search_result_cache (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     cache_key VARCHAR(64) UNIQUE NOT NULL,
                     search_criteria JSON NOT NULL,
                     result_data JSON NOT NULL,
@@ -157,7 +160,7 @@ def upgrade(connection):
                     hit_count INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     expires_at DATETIME NOT NULL,
-                    last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP
+                    last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )
             """
                 )
@@ -187,18 +190,18 @@ def upgrade(connection):
 
             logger.info("Created search_result_cache table with indexes")
 
-            # Create search_suggestions table
+            # Create search_suggestions table (MySQL/MariaDB syntax)
             connection.execute(
                 text(
                     """
                 CREATE TABLE IF NOT EXISTS search_suggestions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     suggestion_text VARCHAR(500) NOT NULL,
                     suggestion_type VARCHAR(50) NOT NULL,
                     category VARCHAR(50),
                     usage_count INTEGER DEFAULT 0,
-                    success_rate REAL DEFAULT 0.0,
-                    relevance_score REAL DEFAULT 1.0,
+                    success_rate FLOAT DEFAULT 0.0,
+                    relevance_score FLOAT DEFAULT 1.0,
                     source_type VARCHAR(50),
                     language VARCHAR(10) DEFAULT 'en',
                     suggestion_metadata JSON,
@@ -278,9 +281,11 @@ def upgrade(connection):
                         "CREATE INDEX IF NOT EXISTS idx_video_duration_status ON videos(duration, status)"
                     )
                 )
+                # Note: MySQL/MariaDB doesn't support partial indexes with WHERE clause
+                # Creating standard index instead
                 connection.execute(
                     text(
-                        "CREATE INDEX IF NOT EXISTS idx_video_genres_status ON videos(status) WHERE genres IS NOT NULL"
+                        "CREATE INDEX IF NOT EXISTS idx_video_status_genres ON videos(status)"
                     )
                 )
 
@@ -369,21 +374,21 @@ def upgrade(connection):
 
             logger.info("Created system search presets")
 
-            # Populate search suggestions from existing data
+            # Populate search suggestions from existing data (MySQL/MariaDB syntax)
             try:
-                # Add artist names as suggestions
+                # Add artist names as suggestions (MySQL uses INSERT IGNORE not INSERT OR IGNORE)
                 connection.execute(
                     text(
                         """
-                    INSERT OR IGNORE INTO search_suggestions (
-                        suggestion_text, suggestion_type, category, 
+                    INSERT IGNORE INTO search_suggestions (
+                        suggestion_text, suggestion_type, category,
                         source_type, relevance_score
                     )
-                    SELECT DISTINCT 
+                    SELECT DISTINCT
                         name, 'artist', 'Artist Name',
                         'existing_data', 2.0
-                    FROM artists 
-                    WHERE name IS NOT NULL AND trim(name) != ''
+                    FROM artists
+                    WHERE name IS NOT NULL AND TRIM(name) != ''
                 """
                     )
                 )
@@ -392,16 +397,16 @@ def upgrade(connection):
                 connection.execute(
                     text(
                         """
-                    INSERT OR IGNORE INTO search_suggestions (
+                    INSERT IGNORE INTO search_suggestions (
                         suggestion_text, suggestion_type, category,
                         source_type, relevance_score
                     )
-                    SELECT DISTINCT 
+                    SELECT DISTINCT
                         title, 'title', 'Video Title',
                         'existing_data', 1.5
-                    FROM videos 
-                    WHERE title IS NOT NULL AND trim(title) != ''
-                    AND length(title) > 3
+                    FROM videos
+                    WHERE title IS NOT NULL AND TRIM(title) != ''
+                    AND CHAR_LENGTH(title) > 3
                     LIMIT 1000
                 """
                     )
