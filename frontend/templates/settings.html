@@ -8076,7 +8076,7 @@ switchTab = function(event, tabId) {
 let currentBlacklistPage = 1;
 let totalBlacklistPages = 1;
 let currentBlacklistSearchQuery = '';
-let urlToRemove = '';
+let blacklistIdToRemove = null;
 
 function initializeBlacklistTab() {
     if (document.getElementById('blacklist-tab').classList.contains('active')) {
@@ -8103,12 +8103,14 @@ function loadBlacklist() {
                 showBlacklistError(data.error);
                 return;
             }
-            
-            displayBlacklist(data.blacklist);
+
+            // FastAPI returns blacklist_entries, not blacklist
+            const blacklistEntries = data.blacklist_entries || data.blacklist || [];
+            displayBlacklist(blacklistEntries);
             updateBlacklistPagination(data.pagination);
             updateBlacklistStats(data);
-            
-            if (data.blacklist.length === 0 && currentBlacklistPage === 1 && !currentBlacklistSearchQuery) {
+
+            if (blacklistEntries.length === 0 && currentBlacklistPage === 1 && !currentBlacklistSearchQuery) {
                 showBlacklistEmpty();
             } else {
                 showBlacklistTable();
@@ -8141,10 +8143,10 @@ function displayBlacklist(blacklistEntries) {
             </td>
             <td>${entry.title || '<span class="text-muted">Not specified</span>'}</td>
             <td>${entry.artist_name || '<span class="text-muted">Not specified</span>'}</td>
-            <td>${formatDate(entry.blacklisted_at)}</td>
+            <td>${formatDate(entry.blacklisted_at || entry.created_at)}</td>
             <td>${entry.blacklisted_by_username || '<span class="text-muted">Unknown</span>'}</td>
             <td>
-                <button onclick="removeFromBlacklist('${escapeHtml(entry.youtube_url)}', '${escapeHtml(entry.title || '')}', '${escapeHtml(entry.artist_name || '')}')" 
+                <button onclick="removeFromBlacklist(${entry.id}, '${escapeHtml(entry.youtube_url)}', '${escapeHtml(entry.title || '')}', '${escapeHtml(entry.artist_name || '')}')"
                         class="btn btn-danger btn-sm" title="Remove from blacklist">
                     <iconify-icon icon="tabler:trash"></iconify-icon>
                     Remove
@@ -8193,16 +8195,18 @@ function updateBlacklistPagination(pagination) {
 
 function updateBlacklistStats(data) {
     document.getElementById('totalBlacklistCount').textContent = data.pagination.total;
-    
+
     // Calculate recent additions (this week)
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
-    const recentCount = data.blacklist.filter(entry => {
-        const blacklistedDate = new Date(entry.blacklisted_at);
+
+    // FastAPI returns blacklist_entries, not blacklist
+    const blacklistEntries = data.blacklist_entries || data.blacklist || [];
+    const recentCount = blacklistEntries.filter(entry => {
+        const blacklistedDate = new Date(entry.blacklisted_at || entry.created_at);
         return blacklistedDate >= oneWeekAgo;
     }).length;
-    
+
     document.getElementById('recentBlacklistCount').textContent = recentCount;
 }
 
@@ -8279,20 +8283,20 @@ function exportBlacklist() {
         });
 }
 
-function removeFromBlacklist(url, title, artist) {
-    urlToRemove = url;
-    
+function removeFromBlacklist(blacklistId, url, title, artist) {
+    blacklistIdToRemove = blacklistId;
+
     document.getElementById('removePreviewUrl').textContent = url;
     document.getElementById('removePreviewTitle').textContent = title || 'Not specified';
     document.getElementById('removePreviewArtist').textContent = artist || 'Not specified';
-    
+
     document.getElementById('confirmRemoveModal').style.display = 'block';
 }
 
 function confirmRemoveFromBlacklist() {
-    if (!urlToRemove) return;
-    
-    fetch(`/api/videos/blacklist/${encodeURIComponent(urlToRemove)}`, {
+    if (!blacklistIdToRemove) return;
+
+    fetch(`/api/videos/blacklist/${blacklistIdToRemove}`, {
         method: 'DELETE'
     })
     .then(response => response.json())
@@ -8301,9 +8305,10 @@ function confirmRemoveFromBlacklist() {
             showError('Error: ' + result.error);
             return;
         }
-        
+
         showSuccess(result.message || 'URL removed from blacklist successfully');
         closeConfirmRemoveModal();
+        blacklistIdToRemove = null;
         loadBlacklist();
     })
     .catch(error => {
@@ -8378,7 +8383,7 @@ function submitAddToBlacklist(event) {
 
 function closeConfirmRemoveModal() {
     document.getElementById('confirmRemoveModal').style.display = 'none';
-    urlToRemove = '';
+    blacklistIdToRemove = null;
 }
 
 // Modal backdrop clicks
