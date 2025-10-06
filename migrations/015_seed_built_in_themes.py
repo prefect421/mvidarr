@@ -402,7 +402,7 @@ def upgrade(connection):
             if not existing:
                 # Use the first admin user or NULL for system themes
                 admin_user_result = connection.execute(
-                    text("SELECT id FROM users WHERE is_admin = 1 LIMIT 1")
+                    text("SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1")
                 ).fetchone()
                 admin_user_id = admin_user_result[0] if admin_user_result else None
 
