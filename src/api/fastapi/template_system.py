@@ -651,6 +651,47 @@ class FastAPITemplateRoutes:
             "settings.html", request, context
         )
 
+    # Service Integration pages
+    async def youtube_playlists(self, request: Request) -> HTMLResponse:
+        """YouTube Playlists Manager page"""
+        context = {
+            "page_title": "YouTube Playlists Manager",
+            "page_description": "Manage and sync YouTube playlists",
+        }
+        return await self.template_system.render_response(
+            "youtube_playlists.html", request, context
+        )
+
+    async def spotify(self, request: Request) -> HTMLResponse:
+        """Spotify Manager page"""
+        context = {
+            "page_title": "Spotify Manager",
+            "page_description": "Manage Spotify integration and playlists",
+        }
+        return await self.template_system.render_response(
+            "spotify.html", request, context
+        )
+
+    async def lastfm(self, request: Request) -> HTMLResponse:
+        """Last.fm Manager page"""
+        context = {
+            "page_title": "Last.fm Manager",
+            "page_description": "Manage Last.fm integration and scrobbling",
+        }
+        return await self.template_system.render_response(
+            "lastfm.html", request, context
+        )
+
+    async def lidarr(self, request: Request) -> HTMLResponse:
+        """Lidarr Manager page"""
+        context = {
+            "page_title": "Lidarr Manager",
+            "page_description": "Manage Lidarr integration and sync",
+        }
+        return await self.template_system.render_response(
+            "lidarr.html", request, context
+        )
+
     # Authentication pages
     async def login(self, request: Request) -> HTMLResponse:
         """Login page"""

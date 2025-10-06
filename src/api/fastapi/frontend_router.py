@@ -200,6 +200,55 @@ async def settings(request: Request, user=Depends(require_authentication)):
 
 
 # =====================================
+# Service Integration Pages
+# =====================================
+
+
+@frontend_router.get(
+    "/youtube-playlists", response_class=HTMLResponse, name="youtube_playlists"
+)
+async def youtube_playlists(request: Request, user=Depends(require_authentication)):
+    """YouTube Playlists Manager page (authentication required)"""
+    try:
+        return await template_routes.youtube_playlists(request)
+    except Exception as e:
+        logger.error(f"Error rendering YouTube Playlists page: {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to load YouTube Playlists page"
+        )
+
+
+@frontend_router.get("/spotify", response_class=HTMLResponse, name="spotify_manager")
+async def spotify_manager(request: Request, user=Depends(require_authentication)):
+    """Spotify Manager page (authentication required)"""
+    try:
+        return await template_routes.spotify(request)
+    except Exception as e:
+        logger.error(f"Error rendering Spotify page: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load Spotify page")
+
+
+@frontend_router.get("/lastfm", response_class=HTMLResponse, name="lastfm_manager")
+async def lastfm_manager(request: Request, user=Depends(require_authentication)):
+    """Last.fm Manager page (authentication required)"""
+    try:
+        return await template_routes.lastfm(request)
+    except Exception as e:
+        logger.error(f"Error rendering Last.fm page: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load Last.fm page")
+
+
+@frontend_router.get("/lidarr", response_class=HTMLResponse, name="lidarr_manager")
+async def lidarr_manager(request: Request, user=Depends(require_authentication)):
+    """Lidarr Manager page (authentication required)"""
+    try:
+        return await template_routes.lidarr(request)
+    except Exception as e:
+        logger.error(f"Error rendering Lidarr page: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load Lidarr page")
+
+
+# =====================================
 # Authentication Pages
 # =====================================
 
