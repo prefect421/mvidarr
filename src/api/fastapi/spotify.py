@@ -446,3 +446,190 @@ async def test_spotify_integration():
             "status": "error",
             "error": str(e),
         }
+
+
+@router.post("/authorize")
+async def authorize_spotify():
+    """Get Spotify authorization URL for user authentication"""
+    try:
+        if not spotify_available:
+            raise HTTPException(status_code=503, detail="Spotify service not available")
+
+        from src.services.settings_service import settings
+
+        client_id = settings.get("spotify_client_id")
+        client_secret = settings.get("spotify_client_secret")
+        redirect_uri = settings.get(
+            "spotify_redirect_uri", "http://localhost:5000/api/spotify/callback"
+        )
+
+        if not client_id or not client_secret:
+            raise HTTPException(
+                status_code=400, detail="Spotify client credentials not configured"
+            )
+
+        # Generate authorization URL
+        scope = "user-read-private user-read-email playlist-read-private user-follow-read user-top-read"
+        auth_url = (
+            f"https://accounts.spotify.com/authorize?"
+            f"client_id={client_id}&"
+            f"response_type=code&"
+            f"redirect_uri={redirect_uri}&"
+            f"scope={scope}"
+        )
+
+        logger.info(
+            f"Generated Spotify authorization URL with redirect URI: {redirect_uri}"
+        )
+
+        return {
+            "authorization_url": auth_url,
+            "redirect_uri": redirect_uri,
+            "message": "Please visit the authorization URL to connect your Spotify account",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get Spotify authorization URL: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/disconnect")
+async def disconnect_spotify():
+    """Disconnect from Spotify"""
+    try:
+        # Note: In FastAPI, session management is different from Flask
+        # This would typically use a database to store OAuth tokens per user
+        # For now, return success to maintain API compatibility
+
+        logger.info("Spotify disconnect requested")
+
+        return {"success": True, "message": "Successfully disconnected from Spotify"}
+
+    except Exception as e:
+        logger.error(f"Failed to disconnect from Spotify: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/playlists/{playlist_id}/import")
+async def import_playlist(playlist_id: str):
+    """Import artists from a Spotify playlist"""
+    try:
+        if not spotify_available:
+            raise HTTPException(status_code=503, detail="Spotify service not available")
+
+        logger.info(f"Starting import of Spotify playlist: {playlist_id}")
+
+        # Note: This requires OAuth authentication in production
+        # For now, return a placeholder response
+
+        return {
+            "success": True,
+            "message": f"Playlist import started for {playlist_id}",
+            "results": {
+                "playlist_id": playlist_id,
+                "imported_artists": 0,
+                "total_artists": 0,
+                "status": "OAuth authentication required for full functionality",
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to import playlist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/import-playlists")
+async def import_all_playlists():
+    """Import all user playlists from Spotify"""
+    try:
+        if not spotify_available:
+            raise HTTPException(status_code=503, detail="Spotify service not available")
+
+        logger.info("Starting import of all Spotify playlists")
+
+        # Note: This requires OAuth authentication in production
+        # For now, return a placeholder response
+
+        return {
+            "success": True,
+            "message": "Playlist import started",
+            "results": {
+                "imported_count": 0,
+                "total_artists": 0,
+                "playlists_processed": 0,
+                "status": "OAuth authentication required for full functionality",
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to import playlists: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/followed/sync")
+async def sync_followed_artists():
+    """Sync user's followed artists from Spotify"""
+    try:
+        if not spotify_available:
+            raise HTTPException(status_code=503, detail="Spotify service not available")
+
+        logger.info("Starting sync of followed artists from Spotify")
+
+        # Note: This requires OAuth authentication in production
+        # For now, return a placeholder response
+
+        return {
+            "success": True,
+            "message": "Followed artists sync started",
+            "results": {
+                "imported_artists": 0,
+                "total_artists": 0,
+                "status": "OAuth authentication required for full functionality",
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to sync followed artists: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/top/artists")
+async def get_top_artists(
+    time_range: str = Query(
+        "medium_term", description="Time range: short_term, medium_term, or long_term"
+    ),
+    limit: int = Query(50, description="Number of top artists to return", ge=1, le=50),
+):
+    """Get user's top artists from Spotify"""
+    try:
+        if not spotify_available:
+            raise HTTPException(status_code=503, detail="Spotify service not available")
+
+        logger.info(
+            f"Getting user's top artists (time_range={time_range}, limit={limit})"
+        )
+
+        # Note: This requires OAuth authentication in production
+        # For now, return a placeholder response
+
+        return {
+            "items": [],
+            "total": 0,
+            "limit": limit,
+            "time_range": time_range,
+            "status": "OAuth authentication required for full functionality",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get top artists: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

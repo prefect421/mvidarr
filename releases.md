@@ -10,30 +10,35 @@ Track MVidarr's development progress through our release history and upcoming mi
 
 ## 🚀 Current Release: v0.9.8
 
-**Released**: September 19, 2025  
-**Focus**: Advanced Background Job System & Production Stability
+**Released**: October 6, 2025
+**Focus**: Service Integration & API Migration Completion
 
 ### Major Improvements
-- **🚀 Advanced Background Job System**: Complete implementation of job scheduling, dependencies, and retry mechanisms
-- **🔧 Production Bug Fixes**: Resolved 10+ critical production issues identified during user testing
-- **🧪 Comprehensive Testing Infrastructure**: Full Playwright E2E testing framework with CI/CD integration
-- **📡 Real-time Job Monitoring**: WebSocket-based job progress tracking and live notifications
-- **🏗️ Flask to FastAPI Migration**: Complete transition to modern async API architecture
+- **🔌 Service Integration Pages**: Complete implementation of YouTube Playlists, Spotify, Last.fm, and Lidarr manager pages
+- **✅ Lidarr Integration**: 100% API migration complete (5/5 endpoints)
+- **✅ Last.fm Integration**: 100% API migration complete (13/13 endpoints)
+- **⚠️ YouTube Playlists**: 90% complete with route pattern alignment needed
+- **📊 Spotify Integration**: 50% migrated (6/12 endpoints, OAuth endpoints remaining)
+- **🐛 Critical Bug Fixes**: Resolved blacklist loading errors, playlist page failures, and service integration routing
+- **🏗️ Flask to FastAPI Migration**: 95%+ complete with comprehensive service integration documentation
 
 ### Key Features
-- **Job Scheduling & Dependencies**: Advanced job system with exponential backoff, scheduling, and chaining
-- **Real-time Progress Tracking**: WebSocket integration for live job status updates
-- **Comprehensive API Testing**: Multi-browser E2E testing with automated validation
-- **Production Stability**: Fixed stuck downloads, authentication endpoints, and service startup issues
-- **Modern Architecture**: FastAPI async endpoints with enhanced performance and monitoring
+- **Service Integration Pages**: All four integration manager pages (YouTube, Spotify, Last.fm, Lidarr) now accessible
+- **Blacklist Management**: Fixed API response structure mismatches for proper blacklist functionality
+- **Playlist System**: Corrected JavaScript loading and API endpoint accessibility
+- **API Documentation**: Complete service integration migration status document (SERVICE_INTEGRATION_API_STATUS.md)
+- **Built-in Themes**: Added database migrations for 6 built-in themes (Cyber, Default, VaporWave, TARDIS, Punk 77, MTV)
+- **Video Playback**: Fixed MKV video playback with proper MIME type detection
 
-### Critical Bug Fixes
-- ✅ Fixed stuck downloads clearing functionality (timeout and infinite loop issues)
-- ✅ Resolved logout button 404 errors with proper endpoint implementation
-- ✅ Fixed video search 404 errors and API endpoint accessibility
-- ✅ Corrected artist import loadStats reference errors
-- ✅ Fixed playlist import processPlaylistImport function missing errors
-- ✅ Resolved Pydantic regex deprecation errors preventing service startup
+### Critical Bug Fixes (Recent)
+- ✅ Fixed blacklist loading TypeError - corrected API response field names (blacklist_entries vs blacklist)
+- ✅ Fixed blacklist delete endpoint - changed from URL to ID-based deletion
+- ✅ Fixed playlist page loading - corrected JavaScript URL and response structure
+- ✅ Added missing service integration page routes (YouTube Playlists, Spotify, Last.fm, Lidarr)
+- ✅ Fixed migration 015 - use admin user ID instead of hardcoded user
+- ✅ Fixed MKV video playback MIME type detection
+- ✅ Fixed OAuth2 status JavaScript errors in settings page
+- ✅ Added missing enhanced-refresh-all-metadata FastAPI endpoint
 
 ### Technical Enhancements
 - **FastAPI Async Architecture**: Complete migration from Flask with performance improvements
@@ -41,6 +46,14 @@ Track MVidarr's development progress through our release history and upcoming mi
 - **WebSocket Integration**: Real-time job progress updates and client notifications
 - **Comprehensive Testing**: 40+ Playwright tests across authentication, API, and UI validation
 - **CI/CD Integration**: Automated testing with multi-browser support and GitHub Actions
+
+### Known Issues & Limitations
+- **Spotify Integration**: Missing 6 OAuth and playlist import endpoints (authorize, disconnect, import operations)
+- **YouTube Playlists**: Route pattern mismatch between frontend (`/playlists/{id}`) and backend (`/monitor/{id}`)
+- **Background Jobs**: Some job monitoring features may need investigation (download progress, metadata refresh status)
+- **Service Configuration**: Download quality settings and external service connectivity require verification
+
+See `SERVICE_INTEGRATION_API_STATUS.md` for complete API migration status and planned improvements for v0.9.9.
 
 **Docker Image**: `ghcr.io/prefect421/mvidarr:v0.9.8`
 
