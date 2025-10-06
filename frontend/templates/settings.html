@@ -3517,7 +3517,7 @@ function viewEnhancedSchedulerConfig() {
 // External Services Integration Functions
 function testYouTubeIntegration() {
     showIntegrationLoading('YouTube');
-    
+
     fetch('/api/youtube/playlists/test', {
         method: 'POST'
     })
@@ -3529,20 +3529,20 @@ function testYouTubeIntegration() {
     })
     .then(data => {
         if (data.status === 'success') {
-            showSuccessMessage('YouTube integration test passed! API is working correctly.');
+            showSuccess('YouTube integration test passed! API is working correctly.');
         } else {
-            showErrorMessage('YouTube integration test failed: ' + data.message);
+            showError('YouTube integration test failed: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error testing YouTube integration:', error);
-        showErrorMessage('YouTube integration test failed: ' + error.message);
+        showError('YouTube integration test failed: ' + error.message);
     });
 }
 
 function syncYouTubePlaylists() {
     showIntegrationLoading('YouTube');
-    
+
     fetch('/api/youtube/playlists/sync', {
         method: 'POST'
     })
@@ -3554,14 +3554,14 @@ function syncYouTubePlaylists() {
     })
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`YouTube playlists synced successfully! ${data.synced_count} playlists processed.`);
+            showSuccess(`YouTube playlists synced successfully! ${data.synced_count} playlists processed.`);
         } else {
-            showErrorMessage('YouTube playlist sync failed: ' + data.error);
+            showError('YouTube playlist sync failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error syncing YouTube playlists:', error);
-        showErrorMessage('YouTube playlist sync failed: ' + error.message);
+        showError('YouTube playlist sync failed: ' + error.message);
     });
 }
 
@@ -3574,14 +3574,14 @@ function testSpotifyIntegration() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showSuccessMessage('Spotify integration test passed! API credentials are valid.');
+            showSuccess('Spotify integration test passed! API credentials are valid.');
         } else {
-            showErrorMessage('Spotify integration test failed: ' + data.message);
+            showError('Spotify integration test failed: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error testing Spotify integration:', error);
-        showErrorMessage('Spotify integration test failed: ' + error.message);
+        showError('Spotify integration test failed: ' + error.message);
     });
 }
 
@@ -3595,12 +3595,12 @@ function authorizeSpotify() {
             window.open(data.authorization_url, '_blank');
             showInfoMessage('Please complete authorization in the new window, then test the connection.');
         } else {
-            showErrorMessage('Failed to get Spotify authorization URL: ' + data.error);
+            showError('Failed to get Spotify authorization URL: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error authorizing Spotify:', error);
-        showErrorMessage('Spotify authorization failed: ' + error.message);
+        showError('Spotify authorization failed: ' + error.message);
     });
 }
 
@@ -3613,14 +3613,14 @@ function importSpotifyPlaylists() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Spotify playlists imported successfully! ${data.imported_count} playlists processed.`);
+            showSuccess(`Spotify playlists imported successfully! ${data.imported_count} playlists processed.`);
         } else {
-            showErrorMessage('Spotify playlist import failed: ' + data.error);
+            showError('Spotify playlist import failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error importing Spotify playlists:', error);
-        showErrorMessage('Spotify playlist import failed: ' + error.message);
+        showError('Spotify playlist import failed: ' + error.message);
     });
 }
 
@@ -3634,14 +3634,14 @@ function testLastfmIntegration() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showSuccessMessage('Last.fm integration test passed! API credentials are valid.');
+            showSuccess('Last.fm integration test passed! API credentials are valid.');
         } else {
-            showErrorMessage('Last.fm integration test failed: ' + data.message);
+            showError('Last.fm integration test failed: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error testing Last.fm integration:', error);
-        showErrorMessage('Last.fm integration test failed: ' + error.message);
+        showError('Last.fm integration test failed: ' + error.message);
     });
 }
 
@@ -3655,12 +3655,12 @@ function authorizeLastfm() {
             window.open(data.auth_url, '_blank');
             showInfoMessage('Please complete authorization in the new window, then test the connection.');
         } else {
-            showErrorMessage('Failed to get Last.fm authorization URL: ' + data.error);
+            showError('Failed to get Last.fm authorization URL: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error authorizing Last.fm:', error);
-        showErrorMessage('Last.fm authorization failed: ' + error.message);
+        showError('Last.fm authorization failed: ' + error.message);
     });
 }
 
@@ -3673,14 +3673,14 @@ function syncLastfmHistory() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Last.fm listening history synced successfully! ${data.tracks_processed || 0} tracks processed.`);
+            showSuccess(`Last.fm listening history synced successfully! ${data.tracks_processed || 0} tracks processed.`);
         } else {
-            showErrorMessage('Last.fm history sync failed: ' + data.error);
+            showError('Last.fm history sync failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error syncing Last.fm history:', error);
-        showErrorMessage('Last.fm history sync failed: ' + error.message);
+        showError('Last.fm history sync failed: ' + error.message);
     });
 }
 
@@ -3693,14 +3693,14 @@ function testLidarrIntegration() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showSuccessMessage('Lidarr integration test passed! ' + data.message);
+            showSuccess('Lidarr integration test passed! ' + data.message);
         } else {
-            showErrorMessage('Lidarr integration test failed: ' + data.message);
+            showError('Lidarr integration test failed: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error testing Lidarr integration:', error);
-        showErrorMessage('Lidarr integration test failed: ' + error.message);
+        showError('Lidarr integration test failed: ' + error.message);
     });
 }
 
@@ -3713,14 +3713,14 @@ function syncLidarrLibrary() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Lidarr library synced successfully! ${data.synced_count} artists processed.`);
+            showSuccess(`Lidarr library synced successfully! ${data.synced_count} artists processed.`);
         } else {
-            showErrorMessage('Lidarr library sync failed: ' + data.error);
+            showError('Lidarr library sync failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error syncing Lidarr library:', error);
-        showErrorMessage('Lidarr library sync failed: ' + error.message);
+        showError('Lidarr library sync failed: ' + error.message);
     });
 }
 
@@ -3733,14 +3733,14 @@ function importLidarrArtists() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Lidarr artists imported successfully! ${data.imported_count} monitored artists processed.`);
+            showSuccess(`Lidarr artists imported successfully! ${data.imported_count} monitored artists processed.`);
         } else {
-            showErrorMessage('Lidarr artist import failed: ' + data.error);
+            showError('Lidarr artist import failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error importing Lidarr artists:', error);
-        showErrorMessage('Lidarr artist import failed: ' + error.message);
+        showError('Lidarr artist import failed: ' + error.message);
     });
 }
 
@@ -3753,14 +3753,14 @@ function syncLidarrAlbums() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Lidarr albums synced successfully! ${data.processed_count} albums processed.`);
+            showSuccess(`Lidarr albums synced successfully! ${data.processed_count} albums processed.`);
         } else {
-            showErrorMessage('Lidarr album sync failed: ' + data.error);
+            showError('Lidarr album sync failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error syncing Lidarr albums:', error);
-        showErrorMessage('Lidarr album sync failed: ' + error.message);
+        showError('Lidarr album sync failed: ' + error.message);
     });
 }
 
@@ -3773,7 +3773,7 @@ function showIntegrationLoading(service) {
 }
 
 // Helper functions for notifications - now handled by global toast system
-// Functions showSuccessMessage, showErrorMessage, showInfoMessage are defined in toast.js
+// Note: Using showSuccess, showError, showInfo functions defined earlier in this file
 
 
 // ================================
