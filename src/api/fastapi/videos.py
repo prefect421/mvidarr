@@ -1107,10 +1107,23 @@ async def stream_video(
                         remaining -= len(chunk)
                         yield chunk
 
-            # Get MIME type
+            # Get MIME type - handle common video formats explicitly
             content_type, _ = mimetypes.guess_type(str(video_path))
             if not content_type:
-                content_type = "video/mp4"  # Default fallback
+                # Explicit handling for common video formats
+                suffix = video_path.suffix.lower()
+                if suffix == '.mkv':
+                    content_type = "video/x-matroska"
+                elif suffix == '.webm':
+                    content_type = "video/webm"
+                elif suffix == '.avi':
+                    content_type = "video/x-msvideo"
+                elif suffix in ['.mp4', '.m4v']:
+                    content_type = "video/mp4"
+                elif suffix == '.mov':
+                    content_type = "video/quicktime"
+                else:
+                    content_type = "video/mp4"  # Default fallback
 
             headers = {
                 "Content-Range": f"bytes {range_start}-{range_end}/{file_size}",
@@ -1121,10 +1134,23 @@ async def stream_video(
 
             return StreamingResponse(generate_range(), status_code=206, headers=headers)
         else:
-            # Return full file
+            # Return full file - handle common video formats explicitly
             content_type, _ = mimetypes.guess_type(str(video_path))
             if not content_type:
-                content_type = "video/mp4"
+                # Explicit handling for common video formats
+                suffix = video_path.suffix.lower()
+                if suffix == '.mkv':
+                    content_type = "video/x-matroska"
+                elif suffix == '.webm':
+                    content_type = "video/webm"
+                elif suffix == '.avi':
+                    content_type = "video/x-msvideo"
+                elif suffix in ['.mp4', '.m4v']:
+                    content_type = "video/mp4"
+                elif suffix == '.mov':
+                    content_type = "video/quicktime"
+                else:
+                    content_type = "video/mp4"  # Default fallback
 
             return FileResponse(
                 video_path, media_type=content_type, filename=video_path.name
