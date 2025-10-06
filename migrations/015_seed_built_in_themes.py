@@ -400,6 +400,12 @@ def upgrade(connection):
             ).fetchone()
 
             if not existing:
+                # Use the first admin user or NULL for system themes
+                admin_user_result = connection.execute(
+                    text("SELECT id FROM users WHERE is_admin = 1 LIMIT 1")
+                ).fetchone()
+                admin_user_id = admin_user_result[0] if admin_user_result else None
+
                 connection.execute(
                     text(
                         """
@@ -408,7 +414,7 @@ def upgrade(connection):
                             is_public, is_built_in, theme_data,
                             created_at, updated_at
                         ) VALUES (
-                            :name, :display_name, :description, 6,
+                            :name, :display_name, :description, :created_by,
                             1, 1, :theme_data,
                             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                         )
@@ -418,6 +424,7 @@ def upgrade(connection):
                         "name": theme["name"],
                         "display_name": theme["display_name"],
                         "description": theme.get("description", ""),
+                        "created_by": admin_user_id,
                         "theme_data": json.dumps(theme["theme_data"]),
                     },
                 )
