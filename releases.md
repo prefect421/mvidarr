@@ -41,6 +41,7 @@ Track MVidarr's development progress through our release history and upcoming mi
 - ✅ Added missing enhanced-refresh-all-metadata FastAPI endpoint
 - ✅ Fixed YouTube Playlists route pattern mismatch - added route aliases for frontend compatibility
 - ✅ Added all missing Spotify OAuth and playlist import endpoints
+- ✅ Added Spotify OAuth callback endpoint - completes OAuth authorization flow with token exchange
 
 ### Technical Enhancements
 - **FastAPI Async Architecture**: Complete migration from Flask with performance improvements

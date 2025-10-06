@@ -495,6 +495,98 @@ async def authorize_spotify():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/callback")
+async def spotify_callback(
+    code: Optional[str] = Query(None, description="Authorization code from Spotify"),
+    error: Optional[str] = Query(None, description="Error from Spotify OAuth"),
+):
+    """Handle Spotify OAuth callback"""
+    try:
+        from fastapi.responses import RedirectResponse
+
+        if error:
+            logger.error(f"Spotify OAuth error: {error}")
+            return RedirectResponse(
+                url=f"/settings?spotify_error={error}", status_code=302
+            )
+
+        if not code:
+            logger.error("No authorization code received from Spotify")
+            return RedirectResponse(
+                url="/settings?spotify_error=No authorization code received",
+                status_code=302,
+            )
+
+        # Exchange code for access token
+        from src.services.settings_service import settings
+
+        client_id = settings.get("spotify_client_id")
+        client_secret = settings.get("spotify_client_secret")
+        redirect_uri = settings.get(
+            "spotify_redirect_uri", "http://localhost:5000/api/spotify/callback"
+        )
+
+        if not client_id or not client_secret:
+            logger.error("Spotify credentials not configured")
+            return RedirectResponse(
+                url="/settings?spotify_error=Spotify credentials not configured",
+                status_code=302,
+            )
+
+        # Exchange authorization code for access token
+        import base64
+
+        from src.utils.async_http_client import get_global_http_client
+
+        credentials = f"{client_id}:{client_secret}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+        http_client = await get_global_http_client()
+
+        token_response = await asyncio.wait_for(
+            http_client.post(
+                "https://accounts.spotify.com/api/token",
+                headers={
+                    "Authorization": f"Basic {encoded_credentials}",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": redirect_uri,
+                },
+            ),
+            timeout=15.0,
+        )
+
+        access_token = token_response.get("access_token")
+        refresh_token = token_response.get("refresh_token")
+        expires_in = token_response.get("expires_in")
+
+        if not access_token:
+            logger.error("Failed to get Spotify access token")
+            return RedirectResponse(
+                url="/settings?spotify_error=Failed to get access token",
+                status_code=302,
+            )
+
+        # Store tokens in settings (for now - consider database storage for production)
+        settings.set("spotify_access_token", access_token)
+        if refresh_token:
+            settings.set("spotify_refresh_token", refresh_token)
+        if expires_in:
+            settings.set("spotify_token_expires_in", expires_in)
+
+        logger.info("Spotify authentication successful")
+        return RedirectResponse(url="/settings?spotify_success=true", status_code=302)
+
+    except Exception as e:
+        logger.error(f"Spotify callback error: {e}")
+        return RedirectResponse(
+            url=f"/settings?spotify_error={str(e)}", status_code=302
+        )
+
+
 @router.post("/disconnect")
 async def disconnect_spotify():
     """Disconnect from Spotify"""
