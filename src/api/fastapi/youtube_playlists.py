@@ -197,6 +197,17 @@ async def create_playlist_monitor(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Route alias for frontend compatibility (both /{id} and /monitor/{id} work)
+@router.get("/{monitor_id}")
+async def get_playlist_monitor_alias(
+    monitor_id: int,
+    current_user: dict = Depends(require_authentication_legacy),
+    session: Session = Depends(get_db_session),
+):
+    """Get a specific playlist monitor (alias route for frontend)"""
+    return await get_playlist_monitor(monitor_id, current_user, session)
+
+
 @router.get("/monitor/{monitor_id}")
 async def get_playlist_monitor(
     monitor_id: int,
@@ -224,6 +235,20 @@ async def get_playlist_monitor(
     except Exception as e:
         logger.error(f"Failed to get playlist monitor: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Route alias for frontend compatibility (both /{id} and /monitor/{id} work)
+@router.put("/{monitor_id}")
+async def update_playlist_monitor_alias(
+    monitor_id: int,
+    update_request: PlaylistMonitorUpdate,
+    current_user: dict = Depends(require_authentication_legacy),
+    session: Session = Depends(get_db_session),
+):
+    """Update playlist monitor settings (alias route for frontend)"""
+    return await update_playlist_monitor(
+        monitor_id, update_request, current_user, session
+    )
 
 
 @router.put("/monitor/{monitor_id}")
@@ -258,6 +283,20 @@ async def update_playlist_monitor(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Route alias for frontend compatibility (both /{id} and /monitor/{id} work)
+@router.delete("/{monitor_id}")
+async def delete_playlist_monitor_alias(
+    monitor_id: int,
+    delete_videos: bool = Query(default=False),
+    current_user: dict = Depends(require_authentication_legacy),
+    session: Session = Depends(get_db_session),
+):
+    """Delete playlist monitor (alias route for frontend)"""
+    return await delete_playlist_monitor(
+        monitor_id, delete_videos, current_user, session
+    )
+
+
 @router.delete("/monitor/{monitor_id}")
 async def delete_playlist_monitor(
     monitor_id: int,
@@ -287,6 +326,17 @@ async def delete_playlist_monitor(
 # ========================================================================================
 # PLAYLIST SYNCHRONIZATION ENDPOINTS
 # ========================================================================================
+
+
+# Route alias for frontend compatibility (both /{id}/sync and /monitor/{id}/sync work)
+@router.post("/{monitor_id}/sync")
+async def sync_playlist_alias(
+    monitor_id: int,
+    current_user: dict = Depends(require_authentication_legacy),
+    session: Session = Depends(get_db_session),
+):
+    """Sync a specific playlist (alias route for frontend)"""
+    return await sync_playlist(monitor_id, current_user, session)
 
 
 @router.post("/monitor/{monitor_id}/sync")
