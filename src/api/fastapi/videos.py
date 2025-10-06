@@ -1112,15 +1112,15 @@ async def stream_video(
             if not content_type:
                 # Explicit handling for common video formats
                 suffix = video_path.suffix.lower()
-                if suffix == '.mkv':
+                if suffix == ".mkv":
                     content_type = "video/x-matroska"
-                elif suffix == '.webm':
+                elif suffix == ".webm":
                     content_type = "video/webm"
-                elif suffix == '.avi':
+                elif suffix == ".avi":
                     content_type = "video/x-msvideo"
-                elif suffix in ['.mp4', '.m4v']:
+                elif suffix in [".mp4", ".m4v"]:
                     content_type = "video/mp4"
-                elif suffix == '.mov':
+                elif suffix == ".mov":
                     content_type = "video/quicktime"
                 else:
                     content_type = "video/mp4"  # Default fallback
@@ -1139,15 +1139,15 @@ async def stream_video(
             if not content_type:
                 # Explicit handling for common video formats
                 suffix = video_path.suffix.lower()
-                if suffix == '.mkv':
+                if suffix == ".mkv":
                     content_type = "video/x-matroska"
-                elif suffix == '.webm':
+                elif suffix == ".webm":
                     content_type = "video/webm"
-                elif suffix == '.avi':
+                elif suffix == ".avi":
                     content_type = "video/x-msvideo"
-                elif suffix in ['.mp4', '.m4v']:
+                elif suffix in [".mp4", ".m4v"]:
                     content_type = "video/mp4"
-                elif suffix == '.mov':
+                elif suffix == ".mov":
                     content_type = "video/quicktime"
                 else:
                     content_type = "video/mp4"  # Default fallback
@@ -2929,7 +2929,9 @@ async def enhanced_refresh_all_metadata(
                 error_details.append(
                     {"video_id": video.id, "title": video.title, "error": str(e)}
                 )
-                logger.error(f"Error refreshing enhanced metadata for video {video.id}: {e}")
+                logger.error(
+                    f"Error refreshing enhanced metadata for video {video.id}: {e}"
+                )
 
         session.commit()
 
