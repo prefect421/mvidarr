@@ -88,9 +88,11 @@ class PlaylistDetailManager {
                 this.playlist = data.playlist;
                 this.videos = data.playlist.entries || [];
                 this.canModify = data.playlist.can_modify || false;
-                
+
                 // Debug logging to see playlist data structure
                 console.log('Playlist detail data:', this.playlist);
+                console.log('can_modify from API:', data.playlist.can_modify);
+                console.log('this.canModify set to:', this.canModify);
                 console.log('User data:', this.playlist.user);
                 console.log('Owner field:', this.playlist.owner);
                 
@@ -167,15 +169,22 @@ class PlaylistDetailManager {
         
         // Show/hide action buttons based on permissions
         const editBtn = document.getElementById('editPlaylistBtn');
+        const editFiltersBtn = document.getElementById('editFiltersBtn');
         const addVideoBtn = document.getElementById('addVideoBtn');
         const addFirstVideoBtn = document.getElementById('addFirstVideoBtn');
-        
+
         if (this.canModify) {
             if (editBtn) editBtn.style.display = 'block';
             if (addVideoBtn) addVideoBtn.style.display = 'block';
             if (addFirstVideoBtn) addFirstVideoBtn.style.display = 'block';
+
+            // Show "Edit Filters" button only for dynamic playlists
+            if (editFiltersBtn) {
+                editFiltersBtn.style.display = this.playlist.is_dynamic ? 'block' : 'none';
+            }
         } else {
             if (editBtn) editBtn.style.display = 'none';
+            if (editFiltersBtn) editFiltersBtn.style.display = 'none';
             if (addVideoBtn) addVideoBtn.style.display = 'none';
             if (addFirstVideoBtn) addFirstVideoBtn.style.display = 'none';
         }
@@ -594,11 +603,11 @@ class PlaylistDetailManager {
             const isInPlaylist = this.videos.some(entry => entry.video.id === video.id);
             
             return `
-                <div class="available-video-item ${isSelected ? 'selected' : ''} ${isInPlaylist ? 'disabled' : ''}" 
+                <div class="available-video-item ${isSelected ? 'selected' : ''} ${isInPlaylist ? 'disabled' : ''}"
                      onclick="playlistDetailManager.toggleAvailableVideoSelection(${video.id})">
                     <input type="checkbox" ${isSelected ? 'checked' : ''} ${isInPlaylist ? 'disabled' : ''}>
-                    <div class="video-thumbnail">
-                        <img src="${video.thumbnail_url || video.thumbnail || video.thumbnail_path || video.image_url || '/static/placeholder-video.png'}" alt="Thumbnail" style="width: 60px; height: 45px; object-fit: cover; border-radius: 4px;">
+                    <div class="available-video-thumbnail">
+                        <img src="${video.thumbnail_url || video.thumbnail || video.thumbnail_path || video.image_url || '/static/placeholder-video.png'}" alt="Thumbnail">
                     </div>
                     <div class="video-info" style="flex: 1;">
                         <div style="font-weight: 600; margin-bottom: 0.25rem;">${this.escapeHtml(video.title || video.name || 'Unknown Title')}</div>
@@ -643,17 +652,19 @@ class PlaylistDetailManager {
 
         try {
             const videoIds = Array.from(this.selectedAvailableVideos);
-            
-            for (const videoId of videoIds) {
-                const response = await fetch(`/api/playlists/${this.playlistId}/videos`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ video_id: videoId })
-                });
 
-                if (!response.ok) throw new Error(`Failed to add video ${videoId}`);
+            // API expects video_ids as an array
+            const response = await fetch(`/api/playlists/${this.playlistId}/videos`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ video_ids: videoIds })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Failed to add videos`);
             }
 
             this.showToast(`Added ${videoIds.length} video${videoIds.length !== 1 ? 's' : ''} to playlist`, 'success');
@@ -1357,3 +1368,249 @@ async function uploadPlaylistThumbnailDetail() {
 document.addEventListener('DOMContentLoaded', function() {
     playlistDetailManager = new PlaylistDetailManager();
 });
+// Dynamic Playlist Filter Functions
+async function showEditFiltersModal() {
+    console.log('showEditFiltersModal called');
+    if (!playlistDetailManager || !playlistDetailManager.playlist) {
+        console.error('No playlist manager or playlist found');
+        return;
+    }
+
+    const modal = document.getElementById('editFiltersModal');
+    console.log('Modal element:', modal);
+    const playlist = playlistDetailManager.playlist;
+    console.log('Playlist data:', playlist);
+
+    // Load genres into dropdown
+    await loadGenresForFilter();
+
+    // Parse filter criteria - it might be a JSON string or already an object
+    let filterCriteria = {};
+    console.log('Raw filter_criteria:', playlist.filter_criteria);
+    console.log('Type of filter_criteria:', typeof playlist.filter_criteria);
+
+    if (playlist.filter_criteria) {
+        if (typeof playlist.filter_criteria === 'string') {
+            try {
+                filterCriteria = JSON.parse(playlist.filter_criteria);
+                console.log('Parsed from JSON string:', filterCriteria);
+            } catch (e) {
+                console.error('Failed to parse filter_criteria as JSON:', e);
+                filterCriteria = {};
+            }
+        } else if (typeof playlist.filter_criteria === 'object') {
+            filterCriteria = playlist.filter_criteria;
+            console.log('Already an object:', filterCriteria);
+        }
+    } else {
+        console.log('No filter_criteria present on playlist');
+    }
+    console.log('Final parsed filter criteria:', filterCriteria);
+
+    // Populate form with existing filter criteria
+    // Genres - convert array to single value (take first genre if multiple)
+    if (filterCriteria.genres && filterCriteria.genres.length > 0) {
+        document.getElementById('filterGenre').value = filterCriteria.genres[0];
+    } else {
+        document.getElementById('filterGenre').value = '';
+    }
+
+    // Artists - convert array to comma-separated string
+    if (filterCriteria.artists && filterCriteria.artists.length > 0) {
+        document.getElementById('filterArtist').value = filterCriteria.artists.join(', ');
+    } else {
+        document.getElementById('filterArtist').value = '';
+    }
+
+    // Quality - convert array to single value (take first quality if multiple)
+    if (filterCriteria.quality && filterCriteria.quality.length > 0) {
+        document.getElementById('filterQuality').value = filterCriteria.quality[0];
+    } else {
+        document.getElementById('filterQuality').value = '';
+    }
+
+    // Year range
+    if (filterCriteria.year_range) {
+        document.getElementById('filterYearFrom').value = filterCriteria.year_range.min || '';
+        document.getElementById('filterYearTo').value = filterCriteria.year_range.max || '';
+    } else {
+        document.getElementById('filterYearFrom').value = '';
+        document.getElementById('filterYearTo').value = '';
+    }
+
+    // Duration range (convert from seconds to minutes)
+    if (filterCriteria.duration_range) {
+        if (filterCriteria.duration_range.min) {
+            document.getElementById('filterDurationMin').value = Math.floor(filterCriteria.duration_range.min / 60);
+        } else {
+            document.getElementById('filterDurationMin').value = '';
+        }
+        if (filterCriteria.duration_range.max) {
+            document.getElementById('filterDurationMax').value = Math.floor(filterCriteria.duration_range.max / 60);
+        } else {
+            document.getElementById('filterDurationMax').value = '';
+        }
+    } else {
+        document.getElementById('filterDurationMin').value = '';
+        document.getElementById('filterDurationMax').value = '';
+    }
+
+    // Limit (default to 100 if not specified)
+    document.getElementById('filterLimit').value = filterCriteria.limit || 100;
+
+    console.log('Setting modal display to block');
+    modal.style.display = 'block';
+    console.log('Modal display style:', modal.style.display);
+}
+
+function closeEditFiltersModal() {
+    const modal = document.getElementById('editFiltersModal');
+    modal.style.display = 'none';
+    document.getElementById('filterPreviewResults').style.display = 'none';
+}
+
+async function loadGenresForFilter() {
+    try {
+        const response = await fetch('/api/genres/');
+        const data = await response.json();
+
+        const select = document.getElementById('filterGenre');
+        // Clear existing options except "Any Genre"
+        select.innerHTML = '<option value="">Any Genre</option>';
+
+        if (data.genres && data.genres.length > 0) {
+            data.genres.forEach(genreObj => {
+                const option = document.createElement('option');
+                option.value = genreObj.genre;
+                option.textContent = `${genreObj.genre} (${genreObj.video_count} videos)`;
+                select.appendChild(option);
+            });
+            console.log(`Loaded ${data.genres.length} genres into filter dropdown`);
+        }
+    } catch (error) {
+        console.error('Failed to load genres:', error);
+    }
+}
+
+async function previewFilters() {
+    const filterCriteria = getFilterCriteriaFromForm();
+    
+    try {
+        const response = await fetch('/api/playlists/dynamic/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                filter_criteria: filterCriteria,
+                limit: 20
+            })
+        });
+        
+        const data = await response.json();
+        
+        const resultsDiv = document.getElementById('filterPreviewResults');
+        const countP = document.getElementById('filterPreviewCount');
+        const videosDiv = document.getElementById('filterPreviewVideos');
+        
+        if (data.success) {
+            countP.textContent = `Found ${data.total_matches} matching videos (showing first ${data.videos.length})`;
+
+            videosDiv.innerHTML = data.videos.map(video => {
+                const duration = video.duration ? playlistDetailManager.formatDuration(video.duration) : 'N/A';
+                const quality = video.quality || 'Unknown';
+                return `
+                    <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-secondary);">
+                        <div style="font-weight: 600;">${video.title}</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                            ${video.artist_name} • ${duration} • ${quality}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            resultsDiv.style.display = 'block';
+        } else {
+            playlistDetailManager.showToast('Failed to preview filters', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to preview filters:', error);
+        playlistDetailManager.showToast(`Failed to preview: ${error.message}`, 'error');
+    }
+}
+
+async function saveFilterChanges(event) {
+    event.preventDefault();
+    
+    if (!playlistDetailManager || !playlistDetailManager.playlistId) return;
+    
+    const filterCriteria = getFilterCriteriaFromForm();
+    
+    try {
+        const response = await fetch(`/api/playlists/${playlistDetailManager.playlistId}/filters`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filter_criteria: filterCriteria })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            playlistDetailManager.showToast(`Filters updated! Playlist now has ${data.video_count} videos`, 'success');
+            closeEditFiltersModal();
+            await playlistDetailManager.loadPlaylist();
+        } else {
+            throw new Error(data.detail || 'Failed to update filters');
+        }
+    } catch (error) {
+        console.error('Failed to save filter changes:', error);
+        playlistDetailManager.showToast(`Failed to save filters: ${error.message}`, 'error');
+    }
+}
+
+function getFilterCriteriaFromForm() {
+    const criteria = {};
+
+    // Genre - convert single selection to array for consistency with create form
+    const genre = document.getElementById('filterGenre').value;
+    if (genre) {
+        criteria.genres = [genre];
+    }
+
+    // Artist - convert comma-separated string to array
+    const artist = document.getElementById('filterArtist').value.trim();
+    if (artist) {
+        criteria.artists = artist.split(',').map(a => a.trim()).filter(a => a);
+    }
+
+    // Quality - convert single selection to array for consistency with create form
+    const quality = document.getElementById('filterQuality').value;
+    if (quality) {
+        criteria.quality = [quality];
+    }
+
+    // Year range - use min/max structure
+    const yearFrom = document.getElementById('filterYearFrom').value;
+    const yearTo = document.getElementById('filterYearTo').value;
+    if (yearFrom || yearTo) {
+        criteria.year_range = {};
+        if (yearFrom) criteria.year_range.min = parseInt(yearFrom);
+        if (yearTo) criteria.year_range.max = parseInt(yearTo);
+    }
+
+    // Duration range - convert from minutes to seconds
+    const durationMin = document.getElementById('filterDurationMin').value;
+    const durationMax = document.getElementById('filterDurationMax').value;
+    if (durationMin || durationMax) {
+        criteria.duration_range = {};
+        if (durationMin) criteria.duration_range.min = parseInt(durationMin) * 60; // Convert to seconds
+        if (durationMax) criteria.duration_range.max = parseInt(durationMax) * 60; // Convert to seconds
+    }
+
+    // Limit
+    const limit = document.getElementById('filterLimit').value;
+    if (limit) {
+        criteria.limit = parseInt(limit);
+    }
+
+    console.log('Filter criteria from form:', criteria);
+    return criteria;
+}

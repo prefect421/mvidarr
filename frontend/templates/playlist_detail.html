@@ -59,6 +59,10 @@
                     <iconify-icon icon="tabler:edit"></iconify-icon>
                     Edit
                 </button>
+                <button onclick="showEditFiltersModal()" class="btn btn-secondary" id="editFiltersBtn" style="display: none;">
+                    <iconify-icon icon="tabler:filter"></iconify-icon>
+                    Edit Filters
+                </button>
                 <button onclick="showAddVideoModal()" class="btn btn-secondary" id="addVideoBtn" style="display: none;">
                     <iconify-icon icon="tabler:plus"></iconify-icon>
                     Add Videos
@@ -291,6 +295,90 @@
                     Add Selected Videos
                 </button>
                 <button onclick="closeAddVideoModal()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Dynamic Playlist Filters Modal -->
+<div id="editFiltersModal" class="modal">
+    <div class="modal-content" style="width: 90%; max-width: 700px;">
+        <div class="modal-header">
+            <h3>Edit Dynamic Playlist Filters</h3>
+            <span class="modal-close" onclick="closeEditFiltersModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                Configure filter criteria to automatically include videos that match your conditions.
+            </p>
+
+            <form id="editFiltersForm" onsubmit="saveFilterChanges(event)">
+                <div class="form-group">
+                    <label for="filterGenre">Genre</label>
+                    <select id="filterGenre" class="form-control">
+                        <option value="">Any Genre</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filterArtist">Artist</label>
+                    <input type="text" id="filterArtist" class="form-control" placeholder="Artist name (partial match)">
+                </div>
+
+                <div class="form-group">
+                    <label for="filterQuality">Minimum Quality</label>
+                    <select id="filterQuality" class="form-control">
+                        <option value="">Any Quality</option>
+                        <option value="2160p">4K (2160p)</option>
+                        <option value="1080p">1080p</option>
+                        <option value="720p">720p</option>
+                        <option value="480p">480p</option>
+                        <option value="360p">360p</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filterYear">Year Range</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="number" id="filterYearFrom" class="form-control" placeholder="From" min="1900" max="2100" style="flex: 1;">
+                        <span>to</span>
+                        <input type="number" id="filterYearTo" class="form-control" placeholder="To" min="1900" max="2100" style="flex: 1;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="filterDuration">Duration Range (minutes)</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="number" id="filterDurationMin" class="form-control" placeholder="Min" min="0" max="999" style="flex: 1;">
+                        <span>to</span>
+                        <input type="number" id="filterDurationMax" class="form-control" placeholder="Max" min="0" max="999" style="flex: 1;">
+                    </div>
+                    <small style="color: var(--text-muted);">Filter videos by length in minutes</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="filterLimit">Maximum Videos</label>
+                    <input type="number" id="filterLimit" class="form-control" value="100" min="1" max="1000">
+                    <small style="color: var(--text-muted);">Limit the number of videos in this playlist</small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" onclick="previewFilters()" class="btn btn-secondary">
+                        <iconify-icon icon="tabler:search"></iconify-icon>
+                        Preview Results
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <iconify-icon icon="tabler:check"></iconify-icon>
+                        Save Filters
+                    </button>
+                    <button type="button" onclick="closeEditFiltersModal()" class="btn btn-ghost">Cancel</button>
+                </div>
+            </form>
+
+            <div id="filterPreviewResults" style="display: none; margin-top: 1.5rem; padding: 1rem; background: var(--bg-tertiary); border-radius: 8px;">
+                <h4>Preview Results</h4>
+                <p id="filterPreviewCount"></p>
+                <div id="filterPreviewVideos" style="max-height: 200px; overflow-y: auto;"></div>
             </div>
         </div>
     </div>
@@ -614,6 +702,24 @@
 
 .available-video-item.selected {
     background: var(--bg-accent-subtle);
+}
+
+.available-video-thumbnail {
+    width: 120px;
+    height: 68px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.available-video-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 /* Responsive design */

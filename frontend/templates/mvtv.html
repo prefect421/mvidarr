@@ -825,9 +825,9 @@ class MvTVPlayer {
         this.isPaused = false;
         this.shuffle = false;
         this.playedIndices = new Set();
-        
+
         this.initializePlayer();
-        this.loadVideos();
+        // Don't load videos in constructor - wait for filters to be loaded first
     }
     
     initializePlayer() {
@@ -872,13 +872,16 @@ class MvTVPlayer {
     }
     
     async loadVideos() {
+        console.log('loadVideos() called');
         try {
             const filters = this.getFilters();
+            console.log('Current filters:', filters);
             let response, data;
             let hasSpecificFilters = false;
-            
+
             // If playlist filter is selected, use playlist videos endpoint
             if (filters.playlist) {
+                console.log(`Loading playlist ${filters.playlist} videos`);
                 response = await fetch(`/api/playlists/${filters.playlist}?include_entries=true`);
                 
                 if (!response.ok) {
@@ -898,7 +901,10 @@ class MvTVPlayer {
                     
                     data = { videos: validVideos };
                     console.log(`Converted ${validVideos.length} playlist videos from ${playlistData.playlist.entries.length} entries:`, validVideos); // Debug logging
-                    
+
+                    // DEBUG: Force alert to see what's happening
+                    alert(`Loaded ${validVideos.length} videos from playlist. Titles: ${validVideos.map(v => v.title).join(', ')}`);
+
                     if (validVideos.length === 0) {
                         console.log('No valid videos found in playlist entries. Raw entries:', playlistData.playlist.entries);
                     }
@@ -937,10 +943,12 @@ class MvTVPlayer {
                 // For playlist videos, use more lenient filtering since they might have different structure
                 if (filters.playlist) {
                     // For playlist videos, just check if they have basic video properties
-                    this.playlist = data.videos.filter(video => 
+                    console.log('Raw data.videos before filtering:', data.videos);
+                    this.playlist = data.videos.filter(video =>
                         video && video.id && (video.local_path || video.file_path || video.title)
                     );
-                    console.log('Filtered playlist videos:', this.playlist); // Debug logging
+                    console.log('Filtered playlist videos:', this.playlist);
+                    console.log('Playlist length:', this.playlist.length);
                 } else {
                     // For regular search, filter to only include videos that have local files
                     this.playlist = data.videos.filter(video => 
@@ -959,10 +967,13 @@ class MvTVPlayer {
                 
                 // If no specific filters were applied, randomize the playlist order
                 if (!hasSpecificFilters) {
+                    console.log('Shuffling playlist');
                     this.shuffleArray(this.playlist);
                 }
-                
+
+                console.log('About to call updateQueue() - playlist has', this.playlist.length, 'videos');
                 this.updateQueue();
+                console.log('After updateQueue(), loading first video');
                 await this.loadVideo(0);
             } else {
                 this.showError('No videos found matching your criteria.');
@@ -1111,22 +1122,30 @@ class MvTVPlayer {
     updateQueue() {
         const queueList = document.getElementById('queueList');
         const queueCount = document.getElementById('queueCount');
-        
+
+        console.log(`updateQueue() called - currentIndex: ${this.currentIndex}, playlist length: ${this.playlist.length}`);
+        console.log('Full playlist:', this.playlist.map(v => `${v.id}: ${v.title}`));
+
         queueCount.textContent = `${this.playlist.length} videos in queue`;
-        
+
         if (this.playlist.length === 0) {
             queueList.innerHTML = '<div class="error-message">No videos in queue</div>';
             return;
         }
-        
-        // Show next 10 videos
+
+        // Show next videos (up to 10, or all remaining videos if fewer)
         const nextVideos = [];
-        for (let i = 1; i <= 10; i++) {
+        const seenIndices = new Set([this.currentIndex]); // Track which indices we've added
+
+        for (let i = 1; i <= Math.min(10, this.playlist.length); i++) {
             const nextIndex = (this.currentIndex + i) % this.playlist.length;
-            if (nextIndex !== this.currentIndex) {
+            if (!seenIndices.has(nextIndex)) {
                 nextVideos.push({ ...this.playlist[nextIndex], index: nextIndex });
+                seenIndices.add(nextIndex);
             }
         }
+
+        console.log('Next videos for queue:', nextVideos.map(v => `Index ${v.index}: ${v.title}`));
         
         queueList.innerHTML = nextVideos.map((video, i) => `
             <div class="queue-item ${i === 0 ? 'current' : ''}" onclick="mvtvPlayer.jumpToVideo(${video.index})" title="Click to play this video">
@@ -1187,9 +1206,9 @@ class MvTVPlayer {
     
     async nextVideo() {
         if (this.playlist.length === 0) return;
-        
+
         let nextIndex;
-        
+
         if (this.shuffle) {
             // In shuffle mode, pick a random unplayed video
             const unplayedIndices = [];
@@ -1198,7 +1217,7 @@ class MvTVPlayer {
                     unplayedIndices.push(i);
                 }
             }
-            
+
             if (unplayedIndices.length === 0) {
                 // All videos played, reset
                 this.playedIndices.clear();
@@ -1210,12 +1229,17 @@ class MvTVPlayer {
             // Sequential mode
             nextIndex = (this.currentIndex + 1) % this.playlist.length;
         }
-        
-        // Immediately update video info for responsive UI
+
+        // Update currentIndex immediately so queue shows correct upcoming videos
+        this.currentIndex = nextIndex;
+
+        // Immediately update video info and queue for responsive UI
         if (this.playlist[nextIndex]) {
             this.updateVideoInfo(this.playlist[nextIndex]);
+            this.updateQueue();
+            this.updatePosition();
         }
-        
+
         await this.loadVideo(nextIndex);
         
         // Auto-play if currently playing and not in cinematic mode
@@ -1226,9 +1250,9 @@ class MvTVPlayer {
     
     async previousVideo() {
         if (this.playlist.length === 0) return;
-        
+
         let prevIndex;
-        
+
         if (this.shuffle) {
             // In shuffle mode, pick a random video (simple approach)
             prevIndex = Math.floor(Math.random() * this.playlist.length);
@@ -1239,12 +1263,17 @@ class MvTVPlayer {
                 prevIndex = this.playlist.length - 1; // Wrap to end
             }
         }
-        
-        // Immediately update video info for responsive UI
+
+        // Update currentIndex immediately so queue shows correct upcoming videos
+        this.currentIndex = prevIndex;
+
+        // Immediately update video info and queue for responsive UI
         if (this.playlist[prevIndex]) {
             this.updateVideoInfo(this.playlist[prevIndex]);
+            this.updateQueue();
+            this.updatePosition();
         }
-        
+
         await this.loadVideo(prevIndex);
         
         // Auto-play if currently playing and not in cinematic mode
@@ -1339,7 +1368,7 @@ async function loadFilterOptions() {
         console.log('Playlists loaded for filter:', playlistsData); // Debug logging
         
         const playlistFilter = document.getElementById('playlistFilter');
-        if (playlistsData.success && playlistsData.playlists && playlistsData.playlists.length > 0) {
+        if (playlistsData.playlists && playlistsData.playlists.length > 0) {
             playlistsData.playlists.forEach(playlist => {
                 const option = document.createElement('option');
                 option.value = playlist.id;
@@ -1352,8 +1381,11 @@ async function loadFilterOptions() {
         }
         
         // Auto-select playlist if specified in URL parameters
+        console.log('Checking window.autoSelectPlaylist:', window.autoSelectPlaylist);
         if (window.autoSelectPlaylist) {
             const playlistToSelect = window.autoSelectPlaylist;
+            console.log(`Attempting to auto-select playlist ${playlistToSelect}`);
+            console.log('Available playlist options:', Array.from(playlistFilter.options).map(opt => ({value: opt.value, text: opt.textContent})));
             const playlistOption = Array.from(playlistFilter.options).find(option => option.value === playlistToSelect);
             if (playlistOption) {
                 playlistFilter.value = playlistToSelect;
@@ -1361,23 +1393,43 @@ async function loadFilterOptions() {
                 // Update page title to indicate playlist is loaded
                 document.title = `MVidarr - MvTV - ${playlistOption.textContent}`;
                 // Auto-trigger playlist loading
+                console.log('Setting timeout to call applyPlaylistFilter()');
                 setTimeout(() => {
+                    console.log('Timeout fired, calling applyPlaylistFilter()');
                     applyPlaylistFilter();
                 }, 100);
             } else {
                 console.warn(`Playlist ${playlistToSelect} not found in available playlists`);
+                console.log('Falling back to load all videos');
+                setTimeout(() => {
+                    if (mvtvPlayer) {
+                        console.log('Loading all videos as fallback');
+                        mvtvPlayer.loadVideos();
+                    }
+                }, 100);
             }
             // Clear the flag
             delete window.autoSelectPlaylist;
+        } else {
+            // No playlist auto-select, load all videos after filters are ready
+            console.log('No playlist parameter, loading all videos');
+            setTimeout(() => {
+                if (mvtvPlayer) {
+                    console.log('mvtvPlayer exists, calling loadVideos()');
+                    mvtvPlayer.loadVideos();
+                } else {
+                    console.error('mvtvPlayer is not defined!');
+                }
+            }, 100);
         }
-        
+
         // Load artists (load all artists for search functionality)
         const artistsResponse = await fetch('/api/artists');
         const artistsData = await artistsResponse.json();
-        
+
         const artistDropdown = document.getElementById('artistDropdown');
         window.allArtists = []; // Store all artists for search filtering
-        
+
         if (artistsData.artists && artistsData.artists.length > 0) {
             window.allArtists = artistsData.artists.map(artist => artist.name).sort();
             window.allArtists.forEach(artistName => {
@@ -1389,7 +1441,7 @@ async function loadFilterOptions() {
                 artistDropdown.appendChild(option);
             });
         }
-        
+
     } catch (error) {
         console.error('Error loading filter options:', error);
     }
@@ -1844,11 +1896,12 @@ document.addEventListener('keydown', function(event) {
 // Initialize the player when page loads
 let mvtvPlayer;
 document.addEventListener('DOMContentLoaded', function() {
-    loadFilterOptions();
-    mvtvPlayer = new MvTVPlayer();
-    
-    // Check for URL parameters and auto-apply filters
+    // Check for URL parameters FIRST before loading filters
     checkUrlParameters();
+
+    // Then initialize player and load filter options
+    mvtvPlayer = new MvTVPlayer();
+    loadFilterOptions();
 });
 
 function checkUrlParameters() {
