@@ -145,26 +145,24 @@ class PlaylistManager {
             }
 
             const data = await response.json();
-            
-            if (data.success) {
+
+            if (data.playlists !== undefined) {
                 this.playlists = data.playlists || [];
                 this.totalCount = data.pagination.total;
                 this.totalPages = data.pagination.pages;
-                
+
                 // Debug logging to see playlist data structure
                 console.log('Loaded playlists:', this.playlists.length);
                 if (this.playlists.length > 0) {
                     console.log('Sample playlist data:', this.playlists[0]);
                 }
-                
+
                 this.renderPlaylists();
                 this.renderPagination();
                 this.updateFilterCounts();
-                
-                // Automatically refresh counts to ensure accuracy
-                setTimeout(() => {
-                    this.refreshPlaylistCounts();
-                }, 500);
+
+                // Note: Counts are already accurate from the API response
+                // No need to refresh separately
             } else {
                 throw new Error(data.error || 'Failed to load playlists');
             }
@@ -607,15 +605,20 @@ class PlaylistManager {
                 },
                 body: JSON.stringify(playlistData)
             });
-            
+
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP ${response.status}`);
+                throw new Error(errorData.error || errorData.detail || `HTTP ${response.status}`);
             }
-            
+
             const data = await response.json();
-            if (!data.success) throw new Error(data.error);
-            
+
+            // Dynamic playlist endpoint returns playlist object directly, not {success: true}
+            // Regular endpoint returns {success: true, playlist: {...}}
+            if (playlistType !== 'DYNAMIC' && !isEdit && !data.success) {
+                throw new Error(data.error || 'Failed to create playlist');
+            }
+
             this.showToast(isEdit ? 'Playlist updated successfully' : 'Playlist created successfully', 'success');
             this.closePlaylistModal();
             await this.loadPlaylists();
@@ -749,35 +752,60 @@ class PlaylistManager {
     async applyDynamicTemplate() {
         const templateId = document.getElementById('dynamicTemplate').value;
         if (!templateId) return;
-        
+
         try {
-            // Get templates from API
-            const response = await fetch('/api/playlists/dynamic/templates');
-            if (!response.ok) throw new Error('Failed to load templates');
-            
-            const data = await response.json();
-            if (!data.success) throw new Error(data.error);
-            
-            const template = data.templates.find(t => t.id === templateId);
+            // Client-side templates (no API call needed)
+            const templates = {
+                'recent_releases': {
+                    name: 'Recent Releases',
+                    description: 'Videos released in the last 2 years',
+                    filter_criteria: {
+                        year_range: { min: new Date().getFullYear() - 2 }
+                    }
+                },
+                'high_quality': {
+                    name: 'High Quality Videos',
+                    description: '1080p and higher quality videos',
+                    filter_criteria: {
+                        quality: ['1080p', '1440p', '2160p', '4320p']
+                    }
+                },
+                'completed': {
+                    name: 'Completed Downloads',
+                    description: 'All successfully downloaded videos',
+                    filter_criteria: {
+                        status: ['DOWNLOADED', 'READY']
+                    }
+                },
+                'pending': {
+                    name: 'Pending Downloads',
+                    description: 'Videos queued or downloading',
+                    filter_criteria: {
+                        status: ['QUEUED', 'DOWNLOADING', 'PENDING']
+                    }
+                }
+            };
+
+            const template = templates[templateId];
             if (!template) throw new Error('Template not found');
-            
+
             // Apply template to form
             this.populateDynamicFilters(template.filter_criteria);
-            
+
             // Update playlist name if empty
             const nameInput = document.getElementById('playlistName');
             if (!nameInput.value.trim()) {
                 nameInput.value = template.name;
             }
-            
+
             // Update description if empty
             const descInput = document.getElementById('playlistDescription');
             if (!descInput.value.trim()) {
                 descInput.value = template.description;
             }
-            
+
             this.showToast(`Applied template: ${template.name}`, 'success');
-            
+
         } catch (error) {
             this.showToast(`Failed to apply template: ${error.message}`, 'error');
         }
