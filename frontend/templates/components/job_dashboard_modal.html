@@ -1,0 +1,538 @@
+<!-- Job Dashboard Modal Component -->
+<div class="modal-overlay job-dashboard-overlay" id="jobDashboardModal" style="display: none;">
+    <div class="modal job-dashboard-modal">
+        <div class="modal-header">
+            <h3><iconify-icon icon="tabler:activity"></iconify-icon> Background Jobs Dashboard</h3>
+            <button type="button" class="close-btn" onclick="hideJobDashboard()">&times;</button>
+        </div>
+        <div class="modal-body">
+            
+            <!-- Active Jobs Section -->
+            <div class="jobs-section">
+                <div class="section-header">
+                    <h4><iconify-icon icon="tabler:loader-2"></iconify-icon> Active Jobs</h4>
+                    <span class="job-count" id="activeJobCount">0</span>
+                </div>
+                <div class="jobs-list" id="activeJobsList">
+                    <div class="no-jobs">
+                        <iconify-icon icon="tabler:check-circle"></iconify-icon>
+                        <p>No active jobs</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Jobs Section -->
+            <div class="jobs-section">
+                <div class="section-header">
+                    <h4><iconify-icon icon="tabler:history"></iconify-icon> Recent Jobs</h4>
+                    <button class="btn btn-sm" onclick="refreshJobHistory()">
+                        <iconify-icon icon="tabler:refresh"></iconify-icon>
+                        Refresh
+                    </button>
+                </div>
+                <div class="jobs-list" id="recentJobsList">
+                    <div class="loading">Loading recent jobs...</div>
+                </div>
+            </div>
+            
+            <!-- Job Controls -->
+            <div class="jobs-controls">
+                <div class="control-group">
+                    <label>Auto-refresh</label>
+                    <input type="checkbox" id="autoRefreshToggle" checked onchange="toggleAutoRefresh()">
+                </div>
+                <div class="control-group">
+                    <button class="btn btn-secondary" onclick="clearCompletedJobs()">
+                        <iconify-icon icon="tabler:trash"></iconify-icon>
+                        Clear Completed
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="hideJobDashboard()">Close</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.job-dashboard-modal {
+    width: 600px;
+    max-width: 90vw;
+    max-height: 80vh;
+}
+
+/* Modal visibility control */
+.modal-show {
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Ensure modal content is visible */
+.modal-show .job-dashboard-modal {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: scale(1) !important;
+    background: var(--bg-secondary, #1a1a1a) !important;
+    border: 1px solid var(--border-primary, #333) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+    z-index: 10000 !important;
+}
+
+.jobs-section {
+    margin-bottom: 2rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-secondary, #333);
+    margin-bottom: 1rem;
+}
+
+.section-header h4 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-primary, #fff);
+}
+
+.job-count {
+    background: var(--accent-color, #3b82f6);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.jobs-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.job-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--bg-tertiary, #2a2a2a);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-secondary, #444);
+}
+
+.job-item:last-child {
+    margin-bottom: 0;
+}
+
+.job-info {
+    flex: 1;
+}
+
+.job-title {
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.job-details {
+    color: var(--text-secondary, #ccc);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.job-progress-bar {
+    width: 80px;
+    height: 4px;
+    background: var(--bg-secondary, #333);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.job-progress-fill {
+    height: 100%;
+    background: var(--accent-color, #3b82f6);
+    transition: width 0.3s ease;
+}
+
+.job-status {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.job-status.queued { background: #f59e0b; color: white; }
+.job-status.processing { background: #3b82f6; color: white; }
+.job-status.completed { background: #10b981; color: white; }
+.job-status.failed { background: #ef4444; color: white; }
+.job-status.cancelled { background: #6b7280; color: white; }
+
+.job-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.job-actions .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.no-jobs, .loading {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary, #ccc);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.no-jobs iconify-icon {
+    font-size: 2rem;
+    color: var(--text-muted, #666);
+}
+
+.jobs-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-secondary, #333);
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.control-group label {
+    color: var(--text-secondary, #ccc);
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .job-dashboard-modal {
+        width: 95vw;
+        height: 90vh;
+    }
+    
+    .job-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .job-details {
+        justify-content: space-between;
+    }
+    
+    .jobs-controls {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+</style>
+
+<script>
+let jobDashboardInterval = null;
+let autoRefreshEnabled = true;
+
+function showJobDashboard() {
+    console.log('showJobDashboard function called!');
+    const modal = document.getElementById('jobDashboardModal');
+    console.log('Modal element:', modal);
+    
+    if (!modal) {
+        console.error('Job dashboard modal not found!');
+        return;
+    }
+    
+    // Remove the inline display:none style and add show class
+    modal.style.removeProperty('display');
+    modal.classList.add('modal-show');
+    console.log('Modal classes after show:', modal.className);
+    console.log('Modal display style after show:', window.getComputedStyle(modal).display);
+    console.log('Modal z-index:', window.getComputedStyle(modal).zIndex);
+    console.log('Modal position:', window.getComputedStyle(modal).position);
+    
+    // Refresh job lists
+    refreshActiveJobs();
+    refreshJobHistory();
+    
+    // Start auto-refresh
+    if (autoRefreshEnabled) {
+        startJobDashboardRefresh();
+    }
+}
+
+function hideJobDashboard() {
+    const modal = document.getElementById('jobDashboardModal');
+    modal.classList.remove('modal-show');
+    
+    // Stop auto-refresh
+    stopJobDashboardRefresh();
+}
+
+function startJobDashboardRefresh() {
+    if (jobDashboardInterval) {
+        clearInterval(jobDashboardInterval);
+    }
+    
+    jobDashboardInterval = setInterval(() => {
+        if (document.getElementById('jobDashboardModal').style.display !== 'none') {
+            refreshActiveJobs();
+        }
+    }, 3000); // Refresh every 3 seconds
+}
+
+function stopJobDashboardRefresh() {
+    if (jobDashboardInterval) {
+        clearInterval(jobDashboardInterval);
+        jobDashboardInterval = null;
+    }
+}
+
+function toggleAutoRefresh() {
+    const toggle = document.getElementById('autoRefreshToggle');
+    autoRefreshEnabled = toggle.checked;
+    
+    if (autoRefreshEnabled) {
+        startJobDashboardRefresh();
+    } else {
+        stopJobDashboardRefresh();
+    }
+}
+
+function refreshActiveJobs() {
+    const activeJobs = window.backgroundJobs ? window.backgroundJobs.getActiveJobs() : [];
+    const container = document.getElementById('activeJobsList');
+    const countElement = document.getElementById('activeJobCount');
+    
+    countElement.textContent = activeJobs.length;
+    
+    if (activeJobs.length === 0) {
+        container.innerHTML = `
+            <div class="no-jobs">
+                <iconify-icon icon="tabler:check-circle"></iconify-icon>
+                <p>No active jobs</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = activeJobs.map(job => `
+        <div class="job-item">
+            <div class="job-info">
+                <div class="job-title">
+                    <iconify-icon icon="${getJobStatusIcon(job.status)}"></iconify-icon>
+                    ${getJobTypeDisplay(job.type)}
+                </div>
+                <div class="job-details">
+                    <span class="job-message">${job.message || 'Processing...'}</span>
+                    <span class="job-time">${formatJobTime(job.startTime)}</span>
+                </div>
+            </div>
+            <div class="job-progress">
+                <div class="job-progress-bar">
+                    <div class="job-progress-fill" style="width: ${job.progress || 0}%"></div>
+                </div>
+                <span class="job-percentage">${job.progress || 0}%</span>
+            </div>
+            <div class="job-actions">
+                ${job.status === 'processing' || job.status === 'queued' ? 
+                    `<button class="btn btn-sm btn-danger" onclick="window.backgroundJobs.cancelJob('${job.id}')" title="Cancel Job">
+                        <iconify-icon icon="tabler:x"></iconify-icon>
+                     </button>` : ''
+                }
+                <button class="btn btn-sm" onclick="hideJobFromList('${job.id}')" title="Hide">
+                    <iconify-icon icon="tabler:eye-off"></iconify-icon>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function refreshJobHistory() {
+    const container = document.getElementById('recentJobsList');
+    
+    try {
+        const response = await fetch('/api/jobs', {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch job history');
+        }
+        
+        const data = await response.json();
+        const jobs = data.jobs || [];
+        
+        if (jobs.length === 0) {
+            container.innerHTML = `
+                <div class="no-jobs">
+                    <iconify-icon icon="tabler:history"></iconify-icon>
+                    <p>No recent jobs</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = jobs.slice(0, 10).map(job => `
+            <div class="job-item">
+                <div class="job-info">
+                    <div class="job-title">
+                        <iconify-icon icon="${getJobStatusIcon(job.status)}"></iconify-icon>
+                        ${getJobTypeDisplay(job.type)}
+                    </div>
+                    <div class="job-details">
+                        <span class="job-status ${job.status}">${job.status}</span>
+                        <span class="job-time">${formatTimestamp(job.created_at)}</span>
+                        ${job.elapsed_seconds ? `<span class="job-duration">${formatDuration(job.elapsed_seconds)}</span>` : ''}
+                    </div>
+                </div>
+                <div class="job-actions">
+                    <button class="btn btn-sm" onclick="showJobDetails('${job.job_id}')" title="Details">
+                        <iconify-icon icon="tabler:info-circle"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Failed to fetch job history:', error);
+        container.innerHTML = `
+            <div class="no-jobs">
+                <iconify-icon icon="tabler:alert-circle"></iconify-icon>
+                <p>Failed to load job history</p>
+            </div>
+        `;
+    }
+}
+
+function clearCompletedJobs() {
+    if (confirm('Clear all completed jobs from the active list?')) {
+        // This would clear completed jobs from the background job manager
+        // For now, just refresh the display
+        refreshActiveJobs();
+    }
+}
+
+function hideJobFromList(jobId) {
+    if (window.backgroundJobs) {
+        window.backgroundJobs.hideJobProgress(jobId);
+    }
+    refreshActiveJobs();
+}
+
+async function showJobDetails(jobId) {
+    // This could open a detailed job info modal
+    console.log('Show details for job:', jobId);
+    // For now, just log the job details
+    if (window.backgroundJobs) {
+        const jobData = window.backgroundJobs.getJobStatus(jobId);
+        if (jobData) {
+            alert(`Job Details:\nID: ${jobId}\nType: ${jobData.type}\nStatus: ${jobData.status}\nProgress: ${jobData.progress}%\nMessage: ${jobData.message}`);
+        }
+    }
+}
+
+// Utility functions
+function getJobStatusIcon(status) {
+    const icons = {
+        queued: 'tabler:clock',
+        processing: 'tabler:loader-2',
+        completed: 'tabler:check-circle',
+        failed: 'tabler:x-circle',
+        cancelled: 'tabler:ban'
+    };
+    return icons[status] || 'tabler:help-circle';
+}
+
+function getJobTypeDisplay(type) {
+    const displayNames = {
+        metadata_enrichment: 'Metadata Enrichment',
+        video_download: 'Video Download',
+        bulk_video_download: 'Bulk Video Download',
+        bulk_artist_import: 'Bulk Import',
+        thumbnail_generation: 'Thumbnail Generation',
+        playlist_sync: 'Playlist Sync',
+        bulk_video_delete: 'Bulk Delete',
+        database_cleanup: 'Database Cleanup',
+        // Video quality operations
+        video_quality_analyze: 'Quality Analysis',
+        video_quality_upgrade: 'Quality Upgrade',
+        video_quality_bulk_upgrade: 'Bulk Quality Upgrade',
+        video_quality_check_all: 'Quality Check All',
+        // Video indexing operations
+        video_index_all: 'Index All Videos',
+        video_index_single: 'Index Video',
+        // Video organization operations
+        video_organize_all: 'Organize All Videos',
+        video_organize_single: 'Organize Video',
+        video_reorganize_existing: 'Reorganize Videos',
+        // Scheduler operations
+        scheduled_download: 'Scheduled Download',
+        scheduled_discovery: 'Scheduled Discovery'
+    };
+    
+    return displayNames[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function formatJobTime(startTime) {
+    if (!startTime) return '';
+    const elapsed = Date.now() - startTime;
+    return formatDuration(elapsed / 1000);
+}
+
+function formatDuration(seconds) {
+    if (seconds < 60) {
+        return `${Math.round(seconds)}s`;
+    } else if (seconds < 3600) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.round(seconds % 60);
+        return `${minutes}m ${remainingSeconds}s`;
+    } else {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return `${hours}h ${minutes}m`;
+    }
+}
+
+function formatTimestamp(timestamp) {
+    return new Date(timestamp).toLocaleString();
+}
+
+// Close modal on outside click
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('jobDashboardModal');
+    if (event.target === modal) {
+        hideJobDashboard();
+    }
+});
+</script>

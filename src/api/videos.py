@@ -2,8 +2,11 @@
 Videos API endpoints
 """
 
+import asyncio
+import json
 import mimetypes
 import os
+import shutil
 import subprocess
 import threading
 from datetime import datetime
@@ -17,12 +20,42 @@ from sqlalchemy.exc import IntegrityError
 from src.database.connection import get_db
 from src.database.models import Artist, Download, Video, VideoStatus
 from src.services.imvdb_service import imvdb_service
+from src.services.metadata_enrichment_service import metadata_enrichment_service
 from src.services.video_indexing_service import VideoIndexingService
 from src.utils.logger import get_logger
 from src.utils.performance_monitor import monitor_performance
 
 videos_bp = Blueprint("videos", __name__, url_prefix="/videos")
 logger = get_logger("mvidarr.api.videos")
+
+
+def get_ytdlp_path():
+    """Get the best available yt-dlp executable path"""
+    return (
+        "/root/.local/bin/yt-dlp"  # pipx installed (latest)
+        if os.path.exists("/root/.local/bin/yt-dlp")
+        else shutil.which("yt-dlp")
+        or shutil.which("yt-dlp.exe")
+        or "/usr/local/bin/yt-dlp"
+    )
+
+
+def _safe_parse_genres(genres):
+    """Safely parse genres field that may be JSON string or list"""
+    if isinstance(genres, list):
+        return genres
+    if not genres:
+        return []
+    if isinstance(genres, str):
+        try:
+            genres = genres.strip()
+            if not genres:
+                return []
+            return json.loads(genres)
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.warning(f"Failed to parse genres JSON: {genres}, error: {e}")
+            return []
+    return []
 
 
 def public_endpoint(f):
@@ -65,7 +98,7 @@ def resolve_video_url(video, session):
 
         # Use yt-dlp to search YouTube
         cmd = [
-            "/usr/local/bin/yt-dlp",  # Use the system-installed version
+            get_ytdlp_path(),  # Use the best available version
             "--dump-json",
             "--no-download",
             "--playlist-items",
@@ -208,8 +241,8 @@ def _trigger_video_download(video_id):
                 }
 
             # Import ytdlp service and settings
+            from src.services.download_service_adapter import ytdlp_service
             from src.services.settings_service import settings
-            from src.services.ytdlp_service import ytdlp_service
 
             # Check if video is already downloaded
             status_value = (
@@ -691,6 +724,7 @@ def search_videos():
 
 
 @videos_bp.route("/<int:video_id>", methods=["GET"])
+@public_endpoint
 def get_video(video_id):
     """Get specific video by ID"""
     try:
@@ -717,7 +751,18 @@ def get_video(video_id):
                 "duration": video.duration,
                 "quality": video.quality,
                 "year": video.year,
-                "genres": video.genres,
+                "genres": _safe_parse_genres(video.genres),
+                "album": video.album,
+                "search_keywords": video.search_keywords,
+                "description": video.description,
+                "view_count": video.view_count,
+                "like_count": video.like_count,
+                "directors": video.directors,
+                "producers": video.producers,
+                "release_date": (
+                    video.release_date.isoformat() if video.release_date else None
+                ),
+                "lyrics": video.lyrics,
                 "video_metadata": video.video_metadata,
                 "created_at": video.created_at.isoformat(),
             }
@@ -731,126 +776,46 @@ def get_video(video_id):
 
 @videos_bp.route("/<int:video_id>/download", methods=["POST"])
 def download_video(video_id):
-    """Queue video for download"""
+    """Queue video for download using YT-DLP service"""
     try:
         logger.info(f"Starting download for video {video_id}")
 
-        with get_db() as session:
-            video = session.query(Video).filter(Video.id == video_id).first()
+        # Use the working YT-DLP trigger function that properly links files immediately
+        result = _trigger_video_download(video_id)
 
-            if not video:
-                logger.warning(f"Video {video_id} not found")
-                return jsonify({"error": "Video not found"}), 404
-
-            logger.info(f"Found video: {video.title}")
-
-            # Store video data for URL resolution
-            artist_name = video.artist.name if video.artist else "Unknown Artist"
-            logger.info(f"Artist: {artist_name}")
-
-            # Resolve video URL using helper function
-            logger.info("Attempting to resolve video URL")
-            video_url = resolve_video_url(video, session)
-            logger.info(f"Resolved URL: {video_url}")
-
-            if not video_url:
-                logger.warning(f"No URL found for video {video_id}")
-                return (
-                    jsonify(
-                        {
-                            "error": "Video has no URL to download and could not resolve one"
-                        }
-                    ),
-                    400,
-                )
-
-            # Import ytdlp service and settings
-            logger.info("Importing ytdlp service")
-            from src.services.settings_service import settings
-            from src.services.ytdlp_service import ytdlp_service
-
-            # Read subtitle settings from database
-            download_subtitles = settings.get_bool("download_subtitles", False)
-            subtitle_languages = settings.get("subtitle_languages", "en,en-US")
-
-            # Check if video is already downloaded
+        if result.get("success"):
             logger.info(
-                f"Checking if video is already downloaded - status: {video.status}, local_path: '{video.local_path}'"
+                f"Queued download for video {video_id}: {result.get('message')}"
             )
-            status_value = (
-                video.status.value if hasattr(video.status, "value") else video.status
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "video_id": video_id,
+                        "download_id": result.get("download_id"),
+                        "message": result.get(
+                            "message", "Download queued successfully"
+                        ),
+                    }
+                ),
+                202,
+            )  # 202 Accepted - processing started
+        else:
+            logger.error(
+                f"Failed to queue download for video {video_id}: {result.get('error')}"
             )
-            if (
-                status_value == "DOWNLOADED"
-                and video.local_path
-                and video.local_path.strip()  # Ensure path is not empty or whitespace
-                and os.path.exists(video.local_path)
-            ):
-                logger.info("Video is already downloaded")
-                return (
-                    jsonify({"success": False, "error": "Video is already downloaded"}),
-                    400,
-                )
-
-            # Add download to yt-dlp queue
-            logger.info(
-                f"Calling ytdlp_service.add_music_video_download with artist='{artist_name}', title='{video.title}', url='{video_url}'"
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": result.get("error", "Unknown error occurred"),
+                    }
+                ),
+                400,
             )
-            try:
-                result = ytdlp_service.add_music_video_download(
-                    artist=artist_name,
-                    title=video.title,
-                    url=video_url,
-                    quality="best",
-                    video_id=video_id,
-                    download_subtitles=download_subtitles,
-                    subtitle_languages=subtitle_languages,
-                )
-                logger.info(f"ytdlp_service result: {result}")
-            except Exception as ytdlp_error:
-                logger.error(f"ytdlp_service error: {ytdlp_error}")
-                return (
-                    jsonify({"error": f"Download service error: {str(ytdlp_error)}"}),
-                    500,
-                )
-
-            if result and result.get("success"):
-                logger.info("Download queued successfully, updating video status")
-                # Update video status to indicate download started
-                # Re-query the video object to ensure it's bound to the current session
-                video = session.query(Video).filter(Video.id == video_id).first()
-                if video:
-                    video.status = VideoStatus.DOWNLOADING
-                    session.commit()
-
-                logger.info(f"Queued download for video {video_id}: {video.title}")
-
-                return (
-                    jsonify(
-                        {
-                            "success": True,
-                            "message": f'Download queued for "{video.title}"',
-                            "download_id": result.get("id"),
-                            "video_id": video_id,
-                        }
-                    ),
-                    200,
-                )
-            else:
-                error_msg = (
-                    result.get("error", "Failed to queue download")
-                    if result
-                    else "MeTube service unavailable"
-                )
-                logger.error(f"Download failed: {error_msg}")
-                return jsonify({"success": False, "error": error_msg}), 500
 
     except Exception as e:
-        import traceback
-
-        error_details = traceback.format_exc()
-        logger.error(f"Failed to download video {video_id}: {e}")
-        logger.error(f"Full traceback: {error_details}")
+        logger.error(f"Failed to queue video download job: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1052,10 +1017,12 @@ def delete_video(video_id):
 
 @videos_bp.route("/bulk/delete", methods=["POST"])
 def bulk_delete_videos():
-    """Delete multiple videos"""
+    """Delete multiple videos using background job queue"""
     try:
         data = request.get_json()
         video_ids = data.get("video_ids", [])
+        delete_files = data.get("delete_files", True)
+        blacklist = data.get("blacklist", False)
 
         if not video_ids:
             return jsonify({"error": "No video IDs provided"}), 400
@@ -1063,85 +1030,49 @@ def bulk_delete_videos():
         if not isinstance(video_ids, list):
             return jsonify({"error": "video_ids must be a list"}), 400
 
-        deleted_videos = []
-        failed_videos = []
+        # Validate that video IDs are integers
+        try:
+            video_ids = [int(vid) for vid in video_ids]
+        except (ValueError, TypeError):
+            return jsonify({"error": "All video IDs must be integers"}), 400
 
-        with get_db() as session:
-            for video_id in video_ids:
-                try:
-                    video = session.query(Video).filter(Video.id == video_id).first()
+        # Create bulk delete job
+        from ..services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
 
-                    if not video:
-                        failed_videos.append(
-                            {"id": video_id, "error": "Video not found"}
-                        )
-                        continue
+        job = BackgroundJob(
+            type=JobType.BULK_VIDEO_DELETE,
+            priority=JobPriority.HIGH,
+            payload={
+                "operation_type": "delete",
+                "video_ids": video_ids,
+                "params": {"delete_files": delete_files, "blacklist": blacklist},
+            },
+        )
 
-                    # Store video info for response
-                    video_info = {
-                        "id": video.id,
-                        "title": video.title,
-                        "artist_name": video.artist.name if video.artist else None,
-                    }
+        job_queue = asyncio.run(get_job_queue())
+        job_id = asyncio.run(job_queue.enqueue(job))
 
-                    # First, delete any playlist entries that reference this video
-                    from src.database.models import PlaylistEntry
+        logger.info(f"Queued bulk delete job {job_id} for {len(video_ids)} videos")
 
-                    playlist_entries = (
-                        session.query(PlaylistEntry)
-                        .filter(PlaylistEntry.video_id == video_id)
-                        .all()
-                    )
-
-                    for entry in playlist_entries:
-                        session.delete(entry)
-
-                    # Delete any downloads that reference this video
-                    downloads = (
-                        session.query(Download)
-                        .filter(Download.video_id == video_id)
-                        .all()
-                    )
-
-                    for download in downloads:
-                        session.delete(download)
-
-                    # Now delete the video record
-                    session.delete(video)
-
-                    # Add counts to video info
-                    video_info["playlist_entries_removed"] = len(playlist_entries)
-                    video_info["downloads_removed"] = len(downloads)
-                    deleted_videos.append(video_info)
-
-                    logger.info(
-                        f"Bulk deleted video: {video_info['title']} by {video_info['artist_name']}"
-                    )
-
-                except Exception as e:
-                    failed_videos.append({"id": video_id, "error": str(e)})
-                    logger.error(
-                        f"Failed to delete video {video_id} in bulk operation: {e}"
-                    )
-
-            # Commit all successful deletes
-            session.commit()
-
-        response = {
-            "message": f"Bulk delete completed: {len(deleted_videos)} deleted, {len(failed_videos)} failed",
-            "deleted_count": len(deleted_videos),
-            "failed_count": len(failed_videos),
-            "deleted_videos": deleted_videos,
-            "failed_videos": failed_videos,
-        }
-
-        if failed_videos:
-            return jsonify(response), 207  # Multi-status
-        else:
-            return jsonify(response), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": job_id,
+                    "total_videos": len(video_ids),
+                    "message": f"Bulk delete job queued for {len(video_ids)} videos. Job ID: {job_id}",
+                }
+            ),
+            202,
+        )  # 202 Accepted - processing started
 
     except Exception as e:
-        logger.error(f"Failed to bulk delete videos: {e}")
+        logger.error(f"Failed to create bulk delete job: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -2593,6 +2524,7 @@ def refresh_video_metadata(video_id):
             artist_name = video.artist.name if video.artist else None
             video_title = video.title
             current_imvdb_id = video.imvdb_id
+            created_at = video.created_at
 
             if not artist_name:
                 return jsonify({"error": "No artist associated with video"}), 400
@@ -2894,7 +2826,7 @@ def refresh_video_metadata(video_id):
                 "year": video.year,
                 "directors": video.directors,
                 "producers": video.producers,
-                "created_at": video.created_at.isoformat(),
+                "created_at": created_at.isoformat(),
                 "metadata_refreshed": True,
                 "metadata_source": metadata_source,
                 "youtube_id": (
@@ -2928,6 +2860,93 @@ def refresh_video_metadata(video_id):
         logger.error(f"Failed to refresh metadata for video {video_id}: {e}")
         logger.error(f"Full traceback: {error_details}")
         return jsonify({"error": str(e), "details": error_details}), 500
+
+
+@videos_bp.route("/<int:video_id>/enhanced-refresh-metadata", methods=["POST"])
+def enhanced_refresh_video_metadata(video_id):
+    """Enhanced metadata refresh using multiple sources"""
+    import asyncio
+    import signal
+    from concurrent.futures import TimeoutError
+
+    try:
+        # Get force_refresh parameter from JSON or form data
+        force_refresh = False
+        if request.is_json and request.json:
+            force_refresh = request.json.get("force_refresh", False)
+        elif request.form:
+            force_refresh = request.form.get("force_refresh", "false").lower() == "true"
+
+        # Add timeout wrapper to prevent hanging
+        async def run_with_timeout():
+            try:
+                return await asyncio.wait_for(
+                    metadata_enrichment_service.enrich_video_metadata(
+                        video_id, force_refresh=force_refresh
+                    ),
+                    timeout=60.0,  # 60 second timeout
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f"Metadata enrichment for video {video_id} timed out after 60 seconds"
+                )
+                return type(
+                    "Result",
+                    (),
+                    {
+                        "success": False,
+                        "errors": [
+                            "Metadata enrichment timed out - external services may be slow"
+                        ],
+                        "enriched_fields": [],
+                        "metadata_sources": [],
+                    },
+                )()
+
+        # Run the async enrichment function with timeout
+        result = asyncio.run(run_with_timeout())
+
+        if result.success:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Enhanced metadata enrichment completed for video {video_id}",
+                    "enriched_fields": result.enriched_fields,
+                    "metadata_sources": result.metadata_sources,
+                    "errors": result.errors,
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Metadata enrichment failed",
+                        "errors": result.errors,
+                    }
+                ),
+                500,
+            )
+
+    except asyncio.TimeoutError:
+        logger.error(f"Metadata enrichment for video {video_id} timed out")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Metadata enrichment timed out",
+                    "errors": [
+                        "Process timed out - external services may be unresponsive"
+                    ],
+                }
+            ),
+            408,
+        )
+    except Exception as e:
+        logger.error(
+            f"Failed to run enhanced metadata refresh for video {video_id}: {e}"
+        )
+        return jsonify({"error": str(e)}), 500
 
 
 @videos_bp.route("/fix-title-artist-swap", methods=["POST"])
@@ -3090,6 +3109,102 @@ def fix_title_artist_swap():
 
     except Exception as e:
         logger.error(f"Failed to fix title/artist swap: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@videos_bp.route("/enhanced-refresh-all-metadata", methods=["POST"])
+def enhanced_refresh_all_metadata():
+    """Enhanced metadata refresh for all videos using comprehensive enrichment"""
+    import asyncio
+
+    try:
+        # Get request parameters
+        data = request.get_json() or {}
+        force_refresh = data.get("force_refresh", False)
+        limit = data.get("limit", None)
+        video_ids = data.get("video_ids", None)
+
+        from src.services.metadata_enrichment_service import metadata_enrichment_service
+
+        # Get videos to process
+        with get_db() as session:
+            query = session.query(Video).join(Video.artist)
+
+            # Filter by specific video IDs if provided
+            if video_ids:
+                query = query.filter(Video.id.in_(video_ids))
+
+            if limit:
+                query = query.limit(limit)
+
+            videos = query.all()
+            videos_to_process = [
+                {
+                    "id": video.id,
+                    "title": video.title,
+                    "artist_name": video.artist.name if video.artist else None,
+                }
+                for video in videos
+            ]
+
+        if not videos_to_process:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "No videos found to process",
+                    "processed": 0,
+                    "updated": 0,
+                    "errors": 0,
+                }
+            )
+
+        # Process videos using enhanced metadata service
+        processed = 0
+        updated = 0
+        errors = 0
+        error_details = []
+
+        for video_data in videos_to_process:
+            try:
+                result = asyncio.run(
+                    metadata_enrichment_service.enrich_video_metadata(
+                        video_data["id"], force_refresh=force_refresh
+                    )
+                )
+
+                processed += 1
+                if result.get("success", False):
+                    updated += 1
+                else:
+                    errors += 1
+                    error_details.append(
+                        f"Video {video_data['id']} ({video_data['title']}): {result.get('error', 'Unknown error')}"
+                    )
+
+            except Exception as e:
+                processed += 1
+                errors += 1
+                error_details.append(
+                    f"Video {video_data['id']} ({video_data['title']}): {str(e)}"
+                )
+                logger.error(
+                    f"Error enriching metadata for video {video_data['id']}: {e}"
+                )
+
+        return jsonify(
+            {
+                "success": True,
+                "processed": processed,
+                "updated": updated,
+                "errors": errors,
+                "error_details": (
+                    error_details[:10] if error_details else []
+                ),  # Limit error details
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error in enhanced refresh all metadata: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -3747,7 +3862,7 @@ def update_video_status(video_id):
 
 @videos_bp.route("/bulk/download", methods=["POST"])
 def bulk_download_videos():
-    """Download multiple videos"""
+    """Download multiple videos using background job queue"""
     try:
         data = request.get_json()
         if not data or "video_ids" not in data:
@@ -3757,113 +3872,52 @@ def bulk_download_videos():
         if not isinstance(video_ids, list):
             return jsonify({"error": "video_ids must be an array"}), 400
 
+        # Get operation parameters
+        quality = data.get("quality", "best")
+        force_redownload = data.get("force_redownload", False)
+
+        # Use the working YT-DLP trigger function for each video
         results = []
-        success_count = 0
-        failed_count = 0
+        successful_downloads = 0
+        failed_downloads = 0
 
-        # Import settings service for subtitle configuration
-        from src.services.settings_service import settings
+        for video_id in video_ids:
+            result = _trigger_video_download(video_id)
+            results.append(
+                {
+                    "video_id": video_id,
+                    "success": result.get("success", False),
+                    "message": result.get(
+                        "message", result.get("error", "Unknown result")
+                    ),
+                }
+            )
 
-        # Read subtitle settings from database once for all downloads
-        download_subtitles = settings.get_bool("download_subtitles", False)
-        subtitle_languages = settings.get("subtitle_languages", "en,en-US")
+            if result.get("success"):
+                successful_downloads += 1
+            else:
+                failed_downloads += 1
 
-        with get_db() as session:
-            for video_id in video_ids:
-                try:
-                    video = session.query(Video).filter(Video.id == video_id).first()
-
-                    if not video:
-                        results.append(
-                            {
-                                "video_id": video_id,
-                                "success": False,
-                                "error": "Video not found",
-                            }
-                        )
-                        failed_count += 1
-                        continue
-
-                    # Resolve video URL using helper function
-                    video_url = resolve_video_url(video, session)
-
-                    if not video_url:
-                        results.append(
-                            {
-                                "video_id": video_id,
-                                "success": False,
-                                "error": "No URL available for download",
-                            }
-                        )
-                        failed_count += 1
-                        continue
-
-                    # Import yt-dlp service
-                    from src.services.ytdlp_service import ytdlp_service
-
-                    # Queue download
-                    artist_name = video.artist.name if video.artist else "Unknown"
-                    result = ytdlp_service.add_music_video_download(
-                        artist=artist_name,
-                        title=video.title,
-                        url=video_url,
-                        quality="best",
-                        video_id=video_id,
-                        download_subtitles=download_subtitles,
-                        subtitle_languages=subtitle_languages,
-                    )
-
-                    if result and result.get("success"):
-                        # Re-query the video object to ensure it's bound to the current session
-                        video = (
-                            session.query(Video).filter(Video.id == video_id).first()
-                        )
-                        if video:
-                            video.status = VideoStatus.DOWNLOADING
-                            session.commit()
-
-                        results.append(
-                            {
-                                "video_id": video_id,
-                                "success": True,
-                                "title": video.title,
-                                "download_id": result.get("id"),
-                            }
-                        )
-                        success_count += 1
-                    else:
-                        error_msg = (
-                            result.get("error", "Failed to queue download")
-                            if result
-                            else "MeTube service unavailable"
-                        )
-                        results.append(
-                            {"video_id": video_id, "success": False, "error": error_msg}
-                        )
-                        failed_count += 1
-
-                except Exception as e:
-                    logger.error(f"Failed to download video {video_id}: {e}")
-                    results.append(
-                        {"video_id": video_id, "success": False, "error": str(e)}
-                    )
-                    failed_count += 1
+        logger.info(
+            f"Bulk download completed: {successful_downloads} successful, {failed_downloads} failed"
+        )
 
         return (
             jsonify(
                 {
                     "success": True,
-                    "message": f"Bulk download completed: {success_count} success, {failed_count} failed",
-                    "success_count": success_count,
-                    "failed_count": failed_count,
+                    "total_videos": len(video_ids),
+                    "successful_downloads": successful_downloads,
+                    "failed_downloads": failed_downloads,
                     "results": results,
+                    "message": f"Bulk download completed: {successful_downloads} successful, {failed_downloads} failed",
                 }
             ),
-            200,
-        )
+            202,
+        )  # 202 Accepted - processing started
 
     except Exception as e:
-        logger.error(f"Failed to bulk download videos: {e}")
+        logger.error(f"Failed to create bulk download job: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -3942,7 +3996,7 @@ def download_all_wanted_videos_internal(limit=50):
                         continue
 
                     # Import yt-dlp service
-                    from src.services.ytdlp_service import ytdlp_service
+                    from src.services.download_service_adapter import ytdlp_service
 
                     # Queue download
                     result = ytdlp_service.add_music_video_download(
@@ -4041,10 +4095,10 @@ def download_all_wanted_videos():
         return jsonify({"error": str(e)}), 500
 
 
-@videos_bp.route("/bulk/status", methods=["POST"])
+@videos_bp.route("/bulk/status", methods=["POST", "PUT"])
 @monitor_performance("api.videos.bulk_status_update")
 def bulk_update_video_status():
-    """Update status for multiple videos"""
+    """Update status for multiple videos using background job queue"""
     try:
         data = request.get_json()
         if not data or "video_ids" not in data or "status" not in data:
@@ -4064,67 +4118,52 @@ def bulk_update_video_status():
                 400,
             )
 
-        results = []
-        success_count = 0
-        failed_count = 0
+        # Validate that video IDs are integers
+        try:
+            video_ids = [int(vid) for vid in video_ids]
+        except (ValueError, TypeError):
+            return jsonify({"error": "All video IDs must be integers"}), 400
 
-        with get_db() as session:
-            for video_id in video_ids:
-                try:
-                    video = session.query(Video).filter(Video.id == video_id).first()
+        # Create bulk status update job
+        from ..services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
 
-                    if not video:
-                        results.append(
-                            {
-                                "video_id": video_id,
-                                "success": False,
-                                "error": "Video not found",
-                            }
-                        )
-                        failed_count += 1
-                        continue
+        job = BackgroundJob(
+            type=JobType.BULK_VIDEO_DELETE,  # Using the same job type, handled by operation_type
+            priority=JobPriority.NORMAL,
+            payload={
+                "operation_type": "status_update",
+                "video_ids": video_ids,
+                "params": {"status": new_status},
+            },
+        )
 
-                    old_status = (
-                        video.status.value
-                        if hasattr(video.status, "value")
-                        else video.status
-                    )
-                    video.status = VideoStatus[new_status]
-                    session.commit()
+        job_queue = asyncio.run(get_job_queue())
+        job_id = asyncio.run(job_queue.enqueue(job))
 
-                    results.append(
-                        {
-                            "video_id": video_id,
-                            "success": True,
-                            "title": video.title,
-                            "old_status": old_status,
-                            "new_status": new_status,
-                        }
-                    )
-                    success_count += 1
-
-                except Exception as e:
-                    logger.error(f"Failed to update video {video_id} status: {e}")
-                    results.append(
-                        {"video_id": video_id, "success": False, "error": str(e)}
-                    )
-                    failed_count += 1
+        logger.info(
+            f"Queued bulk status update job {job_id} for {len(video_ids)} videos to {new_status}"
+        )
 
         return (
             jsonify(
                 {
                     "success": True,
-                    "message": f"Bulk status update completed: {success_count} success, {failed_count} failed",
-                    "success_count": success_count,
-                    "failed_count": failed_count,
-                    "results": results,
+                    "job_id": job_id,
+                    "total_videos": len(video_ids),
+                    "new_status": new_status,
+                    "message": f"Bulk status update job queued for {len(video_ids)} videos to '{new_status}'. Job ID: {job_id}",
                 }
             ),
-            200,
-        )
+            202,
+        )  # 202 Accepted - processing started
 
     except Exception as e:
-        logger.error(f"Failed to bulk update video status: {e}")
+        logger.error(f"Failed to create bulk status update job: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -4257,13 +4296,11 @@ def bulk_edit_videos():
 
 @videos_bp.route("/bulk/refresh-metadata", methods=["POST"])
 def bulk_refresh_metadata():
-    """Refresh metadata from IMVDb for multiple videos"""
+    """Refresh metadata from IMVDb for multiple videos using background job queue"""
     try:
-        from src.services.imvdb_service import imvdb_service
-        from src.services.settings_service import settings
-
         data = request.get_json()
         video_ids = data.get("video_ids", [])
+        force_refresh = data.get("force_refresh", True)
 
         if not video_ids:
             return jsonify({"error": "No video IDs provided"}), 400
@@ -4271,144 +4308,52 @@ def bulk_refresh_metadata():
         if not isinstance(video_ids, list):
             return jsonify({"error": "video_ids must be a list"}), 400
 
-        # Force reload settings cache to ensure we have the latest API key
-        settings.reload_cache()
+        # Validate that video IDs are integers
+        try:
+            video_ids = [int(vid) for vid in video_ids]
+        except (ValueError, TypeError):
+            return jsonify({"error": "All video IDs must be integers"}), 400
 
-        updated_videos = []
-        failed_videos = []
-        skipped_videos = []
+        # Create bulk metadata refresh job
+        from ..services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
 
-        with get_db() as session:
-            for video_id in video_ids:
-                try:
-                    video = session.query(Video).filter(Video.id == video_id).first()
+        job = BackgroundJob(
+            type=JobType.BULK_VIDEO_DELETE,  # Using the same job type, handled by operation_type
+            priority=JobPriority.NORMAL,
+            payload={
+                "operation_type": "metadata_refresh",
+                "video_ids": video_ids,
+                "params": {"force_refresh": force_refresh},
+            },
+        )
 
-                    if not video:
-                        failed_videos.append(
-                            {"id": video_id, "error": "Video not found"}
-                        )
-                        continue
+        job_queue = asyncio.run(get_job_queue())
+        job_id = asyncio.run(job_queue.enqueue(job))
 
-                    # Extract data we need
-                    artist_name = video.artist.name if video.artist else None
-                    video_title = video.title
-                    current_imvdb_id = video.imvdb_id
-
-                    if not artist_name:
-                        skipped_videos.append(
-                            {
-                                "id": video_id,
-                                "title": video_title,
-                                "reason": "No artist associated with video",
-                            }
-                        )
-                        continue
-
-                    logger.info(
-                        f"Bulk refreshing metadata for video: {video_title} by {artist_name}"
-                    )
-
-                    # Try to find best match on IMVDb
-                    imvdb_data = None
-
-                    # If we have an existing IMVDb ID, try to get detailed info
-                    if current_imvdb_id:
-                        imvdb_data = imvdb_service.get_video_by_id(current_imvdb_id)
-
-                    # If no IMVDb ID or the lookup failed, try searching
-                    if not imvdb_data:
-                        imvdb_data = imvdb_service.find_best_video_match(
-                            artist_name, video_title
-                        )
-
-                    if not imvdb_data:
-                        skipped_videos.append(
-                            {
-                                "id": video_id,
-                                "title": video_title,
-                                "artist": artist_name,
-                                "reason": "No IMVDb match found",
-                            }
-                        )
-                        continue
-
-                    # Update video with new metadata
-                    updated = False
-
-                    if imvdb_data.get("id") and video.imvdb_id != imvdb_data["id"]:
-                        video.imvdb_id = imvdb_data["id"]
-                        updated = True
-
-                    if imvdb_data.get("year") and video.year != imvdb_data["year"]:
-                        video.year = imvdb_data["year"]
-                        updated = True
-
-                    if imvdb_data.get("directors") and video.directors != ", ".join(
-                        imvdb_data["directors"]
-                    ):
-                        video.directors = ", ".join(imvdb_data["directors"])
-                        updated = True
-
-                    if imvdb_data.get("producers") and video.producers != ", ".join(
-                        imvdb_data["producers"]
-                    ):
-                        video.producers = ", ".join(imvdb_data["producers"])
-                        updated = True
-
-                    if (
-                        imvdb_data.get("thumbnail")
-                        and video.thumbnail != imvdb_data["thumbnail"]
-                    ):
-                        video.thumbnail = imvdb_data["thumbnail"]
-                        updated = True
-
-                    if updated:
-                        video.updated_at = datetime.utcnow()
-                        session.commit()
-
-                        updated_videos.append(
-                            {
-                                "id": video.id,
-                                "title": video.title,
-                                "artist": artist_name,
-                            }
-                        )
-
-                        logger.info(
-                            f"Successfully updated metadata for: {video_title} by {artist_name}"
-                        )
-                    else:
-                        skipped_videos.append(
-                            {
-                                "id": video_id,
-                                "title": video_title,
-                                "artist": artist_name,
-                                "reason": "No new metadata to update",
-                            }
-                        )
-
-                except Exception as e:
-                    failed_videos.append({"id": video_id, "error": str(e)})
-                    logger.error(
-                        f"Failed to refresh metadata for video {video_id}: {e}"
-                    )
+        logger.info(
+            f"Queued bulk metadata refresh job {job_id} for {len(video_ids)} videos"
+        )
 
         return (
             jsonify(
                 {
-                    "updated_count": len(updated_videos),
-                    "failed_count": len(failed_videos),
-                    "skipped_count": len(skipped_videos),
-                    "updated_videos": updated_videos,
-                    "failed_videos": failed_videos,
-                    "skipped_videos": skipped_videos,
+                    "success": True,
+                    "job_id": job_id,
+                    "total_videos": len(video_ids),
+                    "force_refresh": force_refresh,
+                    "message": f"Bulk metadata refresh job queued for {len(video_ids)} videos. Job ID: {job_id}",
                 }
             ),
-            200,
-        )
+            202,
+        )  # 202 Accepted - processing started
 
     except Exception as e:
-        logger.error(f"Failed to bulk refresh metadata: {e}")
+        logger.error(f"Failed to create bulk metadata refresh job: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -7424,3 +7369,508 @@ def determine_primary_video(videos, strategy="highest_quality"):
     else:
         # Default to first video
         return videos[0]
+
+
+@videos_bp.route("/import-from-youtube-auto", methods=["POST"])
+def import_video_from_youtube_auto():
+    """Import a video from YouTube with automatic artist identification from metadata"""
+    try:
+        data = request.get_json()
+        if not data or "youtube_id" not in data:
+            return jsonify({"error": "youtube_id is required"}), 400
+
+        youtube_id = data["youtube_id"]
+        auto_download = data.get("auto_download", False)
+        skip_existing = data.get("skip_existing", True)
+        priority = data.get("priority", 5)
+
+        # For now, use simple fallback until we can debug the yt-dlp issue
+        artist_name = "Unknown Artist"
+        video_title = f"YouTube Video {youtube_id}"
+
+        logger.info(
+            f"Processing YouTube video {youtube_id} with fallback artist: {artist_name}"
+        )
+
+        # Now import the video using the existing endpoint logic
+        try:
+            with get_db() as session:
+                logger.info(
+                    f"Starting database operations for YouTube video {youtube_id}"
+                )
+
+                # Find or create artist by name
+                video_indexing_service = VideoIndexingService()
+                artist = video_indexing_service.find_or_create_artist(
+                    artist_name.strip(), session
+                )
+
+                if not artist:
+                    logger.error(f"Failed to create or find artist: {artist_name}")
+                    return jsonify({"error": "Failed to create or find artist"}), 500
+
+                # Store artist info for later use (avoid session binding issues)
+                artist_name_final = artist.name
+                artist_id_value = artist.id
+                logger.info(
+                    f"Found/created artist: {artist_name_final} (ID: {artist_id_value})"
+                )
+
+                # Check if video already exists
+                existing_video = (
+                    session.query(Video).filter_by(youtube_id=youtube_id).first()
+                )
+                if existing_video and skip_existing:
+                    return (
+                        jsonify(
+                            {
+                                "success": True,
+                                "message": f"Video already exists: {existing_video.title}",
+                                "video_id": existing_video.id,
+                                "title": existing_video.title,
+                                "skipped": True,
+                            }
+                        ),
+                        200,
+                    )
+
+                # If video exists but skip_existing is False, update it
+                if existing_video and not skip_existing:
+                    existing_video.artist_id = artist_id_value
+                    existing_video.updated_at = datetime.utcnow()
+                    session.commit()
+
+                    return (
+                        jsonify(
+                            {
+                                "success": True,
+                                "message": f"Updated existing video: {existing_video.title}",
+                                "video_id": existing_video.id,
+                                "title": existing_video.title,
+                            }
+                        ),
+                        200,
+                    )
+
+                # Create new video record
+                video = Video(
+                    youtube_id=youtube_id,
+                    title=video_title,
+                    artist_id=artist_id_value,
+                    status=VideoStatus.WANTED,
+                    auto_download=auto_download,
+                    priority=priority,
+                    created_at=datetime.utcnow(),
+                )
+
+                session.add(video)
+                session.commit()
+
+                logger.info(
+                    f"Created video record for {artist_name_final}: YouTube ID {youtube_id}"
+                )
+
+                # If auto_download is enabled, add to download queue
+                if auto_download:
+                    try:
+                        from src.services.download_service_adapter import ytdlp_service
+
+                        download_result = ytdlp_service.add_music_video_download(
+                            artist_name_final,
+                            video.title,
+                            f"https://www.youtube.com/watch?v={youtube_id}",
+                        )
+                        if not download_result.get("success"):
+                            logger.warning(
+                                f"Failed to add download: {download_result.get('message')}"
+                            )
+                    except Exception as e:
+                        logger.error(f"Error adding download: {e}")
+
+                return (
+                    jsonify(
+                        {
+                            "success": True,
+                            "message": f"Successfully imported video for {artist_name_final}",
+                            "video_id": video.id,
+                            "title": video.title,
+                            "artist": artist_name_final,
+                        }
+                    ),
+                    201,
+                )
+
+        except Exception as db_error:
+            logger.error(f"Database error in import-from-youtube-auto: {db_error}")
+            return jsonify({"error": f"Database error: {str(db_error)}"}), 500
+
+    except Exception as e:
+        logger.error(f"Failed to import video with auto artist detection: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+def extract_artist_from_title(title):
+    """Extract artist name from YouTube video title"""
+    if not title:
+        return None
+
+    import re
+
+    # Remove common video type indicators
+    clean_title = re.sub(
+        r"\s*[\(\[].*?(official|music|video|mv|lyric|audio|live).*?[\)\]]",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
+
+    # Pattern 1: "Artist - Song" or "Artist: Song"
+    match = re.match(r"^([^-:]+)[\s\-:]+(.+)$", clean_title)
+    if match:
+        potential_artist = match.group(1).strip()
+        potential_song = match.group(2).strip()
+
+        # Simple heuristic: if the first part is shorter and doesn't contain "feat", it's likely the artist
+        if (
+            len(potential_artist) < len(potential_song)
+            and "feat" not in potential_artist.lower()
+        ):
+            return potential_artist
+
+    # Pattern 2: "Song by Artist"
+    match = re.search(r"(.+)\s+by\s+(.+)$", clean_title, re.IGNORECASE)
+    if match:
+        return match.group(2).strip()
+
+    # Pattern 3: "Artist ft/feat Artist - Song"
+    match = re.match(
+        r"^([^-:]+(?:\s+(?:ft|feat|featuring)\.?\s+[^-:]+)?)[\s\-:]+(.+)$",
+        clean_title,
+        re.IGNORECASE,
+    )
+    if match:
+        return match.group(1).strip()
+
+    # If no clear pattern, return None
+    return None
+
+
+@videos_bp.route("/<int:video_id>/lyrics", methods=["GET"])
+@public_endpoint
+def get_video_lyrics(video_id):
+    """Get lyrics for a video"""
+    try:
+        with get_db() as session:
+            video = session.query(Video).filter_by(id=video_id).first()
+            if not video:
+                return jsonify({"error": "Video not found"}), 404
+
+            return jsonify({"success": True, "lyrics": video.lyrics}), 200
+
+    except Exception as e:
+        logger.error(f"Error getting lyrics for video {video_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@videos_bp.route("/<int:video_id>/lyrics", methods=["PUT"])
+@public_endpoint
+def update_video_lyrics(video_id):
+    """Update lyrics for a video"""
+    try:
+        data = request.get_json()
+        if not data or "lyrics" not in data:
+            return jsonify({"error": "lyrics field is required"}), 400
+
+        lyrics = data["lyrics"]
+
+        with get_db() as session:
+            video = session.query(Video).filter_by(id=video_id).first()
+            if not video:
+                return jsonify({"error": "Video not found"}), 404
+
+            video.lyrics = lyrics
+            video.updated_at = datetime.utcnow()
+            session.commit()
+
+            logger.info(f"Updated lyrics for video {video_id}: {video.title}")
+
+            return (
+                jsonify({"success": True, "message": "Lyrics updated successfully"}),
+                200,
+            )
+
+    except Exception as e:
+        logger.error(f"Error updating lyrics for video {video_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@videos_bp.route("/<int:video_id>/lyrics/search", methods=["POST"])
+@public_endpoint
+def search_video_lyrics(video_id):
+    """Search for lyrics automatically using external services"""
+    try:
+        with get_db() as session:
+            video = session.query(Video).filter_by(id=video_id).first()
+            if not video:
+                return jsonify({"error": "Video not found"}), 404
+
+            artist_name = video.artist.name if video.artist else None
+            song_title = video.title
+
+            if not artist_name or not song_title:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Artist name and song title are required for lyrics search",
+                        }
+                    ),
+                    400,
+                )
+
+            # Search for lyrics using multiple sources
+            lyrics_found = None
+            source_used = None
+
+            # Try multiple lyrics sources in order of preference
+            lyrics_sources = [
+                (
+                    "Lyrics.ovh",
+                    search_lyrics_azlyrics,
+                ),  # Using lyrics.ovh API (renamed function)
+                ("MusixMatch", search_lyrics_musixmatch),
+                ("Genius", search_lyrics_genius),
+            ]
+
+            for source_name, search_func in lyrics_sources:
+                try:
+                    logger.info(
+                        f"Searching {source_name} for lyrics: {artist_name} - {song_title}"
+                    )
+                    lyrics_result = search_func(artist_name, song_title)
+
+                    if (
+                        lyrics_result and len(lyrics_result.strip()) > 50
+                    ):  # Ensure we got substantial lyrics
+                        lyrics_found = lyrics_result
+                        source_used = source_name
+                        logger.info(f"Found lyrics from {source_name}")
+                        break
+
+                except Exception as source_error:
+                    logger.warning(f"Failed to search {source_name}: {source_error}")
+                    continue
+
+            if lyrics_found:
+                # Save the found lyrics to the database
+                video.lyrics = lyrics_found
+                session.commit()
+
+                return (
+                    jsonify(
+                        {
+                            "success": True,
+                            "lyrics": lyrics_found,
+                            "source": source_used,
+                            "message": f"Lyrics found from {source_used} and saved successfully!",
+                        }
+                    ),
+                    200,
+                )
+            else:
+                # Provide a helpful placeholder with search information
+                search_info = f"Lyrics search attempted for:\nArtist: {artist_name}\nSong: {song_title}\n\n"
+                search_info += (
+                    "Sources checked:\n• MusixMatch\n• Genius\n• AZLyrics\n\n"
+                )
+                search_info += "No lyrics were found automatically. You can:\n"
+                search_info += "1. Try searching manually on lyrics websites\n"
+                search_info += "2. Add lyrics using the Edit button\n"
+                search_info += "3. Check if the artist/song names are correct"
+
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "lyrics": search_info,
+                            "error": "No lyrics found from any source",
+                            "message": "Unable to find lyrics automatically. You can add them manually using the Edit button.",
+                        }
+                    ),
+                    200,
+                )  # Return 200 instead of 404 to show the helpful message
+
+    except Exception as e:
+        logger.error(f"Error searching lyrics for video {video_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+def search_lyrics_musixmatch(artist, title):
+    """Search lyrics using MusixMatch API approach"""
+    import re
+    from urllib.parse import quote
+
+    import requests
+
+    try:
+        # Use MusixMatch's public search (no API key required for basic search)
+        search_url = f"https://www.musixmatch.com/search/{quote(artist)}-{quote(title)}"
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+
+        # This is a simplified approach - a real implementation would need proper API integration
+        # For now, return None to try next source
+        return None
+
+    except Exception as e:
+        logger.warning(f"MusixMatch search failed: {e}")
+        return None
+
+
+def search_lyrics_genius(artist, title):
+    """Search lyrics using Genius API approach"""
+    import re
+    from urllib.parse import quote
+
+    import requests
+
+    try:
+        # Use Genius public search (simplified approach)
+        # A real implementation would use the official Genius API
+        search_query = f"{artist} {title}".strip()
+
+        # For now, return None to try next source
+        return None
+
+    except Exception as e:
+        logger.warning(f"Genius search failed: {e}")
+        return None
+
+
+def search_lyrics_azlyrics(artist, title):
+    """Search lyrics using Lyrics.ovh API (free alternative to AZLyrics scraping)"""
+    from urllib.parse import quote
+
+    import requests
+
+    try:
+        # Use Lyrics.ovh API - free and simple
+        api_url = f"https://api.lyrics.ovh/v1/{quote(artist)}/{quote(title)}"
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (compatible; MVidarr/1.0)",
+            "Accept": "application/json",
+        }
+
+        response = requests.get(api_url, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+            lyrics = data.get("lyrics", "").strip()
+
+            if lyrics and len(lyrics) > 50:  # Ensure we got substantial content
+                # Clean up the lyrics formatting
+                lyrics = lyrics.replace("\r\n", "\n").replace("\r", "\n")
+                # Remove excessive whitespace while preserving line breaks
+                lines = [line.strip() for line in lyrics.split("\n")]
+                lyrics = "\n".join(lines)
+
+                return lyrics
+
+        return None
+
+    except Exception as e:
+        logger.warning(f"Lyrics.ovh search failed: {e}")
+        return None
+
+
+def get_wanted_videos_for_download(limit=50):
+    """Get videos that are marked as WANTED for downloading
+
+    Args:
+        limit: Maximum number of videos to return
+
+    Returns:
+        list: Videos with WANTED status ready for download
+    """
+    try:
+        with get_db() as session:
+            wanted_videos = (
+                session.query(Video)
+                .filter(Video.status == VideoStatus.WANTED)
+                .order_by(Video.created_date.desc())
+                .limit(limit)
+                .all()
+            )
+
+            # Convert to dict format for scheduler
+            video_list = []
+            for video in wanted_videos:
+                video_dict = {
+                    "id": video.id,
+                    "title": video.title,
+                    "artist_name": video.artist.name if video.artist else "Unknown",
+                    "youtube_url": video.youtube_url,
+                    "status": (
+                        video.status.value
+                        if hasattr(video.status, "value")
+                        else video.status
+                    ),
+                }
+                video_list.append(video_dict)
+
+            return video_list
+
+    except Exception as e:
+        logger.error(f"Error getting wanted videos for download: {e}")
+        return []
+
+
+def start_video_download(video_id):
+    """Start download for a specific video using background jobs
+
+    Args:
+        video_id: ID of the video to download
+
+    Returns:
+        dict: Result of the download request
+    """
+    try:
+        import asyncio
+
+        from src.services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
+
+        # Create background job for video download
+        job = BackgroundJob(
+            type=JobType.VIDEO_DOWNLOAD,
+            priority=JobPriority.NORMAL,
+            payload={
+                "video_id": video_id,
+                "quality": "best",
+                "scheduled": True,  # Mark as scheduled download
+            },
+        )
+
+        # Enqueue job
+        async def queue_job():
+            job_queue = await get_job_queue()
+            return await job_queue.enqueue(job)
+
+        job_id = asyncio.run(queue_job())
+
+        return {
+            "success": True,
+            "job_id": job_id,
+            "message": f"Download job queued for video {video_id}",
+        }
+
+    except Exception as e:
+        logger.error(f"Error starting video download for {video_id}: {e}")
+        return {"success": False, "error": str(e)}

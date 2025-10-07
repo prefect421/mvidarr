@@ -1,0 +1,71 @@
+[Unit]
+Description=MVidarr Enhanced v2 - FastAPI/Flask Hybrid Music Video Management System
+Documentation=file:///home/mike/mvidarr/README.md file:///home/mike/mvidarr/MILESTONE_ROADMAP.md
+After=network-online.target mysql.service mariadb.service
+Wants=network-online.target
+RequiresMountsFor=/home/mike/mvidarr
+
+[Service]
+Type=exec
+User=mike
+Group=mike
+WorkingDirectory=/home/mike/mvidarr
+
+# Use smart launcher v2 with FastAPI/Flask support
+ExecStart=/home/mike/mvidarr/venv/bin/python /home/mike/mvidarr/app_launcher_v2.py
+ExecStartPre=/usr/bin/mkdir -p /home/mike/mvidarr/data/logs /home/mike/mvidarr/data/downloads /home/mike/mvidarr/data/thumbnails /home/mike/mvidarr/data/cache /home/mike/mvidarr/data/backups
+
+# Graceful reload - restart to pick up new configuration
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Enhanced restart and failure handling for async operations
+Restart=always
+RestartSec=20
+StartLimitInterval=600
+StartLimitBurst=3
+TimeoutStartSec=120
+TimeoutStopSec=60
+KillMode=mixed
+KillSignal=SIGTERM
+FinalKillSignal=SIGKILL
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mvidarr-v2
+
+# Environment variables for both Flask and FastAPI
+Environment=PATH=/home/mike/mvidarr/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/home/mike/mvidarr
+Environment=FLASK_ENV=production
+Environment=PYTHONUNBUFFERED=1
+Environment=UVICORN_HOST=0.0.0.0
+Environment=UVICORN_PORT=8000
+Environment=UVICORN_LOG_LEVEL=info
+
+# FastAPI-specific environment variables
+Environment=FASTAPI_ENV=production
+Environment=ASYNC_MODE=enabled
+Environment=JOB_WORKERS=3
+
+# Security settings (relaxed for home directory access)
+NoNewPrivileges=yes
+PrivateTmp=yes
+# Commented out for home directory access
+# ProtectSystem=strict
+# ProtectHome=yes
+# ReadWritePaths=/home/mike/mvidarr/data
+# ReadOnlyPaths=/home/mike/mvidarr
+
+# Enhanced resource limits for async operations
+LimitNOFILE=65536
+LimitNPROC=8192
+MemoryHigh=2G
+MemoryMax=4G
+
+# Systemd service dependencies for FastAPI
+Requires=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+Alias=mvidarr.service

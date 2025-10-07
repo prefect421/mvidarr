@@ -1,0 +1,356 @@
+/* 
+ * Custom Swagger UI Styling for MVidarr FastAPI Documentation
+ * Enhanced visual appearance and improved usability
+ */
+
+/* Main theme colors */
+:root {
+  --primary-color: #1e40af;
+  --secondary-color: #3b82f6;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --background-color: #f8fafc;
+  --card-background: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+}
+
+/* Header customization */
+.swagger-ui .topbar {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  border-bottom: 3px solid var(--secondary-color);
+  padding: 1rem 0;
+}
+
+.swagger-ui .topbar .download-url-wrapper {
+  display: none;
+}
+
+/* Custom logo and title area */
+.swagger-ui .info {
+  margin: 2rem 0;
+}
+
+.swagger-ui .info .title {
+  color: var(--primary-color);
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.swagger-ui .info .description {
+  background: var(--card-background);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  margin-bottom: 2rem;
+}
+
+/* Enhanced operation sections */
+.swagger-ui .opblock {
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.swagger-ui .opblock.opblock-get {
+  border-left: 4px solid var(--success-color);
+}
+
+.swagger-ui .opblock.opblock-post {
+  border-left: 4px solid var(--secondary-color);
+}
+
+.swagger-ui .opblock.opblock-put {
+  border-left: 4px solid var(--warning-color);
+}
+
+.swagger-ui .opblock.opblock-delete {
+  border-left: 4px solid var(--error-color);
+}
+
+/* Operation headers */
+.swagger-ui .opblock .opblock-summary {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(248,250,252,0.95));
+}
+
+.swagger-ui .opblock .opblock-summary-method {
+  border-radius: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  margin-right: 1rem;
+}
+
+.swagger-ui .opblock .opblock-summary-path {
+  color: var(--text-primary);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-weight: 500;
+}
+
+.swagger-ui .opblock .opblock-summary-description {
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 0.5rem;
+}
+
+/* Enhanced operation details */
+.swagger-ui .opblock-body {
+  padding: 1.5rem;
+  background: var(--background-color);
+}
+
+/* Parameter tables */
+.swagger-ui .parameters-container {
+  background: var(--card-background);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  border: 1px solid var(--border-color);
+}
+
+.swagger-ui table thead tr td,
+.swagger-ui table thead tr th {
+  background: var(--primary-color);
+  color: white;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+}
+
+.swagger-ui .parameter__name {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.swagger-ui .parameter__type {
+  color: var(--secondary-color);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Response sections */
+.swagger-ui .responses-wrapper {
+  background: var(--card-background);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  border: 1px solid var(--border-color);
+}
+
+.swagger-ui .response-col_status {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-weight: 600;
+}
+
+.swagger-ui .response-col_description {
+  color: var(--text-secondary);
+}
+
+/* Try it out button */
+.swagger-ui .try-out__btn {
+  background: var(--secondary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.swagger-ui .try-out__btn:hover {
+  background: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Execute button */
+.swagger-ui .execute-wrapper .btn {
+  background: var(--success-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.swagger-ui .execute-wrapper .btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Code examples */
+.swagger-ui .highlight-code {
+  background: #1f2937;
+  color: #f9fafb;
+  border-radius: 8px;
+  padding: 1rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Authorization section */
+.swagger-ui .auth-wrapper {
+  background: linear-gradient(135deg, var(--success-color), #059669);
+  color: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+
+.swagger-ui .auth-btn-wrapper .btn-done {
+  background: white;
+  color: var(--success-color);
+  border: 2px solid white;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* Tag sections */
+.swagger-ui .opblock-tag {
+  background: linear-gradient(135deg, var(--card-background), var(--background-color));
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin: 1rem 0;
+  padding: 1rem 1.5rem;
+}
+
+.swagger-ui .opblock-tag-section h3 {
+  color: var(--primary-color);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.swagger-ui .opblock-tag small {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Models section */
+.swagger-ui .model-container {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.swagger-ui .model .model-title {
+  background: var(--primary-color);
+  color: white;
+  padding: 1rem;
+  font-weight: 600;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Scrollbar customization */
+.swagger-ui ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.swagger-ui ::-webkit-scrollbar-track {
+  background: var(--background-color);
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb {
+  background: var(--secondary-color);
+  border-radius: 4px;
+}
+
+.swagger-ui ::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .swagger-ui .info .title {
+    font-size: 2rem;
+  }
+  
+  .swagger-ui .info .description {
+    padding: 1rem;
+  }
+  
+  .swagger-ui .opblock .opblock-summary {
+    padding: 0.75rem;
+  }
+  
+  .swagger-ui .opblock-body {
+    padding: 1rem;
+  }
+  
+  .swagger-ui .parameters-container,
+  .swagger-ui .responses-wrapper {
+    padding: 1rem;
+  }
+}
+
+/* Loading states */
+.swagger-ui .loading-container .loading::after {
+  border-color: var(--secondary-color) transparent var(--secondary-color) transparent;
+}
+
+/* Copy button styling */
+.swagger-ui .copy-to-clipboard {
+  background: var(--secondary-color);
+  border: none;
+  color: white;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.swagger-ui .copy-to-clipboard:hover {
+  background: var(--primary-color);
+}
+
+/* Clear button */
+.swagger-ui .clear {
+  background: var(--error-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.swagger-ui .clear:hover {
+  background: #dc2626;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.swagger-ui .opblock {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Print styles */
+@media print {
+  .swagger-ui .topbar,
+  .swagger-ui .try-out__btn,
+  .swagger-ui .execute-wrapper {
+    display: none;
+  }
+  
+  .swagger-ui .opblock {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

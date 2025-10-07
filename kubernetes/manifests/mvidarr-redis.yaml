@@ -1,0 +1,225 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mvidarr-redis
+  namespace: mvidarr
+  labels:
+    app: mvidarr-redis
+    component: cache
+    version: "7.0"
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/version: "7.0"
+    app.kubernetes.io/component: cache
+    app.kubernetes.io/part-of: mvidarr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mvidarr-redis
+      component: cache
+  template:
+    metadata:
+      labels:
+        app: mvidarr-redis
+        component: cache
+        version: "7.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+    spec:
+      containers:
+      - name: redis
+        image: redis:7.0-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: redis
+          containerPort: 6379
+          protocol: TCP
+        command:
+        - redis-server
+        - /etc/redis/redis.conf
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mvidarr-redis-secret
+              key: password
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: redis-config
+          mountPath: /etc/redis
+          readOnly: true
+        - name: redis-data
+          mountPath: /data
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 999
+          runAsGroup: 999
+          capabilities:
+            drop:
+            - ALL
+      - name: redis-exporter
+        image: oliver006/redis_exporter:v1.45.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: metrics
+          containerPort: 9121
+          protocol: TCP
+        env:
+        - name: REDIS_ADDR
+          value: "redis://localhost:6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mvidarr-redis-secret
+              key: password
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: redis-config
+        configMap:
+          name: mvidarr-redis-config
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: mvidarr-redis-pvc
+      securityContext:
+        fsGroup: 999
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mvidarr-redis-pvc
+  namespace: mvidarr
+  labels:
+    app: mvidarr-redis
+    component: cache
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mvidarr-redis-service
+  namespace: mvidarr
+  labels:
+    app: mvidarr-redis
+    component: cache
+spec:
+  type: ClusterIP
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: redis
+    protocol: TCP
+  - name: metrics
+    port: 9121
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app: mvidarr-redis
+    component: cache
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mvidarr-redis-secret
+  namespace: mvidarr
+  labels:
+    app: mvidarr-redis
+    component: cache
+type: Opaque
+stringData:
+  password: "redis-password-change-in-production"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mvidarr-redis-config
+  namespace: mvidarr
+  labels:
+    app: mvidarr-redis
+    component: cache
+data:
+  redis.conf: |
+    # Network
+    bind 0.0.0.0
+    port 6379
+    protected-mode yes
+    
+    # Authentication
+    requirepass redis-password-change-in-production
+    
+    # Memory management
+    maxmemory 800mb
+    maxmemory-policy allkeys-lru
+    
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+    
+    # Logging
+    loglevel notice
+    
+    # Performance
+    tcp-keepalive 300
+    timeout 0
+    
+    # Database
+    databases 16
+    
+    # Security
+    rename-command FLUSHDB ""
+    rename-command FLUSHALL ""
+    rename-command DEBUG ""

@@ -1,0 +1,458 @@
+<!-- Job Progress Container Component -->
+<!-- This component provides real-time job progress tracking for all background operations -->
+
+<!-- Floating Job Indicator - shows when jobs are running but container is hidden/minimized -->
+<div id="floating-job-indicator" class="floating-job-indicator" style="display: none;">
+    <div class="floating-job-content" onclick="showJobProgressContainer()">
+        <iconify-icon icon="tabler:loader-2" class="spin"></iconify-icon>
+        <span id="floating-job-count">0</span>
+        <small>jobs</small>
+    </div>
+</div>
+
+<div id="job-progress-container" class="job-progress-container" style="display: none;">
+    <div class="job-progress-header">
+        <h4>
+            <iconify-icon icon="tabler:activity"></iconify-icon>
+            Background Jobs
+        </h4>
+        <div class="job-progress-controls">
+            <button class="btn btn-sm btn-secondary" onclick="MVidarr.showJobDashboard()" title="View Job Dashboard">
+                <iconify-icon icon="tabler:dashboard"></iconify-icon>
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="toggleJobProgressContainer()" title="Minimize">
+                <iconify-icon icon="tabler:minus"></iconify-icon>
+            </button>
+        </div>
+    </div>
+    <div id="job-progress-list" class="job-progress-list">
+        <!-- Job progress items will be dynamically added here -->
+    </div>
+</div>
+
+<style>
+/* Floating Job Indicator Styles */
+.floating-job-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 999;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    animation: pulse 2s infinite;
+}
+
+.floating-job-content {
+    background: var(--accent-color, #3b82f6);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+.floating-job-content:hover {
+    background: var(--accent-color-dark, #2563eb);
+    transform: scale(1.05);
+}
+
+.floating-job-content iconify-icon {
+    font-size: 1.2rem;
+}
+
+.floating-job-content span {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.floating-job-content small {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* Job Progress Container Styles */
+.job-progress-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 400px;
+    max-width: 90vw;
+    max-height: 60vh;
+    background: var(--bg-secondary, #1a1a1a);
+    border: 1px solid var(--border-primary, #333);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.job-progress-container.minimized {
+    height: 60px;
+    overflow: hidden;
+}
+
+.job-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--bg-tertiary, #2a2a2a);
+    border-bottom: 1px solid var(--border-secondary, #444);
+}
+
+.job-progress-header h4 {
+    margin: 0;
+    color: var(--text-primary, #fff);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+}
+
+.job-progress-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.job-progress-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.job-progress-item {
+    background: var(--bg-tertiary, #2a2a2a);
+    border: 1px solid var(--border-secondary, #444);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.job-progress-item:last-child {
+    margin-bottom: 0;
+}
+
+.job-progress-item:hover {
+    border-color: var(--accent-color, #3b82f6);
+}
+
+.job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.job-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.job-title {
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    font-size: 0.9rem;
+}
+
+.job-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.btn-cancel,
+.btn-close {
+    background: transparent;
+    border: 1px solid var(--border-secondary, #444);
+    color: var(--text-secondary, #888);
+    padding: 0.25rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+.btn-cancel:hover {
+    border-color: var(--error-color, #ef4444);
+    color: var(--error-color, #ef4444);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-close:hover {
+    border-color: var(--text-secondary, #666);
+    color: var(--text-primary, #fff);
+    background: var(--bg-secondary, #333);
+}
+
+.job-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-primary, #111);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.progress-message {
+    color: var(--text-secondary, #888);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.progress-percentage {
+    color: var(--text-primary, #fff);
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.job-error {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--error-color, #ef4444);
+    border-radius: 4px;
+    color: var(--error-color, #ef4444);
+    font-size: 0.85rem;
+}
+
+/* Animation for spinning icons */
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .job-progress-container {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-width: none;
+    }
+}
+
+/* Hide scrollbar but keep functionality */
+.job-progress-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.job-progress-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.job-progress-list::-webkit-scrollbar-thumb {
+    background: var(--border-secondary, #444);
+    border-radius: 3px;
+}
+
+.job-progress-list::-webkit-scrollbar-thumb:hover {
+    background: var(--border-primary, #555);
+}
+</style>
+
+<script>
+// Job Progress Container management functions
+function toggleJobProgressContainer() {
+    const container = document.getElementById('job-progress-container');
+    if (container) {
+        container.classList.toggle('minimized');
+        
+        // Update the toggle button icon
+        const toggleBtn = container.querySelector('[onclick="toggleJobProgressContainer()"] iconify-icon');
+        if (toggleBtn) {
+            const isMinimized = container.classList.contains('minimized');
+            toggleBtn.setAttribute('icon', isMinimized ? 'tabler:plus' : 'tabler:minus');
+        }
+    }
+}
+
+// Show the job progress container when jobs are active
+function showJobProgressContainer() {
+    const container = document.getElementById('job-progress-container');
+    const floatingIndicator = document.getElementById('floating-job-indicator');
+    
+    if (container) {
+        container.style.display = 'block';
+        container.classList.remove('minimized');
+    }
+    
+    // Hide floating indicator when container is shown
+    if (floatingIndicator) {
+        floatingIndicator.style.display = 'none';
+    }
+}
+
+// Hide the job progress container when no jobs are active
+function hideJobProgressContainer() {
+    const container = document.getElementById('job-progress-container');
+    const floatingIndicator = document.getElementById('floating-job-indicator');
+    
+    if (container) {
+        const list = document.getElementById('job-progress-list');
+        const jobCount = list ? list.children.length : 0;
+        
+        // Only hide if no job items are present
+        if (jobCount === 0) {
+            container.style.display = 'none';
+            if (floatingIndicator) {
+                floatingIndicator.style.display = 'none';
+            }
+        }
+    }
+}
+
+// Update job count and floating indicator visibility
+function updateJobCountIndicator() {
+    const list = document.getElementById('job-progress-list');
+    const container = document.getElementById('job-progress-container');
+    const floatingIndicator = document.getElementById('floating-job-indicator');
+    const floatingJobCount = document.getElementById('floating-job-count');
+    
+    if (!list || !floatingIndicator || !floatingJobCount) return;
+    
+    const activeJobCount = list.children.length;
+    const containerVisible = container && container.style.display !== 'none' && !container.classList.contains('minimized');
+    
+    // Update floating indicator
+    if (activeJobCount > 0 && !containerVisible) {
+        floatingIndicator.style.display = 'block';
+        floatingJobCount.textContent = activeJobCount;
+    } else {
+        floatingIndicator.style.display = 'none';
+    }
+}
+
+// Initialize job progress container when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced integration with BackgroundJobManager
+    if (typeof window.backgroundJobs !== 'undefined') {
+        // Override the createJobProgressContainer method to use our enhanced container
+        const originalCreateContainer = window.backgroundJobs.createJobProgressContainer;
+        window.backgroundJobs.createJobProgressContainer = function() {
+            // Our container is already in the DOM, just ensure it's ready
+            const container = document.getElementById('job-progress-container');
+            const list = document.getElementById('job-progress-list');
+            
+            if (container && list) {
+                console.log('🎨 Enhanced job progress container already available');
+                return;
+            } else {
+                console.warn('⚠️ Enhanced job progress container not found, falling back to original');
+                if (originalCreateContainer) {
+                    originalCreateContainer.call(this);
+                }
+            }
+        };
+        
+        // Override showJobProgress to use our enhanced container
+        const originalShowJobProgress = window.backgroundJobs.showJobProgress;
+        window.backgroundJobs.showJobProgress = function(jobId, options = {}) {
+            showJobProgressContainer();
+            if (originalShowJobProgress) {
+                originalShowJobProgress.call(this, jobId, options);
+            }
+            // Update job count indicator
+            setTimeout(updateJobCountIndicator, 100);
+        };
+        
+        // Override hideJobProgress to manage container visibility
+        const originalHideJobProgress = window.backgroundJobs.hideJobProgress;
+        window.backgroundJobs.hideJobProgress = function(jobId) {
+            if (originalHideJobProgress) {
+                originalHideJobProgress.call(this, jobId);
+            }
+            // Check if we should hide the container and update indicators
+            setTimeout(() => {
+                const list = document.getElementById('job-progress-list');
+                if (list && list.children.length === 0) {
+                    hideJobProgressContainer();
+                }
+                updateJobCountIndicator();
+            }, 500);
+        };
+        
+        // Override toggleJobProgressContainer to update indicators
+        const originalToggle = window.toggleJobProgressContainer;
+        window.toggleJobProgressContainer = function() {
+            if (originalToggle) {
+                originalToggle();
+            } else {
+                toggleJobProgressContainer();
+            }
+            // Update indicators after toggle
+            setTimeout(updateJobCountIndicator, 100);
+        };
+        
+        console.log('🎨 Enhanced job progress container integration complete');
+    }
+});
+</script>

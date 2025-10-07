@@ -280,6 +280,33 @@ class VideoIndexingService:
         session.flush()  # Get the ID
 
         logger.info(f"Created new artist: {clean_name}")
+
+        # Run auto-processing for newly created artist
+        try:
+            from src.services.artist_auto_processing_service import (
+                artist_auto_processing_service,
+            )
+
+            # Only attempt auto-processing if artist is properly bound to session
+            if artist in session:
+                auto_processing_results = (
+                    artist_auto_processing_service.process_new_artist(artist, session)
+                )
+                match_count = auto_processing_results.get("auto_match", {}).get(
+                    "match_count", 0
+                )
+                logger.info(
+                    f"Auto-processing completed for {clean_name} - {match_count} services matched"
+                )
+            else:
+                logger.warning(
+                    f"Skipping auto-processing for {clean_name} - artist not bound to session"
+                )
+        except Exception as e:
+            logger.warning(
+                f"Auto-processing failed for newly created artist {clean_name}: {e}"
+            )
+
         return artist
 
     def fetch_imvdb_metadata(self, artist_name: str, title: str) -> Optional[Dict]:
@@ -373,21 +400,37 @@ class VideoIndexingService:
             if imvdb_metadata.get("title"):
                 video.title = imvdb_metadata["title"]
 
-            # Download thumbnail if available
-            if imvdb_metadata.get("thumbnail_url"):
+        # Fallback: Extract year from YouTube upload_date if not set by IMVDb
+        if not video.year and video.video_metadata:
+            upload_date = video.video_metadata.get("upload_date")
+            if upload_date:
                 try:
-                    thumbnail_path = thumbnail_service.download_video_thumbnail(
-                        artist.name, video.title, imvdb_metadata["thumbnail_url"]
-                    )
-                    if thumbnail_path:
-                        video.thumbnail_path = thumbnail_path
+                    # upload_date format is YYYYMMDD
+                    if isinstance(upload_date, str) and len(upload_date) >= 4:
+                        video.year = int(upload_date[:4])
                         logger.info(
-                            f"Downloaded thumbnail for: {artist.name} - {video.title}"
+                            f"Extracted year {video.year} from YouTube upload_date for: {video.title}"
                         )
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to download thumbnail for {artist.name} - {video.title}: {e}"
+                except (ValueError, TypeError) as e:
+                    logger.debug(
+                        f"Could not extract year from upload_date '{upload_date}': {e}"
                     )
+
+        # Download thumbnail if available
+        if imvdb_metadata and imvdb_metadata.get("thumbnail_url"):
+            try:
+                thumbnail_path = thumbnail_service.download_video_thumbnail(
+                    artist.name, video.title, imvdb_metadata["thumbnail_url"]
+                )
+                if thumbnail_path:
+                    video.thumbnail_path = thumbnail_path
+                    logger.info(
+                        f"Downloaded thumbnail for: {artist.name} - {video.title}"
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to download thumbnail for {artist.name} - {video.title}: {e}"
+                )
 
         session.add(video)
         session.flush()  # Get the ID

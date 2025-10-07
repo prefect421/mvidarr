@@ -1,0 +1,14 @@
+HTTP/1.1 302 FOUND
+Server: Werkzeug/3.1.3 Python/3.12.3
+Date: Tue, 26 Aug 2025 13:51:55 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 283
+Location: /simple-login?error=Invalid+username+or+password
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://code.iconify.design; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com http://fonts.googleapis.com; img-src 'self' data: https:; media-src 'self' blob:; connect-src 'self' https://api.iconify.design https://api.simplesvg.com; font-src 'self' https://fonts.gstatic.com http://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=()
+Connection: close
+

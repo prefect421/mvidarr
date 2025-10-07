@@ -2,7 +2,7 @@
 
 ## Overview
 
-MVidarr is a sophisticated music video management system built with a modern Flask-based architecture. The system follows a layered, service-oriented design pattern with clear separation of concerns across presentation, business logic, and data layers. This document provides a comprehensive overview of the system's architecture, component relationships, and design patterns.
+MVidarr is a sophisticated music video management system built with a modern FastAPI-based architecture. The system follows a layered, service-oriented design pattern with clear separation of concerns across presentation, business logic, and data layers. This document provides a comprehensive overview of the system's architecture, component relationships, and design patterns.
 
 ## 🏗️ High-Level Architecture
 
@@ -75,7 +75,7 @@ def create_app():
     template_dir = Path(__file__).parent / "frontend" / "templates"
     static_dir = Path(__file__).parent / "frontend" / "static"
     
-    app = Flask(__name__, 
+    app = FastAPI( 
                 template_folder=str(template_dir), 
                 static_folder=str(static_dir))
     
@@ -91,10 +91,10 @@ def create_app():
 ```
 
 **Key Responsibilities**:
-- Flask application initialization
+- FastAPI application initialization
 - Dynamic configuration loading
 - Security and authentication setup
-- Blueprint registration
+- Router registration (FastAPI routers replace Flask blueprints)
 - Background service initialization
 
 ## 🗄️ Database Architecture
@@ -329,46 +329,46 @@ SchedulerService
 
 ## 🌐 API Layer Architecture
 
-### Blueprint Organization
+### Router Organization
 
 #### Main API Structure
 ```python
-# Main API registration
-api_bp = Blueprint('api', __name__, url_prefix='/api')
+# Main API router registration
+api_router = APIRouter(prefix='/api')
 
-# Core resource blueprints
-api_bp.register_blueprint(artists_bp)    # /api/artists
-api_bp.register_blueprint(videos_bp)     # /api/videos
-api_bp.register_blueprint(settings_bp)   # /api/settings
+# Core resource routers
+app.include_router(artists_router)    # /api/artists
+app.include_router(videos_router)     # /api/videos
+app.include_router(settings_router)   # /api/settings
 
-# External integration blueprints  
-api_bp.register_blueprint(spotify_bp)    # /api/spotify
-api_bp.register_blueprint(youtube_bp)    # /api/youtube
-api_bp.register_blueprint(imvdb_bp)      # /api/imvdb
+# External integration routers  
+app.include_router(spotify_router)    # /api/spotify
+app.include_router(youtube_router)    # /api/youtube
+app.include_router(imvdb_router)      # /api/imvdb
 ```
 
 ### RESTful Endpoint Patterns
 
-#### Artists API Blueprint
+#### Artists API Router
 ```python
-@artists_bp.route("/", methods=["GET"])
-def list_artists():
+@artists_router.get("/")
+async def list_artists():
     """GET /api/artists - List artists with filtering"""
     
-@artists_bp.route("/", methods=["POST"]) 
-def create_artist():
+@artists_router.post("/") 
+async def create_artist():
     """POST /api/artists - Create new artist"""
     
-@artists_bp.route("/<int:artist_id>", methods=["GET"])
-def get_artist(artist_id):
+@artists_router.get("/{artist_id}")
+async def get_artist(artist_id: int):
     """GET /api/artists/{id} - Get artist details"""
     
-@artists_bp.route("/<int:artist_id>/videos", methods=["GET"])
-def get_artist_videos(artist_id):
+@artists_router.get("/{artist_id}/videos")
+async def get_artist_videos(artist_id: int):
     """GET /api/artists/{id}/videos - Get artist's videos"""
     
-@artists_bp.route("/<int:artist_id>/discover", methods=["POST"])
-def discover_artist_videos(artist_id):
+@artists_router.post("/{artist_id}/discover")
+async def discover_artist_videos(artist_id: int):
     """POST /api/artists/{id}/discover - Trigger video discovery"""
 ```
 

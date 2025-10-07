@@ -180,7 +180,7 @@ docker-compose -f docker-compose.production.yml ps
 
 # Expected output:
 #     Name                   Command               State           Ports         
-# mvidarr-enhanced    python app.py                Up      0.0.0.0:5000->5000/tcp
+# mvidarr-enhanced    python fastapi_app.py        Up      0.0.0.0:5000->5000/tcp
 # mvidarr-mariadb     docker-entrypoint.sh mysqld  Up      0.0.0.0:3306->3306/tcp
 
 # Test web interface
@@ -455,7 +455,7 @@ ls -la ~/mvidarr-data/
 source venv/bin/activate
 
 # Start application
-python app.py
+python fastapi_app.py
 
 # You should see output like:
 # * Running on http://0.0.0.0:5000
@@ -463,18 +463,56 @@ python app.py
 # * Application started successfully
 ```
 
-**Service Management Script:**
-![Service Script](screenshots/local-service-script.png)
-```bash
-# Make service script executable
-chmod +x scripts/manage_service.sh
+**Systemd Service Management (Recommended):**
+![Service Management](screenshots/systemd-service.png)
 
-# Use service script for management
+1. **Install Service**
+```bash
+# Copy service file to systemd directory
+sudo cp /home/mike/mvidarr/mvidarr.service /etc/systemd/system/
+
+# Reload systemd daemon
+sudo systemctl daemon-reload
+
+# Enable service for automatic startup
+sudo systemctl enable mvidarr.service
+```
+
+2. **Service Management Commands**
+```bash
+# Start the service
+sudo systemctl start mvidarr.service
+
+# Stop the service
+sudo systemctl stop mvidarr.service
+
+# Restart the service
+sudo systemctl restart mvidarr.service
+
+# Check service status
+sudo systemctl status mvidarr.service
+
+# View service logs
+sudo journalctl -u mvidarr.service -f
+
+# View recent logs
+sudo journalctl -u mvidarr.service -n 50
+```
+
+3. **Service Benefits**
+- ✅ **Automatic startup** on system boot
+- ✅ **Automatic restart** if application crashes
+- ✅ **Centralized logging** via systemd journal
+- ✅ **Resource management** and security isolation
+- ✅ **Process monitoring** and health checks
+
+**Alternative: Legacy Service Script (deprecated):**
+```bash
+# For systems without systemd, use legacy script
+chmod +x scripts/manage_service.sh
 ./scripts/manage_service.sh start    # Start application
-./scripts/manage_service.sh stop     # Stop application
-./scripts/manage_service.sh restart  # Restart application
+./scripts/manage_service.sh stop     # Stop application  
 ./scripts/manage_service.sh status   # Check status
-./scripts/manage_service.sh logs     # View logs
 ```
 
 ### Step 7: Initial Setup

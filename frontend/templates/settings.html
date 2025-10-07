@@ -2,6 +2,131 @@
 
 {% block title %}Settings - MVidarr{% endblock %}
 
+{% block head %}
+<style>
+/* Metadata Providers Grid Styles */
+.metadata-providers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.metadata-provider {
+    background: var(--bg-tertiary, #333);
+    border: 1px solid var(--border-secondary, #444);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.provider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-quaternary, #2a2a2a);
+    border-bottom: 1px solid var(--border-secondary, #444);
+}
+
+.provider-header h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+}
+
+.provider-config {
+    padding: 1rem;
+    display: none; /* Hidden by default, shown when enabled */
+}
+
+.metadata-provider input[type="checkbox"]:checked ~ .provider-config,
+.metadata-provider input[type="checkbox"]:checked + .provider-header + .provider-config {
+    display: block;
+}
+
+.form-group.inline {
+    margin: 0;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--text-accent, #00d4ff);
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+.metadata-enrichment-settings {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-secondary, #444);
+}
+
+.metadata-enrichment-settings h3 {
+    margin-bottom: 1rem;
+    color: var(--text-primary, #fff);
+}
+
+.section-description {
+    color: var(--text-secondary, #ccc);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--border-secondary, #444);
+    border-radius: 50%;
+    border-top-color: var(--accent-color, #4a9eff);
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <!-- Page Header -->
@@ -10,12 +135,16 @@
             <h1 class="text-h1">Settings</h1>
         </div>
         <div class="action-group" role="group" aria-label="Settings actions">
+            <button onclick="switchTab(event, 'system-tab')" class="btn btn-secondary" aria-label="Open job management section">
+                <iconify-icon icon="tabler:activity" aria-hidden="true"></iconify-icon>
+                Job Management
+            </button>
             <button onclick="saveSettings()" class="btn btn-primary" aria-label="Save current settings">
-                <iconify-icon icon="mdi:content-save" aria-hidden="true"></iconify-icon>
+                <iconify-icon icon="tabler:device-floppy" aria-hidden="true"></iconify-icon>
                 Save Settings
             </button>
             <button onclick="restartApp()" class="btn btn-warning" aria-label="Restart application to apply changes">
-                <iconify-icon icon="mdi:restart" aria-hidden="true"></iconify-icon>
+                <iconify-icon icon="tabler:refresh" aria-hidden="true"></iconify-icon>
                 Restart Application
             </button>
         </div>
@@ -23,44 +152,76 @@
 
     <div class="settings-container">
 
-    <!-- Settings Tabs -->
-    <div class="settings-tabs" role="tablist" aria-label="Settings categories">
-        <button class="settings-tab-btn active" onclick="switchTab(event, 'general-tab')" 
-                role="tab" aria-selected="true" aria-controls="general-tab" id="tab-general">
-            <iconify-icon icon="mdi:cog" class="tab-icon" aria-hidden="true"></iconify-icon> General
-        </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'security-tab')"
-                role="tab" aria-selected="false" aria-controls="security-tab" id="tab-security">
-            <iconify-icon icon="mdi:shield-lock" class="tab-icon" aria-hidden="true"></iconify-icon> Security
-        </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'services-tab')"
-                role="tab" aria-selected="false" aria-controls="services-tab" id="tab-services">
-            <iconify-icon icon="mdi:link" class="tab-icon" aria-hidden="true"></iconify-icon> Services
-        </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'downloads-tab')"
-                role="tab" aria-selected="false" aria-controls="downloads-tab" id="tab-downloads">
-            <iconify-icon icon="mdi:download" class="tab-icon" aria-hidden="true"></iconify-icon> Downloads
-        </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'database-tab')"
-                role="tab" aria-selected="false" aria-controls="database-tab" id="tab-database">
-            <iconify-icon icon="mdi:database" class="tab-icon" aria-hidden="true"></iconify-icon> Database
-        </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'system-tab')"
-                role="tab" aria-selected="false" aria-controls="system-tab" id="tab-system">
-            <iconify-icon icon="mdi:tools" class="tab-icon" aria-hidden="true"></iconify-icon> System
-        </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'themes-tab')"
-                role="tab" aria-selected="false" aria-controls="themes-tab" id="tab-themes">
-            <iconify-icon icon="mdi:palette" class="tab-icon" aria-hidden="true"></iconify-icon> Themes
-        </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'blacklist-tab')"
-                role="tab" aria-selected="false" aria-controls="blacklist-tab" id="tab-blacklist">
-            <iconify-icon icon="tabler:list-x" class="tab-icon" aria-hidden="true"></iconify-icon> Blacklist
-        </button>
-    </div>
+    <!-- Settings Layout with Sidebar -->
+    <div class="settings-layout">
+        <!-- Left Sidebar Navigation -->
+        <nav class="settings-sidebar" role="tablist" aria-label="Settings categories">
+            <div class="sidebar-header">
+                <h3>Settings</h3>
+            </div>
+            <ul class="sidebar-nav">
+                <li>
+                    <button class="settings-tab-btn active" onclick="switchTab(event, 'general-tab')" 
+                            role="tab" aria-selected="true" aria-controls="general-tab" id="tab-general">
+                        <iconify-icon icon="tabler:settings" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <span>General</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'security-tab')"
+                            role="tab" aria-selected="false" aria-controls="security-tab" id="tab-security">
+                        <iconify-icon icon="tabler:shield-lock" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <span>Security</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'services-tab')"
+                            role="tab" aria-selected="false" aria-controls="services-tab" id="tab-services">
+                        <iconify-icon icon="tabler:link" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <span>Services</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'downloads-tab')"
+                            role="tab" aria-selected="false" aria-controls="downloads-tab" id="tab-downloads">
+                        <iconify-icon icon="tabler:download" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <span>Downloads</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'database-tab')"
+                            role="tab" aria-selected="false" aria-controls="database-tab" id="tab-database">
+                        <iconify-icon icon="tabler:database" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <span>Database</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'system-tab')"
+                            role="tab" aria-selected="false" aria-controls="system-tab" id="tab-system">
+                        <iconify-icon icon="tabler:tools" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <span>System</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'themes-tab')"
+                            role="tab" aria-selected="false" aria-controls="themes-tab" id="tab-themes">
+                        <iconify-icon icon="tabler:palette" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <span>Themes</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'blacklist-tab')"
+                            role="tab" aria-selected="false" aria-controls="blacklist-tab" id="tab-blacklist">
+                        <iconify-icon icon="tabler:list-x" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <span>Blacklist</span>
+                    </button>
+                </li>
+            </ul>
+        </nav>
 
-    <!-- Tab Content -->
-    <div class="settings-tab-content">
+        <!-- Main Content Area -->
+        <main class="settings-main-content">
+            <div class="settings-tab-content">
 
         <!-- General Tab -->
         <div id="general-tab" class="settings-tab-panel active" role="tabpanel" aria-labelledby="tab-general">
@@ -255,19 +416,19 @@
             <!-- Certificate Actions -->
             <div class="certificate-actions">
                 <button onclick="uploadCertificates()" class="btn btn-primary" id="upload-cert-btn">
-                    <iconify-icon icon="mdi:upload" aria-hidden="true"></iconify-icon>
+                    <iconify-icon icon="tabler:upload" aria-hidden="true"></iconify-icon>
                     Upload Certificates
                 </button>
                 <button onclick="validateCertificate()" class="btn btn-info" id="validate-cert-btn">
-                    <iconify-icon icon="mdi:certificate" aria-hidden="true"></iconify-icon>
+                    <iconify-icon icon="tabler:certificate" aria-hidden="true"></iconify-icon>
                     Validate Certificate
                 </button>
                 <button onclick="downloadCertificate()" class="btn btn-secondary" id="download-cert-btn" style="display: none;">
-                    <iconify-icon icon="mdi:download" aria-hidden="true"></iconify-icon>
+                    <iconify-icon icon="tabler:download" aria-hidden="true"></iconify-icon>
                     Download Current Certificate
                 </button>
                 <button onclick="removeCertificates()" class="btn btn-danger" id="remove-cert-btn" style="display: none;">
-                    <iconify-icon icon="mdi:delete" aria-hidden="true"></iconify-icon>
+                    <iconify-icon icon="tabler:trash" aria-hidden="true"></iconify-icon>
                     Remove Certificates
                 </button>
             </div>
@@ -429,6 +590,195 @@
             </div>
         </div>
         
+        <div class="settings-section">
+            <h2>Metadata Services</h2>
+            <p class="section-description">Configure third-party metadata providers for enhanced artist information</p>
+            
+            <div class="form-group">
+                <label for="metadata_auto_enrich">Automatic Metadata Enrichment:</label>
+                <select id="metadata_auto_enrich" name="metadata_auto_enrich">
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled</option>
+                </select>
+                <div class="help-text">Automatically enrich metadata for new artists using configured providers</div>
+            </div>
+
+            <div class="metadata-providers-grid">
+                <!-- MusicBrainz -->
+                <div class="metadata-provider">
+                    <div class="provider-header">
+                        <h3>🎵 MusicBrainz</h3>
+                        <div class="form-group inline">
+                            <label class="switch">
+                                <input type="checkbox" id="musicbrainz_enabled" name="musicbrainz_enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="provider-config">
+                        <div class="form-group">
+                            <label for="musicbrainz_rate_limit">Rate Limit (requests/second):</label>
+                            <input type="number" id="musicbrainz_rate_limit" name="musicbrainz_rate_limit" 
+                                   min="1" max="10" value="2" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="musicbrainz_priority">Priority:</label>
+                            <select id="musicbrainz_priority" name="musicbrainz_priority">
+                                <option value="1">Highest</option>
+                                <option value="2">High</option>
+                                <option value="3" selected>Medium</option>
+                                <option value="4">Low</option>
+                                <option value="5">Lowest</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Last.fm -->
+                <div class="metadata-provider">
+                    <div class="provider-header">
+                        <h3>🎼 Last.fm Metadata</h3>
+                        <div class="form-group inline">
+                            <label class="switch">
+                                <input type="checkbox" id="lastfm_metadata_enabled" name="lastfm_metadata_enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="provider-config">
+                        <div class="form-group">
+                            <label for="lastfm_metadata_rate_limit">Rate Limit (requests/second):</label>
+                            <input type="number" id="lastfm_metadata_rate_limit" name="lastfm_metadata_rate_limit" 
+                                   min="1" max="10" value="5" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="lastfm_metadata_priority">Priority:</label>
+                            <select id="lastfm_metadata_priority" name="lastfm_metadata_priority">
+                                <option value="1">Highest</option>
+                                <option value="2" selected>High</option>
+                                <option value="3">Medium</option>
+                                <option value="4">Low</option>
+                                <option value="5">Lowest</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Discogs integration removed -->
+
+                <!-- AllMusic -->
+                <div class="metadata-provider">
+                    <div class="provider-header">
+                        <h3>🎶 AllMusic</h3>
+                        <div class="form-group inline">
+                            <label class="switch">
+                                <input type="checkbox" id="allmusic_enabled" name="allmusic_enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="provider-config">
+                        <div class="form-group">
+                            <label for="allmusic_rate_limit">Rate Limit (requests/second):</label>
+                            <input type="number" id="allmusic_rate_limit" name="allmusic_rate_limit" 
+                                   min="1" max="5" value="2" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="allmusic_priority">Priority:</label>
+                            <select id="allmusic_priority" name="allmusic_priority">
+                                <option value="1">Highest</option>
+                                <option value="2">High</option>
+                                <option value="3">Medium</option>
+                                <option value="4" selected>Low</option>
+                                <option value="5">Lowest</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wikipedia -->
+                <div class="metadata-provider">
+                    <div class="provider-header">
+                        <h3>📖 Wikipedia</h3>
+                        <div class="form-group inline">
+                            <label class="switch">
+                                <input type="checkbox" id="wikipedia_enabled" name="wikipedia_enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="provider-config">
+                        <div class="form-group">
+                            <label for="wikipedia_language">Language:</label>
+                            <select id="wikipedia_language" name="wikipedia_language">
+                                <option value="en" selected>English</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="de">German</option>
+                                <option value="it">Italian</option>
+                                <option value="pt">Portuguese</option>
+                                <option value="ja">Japanese</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="wikipedia_priority">Priority:</label>
+                            <select id="wikipedia_priority" name="wikipedia_priority">
+                                <option value="1">Highest</option>
+                                <option value="2">High</option>
+                                <option value="3">Medium</option>
+                                <option value="4">Low</option>
+                                <option value="5" selected>Lowest</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metadata-enrichment-settings">
+                <h3>Enrichment Behavior</h3>
+                <div class="form-group">
+                    <label for="metadata_conflict_resolution">Conflict Resolution:</label>
+                    <select id="metadata_conflict_resolution" name="metadata_conflict_resolution">
+                        <option value="priority">Use Highest Priority Source</option>
+                        <option value="newest">Use Newest Data</option>
+                        <option value="most_complete">Use Most Complete Data</option>
+                        <option value="merge">Merge All Sources</option>
+                    </select>
+                    <div class="help-text">How to handle conflicting metadata from different providers</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="metadata_cache_duration">Cache Duration (hours):</label>
+                    <input type="number" id="metadata_cache_duration" name="metadata_cache_duration" 
+                           min="1" max="168" value="24">
+                    <div class="help-text">How long to cache metadata before re-fetching</div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="metadata_update_existing" name="metadata_update_existing">
+                        Update existing metadata when enriching
+                    </label>
+                    <div class="help-text">Overwrite existing artist metadata with enriched data</div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="metadata_auto_image_download" name="metadata_auto_image_download">
+                        Automatically download artist images
+                    </label>
+                    <div class="help-text">Download and store artist images from metadata providers</div>
+                </div>
+            </div>
+
+            <div class="integration-actions">
+                <button onclick="testMetadataServices()" class="btn btn-info">Test All Connections</button>
+                <button onclick="enrichAllArtists()" class="btn btn-success">Enrich All Artists</button>
+                <button onclick="clearMetadataCache()" class="btn btn-warning">Clear Cache</button>
+                <a href="/enrichment" class="btn btn-primary">📊 Enrichment Dashboard</a>
+            </div>
+        </div>
+        
             </div>
         </div>
         
@@ -453,13 +803,57 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="video_quality_preference">Video Quality:</label>
-                <select id="video_quality_preference" name="video_quality_preference">
+                <label for="default_video_quality">Default Video Quality:</label>
+                <select id="default_video_quality" name="default_video_quality">
                     <option value="best">Best Available</option>
-                    <option value="1080p">1080p</option>
-                    <option value="720p">720p</option>
+                    <option value="2160p">4K (2160p)</option>
+                    <option value="1440p">1440p</option>
+                    <option value="1080p">1080p (Full HD)</option>
+                    <option value="720p">720p (HD)</option>
+                    <option value="480p">480p</option>
+                    <option value="360p">360p</option>
+                    <option value="240p">240p</option>
+                </select>
+                <small class="help-text">Default quality for new downloads</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="max_video_quality">Maximum Quality Limit:</label>
+                <select id="max_video_quality" name="max_video_quality">
+                    <option value="2160p">4K (2160p)</option>
+                    <option value="1440p">1440p</option>
+                    <option value="1080p">1080p (Full HD)</option>
+                    <option value="720p">720p (HD)</option>
                     <option value="480p">480p</option>
                 </select>
+                <small class="help-text">Maximum quality to prevent excessive bandwidth/storage usage</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="min_video_quality">Minimum Quality Limit:</label>
+                <select id="min_video_quality" name="min_video_quality">
+                    <option value="1080p">1080p (Full HD)</option>
+                    <option value="720p">720p (HD)</option>
+                    <option value="480p">480p</option>
+                    <option value="360p">360p</option>
+                    <option value="240p">240p</option>
+                </select>
+                <small class="help-text">Minimum acceptable quality</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="max_video_file_size_gb">Max File Size (GB):</label>
+                <input type="number" id="max_video_file_size_gb" name="max_video_file_size_gb" min="0.5" max="50" step="0.5" value="10">
+                <small class="help-text">Maximum file size limit to prevent storage issues</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="quality_fallback">Allow Quality Fallback:</label>
+                <select id="quality_fallback" name="quality_fallback">
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
+                </select>
+                <small class="help-text">Allow downloading lower quality if preferred quality unavailable</small>
             </div>
             <div class="form-group">
                 <label for="download_subtitles">Download Closed Captions:</label>
@@ -475,9 +869,67 @@
                 <small class="help-text">Comma-separated list of language codes (e.g., en.*, es, fr). Use 'en.*' to match any English variant.</small>
             </div>
             
-            <!-- YouTube Cookie Authentication -->
+            <div class="form-group">
+                <label for="max_concurrent_downloads">Max Concurrent Downloads:</label>
+                <input type="number" id="max_concurrent_downloads" name="max_concurrent_downloads" min="1" max="10">
+            </div>
+        </div>
+        
+        <!-- YouTube SABR Workarounds Section -->
+        <div class="settings-section">
+            <h2>YouTube Download Enhancements</h2>
+            <p class="section-description">Settings to work around YouTube's streaming restrictions (SABR) that limit access to higher quality formats</p>
+            
+            <div class="form-group">
+                <label for="enable_sabr_workarounds">Enable SABR Workarounds:</label>
+                <select id="enable_sabr_workarounds" name="enable_sabr_workarounds">
+                    <option value="true">Enabled (Recommended)</option>
+                    <option value="false">Disabled</option>
+                </select>
+                <small class="help-text">Uses alternative player clients (web, mobile, android, ios) to access restricted formats</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="enable_throttled_downloads">Enable Throttled Downloads:</label>
+                <select id="enable_throttled_downloads" name="enable_throttled_downloads">
+                    <option value="true">Enabled (Safer)</option>
+                    <option value="false">Disabled (Faster)</option>
+                </select>
+                <small class="help-text">Slower download speeds and request delays to avoid YouTube detection</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="prefer_mp4_formats">Prefer MP4 Formats:</label>
+                <select id="prefer_mp4_formats" name="prefer_mp4_formats">
+                    <option value="true">Enabled (Better Compatibility)</option>
+                    <option value="false">Disabled</option>
+                </select>
+                <small class="help-text">Prioritizes MP4 container formats which are less likely to be SABR-restricted</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="auto_delete_original_on_upgrade">Auto-delete Original Files on Upgrade:</label>
+                <select id="auto_delete_original_on_upgrade" name="auto_delete_original_on_upgrade">
+                    <option value="true">Enabled (Save Disk Space)</option>
+                    <option value="false">Disabled (Keep Both Files)</option>
+                </select>
+                <small class="help-text">Automatically delete lower quality files after successful quality upgrades</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Cookie Status:</label>
+                <div id="cookie-status" class="status-display">
+                    <span class="status-loading">Checking...</span>
+                </div>
+                <button onclick="checkCookieStatus()" class="btn btn-secondary btn-sm">
+                    <iconify-icon icon="tabler:refresh"></iconify-icon> Check Status
+                </button>
+                <small class="help-text">Browser cookies from logged-in YouTube sessions can significantly improve format availability</small>
+            </div>
+            
+            <!-- YouTube Cookie Authentication Management -->
             <div class="form-group cookie-management-section">
-                <label>🍪 YouTube Authentication:</label>
+                <label>🍪 YouTube Cookie Authentication:</label>
                 <div class="cookie-upload-container">
                     <div id="cookieStatusSettings" class="cookie-status">
                         <span class="status-text">Checking cookie status...</span>
@@ -498,15 +950,54 @@
                     <input type="file" id="cookieFileInputSettings" accept=".txt,.cookies" style="display: none;" onchange="uploadCookiesSettings(this)">
                     
                     <small class="help-text">
-                        Upload your YouTube cookies to enable downloads of age-restricted videos. 
+                        Upload your YouTube cookies to enable downloads of age-restricted videos and improve access to higher quality formats. 
                         The cookie file should be in Netscape format exported from your browser.
                     </small>
                 </div>
             </div>
+
+        </div>
+        
+        <!-- Video Quality Management Section -->
+        <div class="settings-section">
+            <h2>Video Quality Management</h2>
+            <p class="section-description">Manage and upgrade video quality for your collection</p>
             
-            <div class="form-group">
-                <label for="max_concurrent_downloads">Max Concurrent Downloads:</label>
-                <input type="number" id="max_concurrent_downloads" name="max_concurrent_downloads" min="1" max="10">
+            <div class="quality-stats-container">
+                <div id="qualityStatistics" class="quality-stats">
+                    <div class="stat-card">
+                        <h3>Collection Quality</h3>
+                        <div class="stat-loading">Loading statistics...</div>
+                    </div>
+                </div>
+                <button onclick="loadQualityStatistics()" class="btn btn-secondary btn-sm">
+                    <iconify-icon icon="tabler:refresh"></iconify-icon> Refresh Stats
+                </button>
+            </div>
+            
+            <div class="quality-actions">
+                <button onclick="showUpgradeableVideos()" class="btn btn-primary">
+                    <iconify-icon icon="tabler:arrow-up"></iconify-icon> Find Upgradeable Videos
+                </button>
+                <button onclick="showQualityAnalysis()" class="btn btn-info">
+                    <iconify-icon icon="tabler:chart-line"></iconify-icon> Quality Analysis
+                </button>
+            </div>
+            
+            <!-- Upgradeable Videos Modal would be shown here -->
+            <div id="upgradeableVideosContainer" style="display: none;">
+                <h4>Videos Available for Quality Upgrade</h4>
+                <div id="upgradeableVideosList" class="upgradeable-videos-list">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                <div class="upgrade-actions">
+                    <button onclick="bulkUpgradeSelected()" class="btn btn-success" id="bulkUpgradeBtn" style="display: none;">
+                        <iconify-icon icon="tabler:download"></iconify-icon> Upgrade Selected Videos
+                    </button>
+                    <button onclick="hideUpgradeableVideos()" class="btn btn-secondary">
+                        Close
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -698,6 +1189,7 @@
                 <button onclick="scanVideoFiles()" class="btn btn-info">Scan Video Files</button>
                 <button onclick="populateArtistThumbnails()" class="btn btn-warning">Populate Artist Thumbnails</button>
                 <button onclick="fixMissingVideos()" class="btn btn-warning">Fix Missing Videos</button>
+                <button onclick="checkVideoQualities()" class="btn btn-success">Check Video Qualities</button>
                 <button onclick="refreshStats()" class="btn btn-light">Refresh Stats</button>
             </div>
             <div id="indexing-progress" class="progress-container" style="display: none;">
@@ -707,6 +1199,33 @@
                 <span id="progress-text">Processing...</span>
             </div>
             <div id="indexing-results" class="results-container" style="display: none;"></div>
+        </div>
+
+        <div class="settings-section">
+            <h2>Background Job Management</h2>
+            <div class="form-group">
+                <label>Job System Status:</label>
+                <div id="job-system-status">
+                    <span id="job-status-loading">Checking...</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <p>Monitor and manage background jobs for metadata enrichment, video downloads, and bulk operations.</p>
+            </div>
+            <div class="job-management-actions">
+                <button onclick="window.open('/jobs', '_blank')" class="btn btn-primary">
+                    <iconify-icon icon="tabler:activity" style="margin-right: 0.5rem;"></iconify-icon>
+                    Open Job Dashboard
+                </button>
+                <button onclick="refreshJobSystemStatus()" class="btn btn-info">
+                    <iconify-icon icon="tabler:refresh" style="margin-right: 0.5rem;"></iconify-icon>
+                    Refresh Status
+                </button>
+            </div>
+            <div id="job-system-details" class="details-container" style="display: none; margin-top: 1rem;">
+                <h4>System Details:</h4>
+                <div id="job-system-info"></div>
+            </div>
         </div>
 
         <div class="settings-section">
@@ -1454,8 +1973,9 @@
             </div>
         </div>
         
-    </div>
-    </div>
+            </div> <!-- Close settings-tab-content -->
+        </main> <!-- Close settings-main-content -->
+    </div> <!-- Close settings-layout -->
     
     <!-- Duplicate Save Settings button at bottom -->
     <div class="settings-actions bottom-actions">
@@ -1557,6 +2077,193 @@ function initializeTab() {
     }
 }
 
+// Video Quality Management Functions
+async function loadQualityStatistics() {
+    try {
+        const response = await fetch('/api/video-quality/statistics');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayQualityStatistics(data.statistics);
+        } else {
+            showError('Failed to load quality statistics: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error loading quality statistics:', error);
+        showError('Error loading quality statistics: ' + error.message);
+    }
+}
+
+function displayQualityStatistics(stats) {
+    const container = document.getElementById('qualityStatistics');
+    
+    const qualityDistribution = stats.quality_distribution || {};
+    const totalVideos = stats.total_videos || 0;
+    const upgradeCanditates = stats.upgrade_candidates || 0;
+    const averageFileSize = (stats.average_file_size_mb || 0).toFixed(1);
+    const storageUsage = (stats.storage_usage_gb || 0).toFixed(2);
+    
+    container.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">${totalVideos}</div>
+                <div class="stat-label">Total Videos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${upgradeCanditates}</div>
+                <div class="stat-label">Upgradeable</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${averageFileSize} MB</div>
+                <div class="stat-label">Avg File Size</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${storageUsage} GB</div>
+                <div class="stat-label">Storage Used</div>
+            </div>
+        </div>
+        <div class="quality-breakdown">
+            <h4>Quality Distribution</h4>
+            <div class="quality-bars">
+                ${Object.entries(qualityDistribution).map(([quality, count]) => `
+                    <div class="quality-bar-item">
+                        <span class="quality-label">${quality}</span>
+                        <div class="quality-bar">
+                            <div class="quality-bar-fill" style="width: ${totalVideos ? (count / totalVideos * 100) : 0}%"></div>
+                        </div>
+                        <span class="quality-count">${count}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+async function showUpgradeableVideos() {
+    try {
+        const response = await fetch('/api/video-quality/upgradeable?limit=50');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayUpgradeableVideos(data.upgradeable_videos);
+        } else {
+            showError('Failed to load upgradeable videos: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error loading upgradeable videos:', error);
+        showError('Error loading upgradeable videos: ' + error.message);
+    }
+}
+
+function displayUpgradeableVideos(videos) {
+    const container = document.getElementById('upgradeableVideosContainer');
+    const listContainer = document.getElementById('upgradeableVideosList');
+    
+    if (!videos || videos.length === 0) {
+        listContainer.innerHTML = '<p class="no-results">No videos available for quality upgrade</p>';
+    } else {
+        listContainer.innerHTML = `
+            <div class="upgradeable-header">
+                <label>
+                    <input type="checkbox" id="selectAllUpgrades" onchange="toggleAllUpgrades(this.checked)">
+                    Select All (${videos.length} videos)
+                </label>
+            </div>
+            <div class="upgradeable-list">
+                ${videos.map(video => `
+                    <div class="upgrade-item" data-video-id="${video.video_id}">
+                        <label class="upgrade-checkbox">
+                            <input type="checkbox" class="upgrade-video-check" value="${video.video_id}">
+                            <div class="upgrade-info">
+                                <div class="upgrade-title">${video.title}</div>
+                                <div class="upgrade-artist">${video.artist_name || 'Unknown Artist'}</div>
+                                <div class="upgrade-details">
+                                    <span class="current-quality">${video.current_quality || 'Unknown'}</span>
+                                    →
+                                    <span class="target-quality">${video.recommended_quality}</span>
+                                    <span class="priority-score">Priority: ${video.upgrade_priority}</span>
+                                    ${video.file_size_mb ? `<span class="file-size">${video.file_size_mb.toFixed(1)} MB</span>` : ''}
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        // Show bulk upgrade button if videos are available
+        document.getElementById('bulkUpgradeBtn').style.display = 'block';
+    }
+    
+    container.style.display = 'block';
+}
+
+function hideUpgradeableVideos() {
+    document.getElementById('upgradeableVideosContainer').style.display = 'none';
+}
+
+function toggleAllUpgrades(checked) {
+    const checkboxes = document.querySelectorAll('.upgrade-video-check');
+    checkboxes.forEach(cb => cb.checked = checked);
+}
+
+async function bulkUpgradeSelected() {
+    const selectedIds = Array.from(document.querySelectorAll('.upgrade-video-check:checked'))
+        .map(cb => parseInt(cb.value));
+    
+    if (selectedIds.length === 0) {
+        showError('Please select at least one video to upgrade');
+        return;
+    }
+    
+    if (!confirm(`Upgrade ${selectedIds.length} videos to higher quality? This will queue new downloads.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/video-quality/bulk-upgrade', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                video_ids: selectedIds
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess(`Successfully queued ${data.successful_upgrades} videos for quality upgrade`);
+            if (data.failed_upgrades > 0) {
+                showWarning(`${data.failed_upgrades} videos failed to upgrade. Check logs for details.`);
+            }
+            hideUpgradeableVideos();
+        } else {
+            showError('Bulk upgrade failed: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error during bulk upgrade:', error);
+        showError('Error during bulk upgrade: ' + error.message);
+    }
+}
+
+function showQualityAnalysis() {
+    // This could be expanded to show detailed quality analysis charts
+    showInfo('Quality analysis feature coming soon! Use the statistics above to monitor your collection quality.');
+}
+
+// Load quality statistics when the downloads tab is opened
+document.addEventListener('DOMContentLoaded', function() {
+    // Load quality statistics when switching to downloads tab
+    const downloadsTabBtn = document.getElementById('tab-downloads');
+    if (downloadsTabBtn) {
+        downloadsTabBtn.addEventListener('click', function() {
+            setTimeout(loadQualityStatistics, 100);
+        });
+    }
+});
+
 // Handle hash changes
 window.addEventListener('hashchange', initializeTab);
 
@@ -1571,12 +2278,27 @@ function loadSettings() {
             Object.keys(settings).forEach(key => {
                 const element = document.getElementById(key);
                 if (element) {
-                    element.value = settings[key].value;
+                    // Handle different input types correctly
+                    if (element.type === 'checkbox') {
+                        // For checkboxes, handle Python boolean string representations
+                        const value = settings[key].value;
+                        element.checked = (value === 'True' || value === 'true' || value === true || value === '1');
+                    } else {
+                        element.value = settings[key].value;
+                    }
                 }
             });
             
             // After settings are loaded, update the user credentials section visibility
             updateUserCredentialsSection();
+            
+            // Load OAuth2 client ID if available (client secret is never loaded for security)
+            if (settings.youtube_oauth_client_id) {
+                const clientIdElement = document.getElementById('youtube_oauth_client_id');
+                if (clientIdElement) {
+                    clientIdElement.value = settings.youtube_oauth_client_id.value;
+                }
+            }
         })
         .catch(error => {
             console.error('Error loading settings:', error);
@@ -1625,13 +2347,50 @@ function updateUserCredentialsSection() {
     }
 }
 
+// Load and apply current theme on page startup
+async function loadCurrentThemeOnStartup() {
+    try {
+        const response = await fetch('/api/themes/current', {
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const currentTheme = await response.json();
+            
+            // Apply theme variables to the document
+            if (currentTheme.theme_data) {
+                Object.entries(currentTheme.theme_data).forEach(([cssVar, value]) => {
+                    document.documentElement.style.setProperty(cssVar, value);
+                });
+            }
+            
+            // Set theme name and data-theme attribute
+            window.currentTheme = currentTheme.name;
+            document.documentElement.setAttribute('data-theme', currentTheme.name);
+            
+            console.log(`Applied current theme: ${currentTheme.name}`);
+        } else {
+            console.warn('Failed to load current theme, using default');
+        }
+    } catch (error) {
+        console.error('Error loading current theme:', error);
+    }
+}
+
 // Set up authentication toggle event listener and load settings on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Load settings when page loads
     loadSettings();
     
+    // Theme is already loaded via server-side rendering, no need to reload
+    console.log(`Theme already applied via SSR: ${window.currentTheme}`);
+    
     // Load certificate status
     loadCertificateStatus();
+    
+    // Check cookie status for both systems
+    checkCookieStatusSettings();  // MeTube cookies (upload/delete functionality)
+    checkCookieStatus();          // yt-dlp cookies (SABR workarounds)
     
     // Set up authentication toggle event listener
     const authToggle = document.getElementById('require_authentication');
@@ -1667,15 +2426,34 @@ function updateDownloadTimeVisibility() {
 }
 
 function saveSettings() {
+    console.log('saveSettings() called - collecting form data');
     const settingsData = {};
     
     // Collect all form values
     const inputs = document.querySelectorAll('input, select');
     inputs.forEach(input => {
         if (input.name) {
-            settingsData[input.name] = input.value;
+            // Skip file inputs and invalid values
+            if (input.type === 'file') {
+                console.log(`Skipping file input: ${input.name}`);
+                return;
+            }
+            
+            // Handle different input types correctly
+            if (input.type === 'checkbox') {
+                settingsData[input.name] = input.checked;
+            } else {
+                // Skip empty required fields
+                if (input.hasAttribute('required') && !input.value.trim()) {
+                    console.log(`Skipping empty required field: ${input.name}`);
+                    return;
+                }
+                settingsData[input.name] = input.value;
+            }
         }
     });
+    
+    console.log('Settings data to be sent:', settingsData);
     
     fetch('/api/settings/bulk', {
         method: 'PUT',
@@ -1684,7 +2462,16 @@ function saveSettings() {
         },
         body: JSON.stringify({ settings: settingsData })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Settings save response status:', response.status);
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error('Settings save failed:', response.status, text);
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+        }
+        return response.json();
+    })
     .then(result => {
         if (result.error) {
             if (typeof showError === 'function') {
@@ -1703,9 +2490,9 @@ function saveSettings() {
     .catch(error => {
         console.error('Error saving settings:', error);
         if (typeof showError === 'function') {
-            showError('Error saving settings');
+            showError('Error saving settings: ' + error.message);
         } else {
-            alert('Error saving settings');
+            alert('Error saving settings: ' + error.message);
         }
     });
 }
@@ -2151,6 +2938,88 @@ function proceedFixMissingVideos() {
         
         if (typeof showError === 'function') {
             showError('Failed to fix missing videos: ' + error.message);
+        }
+    });
+}
+
+function checkVideoQualities() {
+    const message = 'This will check YouTube for available video qualities for ALL videos in your library to improve upgrade recommendations. This may take a long time for large libraries (2+ seconds per video). Continue?';
+    
+    if (typeof toastConfirm === 'function') {
+        toastConfirm(message, () => {
+            proceedCheckVideoQualities();
+        });
+    } else {
+        if (confirm(message)) {
+            proceedCheckVideoQualities();
+        }
+    }
+}
+
+function proceedCheckVideoQualities() {
+    showProgress('Checking video qualities on YouTube for all videos in library...');
+    
+    fetch('/api/video-quality/check-all-qualities', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            limit: null,  // Check ALL videos in library
+            only_unchecked: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress();
+        if (data.error) {
+            showResults('<span class="error">Quality check failed: ' + data.error + '</span>');
+        } else {
+            const stats = data.summary;
+            const result = `
+                <div class="quality-check-results">
+                    <h4>🎬 Video Quality Check Complete</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Videos checked:</strong> ${stats.total_checked}
+                        </div>
+                        <div class="result-item">
+                            <strong>Successful checks:</strong> ${stats.successful_checks}
+                        </div>
+                        <div class="result-item">
+                            <strong>Failed checks:</strong> ${stats.failed_checks}
+                        </div>
+                        <div class="result-item">
+                            <strong>Videos skipped:</strong> ${stats.skipped}
+                        </div>
+                    </div>
+                    ${stats.successful_checks > 0 ? 
+                        `<p class="success-message">✅ Successfully checked ${stats.successful_checks} videos for available qualities!</p>` :
+                        `<p class="info-message">ℹ️ No videos were checked. They may already have recent quality data.</p>`
+                    }
+                    ${stats.failed_checks > 0 ? 
+                        `<p class="warning-message">⚠️ ${stats.failed_checks} quality checks failed. Check logs for details.</p>` : ''
+                    }
+                </div>
+            `;
+            showResults(result);
+            
+            // Show success toast
+            if (typeof showSuccess === 'function') {
+                showSuccess(`Quality check complete: ${stats.successful_checks}/${stats.total_checked} videos checked successfully`);
+            }
+            
+            // Refresh stats to show updated data
+            loadIndexingStats();
+        }
+    })
+    .catch(error => {
+        hideProgress();
+        console.error('Error checking video qualities:', error);
+        showResults('<span class="error">Quality check failed: ' + error.message + '</span>');
+        
+        if (typeof showError === 'function') {
+            showError('Failed to check video qualities: ' + error.message);
         }
     });
 }
@@ -2648,7 +3517,7 @@ function viewEnhancedSchedulerConfig() {
 // External Services Integration Functions
 function testYouTubeIntegration() {
     showIntegrationLoading('YouTube');
-    
+
     fetch('/api/youtube/playlists/test', {
         method: 'POST'
     })
@@ -2660,20 +3529,20 @@ function testYouTubeIntegration() {
     })
     .then(data => {
         if (data.status === 'success') {
-            showSuccessMessage('YouTube integration test passed! API is working correctly.');
+            showSuccess('YouTube integration test passed! API is working correctly.');
         } else {
-            showErrorMessage('YouTube integration test failed: ' + data.message);
+            showError('YouTube integration test failed: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error testing YouTube integration:', error);
-        showErrorMessage('YouTube integration test failed: ' + error.message);
+        showError('YouTube integration test failed: ' + error.message);
     });
 }
 
 function syncYouTubePlaylists() {
     showIntegrationLoading('YouTube');
-    
+
     fetch('/api/youtube/playlists/sync', {
         method: 'POST'
     })
@@ -2685,14 +3554,14 @@ function syncYouTubePlaylists() {
     })
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`YouTube playlists synced successfully! ${data.synced_count} playlists processed.`);
+            showSuccess(`YouTube playlists synced successfully! ${data.synced_count} playlists processed.`);
         } else {
-            showErrorMessage('YouTube playlist sync failed: ' + data.error);
+            showError('YouTube playlist sync failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error syncing YouTube playlists:', error);
-        showErrorMessage('YouTube playlist sync failed: ' + error.message);
+        showError('YouTube playlist sync failed: ' + error.message);
     });
 }
 
@@ -2705,14 +3574,14 @@ function testSpotifyIntegration() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showSuccessMessage('Spotify integration test passed! API credentials are valid.');
+            showSuccess('Spotify integration test passed! API credentials are valid.');
         } else {
-            showErrorMessage('Spotify integration test failed: ' + data.message);
+            showError('Spotify integration test failed: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error testing Spotify integration:', error);
-        showErrorMessage('Spotify integration test failed: ' + error.message);
+        showError('Spotify integration test failed: ' + error.message);
     });
 }
 
@@ -2726,12 +3595,12 @@ function authorizeSpotify() {
             window.open(data.authorization_url, '_blank');
             showInfoMessage('Please complete authorization in the new window, then test the connection.');
         } else {
-            showErrorMessage('Failed to get Spotify authorization URL: ' + data.error);
+            showError('Failed to get Spotify authorization URL: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error authorizing Spotify:', error);
-        showErrorMessage('Spotify authorization failed: ' + error.message);
+        showError('Spotify authorization failed: ' + error.message);
     });
 }
 
@@ -2744,14 +3613,14 @@ function importSpotifyPlaylists() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Spotify playlists imported successfully! ${data.imported_count} playlists processed.`);
+            showSuccess(`Spotify playlists imported successfully! ${data.imported_count} playlists processed.`);
         } else {
-            showErrorMessage('Spotify playlist import failed: ' + data.error);
+            showError('Spotify playlist import failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error importing Spotify playlists:', error);
-        showErrorMessage('Spotify playlist import failed: ' + error.message);
+        showError('Spotify playlist import failed: ' + error.message);
     });
 }
 
@@ -2765,14 +3634,14 @@ function testLastfmIntegration() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showSuccessMessage('Last.fm integration test passed! API credentials are valid.');
+            showSuccess('Last.fm integration test passed! API credentials are valid.');
         } else {
-            showErrorMessage('Last.fm integration test failed: ' + data.message);
+            showError('Last.fm integration test failed: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error testing Last.fm integration:', error);
-        showErrorMessage('Last.fm integration test failed: ' + error.message);
+        showError('Last.fm integration test failed: ' + error.message);
     });
 }
 
@@ -2786,12 +3655,12 @@ function authorizeLastfm() {
             window.open(data.auth_url, '_blank');
             showInfoMessage('Please complete authorization in the new window, then test the connection.');
         } else {
-            showErrorMessage('Failed to get Last.fm authorization URL: ' + data.error);
+            showError('Failed to get Last.fm authorization URL: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error authorizing Last.fm:', error);
-        showErrorMessage('Last.fm authorization failed: ' + error.message);
+        showError('Last.fm authorization failed: ' + error.message);
     });
 }
 
@@ -2804,14 +3673,14 @@ function syncLastfmHistory() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Last.fm listening history synced successfully! ${data.tracks_processed || 0} tracks processed.`);
+            showSuccess(`Last.fm listening history synced successfully! ${data.tracks_processed || 0} tracks processed.`);
         } else {
-            showErrorMessage('Last.fm history sync failed: ' + data.error);
+            showError('Last.fm history sync failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error syncing Last.fm history:', error);
-        showErrorMessage('Last.fm history sync failed: ' + error.message);
+        showError('Last.fm history sync failed: ' + error.message);
     });
 }
 
@@ -2824,14 +3693,14 @@ function testLidarrIntegration() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showSuccessMessage('Lidarr integration test passed! ' + data.message);
+            showSuccess('Lidarr integration test passed! ' + data.message);
         } else {
-            showErrorMessage('Lidarr integration test failed: ' + data.message);
+            showError('Lidarr integration test failed: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error testing Lidarr integration:', error);
-        showErrorMessage('Lidarr integration test failed: ' + error.message);
+        showError('Lidarr integration test failed: ' + error.message);
     });
 }
 
@@ -2844,14 +3713,14 @@ function syncLidarrLibrary() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Lidarr library synced successfully! ${data.synced_count} artists processed.`);
+            showSuccess(`Lidarr library synced successfully! ${data.synced_count} artists processed.`);
         } else {
-            showErrorMessage('Lidarr library sync failed: ' + data.error);
+            showError('Lidarr library sync failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error syncing Lidarr library:', error);
-        showErrorMessage('Lidarr library sync failed: ' + error.message);
+        showError('Lidarr library sync failed: ' + error.message);
     });
 }
 
@@ -2864,14 +3733,14 @@ function importLidarrArtists() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Lidarr artists imported successfully! ${data.imported_count} monitored artists processed.`);
+            showSuccess(`Lidarr artists imported successfully! ${data.imported_count} monitored artists processed.`);
         } else {
-            showErrorMessage('Lidarr artist import failed: ' + data.error);
+            showError('Lidarr artist import failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error importing Lidarr artists:', error);
-        showErrorMessage('Lidarr artist import failed: ' + error.message);
+        showError('Lidarr artist import failed: ' + error.message);
     });
 }
 
@@ -2884,14 +3753,14 @@ function syncLidarrAlbums() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccessMessage(`Lidarr albums synced successfully! ${data.processed_count} albums processed.`);
+            showSuccess(`Lidarr albums synced successfully! ${data.processed_count} albums processed.`);
         } else {
-            showErrorMessage('Lidarr album sync failed: ' + data.error);
+            showError('Lidarr album sync failed: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error syncing Lidarr albums:', error);
-        showErrorMessage('Lidarr album sync failed: ' + error.message);
+        showError('Lidarr album sync failed: ' + error.message);
     });
 }
 
@@ -2903,30 +3772,8 @@ function showIntegrationLoading(service) {
     }
 }
 
-// Helper functions for notifications
-function showSuccessMessage(message) {
-    if (typeof showSuccess === 'function') {
-        showSuccess(message);
-    } else {
-        alert('✅ ' + message);
-    }
-}
-
-function showErrorMessage(message) {
-    if (typeof showError === 'function') {
-        showError(message);
-    } else {
-        alert('❌ ' + message);
-    }
-}
-
-function showInfoMessage(message) {
-    if (typeof showInfo === 'function') {
-        showInfo(message);
-    } else {
-        alert('ℹ️ ' + message);
-    }
-}
+// Helper functions for notifications - now handled by global toast system
+// Note: Using showSuccess, showError, showInfo functions defined earlier in this file
 
 
 // ================================
@@ -3394,7 +4241,7 @@ function logoutUser() {
                 if (data.success) {
                     // Redirect based on auth system
                     if (logoutEndpoint === '/auth/dynamic-logout') {
-                        window.location.href = '/simple-login';
+                        window.location.href = '/auth/login';
                     } else {
                         window.location.href = '/auth/login';
                     }
@@ -3957,6 +4804,43 @@ async function checkCookieStatusSettings() {
     }
 }
 
+async function checkCookieStatus() {
+    try {
+        const response = await fetch('/api/ytdlp/cookie-status');
+        
+        // Debug: check response status and content type
+        console.log('Cookie status response status:', response.status);
+        console.log('Cookie status response headers:', response.headers.get('content-type'));
+        
+        // Get response text first to debug JSON parsing issues
+        const responseText = await response.text();
+        console.log('Cookie status raw response:', responseText);
+        
+        // Try to parse as JSON
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Failed to parse cookie status JSON:', parseError);
+            document.getElementById('cookie-status').innerHTML = '<span class="status-text error">❌ Invalid response format</span>';
+            return;
+        }
+        
+        const statusDiv = document.getElementById('cookie-status');
+        
+        if (data.cookies_available) {
+            const fileSize = (data.file_size / 1024).toFixed(1);
+            const modifiedDate = new Date(data.modified_time * 1000).toLocaleDateString();
+            statusDiv.innerHTML = `<span class="status-text success">✅ Cookies available (${fileSize} KB, updated ${modifiedDate})</span>`;
+        } else {
+            statusDiv.innerHTML = '<span class="status-text warning">⚠️ No cookies found - Higher quality formats may be unavailable</span>';
+        }
+    } catch (error) {
+        console.error('Failed to check yt-dlp cookie status:', error);
+        document.getElementById('cookie-status').innerHTML = '<span class="status-text error">❌ Error checking cookie status</span>';
+    }
+}
+
 async function uploadCookiesSettings(input) {
     const file = input.files[0];
     if (!file) return;
@@ -4071,6 +4955,7 @@ The cookie file should contain YouTube authentication data including session tok
     alert(instructions);
 }
 
+// OAuth2 Authentication Functions
 // Certificate Management Functions
 async function uploadCertificates() {
     const certFile = document.getElementById('ssl-certificate-file').files[0];
@@ -4295,17 +5180,48 @@ async function loadCertificateStatus() {
     padding: 20px;
 }
 
-/* Settings Tab Styles */
-.settings-tabs {
+/* Settings Layout Styles */
+.settings-layout {
     display: flex;
-    border-bottom: 2px solid var(--border-primary, #38383a);
-    margin-bottom: 2rem;
+    gap: 2rem;
+    min-height: 600px;
+}
+
+.settings-sidebar {
+    width: 250px;
     background: var(--bg-secondary, #2c2c2e);
-    border-radius: 8px 8px 0 0;
-    overflow-x: auto;
+    border-radius: 8px;
+    padding: 0;
+    border: 1px solid var(--border-primary, #38383a);
+    height: fit-content;
+    position: sticky;
+    top: 2rem;
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-primary, #38383a);
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    color: var(--text-primary, #ffffff);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.sidebar-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-nav li {
+    margin: 0;
 }
 
 .settings-tab-btn {
+    width: 100%;
     background: none;
     border: none;
     padding: 1rem 1.5rem;
@@ -4313,12 +5229,12 @@ async function loadCertificateStatus() {
     font-size: 0.95rem;
     font-weight: 500;
     color: var(--text-muted, #98989d);
-    border-bottom: 3px solid transparent;
     transition: all 0.3s ease;
-    white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    text-align: left;
+    border-left: 3px solid transparent;
 }
 
 .settings-tab-btn:hover {
@@ -4328,12 +5244,18 @@ async function loadCertificateStatus() {
 
 .settings-tab-btn.active {
     color: var(--text-accent, #a8b9be);
-    border-bottom-color: var(--text-accent, #a8b9be);
     background: var(--bg-tertiary, #3a3a3a);
+    border-left-color: var(--text-accent, #a8b9be);
 }
 
 .tab-icon {
     font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.settings-main-content {
+    flex: 1;
+    min-width: 0;
 }
 
 .settings-tab-content {
@@ -4356,20 +5278,37 @@ async function loadCertificateStatus() {
 
 /* Responsive tabs */
 @media (max-width: 768px) {
-    .settings-tabs {
+    .settings-layout {
         flex-direction: column;
-        border-radius: 8px;
+        gap: 1rem;
+    }
+    
+    .settings-sidebar {
+        width: 100%;
+        position: static;
+    }
+    
+    .sidebar-nav {
+        display: flex;
+        overflow-x: auto;
+        gap: 0;
+        padding: 0.5rem;
+    }
+    
+    .sidebar-nav li {
+        flex-shrink: 0;
     }
     
     .settings-tab-btn {
-        text-align: left;
-        border-bottom: 1px solid var(--border-primary, #38383a);
-        border-right: none;
+        white-space: nowrap;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        min-width: 100px;
     }
     
     .settings-tab-btn.active {
-        border-bottom: 1px solid var(--border-primary, #38383a);
-        border-left: 3px solid var(--text-accent, #a8b9be);
+        border-left-color: transparent;
+        border-bottom-color: var(--text-accent, #a8b9be);
     }
 }
 
@@ -6243,17 +7182,17 @@ function renderThemesGrid() {
                 </div>
             </div>
             <div class="theme-actions">
-                <button onclick="quickApplyTheme('${theme.id || theme.name}'); event.stopPropagation();" class="btn btn-sm btn-success">
+                <button onclick="event.preventDefault(); event.stopPropagation(); quickApplyTheme('${theme.id || theme.name}'); return false;" class="btn btn-sm btn-success" type="button">
                     Apply
                 </button>
-                <button onclick="selectTheme('${theme.id || theme.name}'); event.stopPropagation();" class="btn btn-sm btn-primary">
+                <button onclick="event.preventDefault(); event.stopPropagation(); selectTheme('${theme.id || theme.name}'); return false;" class="btn btn-sm btn-primary" type="button">
                     Customize
                 </button>
                 ${!theme.is_built_in ? `
-                    <button onclick="editTheme('${theme.id || theme.name}'); event.stopPropagation();" class="btn btn-sm btn-secondary" title="Edit Theme">
+                    <button onclick="event.preventDefault(); event.stopPropagation(); editTheme('${theme.id || theme.name}'); return false;" class="btn btn-sm btn-secondary" type="button" title="Edit Theme">
                         <iconify-icon icon="tabler:edit"></iconify-icon>
                     </button>
-                    <button onclick="deleteTheme('${theme.id || theme.name}', '${theme.display_name}'); event.stopPropagation();" class="btn btn-sm btn-danger" title="Delete Theme">
+                    <button onclick="event.preventDefault(); event.stopPropagation(); deleteTheme('${theme.id || theme.name}', '${theme.display_name}'); return false;" class="btn btn-sm btn-danger" type="button" title="Delete Theme">
                         <iconify-icon icon="tabler:trash"></iconify-icon>
                     </button>
                 ` : ''}
@@ -7137,7 +8076,7 @@ switchTab = function(event, tabId) {
 let currentBlacklistPage = 1;
 let totalBlacklistPages = 1;
 let currentBlacklistSearchQuery = '';
-let urlToRemove = '';
+let blacklistIdToRemove = null;
 
 function initializeBlacklistTab() {
     if (document.getElementById('blacklist-tab').classList.contains('active')) {
@@ -7164,12 +8103,14 @@ function loadBlacklist() {
                 showBlacklistError(data.error);
                 return;
             }
-            
-            displayBlacklist(data.blacklist);
+
+            // FastAPI returns blacklist_entries, not blacklist
+            const blacklistEntries = data.blacklist_entries || data.blacklist || [];
+            displayBlacklist(blacklistEntries);
             updateBlacklistPagination(data.pagination);
             updateBlacklistStats(data);
-            
-            if (data.blacklist.length === 0 && currentBlacklistPage === 1 && !currentBlacklistSearchQuery) {
+
+            if (blacklistEntries.length === 0 && currentBlacklistPage === 1 && !currentBlacklistSearchQuery) {
                 showBlacklistEmpty();
             } else {
                 showBlacklistTable();
@@ -7202,10 +8143,10 @@ function displayBlacklist(blacklistEntries) {
             </td>
             <td>${entry.title || '<span class="text-muted">Not specified</span>'}</td>
             <td>${entry.artist_name || '<span class="text-muted">Not specified</span>'}</td>
-            <td>${formatDate(entry.blacklisted_at)}</td>
+            <td>${formatDate(entry.blacklisted_at || entry.created_at)}</td>
             <td>${entry.blacklisted_by_username || '<span class="text-muted">Unknown</span>'}</td>
             <td>
-                <button onclick="removeFromBlacklist('${escapeHtml(entry.youtube_url)}', '${escapeHtml(entry.title || '')}', '${escapeHtml(entry.artist_name || '')}')" 
+                <button onclick="removeFromBlacklist(${entry.id}, '${escapeHtml(entry.youtube_url)}', '${escapeHtml(entry.title || '')}', '${escapeHtml(entry.artist_name || '')}')"
                         class="btn btn-danger btn-sm" title="Remove from blacklist">
                     <iconify-icon icon="tabler:trash"></iconify-icon>
                     Remove
@@ -7254,16 +8195,18 @@ function updateBlacklistPagination(pagination) {
 
 function updateBlacklistStats(data) {
     document.getElementById('totalBlacklistCount').textContent = data.pagination.total;
-    
+
     // Calculate recent additions (this week)
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
-    const recentCount = data.blacklist.filter(entry => {
-        const blacklistedDate = new Date(entry.blacklisted_at);
+
+    // FastAPI returns blacklist_entries, not blacklist
+    const blacklistEntries = data.blacklist_entries || data.blacklist || [];
+    const recentCount = blacklistEntries.filter(entry => {
+        const blacklistedDate = new Date(entry.blacklisted_at || entry.created_at);
         return blacklistedDate >= oneWeekAgo;
     }).length;
-    
+
     document.getElementById('recentBlacklistCount').textContent = recentCount;
 }
 
@@ -7340,20 +8283,20 @@ function exportBlacklist() {
         });
 }
 
-function removeFromBlacklist(url, title, artist) {
-    urlToRemove = url;
-    
+function removeFromBlacklist(blacklistId, url, title, artist) {
+    blacklistIdToRemove = blacklistId;
+
     document.getElementById('removePreviewUrl').textContent = url;
     document.getElementById('removePreviewTitle').textContent = title || 'Not specified';
     document.getElementById('removePreviewArtist').textContent = artist || 'Not specified';
-    
+
     document.getElementById('confirmRemoveModal').style.display = 'block';
 }
 
 function confirmRemoveFromBlacklist() {
-    if (!urlToRemove) return;
-    
-    fetch(`/api/videos/blacklist/${encodeURIComponent(urlToRemove)}`, {
+    if (!blacklistIdToRemove) return;
+
+    fetch(`/api/videos/blacklist/${blacklistIdToRemove}`, {
         method: 'DELETE'
     })
     .then(response => response.json())
@@ -7362,9 +8305,10 @@ function confirmRemoveFromBlacklist() {
             showError('Error: ' + result.error);
             return;
         }
-        
+
         showSuccess(result.message || 'URL removed from blacklist successfully');
         closeConfirmRemoveModal();
+        blacklistIdToRemove = null;
         loadBlacklist();
     })
     .catch(error => {
@@ -7439,7 +8383,7 @@ function submitAddToBlacklist(event) {
 
 function closeConfirmRemoveModal() {
     document.getElementById('confirmRemoveModal').style.display = 'none';
-    urlToRemove = '';
+    blacklistIdToRemove = null;
 }
 
 // Modal backdrop clicks
@@ -7461,6 +8405,72 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
+// Job System Management Functions
+async function refreshJobSystemStatus() {
+    const statusElement = document.getElementById('job-system-status');
+    const loadingElement = document.getElementById('job-status-loading');
+    const detailsContainer = document.getElementById('job-system-details');
+    const detailsInfo = document.getElementById('job-system-info');
+    
+    loadingElement.textContent = 'Checking...';
+    loadingElement.style.color = 'var(--text-secondary)';
+    
+    try {
+        const response = await fetch('/api/metadata-enrichment/celery/health', {
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.status === 'healthy') {
+            loadingElement.innerHTML = '<span style="color: var(--success-color, #10b981);"><iconify-icon icon="tabler:check-circle"></iconify-icon> System Running</span>';
+            
+            // Show system details
+            detailsInfo.innerHTML = `
+                <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 6px; margin-top: 0.5rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div><strong>Queue Status:</strong> ${data.queue_status || 'Active'}</div>
+                        <div><strong>Worker Status:</strong> ${data.worker_status || 'Running'}</div>
+                        <div><strong>Active Jobs:</strong> ${data.active_jobs || 0}</div>
+                        <div><strong>Queued Jobs:</strong> ${data.queued_jobs || 0}</div>
+                    </div>
+                    ${data.uptime ? `<div style="margin-top: 0.5rem;"><strong>Uptime:</strong> ${data.uptime}</div>` : ''}
+                </div>
+            `;
+            detailsContainer.style.display = 'block';
+        } else if (data.status === 'disabled') {
+            loadingElement.innerHTML = '<span style="color: var(--warning-color, #f59e0b);"><iconify-icon icon="tabler:alert-circle"></iconify-icon> System Disabled</span>';
+            detailsContainer.style.display = 'none';
+        } else {
+            loadingElement.innerHTML = '<span style="color: var(--danger-color, #ef4444);"><iconify-icon icon="tabler:x-circle"></iconify-icon> System Error</span>';
+            detailsInfo.innerHTML = `<div style="color: var(--danger-color); margin-top: 0.5rem;">${data.error || 'Unknown error'}</div>`;
+            detailsContainer.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Failed to check job system status:', error);
+        loadingElement.innerHTML = '<span style="color: var(--danger-color, #ef4444);"><iconify-icon icon="tabler:wifi-off"></iconify-icon> Connection Error</span>';
+        detailsInfo.innerHTML = `<div style="color: var(--danger-color); margin-top: 0.5rem;">Failed to connect to job system</div>`;
+        detailsContainer.style.display = 'block';
+    }
+}
+
+// Initialize job system status when the system tab is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're on the system tab or refresh status when tab is clicked
+    const systemTab = document.getElementById('tab-system');
+    if (systemTab) {
+        systemTab.addEventListener('click', function() {
+            setTimeout(refreshJobSystemStatus, 100);
+        });
+    }
+    
+    // If system tab is already active on page load, refresh status
+    const systemTabPanel = document.getElementById('system-tab');
+    if (systemTabPanel && systemTabPanel.classList.contains('active')) {
+        refreshJobSystemStatus();
+    }
+});
+
 </script>
 
 <style>
@@ -7474,28 +8484,28 @@ document.addEventListener('keydown', function(event) {
 
 .blacklist-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 20px;
     margin: 20px 0;
 }
 
 .stat-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background: var(--bg-secondary, #2c2c2e);
+    border: 1px solid var(--border-primary, #38383a);
     border-radius: 8px;
     padding: 20px;
     text-align: center;
 }
 
 .stat-number {
-    font-size: 2.5em;
+    font-size: 2.2em;
     font-weight: bold;
-    color: var(--primary-color);
+    color: var(--text-accent, #a8b9be);
     margin-bottom: 5px;
 }
 
 .stat-label {
-    color: var(--text-muted);
+    color: var(--text-muted, #98989d);
     font-size: 0.9em;
 }
 
@@ -7511,10 +8521,15 @@ document.addEventListener('keydown', function(event) {
 .search-input-container input {
     width: 100%;
     padding: 12px 16px 12px 45px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-primary, #38383a);
     border-radius: 8px;
-    background: var(--card-bg);
+    background: var(--bg-secondary, #2c2c2e);
+    color: var(--text-primary, #ffffff);
     font-size: 14px;
+}
+
+.search-input-container input::placeholder {
+    color: var(--text-muted, #98989d);
 }
 
 .search-icon {
@@ -7522,42 +8537,49 @@ document.addEventListener('keydown', function(event) {
     left: 15px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--text-muted);
+    color: var(--text-muted, #98989d);
     font-size: 18px;
 }
 
 .blacklist-table-container {
     margin-top: 20px;
+    overflow-x: auto;
 }
 
 .blacklist-table {
     width: 100%;
+    min-width: 600px;
     border-collapse: collapse;
-    background: var(--card-bg);
+    background: var(--bg-secondary, #2c2c2e);
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid var(--border-primary, #38383a);
 }
 
 .blacklist-table th,
 .blacklist-table td {
-    padding: 15px;
+    padding: 12px 15px;
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-primary, #38383a);
 }
 
 .blacklist-table th {
-    background: var(--header-bg);
+    background: var(--bg-tertiary, #3a3a3a);
     font-weight: 600;
-    color: var(--header-text);
+    color: var(--text-primary, #ffffff);
+    font-size: 0.95rem;
+}
+
+.blacklist-table td {
+    color: var(--text-primary, #ffffff);
 }
 
 .blacklist-table tr:hover {
-    background: var(--hover-bg);
+    background: var(--bg-hover, #3c3c3e);
 }
 
 .url-link {
-    color: var(--primary-color);
+    color: var(--text-accent, #a8b9be);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -7566,6 +8588,7 @@ document.addEventListener('keydown', function(event) {
 
 .url-link:hover {
     text-decoration: underline;
+    color: var(--text-primary, #ffffff);
 }
 
 .external-icon {
@@ -7574,17 +8597,17 @@ document.addEventListener('keydown', function(event) {
 }
 
 .text-muted {
-    color: var(--text-muted);
+    color: var(--text-muted, #98989d);
     font-style: italic;
 }
 
 .text-warning {
-    color: var(--warning-color);
+    color: #fbbf24;
 }
 
 .blacklist-preview {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background: var(--bg-secondary, #2c2c2e);
+    border: 1px solid var(--border-primary, #38383a);
     border-radius: 6px;
     padding: 15px;
     margin: 15px 0;
@@ -7624,9 +8647,17 @@ document.addEventListener('keydown', function(event) {
     margin-bottom: 20px;
 }
 
+.loading-container, .error-container, .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    background: var(--bg-secondary, #2c2c2e);
+    border-radius: 8px;
+    border: 1px solid var(--border-primary, #38383a);
+}
+
 .loading-spinner {
-    border: 3px solid var(--border-color);
-    border-top: 3px solid var(--primary-color);
+    border: 3px solid var(--border-primary, #38383a);
+    border-top: 3px solid var(--text-accent, #a8b9be);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -7640,13 +8671,26 @@ document.addEventListener('keydown', function(event) {
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+    .blacklist-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .blacklist-actions {
         flex-direction: column;
+        gap: 8px;
+    }
+    
+    .blacklist-actions .btn {
+        width: 100%;
+        justify-content: center;
     }
     
     .blacklist-table {
         font-size: 14px;
+        min-width: 500px;
     }
     
     .blacklist-table th,
@@ -7661,6 +8705,25 @@ document.addEventListener('keydown', function(event) {
     
     .blacklist-stats {
         grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .search-input-container {
+        max-width: 100%;
+    }
+    
+    .stat-number {
+        font-size: 2em;
+    }
+}
+
+@media (max-width: 480px) {
+    .blacklist-table {
+        min-width: 400px;
+    }
+    
+    .stat-card {
+        padding: 15px;
     }
 }
 
@@ -7818,6 +8881,195 @@ input[type="file"]:focus {
     box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
 }
 
+/* Video Quality Management Styles */
+.quality-stats-container {
+    margin-bottom: 20px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--primary);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-top: 5px;
+}
+
+.quality-breakdown h4 {
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.quality-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.quality-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quality-label {
+    min-width: 80px;
+    font-size: 0.9em;
+    color: var(--text-primary);
+}
+
+.quality-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.quality-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.quality-count {
+    min-width: 30px;
+    text-align: right;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.quality-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.upgradeable-videos-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.upgradeable-header {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-tertiary);
+}
+
+.upgradeable-header label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.upgrade-item {
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.upgrade-item:last-child {
+    border-bottom: none;
+}
+
+.upgrade-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.upgrade-checkbox:hover {
+    background: var(--bg-hover);
+}
+
+.upgrade-info {
+    flex: 1;
+}
+
+.upgrade-title {
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+}
+
+.upgrade-artist {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    margin-bottom: 8px;
+}
+
+.upgrade-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 0.8em;
+    color: var(--text-muted);
+}
+
+.current-quality {
+    color: var(--warning, #ffc107);
+}
+
+.target-quality {
+    color: var(--success, #28a745);
+    font-weight: bold;
+}
+
+.priority-score {
+    color: var(--info, #17a2b8);
+}
+
+.file-size {
+    color: var(--text-secondary);
+}
+
+.upgrade-actions {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px;
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-primary);
+}
+
+.no-results {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .certificate-actions {
@@ -7833,6 +9085,24 @@ input[type="file"]:focus {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .quality-actions {
+        flex-direction: column;
+    }
+    
+    .upgrade-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .upgrade-details {
+        flex-direction: column;
+        gap: 5px;
     }
 }
 </style>

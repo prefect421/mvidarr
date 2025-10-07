@@ -4,8 +4,8 @@
 
 {% block content %}
 <!-- Performance Enhancement CSS - DISABLED: Causing loading issues
-<link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='ui-enhancements.css') }}">
-<link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='virtualization.css') }}">
+<link rel="stylesheet" href="/css/ui-enhancements.css ">
+<link rel="stylesheet" href="/css/virtualization.css ">
 -->
 <div class="videos-container">
     
@@ -40,9 +40,9 @@
                     <iconify-icon icon="tabler:photo" aria-hidden="true"></iconify-icon>
                     Thumbnails
                 </button>
-                <button onclick="refreshAllMetadata()" class="btn btn-secondary btn-sm" title="Update video metadata" aria-label="Update all video metadata">
+                <button onclick="refreshAllMetadata()" class="btn btn-secondary btn-sm" title="Update video metadata using enhanced sources" aria-label="Update all video metadata using enhanced sources">
                     <iconify-icon icon="tabler:database-refresh" aria-hidden="true"></iconify-icon>
-                    Metadata
+                    Enhanced Metadata
                 </button>
             </div>
             
@@ -256,7 +256,7 @@
                 
                 <button onclick="bulkRefreshMetadata()" class="bulk-btn-compact btn-info" id="bulkRefreshMetadataBtn" disabled>
                     <iconify-icon icon="tabler:refresh"></iconify-icon>
-                    <span>Refresh Metadata</span>
+                    <span>Refresh Enhanced Metadata</span>
                 </button>
                 
                 <button onclick="bulkDeleteSelected()" class="bulk-btn-compact btn-danger" id="bulkDeleteBtn" disabled>
@@ -366,96 +366,15 @@
     </div>
 </div>
 
-<!-- Edit Video Modal -->
-<div id="editVideoModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Edit Video Metadata</h3>
-            <span class="modal-close" onclick="closeEditVideoModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <form id="editVideoForm">
-                <div class="form-group">
-                    <label for="videoTitle">Video Title:</label>
-                    <input type="text" id="videoTitle" name="title" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="videoArtist">Artist Name:</label>
-                    <div class="artist-input-container">
-                        <input type="text" id="videoArtist" name="artist_name" required>
-                        <button type="button" id="identifyArtistBtn" class="btn btn-secondary btn-small" onclick="identifyArtist()" style="margin-left: 10px;">
-                            🔍 Identify Artist
-                        </button>
-                        <div id="artistSuggestions" class="artist-suggestions" style="display: none;">
-                            <!-- Artist suggestions will be populated here -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="videoYear">Year:</label>
-                    <input type="number" id="videoYear" name="year" min="1900" max="2030">
-                </div>
-                
-                <div class="form-group">
-                    <label for="videoGenre">Genre:</label>
-                    <input type="text" id="videoGenre" name="genre" placeholder="Rock, Pop, Hip-Hop, etc.">
-                </div>
-                
-                <div class="form-group">
-                    <label for="videoStatus">Status:</label>
-                    <select id="videoStatus" name="status">
-                        <option value="DOWNLOADED">Downloaded</option>
-                        <option value="WANTED">Wanted</option>
-                        <option value="IGNORED">Ignored</option>
-                        <option value="FAILED">Failed</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="videoUrl">Video URL:</label>
-                    <input type="url" id="videoUrl" name="video_url" placeholder="https://youtube.com/watch?v=...">
-                </div>
-                
-                <div class="form-group">
-                    <label for="videoThumbnailUrl">Thumbnail URL:</label>
-                    <input type="url" id="videoThumbnailUrl" name="thumbnail_url">
-                    <button type="button" onclick="openVideoThumbnailManager()" class="btn btn-info btn-small" style="margin-top: 5px;">
-                        🖼️ Manage Thumbnail
-                    </button>
-                </div>
-                
-                <div class="form-group">
-                    <label for="videoDuration">Duration (seconds):</label>
-                    <input type="number" id="videoDuration" name="duration" min="0">
-                </div>
-                
-                <div class="form-group">
-                    <label for="videoImvdbId">IMVDb ID:</label>
-                    <input type="text" id="videoImvdbId" name="imvdb_id">
-                </div>
-                
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="moveFile" name="move_file" checked>
-                        Move/rename file if artist or title changes
-                    </label>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeEditVideoModal()">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 
 
 <script>
 // Global function definitions for immediate availability
+
+// Toast notification functions are now handled by global toast system (toast.js)
+// Functions showSuccessMessage, showErrorMessage are defined globally
+
 window.toggleSearchPanel = window.toggleSearchPanel || function() {
     const searchPanel = document.getElementById('videoSearchPanel');
     if (searchPanel) {
@@ -500,8 +419,20 @@ function showEnhancedError(error, context = '') {
 }
 
 function categorizeError(error, context) {
-    const errorMessage = error.message || error.toString();
-    const errorName = error.name || 'Error';
+    // Handle different error types more robustly
+    let errorMessage;
+    if (typeof error === 'string') {
+        errorMessage = error;
+    } else if (error && typeof error.message === 'string') {
+        errorMessage = error.message;
+    } else if (error && typeof error === 'object') {
+        // Try to extract meaningful information from error object
+        errorMessage = error.error || error.detail || JSON.stringify(error);
+    } else {
+        errorMessage = String(error);
+    }
+    
+    const errorName = (error && error.name) || 'Error';
     
     // Network errors
     if (errorName === 'TypeError' && errorMessage.includes('fetch')) {
@@ -604,6 +535,7 @@ function applyVideoFilters() {
     
     // Get all filter values
     const filters = {
+        q: document.getElementById('videoSearchInput').value,  // Add the main search query
         status: document.getElementById('videoStatusFilter').value,
         quality: document.getElementById('videoQualityFilter').value,
         has_thumbnail: document.getElementById('videoThumbnailFilter').value,
@@ -657,15 +589,17 @@ function displaySearchResults(data) {
                 </div>
                 ${video.relevance_score ? `<div class="relevance-badge" title="Relevance Score: ${video.relevance_score}%">${Math.round(video.relevance_score)}%</div>` : ''}
                 <div class="video-thumbnail" data-video-id="${video.id}" data-action="play">
+                    ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="thumbnail-artist-link" title="View ${video.artist_name || 'Unknown'} artist page">` : ''}
                     <img src="/api/videos/${video.id}/thumbnail" 
                          alt="${highlightSearchTerms(video.title, searchQuery)}" onerror="this.src='/static/placeholder-video.png'">
+                    ${video.artist_id ? '</a>' : ''}
                     <div class="play-overlay">
                         <div class="play-button">▶</div>
                     </div>
                 </div>
                 <div class="video-info">
                     <h3>${highlightSearchTerms(video.title, searchQuery)}</h3>
-                    <p>Artist: ${highlightSearchTerms(video.artist_name || 'Unknown', searchQuery)}</p>
+                    <p>Artist: ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="artist-link">${highlightSearchTerms(video.artist_name || 'Unknown', searchQuery)}</a>` : highlightSearchTerms(video.artist_name || 'Unknown', searchQuery)}</p>
                     <p>Status: ${video.status}</p>
                     ${video.year ? `<p>Year: ${video.year}</p>` : ''}
                     ${video.description ? `<p class="video-description" title="${video.description}">${highlightSearchTerms(truncateText(video.description, 100), searchQuery)}</p>` : ''}
@@ -674,10 +608,7 @@ function displaySearchResults(data) {
                     <button data-video-id="${video.id}" data-action="view" class="btn-icon" title="View Details">
                         <iconify-icon icon="tabler:eye"></iconify-icon>
                     </button>
-                    <button data-video-id="${video.id}" data-action="edit" class="btn-icon" title="Edit Video">
-                        <iconify-icon icon="tabler:edit"></iconify-icon>
-                    </button>
-                    <button data-video-id="${video.id}" data-action="refresh-metadata" class="btn-icon" title="Refresh Metadata">
+                    <button data-video-id="${video.id}" data-action="refresh-metadata" class="btn-icon" title="Refresh Enhanced Metadata">
                         <iconify-icon icon="tabler:refresh"></iconify-icon>
                     </button>
                     ${video.status === 'WANTED' ? 
@@ -1062,20 +993,113 @@ function refreshThumbnails() {
             },
             body: JSON.stringify(requestBody)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(result => {
             if (result.error) {
                 showError('Error: ' + result.error);
+            } else if (result.job_id) {
+                // Background job started - show success message (progress tracking will be added in future release)
+                showSuccess(`${result.message} - Job ID: ${result.job_id}. Thumbnails will be generated in the background.`);
             } else {
-                showSuccess(result.message);
+                showSuccess(result.message || 'Thumbnail refresh completed');
                 loadVideos(); // Refresh the video list
             }
         })
         .catch(error => {
             console.error('Error refreshing thumbnails:', error);
-            showError('Error refreshing thumbnails');
+            showError('Error refreshing thumbnails: ' + error.message);
         });
     });
+}
+
+// DISABLED: Progress tracking requires WebSocket infrastructure (planned for future release)
+// Keeping function for future implementation
+function showThumbnailProgress_DISABLED(jobId, totalVideos) {
+    // Create progress bar UI
+    const progressContainer = document.createElement('div');
+    progressContainer.id = `thumbnail-progress-${jobId}`;
+    progressContainer.className = 'progress-container';
+    progressContainer.innerHTML = `
+        <div class="progress-header">
+            <span class="progress-title">Generating Thumbnails</span>
+            <span class="progress-stats" id="thumbnail-stats-${jobId}">0 / ${totalVideos}</span>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="thumbnail-progress-bar-${jobId}" style="width: 0%"></div>
+        </div>
+        <div class="progress-details" id="thumbnail-details-${jobId}">Starting...</div>
+    `;
+    
+    // Add to page (insert at top of video container)
+    const videosContainer = document.querySelector('.videos-container');
+    videosContainer.insertBefore(progressContainer, videosContainer.firstChild);
+    
+    // Subscribe to job progress updates via WebSocket
+    if (window.backgroundJobsManager) {
+        window.backgroundJobsManager.subscribeToJob(jobId);
+        
+        // Listen for job updates
+        const originalHandler = window.backgroundJobsManager.handleJobUpdate;
+        window.backgroundJobsManager.handleJobUpdate = function(jobData) {
+            if (jobData.job_id === jobId) {
+                updateThumbnailProgress(jobId, jobData, totalVideos);
+            }
+            return originalHandler.call(this, jobData);
+        };
+    }
+}
+
+function updateThumbnailProgress_DISABLED(jobId, jobData, totalVideos) {
+    const progressBar = document.getElementById(`thumbnail-progress-bar-${jobId}`);
+    const statsElement = document.getElementById(`thumbnail-stats-${jobId}`);
+    const detailsElement = document.getElementById(`thumbnail-details-${jobId}`);
+    const containerElement = document.getElementById(`thumbnail-progress-${jobId}`);
+    
+    if (!progressBar || !containerElement) return;
+    
+    const progress = jobData.progress || 0;
+    const status = jobData.status || 'running';
+    const currentItem = Math.floor((progress / 100) * totalVideos);
+    
+    // Update progress bar
+    progressBar.style.width = `${progress}%`;
+    
+    // Update stats
+    if (statsElement) {
+        statsElement.textContent = `${currentItem} / ${totalVideos}`;
+    }
+    
+    // Update details
+    if (detailsElement) {
+        const message = jobData.current_step || jobData.message || `Processing video ${currentItem + 1}`;
+        detailsElement.textContent = message;
+    }
+    
+    // Handle completion
+    if (status === 'completed' || status === 'success' || status === 'SUCCESS') {
+        progressBar.style.width = '100%';
+        if (statsElement) statsElement.textContent = `${totalVideos} / ${totalVideos} - Complete`;
+        if (detailsElement) detailsElement.textContent = 'Thumbnail generation completed!';
+        
+        // Remove progress bar after 3 seconds and refresh videos
+        setTimeout(() => {
+            containerElement.remove();
+            loadVideos(); // Refresh the video list to show new thumbnails
+        }, 3000);
+    } else if (status === 'failed' || status === 'error' || status === 'FAILURE') {
+        progressBar.style.backgroundColor = '#dc3545';
+        if (detailsElement) detailsElement.textContent = 'Thumbnail generation failed: ' + (jobData.error || 'Unknown error');
+        
+        // Remove progress bar after 5 seconds
+        setTimeout(() => {
+            containerElement.remove();
+        }, 5000);
+    }
 }
 
 function viewVideo(id) {
@@ -1083,105 +1107,18 @@ function viewVideo(id) {
     window.location.href = `/video/${id}`;
 }
 
-function editVideo(id) {
-    // Fetch video data and populate the edit form
-    fetch(`/api/videos/${id}`)
-        .then(response => response.json())
-        .then(video => {
-            if (video.error) {
-                showError('Error loading video data: ' + video.error);
-                return;
-            }
-            
-            // Populate the form with current video data
-            document.getElementById('videoTitle').value = video.title || '';
-            document.getElementById('videoArtist').value = video.artist_name || '';
-            document.getElementById('videoYear').value = video.year || '';
-            document.getElementById('videoGenre').value = (video.genres && video.genres.length > 0) ? video.genres[0] : '';
-            document.getElementById('videoStatus').value = video.status || 'DOWNLOADED';
-            document.getElementById('videoUrl').value = video.video_url || '';
-            document.getElementById('videoThumbnailUrl').value = video.thumbnail_url || '';
-            document.getElementById('videoDuration').value = video.duration || '';
-            document.getElementById('videoImvdbId').value = video.imvdb_id || '';
-            document.getElementById('moveFile').checked = true;
-            
-            // Store the current video ID for the form submission
-            window.currentEditVideoId = id;
-            
-            // Reset the identify artist button and hide suggestions
-            resetIdentifyArtistButton();
-            document.getElementById('artistSuggestions').style.display = 'none';
-            
-            // Show the edit modal
-            document.getElementById('editVideoModal').style.display = 'block';
-        })
-        .catch(error => {
-            console.error('Error fetching video data:', error);
-            showError('Error loading video data');
-        });
-}
 
-function closeEditVideoModal() {
-    document.getElementById('editVideoModal').style.display = 'none';
-    document.getElementById('artistSuggestions').style.display = 'none';
-    resetIdentifyArtistButton();
-    window.currentEditVideoId = null;
-}
 
-// Handle edit video form submission
-document.getElementById('editVideoForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    if (!window.currentEditVideoId) {
-        showWarning('No video selected for editing');
-        return;
-    }
-    
-    const formData = new FormData(this);
-    const updateData = {
-        title: formData.get('title'),
-        artist_name: formData.get('artist_name'),
-        year: formData.get('year') ? parseInt(formData.get('year')) : null,
-        genres: formData.get('genre') ? [formData.get('genre')] : [],
-        status: formData.get('status'),
-        video_url: formData.get('video_url'),
-        thumbnail_url: formData.get('thumbnail_url'),
-        duration: formData.get('duration') ? parseInt(formData.get('duration')) : null,
-        imvdb_id: formData.get('imvdb_id'),
-        move_file: formData.get('move_file') === 'on'
-    };
-    
-    // Remove empty string values
-    Object.keys(updateData).forEach(key => {
-        if (updateData[key] === '') {
-            updateData[key] = null;
-        }
-    });
-    
-    fetch(`/api/videos/${window.currentEditVideoId}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.error) {
-            showError('Error updating video: ' + result.error);
-        } else {
-            showSuccess('Video updated successfully!');
-            closeEditVideoModal();
-            loadVideos(); // Refresh the video list
-        }
-    })
-    .catch(error => {
-        console.error('Error updating video:', error);
-        showError('Error updating video');
-    });
-});
 
 function playVideo(videoId, title, localPath, videoUrl) {
+    // Debug logging to help diagnose the issue
+    console.log('playVideo called with:', {
+        videoId: videoId,
+        title: title,
+        localPath: localPath,
+        videoUrl: videoUrl
+    });
+    
     // Set modal title
     document.getElementById('videoModalTitle').textContent = title || 'Playing Video';
     
@@ -1218,7 +1155,7 @@ function playVideo(videoId, title, localPath, videoUrl) {
             // Give it a moment to show the loading message, then start the stream
             setTimeout(() => {
                 playerDiv.innerHTML = `
-                    <video width="800" height="450" controls autoplay>
+                    <video id="modalVideoElement" width="800" height="450" controls autoplay>
                         <source src="${streamUrl}" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
@@ -1226,6 +1163,9 @@ function playVideo(videoId, title, localPath, videoUrl) {
                         <p><small>Streaming via FFmpeg transcoding</small></p>
                     </div>
                 `;
+                
+                // Load subtitles for this video
+                loadModalVideoSubtitles(videoId);
             }, 1000);
             
             return;
@@ -1245,7 +1185,7 @@ function playVideo(videoId, title, localPath, videoUrl) {
         
         // Play local file via streaming endpoint with proper MIME type
         playerDiv.innerHTML = `
-            <video width="800" height="450" controls preload="metadata">
+            <video id="modalVideoElement" width="800" height="450" controls preload="metadata">
                 <source src="/api/videos/${videoId}/stream" type="${mimeType}">
                 Your browser does not support the video tag or this video format.
             </video>
@@ -1253,6 +1193,9 @@ function playVideo(videoId, title, localPath, videoUrl) {
         
         // Add error handling for video load failures
         const video = playerDiv.querySelector('video');
+        
+        // Load subtitles for this video
+        loadModalVideoSubtitles(videoId);
         
         // Add timeout for video loading
         let loadTimeout;
@@ -1327,6 +1270,13 @@ function playVideo(videoId, title, localPath, videoUrl) {
             `;
         }
     } else {
+        // Enhanced error reporting
+        console.error('No video file available for playback. Debug info:', {
+            localPath: localPath,
+            videoUrl: videoUrl,
+            localPathType: typeof localPath,
+            videoUrlType: typeof videoUrl
+        });
         showWarning('No video file available for playback');
         return;
     }
@@ -1366,21 +1316,16 @@ function closeVideoModal() {
 // Close modal when clicking outside of it
 window.addEventListener('click', function(event) {
     const videoModal = document.getElementById('videoModal');
-    const editModal = document.getElementById('editVideoModal');
     
     if (event.target === videoModal) {
         closeVideoModal();
-    }
-    
-    if (event.target === editModal) {
-        closeEditVideoModal();
     }
 });
 
 function downloadVideo(id) {
     // Removed download confirmation popup - direct download
     {
-        fetch(`/api/videos/${id}/download`, {
+        fetch(`/api/videos/${id}/queue-download`, {
             method: 'POST'
         })
         .then(response => response.json())
@@ -1496,11 +1441,14 @@ function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     
     // Play local file via streaming endpoint with proper MIME type
     playerDiv.innerHTML = `
-        <video width="800" height="450" controls preload="metadata">
+        <video id="modalVideoElement" width="800" height="450" controls preload="metadata">
             <source src="/api/videos/${videoId}/stream" type="${mimeType}">
             Your browser does not support the video tag or this video format.
         </video>
     `;
+    
+    // Load subtitles for this video
+    loadModalVideoSubtitles(videoId);
     
     // Add all the same error handling as the normal playback
     const video = playerDiv.querySelector('video');
@@ -1566,7 +1514,7 @@ function refreshAndPlay(id) {
 }
 
 function refreshVideoMetadata(id) {
-    toastConfirm('Refresh metadata for this video from IMVDb and extract FFmpeg technical data? This will update year, directors, producers, thumbnail, duration, quality, and technical metadata.', () => {
+    toastConfirm('Refresh enhanced metadata for this video using comprehensive sources including IMVDb, lyrics, FFmpeg analysis, and genre fallback? This will update all metadata fields with the most complete information available.', () => {
         // Find the video card to show loading state
         const videoCard = document.querySelector(`[data-video-id="${id}"]`).closest('.video-card');
         const originalContent = videoCard.innerHTML;
@@ -1577,16 +1525,19 @@ function refreshVideoMetadata(id) {
                 <div class="loading-spinner">
                     <img src="{{ url_for('static', filename='MVidarr.png') }}" alt="MVidarr" class="spinning mvidarr-logo-spinner" style="width: 24px; height: 24px;">
                 </div>
-                <p>Refreshing metadata from IMVDb and extracting technical data...</p>
-                <small style="color: var(--text-muted);">This may take a moment for video analysis</small>
+                <p>Enriching metadata from multiple sources...</p>
+                <small style="color: var(--text-muted);">Using IMVDb, lyrics, FFmpeg analysis, and genre fallback - this may take a moment</small>
             </div>
         `;
         
-        fetch(`/api/videos/${id}/refresh-metadata`, {
+        fetch(`/api/videos/${id}/enhanced-refresh-metadata`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({
+                force_refresh: false
+            })
         })
         .then(response => {
             if (response.status === 409) {
@@ -1614,9 +1565,14 @@ function refreshVideoMetadata(id) {
                 videoCard.innerHTML = originalContent;
             } else {
                 // Build success message based on what was updated
-                let message = `Metadata refreshed successfully from ${result.source}!`;
-                if (result.ffmpeg_extracted) {
-                    message += ' Technical metadata also extracted from video file.';
+                let message = `Enhanced metadata enriched successfully!`;
+                const sources = [];
+                if (result.imvdb_updated) sources.push('IMVDb');
+                if (result.ffmpeg_extracted) sources.push('FFmpeg analysis');
+                if (result.lyrics_found) sources.push('lyrics');
+                if (result.genre_applied) sources.push('genre fallback');
+                if (sources.length > 0) {
+                    message += ` Sources used: ${sources.join(', ')}.`;
                 }
                 showSuccess(message);
                 
@@ -1632,20 +1588,20 @@ function refreshVideoMetadata(id) {
             }
         })
         .catch(error => {
-            console.error('Error refreshing metadata:', error);
-            showError(`Error refreshing metadata: ${error.message}`);
+            console.error('Error refreshing enhanced metadata:', error);
+            showError(`Error refreshing enhanced metadata: ${error.message}`);
             // Restore original content on error
             videoCard.innerHTML = originalContent;
         });
         
         // Add a timeout to prevent cards getting stuck indefinitely
         setTimeout(() => {
-            if (videoCard && videoCard.innerHTML.includes('Refreshing metadata')) {
-                console.warn(`Metadata refresh for video ${id} timed out`);
+            if (videoCard && videoCard.innerHTML.includes('Enriching metadata')) {
+                console.warn(`Enhanced metadata refresh for video ${id} timed out`);
                 videoCard.innerHTML = originalContent;
-                showWarning('Metadata refresh timed out. Please try again.');
+                showWarning('Enhanced metadata refresh timed out. External services may be slow - please try again later.');
             }
-        }, 60000); // 60 second timeout
+        }, 65000); // 65 second timeout (5 seconds after backend timeout)
     });
 }
 
@@ -1682,9 +1638,11 @@ function updateSingleVideoCard(videoId) {
                     <input type="checkbox" class="video-checkbox" value="${video.id}" onchange="updateSelectedCount()" ${isChecked ? 'checked' : ''}>
                 </div>
                 <div class="video-thumbnail" data-video-id="${video.id}" data-action="play">
+                    ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="thumbnail-artist-link" title="View ${escapeHtml(video.artist_name || 'Unknown')} artist page">` : ''}
                     <img src="/api/videos/${video.id}/thumbnail" 
                          alt="${video.title}"
                          onerror="this.src='/static/placeholder-video.png'">
+                    ${video.artist_id ? '</a>' : ''}
                     <div class="play-overlay">
                         <div class="play-button">▶</div>
                     </div>
@@ -1701,16 +1659,13 @@ function updateSingleVideoCard(videoId) {
                     </div>
                 </div>
                 <div class="video-actions">
-                    <button data-video-id="${video.id}" data-action="edit" class="btn-icon" title="Edit Video">
-                        <iconify-icon icon="tabler:edit"></iconify-icon>
-                    </button>
                     <button data-video-id="${video.id}" data-action="download" class="btn-icon" title="Download Video">
                         <iconify-icon icon="tabler:download"></iconify-icon>
                     </button>
                     <button data-video-id="${video.id}" data-action="add-to-playlist" class="btn-icon" title="Add to Playlist">
                         <iconify-icon icon="tabler:playlist-add"></iconify-icon>
                     </button>
-                    <button data-video-id="${video.id}" data-action="refresh-metadata" class="btn-icon" title="Refresh Metadata">
+                    <button data-video-id="${video.id}" data-action="refresh-metadata" class="btn-icon" title="Refresh Enhanced Metadata">
                         <iconify-icon icon="tabler:refresh"></iconify-icon>
                     </button>
                     <button data-video-id="${video.id}" data-action="delete" class="btn-icon btn-danger" title="Delete Video">
@@ -1730,7 +1685,7 @@ function updateSingleVideoCard(videoId) {
             const videoElement = document.querySelector(`[data-video-id="${videoId}"]`);
             if (videoElement) {
                 const videoCard = videoElement.closest('.video-card');
-                if (videoCard && videoCard.innerHTML.includes('Refreshing metadata')) {
+                if (videoCard && videoCard.innerHTML.includes('Enriching metadata')) {
                     // Card is stuck in loading state, force a page refresh to restore
                     console.warn('Video card stuck in loading state, refreshing page...');
                     location.reload();
@@ -1743,13 +1698,13 @@ function refreshAllMetadata() {
     const selectedVideoIds = getSelectedVideoIds();
     const isSelectedVideos = selectedVideoIds.length > 0;
     const message = isSelectedVideos 
-        ? `Refresh metadata from IMVDb for ${selectedVideoIds.length} selected videos that don't have IMVDb data? This may take several minutes.`
-        : 'Refresh metadata from IMVDb for all videos that don\'t have IMVDb data? This may take several minutes.';
+        ? `Refresh enhanced metadata for ${selectedVideoIds.length} selected videos using comprehensive sources? This may take several minutes.`
+        : 'Refresh enhanced metadata for all videos using comprehensive sources? This may take several minutes.';
         
     toastConfirm(message, () => {
         const button = event.target;
         const originalText = button.textContent;
-        button.textContent = 'Refreshing...';
+        button.textContent = 'Enriching...';
         button.disabled = true;
         
         const requestBody = {
@@ -1761,7 +1716,7 @@ function refreshAllMetadata() {
             requestBody.video_ids = selectedVideoIds;
         }
         
-        fetch('/api/videos/refresh-all-metadata', {
+        fetch('/api/videos/enhanced-refresh-all-metadata', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1787,8 +1742,8 @@ function refreshAllMetadata() {
             }
         })
         .catch(error => {
-            console.error('Error refreshing all metadata:', error);
-            showError(`Error refreshing metadata: ${error.message}`);
+            console.error('Error refreshing all enhanced metadata:', error);
+            showError(`Error refreshing enhanced metadata: ${error.message}`);
             button.textContent = originalText;
             button.disabled = false;
         });
@@ -1920,276 +1875,12 @@ function confirmDeleteVideo() {
     });
 }
 
-function identifyArtist() {
-    const videoId = window.currentEditVideoId;
-    if (!videoId) {
-        showWarning('No video selected');
-        return;
-    }
-    
-    const button = document.getElementById('identifyArtistBtn');
-    button.textContent = '🔄 Identifying...';
-    button.disabled = true;
-    
-    // Store the request so it can be aborted if needed
-    const abortController = new AbortController();
-    window.currentIdentifyRequest = abortController;
-    
-    fetch(`/api/videos/${videoId}/identify-artist`, {
-        method: 'POST',
-        signal: abortController.signal
-    })
-    .then(response => response.json())
-    .then(result => {
-        // Only process if this request is still current
-        if (window.currentIdentifyRequest === abortController) {
-            resetIdentifyArtistButton();
-            
-            if (result.error) {
-                showError('Error identifying artist: ' + result.error);
-                return;
-            }
-            
-            displayArtistSuggestions(result);
-        }
-    })
-    .catch(error => {
-        // Only show error if request wasn't aborted
-        if (window.currentIdentifyRequest === abortController && error.name !== 'AbortError') {
-            console.error('Error identifying artist:', error);
-            showError('Error identifying artist');
-        }
-        
-        // Reset button if this was the current request
-        if (window.currentIdentifyRequest === abortController) {
-            resetIdentifyArtistButton();
-        }
-    });
-}
 
-function displayArtistSuggestions(data) {
-    const suggestionsDiv = document.getElementById('artistSuggestions');
-    
-    if (!data.suggestions || data.suggestions.length === 0) {
-        suggestionsDiv.innerHTML = `
-            <h4>No Artist Suggestions Found</h4>
-            <p>No automatic suggestions could be generated for "${data.title}".</p>
-            <div class="manual-entry">
-                <label>Enter artist name manually:</label>
-                <div class="autocomplete-container">
-                    <input type="text" id="manualArtistInput" placeholder="Enter artist name" 
-                           oninput="searchExistingArtists(this.value)" 
-                           onkeydown="handleAutocompleteKeydown(event)"
-                           autocomplete="off">
-                    <div id="artistAutocomplete" class="autocomplete-suggestions" style="display: none;"></div>
-                </div>
-                <button type="button" onclick="applyManualArtist()" class="btn btn-primary btn-small" style="margin-top: 5px;">Apply</button>
-            </div>
-        `;
-        suggestionsDiv.style.display = 'block';
-        return;
-    }
-    
-    let html = `<h4>Artist Suggestions for "${data.title}":</h4>`;
-    
-    data.suggestions.forEach((suggestion, index) => {
-        const confidenceClass = getConfidenceClass(suggestion.confidence);
-        const confidencePercent = Math.round(suggestion.confidence * 100);
-        
-        html += `
-            <div class="artist-suggestion" onclick="selectArtistSuggestion('${suggestion.artist_name}')">
-                <div class="artist-suggestion-name">${suggestion.artist_name}</div>
-                <div class="artist-suggestion-details">
-                    <span class="artist-suggestion-confidence ${confidenceClass}">
-                        ${confidencePercent}%
-                    </span>
-                    Source: ${suggestion.source}
-                    ${suggestion.reason ? `<br><em>${suggestion.reason}</em>` : ''}
-                </div>
-            </div>
-        `;
-    });
-    
-    // Add manual entry option
-    html += `
-        <div class="manual-entry">
-            <label>Or enter artist name manually:</label>
-            <input type="text" id="manualArtistInput" placeholder="Enter artist name">
-            <button type="button" onclick="applyManualArtist()" class="btn btn-primary btn-small" style="margin-top: 5px;">Apply</button>
-        </div>
-    `;
-    
-    suggestionsDiv.innerHTML = html;
-    suggestionsDiv.style.display = 'block';
-}
 
-function getConfidenceClass(confidence) {
-    if (confidence >= 0.8) return 'high';
-    if (confidence >= 0.6) return 'medium';
-    return 'low';
-}
 
-function selectArtistSuggestion(artistName) {
-    document.getElementById('videoArtist').value = artistName;
-    document.getElementById('artistSuggestions').style.display = 'none';
-}
 
-function applyManualArtist() {
-    const manualInput = document.getElementById('manualArtistInput');
-    const artistName = manualInput.value.trim();
-    
-    if (artistName) {
-        document.getElementById('videoArtist').value = artistName;
-        document.getElementById('artistSuggestions').style.display = 'none';
-    } else {
-        showWarning('Please enter an artist name');
-    }
-}
 
-function resetIdentifyArtistButton() {
-    // Abort any pending identify request
-    if (window.currentIdentifyRequest) {
-        window.currentIdentifyRequest.abort();
-        window.currentIdentifyRequest = null;
-    }
-    
-    const button = document.getElementById('identifyArtistBtn');
-    if (button) {
-        button.textContent = '🔍 Identify Artist';
-        button.disabled = false;
-    }
-}
 
-// Autocomplete functionality for artist search
-let autocompleteTimeout;
-let selectedAutocompleteIndex = -1;
-
-function searchExistingArtists(query) {
-    // Clear previous timeout
-    if (autocompleteTimeout) {
-        clearTimeout(autocompleteTimeout);
-    }
-    
-    // Reset selection
-    selectedAutocompleteIndex = -1;
-    
-    // Debounce the search
-    autocompleteTimeout = setTimeout(() => {
-        if (query.length < 2) {
-            hideAutocomplete();
-            return;
-        }
-        
-        fetch(`/api/videos/search-artists?q=${encodeURIComponent(query)}`)
-            .then(response => response.json())
-            .then(data => {
-                displayAutocomplete(data.artists);
-            })
-            .catch(error => {
-                console.error('Error searching artists:', error);
-                hideAutocomplete();
-            });
-    }, 300); // Wait 300ms after user stops typing
-}
-
-function displayAutocomplete(artists) {
-    const autocompleteDiv = document.getElementById('artistAutocomplete');
-    
-    if (!artists || artists.length === 0) {
-        hideAutocomplete();
-        return;
-    }
-    
-    let html = '';
-    artists.forEach((artist, index) => {
-        html += `
-            <div class="autocomplete-suggestion" data-artist-name="${artist.name.replace(/"/g, '&quot;')}" data-index="${index}">
-                <span class="autocomplete-suggestion-name">${artist.name}</span>
-                <span class="autocomplete-suggestion-count">(${artist.video_count} videos)</span>
-            </div>
-        `;
-    });
-    
-    autocompleteDiv.innerHTML = html;
-    autocompleteDiv.style.display = 'block';
-    
-    // Add click event listeners for autocomplete suggestions
-    autocompleteDiv.querySelectorAll('.autocomplete-suggestion').forEach(suggestion => {
-        suggestion.addEventListener('click', function() {
-            const artistName = this.getAttribute('data-artist-name');
-            selectAutocompleteArtist(artistName);
-        });
-    });
-}
-
-function hideAutocomplete() {
-    const autocompleteDiv = document.getElementById('artistAutocomplete');
-    if (autocompleteDiv) {
-        autocompleteDiv.style.display = 'none';
-    }
-    selectedAutocompleteIndex = -1;
-}
-
-function selectAutocompleteArtist(artistName) {
-    document.getElementById('manualArtistInput').value = artistName;
-    hideAutocomplete();
-}
-
-function handleAutocompleteKeydown(event) {
-    const autocompleteDiv = document.getElementById('artistAutocomplete');
-    const suggestions = autocompleteDiv.querySelectorAll('.autocomplete-suggestion');
-    
-    if (suggestions.length === 0) {
-        return;
-    }
-    
-    switch (event.key) {
-        case 'ArrowDown':
-            event.preventDefault();
-            selectedAutocompleteIndex = Math.min(selectedAutocompleteIndex + 1, suggestions.length - 1);
-            updateAutocompleteSelection(suggestions);
-            break;
-            
-        case 'ArrowUp':
-            event.preventDefault();
-            selectedAutocompleteIndex = Math.max(selectedAutocompleteIndex - 1, -1);
-            updateAutocompleteSelection(suggestions);
-            break;
-            
-        case 'Enter':
-            event.preventDefault();
-            if (selectedAutocompleteIndex >= 0) {
-                const selectedSuggestion = suggestions[selectedAutocompleteIndex];
-                const artistName = selectedSuggestion.getAttribute('data-artist-name');
-                selectAutocompleteArtist(artistName);
-            }
-            break;
-            
-        case 'Escape':
-            hideAutocomplete();
-            break;
-    }
-}
-
-function updateAutocompleteSelection(suggestions) {
-    // Remove previous selection
-    suggestions.forEach(suggestion => {
-        suggestion.classList.remove('selected');
-    });
-    
-    // Add selection to current item
-    if (selectedAutocompleteIndex >= 0) {
-        suggestions[selectedAutocompleteIndex].classList.add('selected');
-    }
-}
-
-// Hide autocomplete when clicking outside
-document.addEventListener('click', function(event) {
-    const autocompleteContainer = document.querySelector('.autocomplete-container');
-    if (autocompleteContainer && !autocompleteContainer.contains(event.target)) {
-        hideAutocomplete();
-    }
-});
 
 // Bulk Selection Functions
 function toggleSelectAll() {
@@ -2298,6 +1989,80 @@ function deleteSelectedVideos() {
     }
 }
 
+// Video Modal Subtitle Functions
+let modalAvailableSubtitles = [];
+
+async function loadModalVideoSubtitles(videoId) {
+    try {
+        const response = await fetch(`/api/videos/${videoId}/subtitles`);
+        const data = await response.json();
+        modalAvailableSubtitles = data.subtitles || [];
+        
+        console.log('Modal subtitles loaded:', modalAvailableSubtitles);
+        
+        // Automatically load all available subtitle tracks
+        if (modalAvailableSubtitles.length > 0) {
+            loadModalSubtitleTracks();
+        }
+    } catch (error) {
+        console.error('Failed to load modal subtitles:', error);
+        modalAvailableSubtitles = [];
+    }
+}
+
+function loadModalSubtitleTracks() {
+    const videoElement = document.getElementById('modalVideoElement');
+    if (!videoElement || modalAvailableSubtitles.length === 0) return;
+    
+    console.log('Loading modal subtitle tracks:', modalAvailableSubtitles);
+    
+    // Remove existing tracks
+    const existingTracks = videoElement.querySelectorAll('track');
+    existingTracks.forEach(track => track.remove());
+    
+    // Add all available subtitle tracks
+    modalAvailableSubtitles.forEach((subtitle, index) => {
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.src = subtitle.url;
+        
+        // Set language code
+        if (subtitle.language === 'default') {
+            track.srclang = 'en';
+        } else if (subtitle.language.includes('-')) {
+            // Handle language variants like "en-ja", use the first part
+            track.srclang = subtitle.language.split('-')[0];
+        } else {
+            track.srclang = subtitle.language;
+        }
+        
+        // Set display label
+        let label = subtitle.language === 'default' ? 'Default' : subtitle.language.toUpperCase();
+        if (subtitle.format) {
+            label += ` (${subtitle.format})`;
+        }
+        track.label = label;
+        
+        // Set the first track as default
+        if (index === 0) {
+            track.default = true;
+        }
+        
+        videoElement.appendChild(track);
+        
+        console.log(`Added modal subtitle track: ${track.label} (${track.srclang}) - ${track.src}`);
+    });
+    
+    // Wait a moment for tracks to load, then ensure the first one is showing
+    setTimeout(() => {
+        if (videoElement.textTracks.length > 0) {
+            // Set the first track to showing mode
+            videoElement.textTracks[0].mode = 'showing';
+            console.log('Enabled first modal subtitle track');
+        }
+    }, 500);
+}
+
 </script>
 
 <!-- Video Thumbnail Management Modal -->
@@ -2387,7 +2152,7 @@ function deleteSelectedVideos() {
                     <div class="url-upload-form">
                         <div class="form-group">
                             <label for="videoThumbnailUrlInput">Image URL:</label>
-                            <input type="url" id="videoThumbnailUrlInput" placeholder="https://example.com/image.jpg" class="form-control">
+                            <input type="text" id="videoThumbnailUrlInput" placeholder="https://example.com/image.jpg" class="form-control">
                         </div>
                         <div class="form-actions">
                             <button onclick="previewVideoUrlImage()" class="btn btn-info">🔍 Preview</button>
@@ -2561,21 +2326,6 @@ let searchActive = false;
 // Video Thumbnail Management Functions
 let currentVideoThumbnailId = null;
 
-function openVideoThumbnailManager() {
-    if (!window.currentEditVideoId) {
-        showError('No video selected for thumbnail management');
-        return;
-    }
-    
-    currentVideoThumbnailId = window.currentEditVideoId;
-    document.getElementById('videoThumbnailModal').style.display = 'block';
-    
-    // Load current thumbnail info
-    loadVideoThumbnailInfo();
-    
-    // Initialize drag & drop
-    initializeVideoThumbnailUpload();
-}
 
 function closeVideoThumbnailModal() {
     document.getElementById('videoThumbnailModal').style.display = 'none';
@@ -2703,8 +2453,6 @@ function handleVideoThumbnailFile(file) {
             loadVideoThumbnailInfo();
             refreshVideoDisplayThumbnail();
             
-            // Update the thumbnail URL field in the edit form
-            document.getElementById('videoThumbnailUrl').value = '';
         }
     })
     .catch(error => {
@@ -2754,8 +2502,6 @@ function uploadVideoFromUrl() {
             loadVideoThumbnailInfo();
             refreshVideoDisplayThumbnail();
             
-            // Update the thumbnail URL field in the edit form
-            document.getElementById('videoThumbnailUrl').value = url;
         }
     })
     .catch(error => {
@@ -2944,8 +2690,6 @@ function deleteVideoThumbnail() {
             loadVideoThumbnailInfo();
             refreshVideoDisplayThumbnail();
             
-            // Clear the thumbnail URL field in the edit form
-            document.getElementById('videoThumbnailUrl').value = '';
         }
     })
     .catch(error => {
@@ -3647,12 +3391,12 @@ function bulkRefreshMetadata() {
         return;
     }
     
-    const confirmed = confirm(`Refresh metadata from IMVDb for ${videoIds.length} selected video(s)? This will update year, directors, producers, and thumbnail information.`);
+    const confirmed = confirm(`Refresh enhanced metadata for ${videoIds.length} selected video(s)? This will use comprehensive sources including IMVDb, lyrics, FFmpeg analysis, and genre fallback.`);
     
     if (confirmed) {
-        showBulkProgress('Refreshing metadata...');
+        showBulkProgress('Refreshing enhanced metadata...');
         
-        fetch('/api/videos/bulk/refresh-metadata', {
+        fetch('/api/videos/bulk/enhanced-refresh-metadata', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -3664,14 +3408,17 @@ function bulkRefreshMetadata() {
         .then(response => response.json())
         .then(data => {
             hideBulkProgress();
-            if (data.updated_count > 0) {
-                showSuccess(`Successfully refreshed metadata for ${data.updated_count} video(s)`);
+            if (data.successful > 0) {
+                showSuccess(`Successfully enriched enhanced metadata for ${data.successful} video(s)`);
             }
-            if (data.failed_count > 0) {
-                showWarning(`Failed to refresh metadata for ${data.failed_count} video(s)`);
+            if (data.failed > 0) {
+                showWarning(`Failed to enrich metadata for ${data.failed} video(s)`);
+                if (data.errors && data.errors.length > 0) {
+                    console.error('Bulk enhanced metadata errors:', data.errors);
+                }
             }
-            if (data.skipped_count > 0) {
-                showInfo(`Skipped ${data.skipped_count} video(s) - no IMVDb ID available`);
+            if (data.successful === 0 && data.failed === 0) {
+                showInfo('No videos were processed');
             }
             loadVideos();
             updateSelectedCount();
@@ -3679,7 +3426,7 @@ function bulkRefreshMetadata() {
         .catch(error => {
             hideBulkProgress();
             console.error('Error:', error);
-            showError('Error refreshing metadata');
+            showError('Error refreshing enhanced metadata');
         });
     }
 }
@@ -4384,8 +4131,10 @@ function displayVideos(videos) {
                             <input type="checkbox" class="video-checkbox" value="${safeVideo.id}" onchange="updateSelectedCount()">
                         </div>
                         <div class="video-thumbnail" data-video-id="${safeVideo.id}" data-action="play">
+                            ${safeVideo.artist_id ? `<a href="/artist/${safeVideo.artist_id}" class="thumbnail-artist-link" title="View ${safeVideo.artist_name || 'Unknown'} artist page">` : ''}
                             <img src="/api/videos/${safeVideo.id}/thumbnail" 
                                  alt="${safeVideo.title}" onerror="this.src='/static/placeholder-video.png'">
+                            ${safeVideo.artist_id ? '</a>' : ''}
                             <div class="play-overlay">
                                 <div class="play-button">▶</div>
                             </div>
@@ -4404,13 +4153,10 @@ function displayVideos(videos) {
                             <button data-video-id="${safeVideo.id}" data-action="view" class="btn-icon" title="View Details">
                                 <i class="icon-eye"></i>
                             </button>
-                            <button data-video-id="${safeVideo.id}" data-action="edit" class="btn-icon" title="Edit Video">
-                                <i class="icon-edit"></i>
-                            </button>
                             <button data-video-id="${safeVideo.id}" data-action="add-to-playlist" class="btn-icon" title="Add to Playlist">
                                 <iconify-icon icon="tabler:playlist-add"></iconify-icon>
                             </button>
-                            <button data-video-id="${safeVideo.id}" data-action="refresh-metadata" class="btn-icon" title="Refresh Metadata">
+                            <button data-video-id="${safeVideo.id}" data-action="refresh-metadata" class="btn-icon" title="Refresh Enhanced Metadata">
                                 <i class="icon-refresh"></i>
                             </button>
                             ${safeVideo.status === 'WANTED' ? 
@@ -4545,7 +4291,7 @@ async function loadVideos(page = 1, size = 50, resetPage = false) {
         if (!response.ok) {
             if (response.status === 401) {
                 // Handle authentication required
-                window.location.href = '/simple-login';
+                window.location.href = '/auth/login';
                 return;
             }
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -4655,9 +4401,6 @@ document.addEventListener('click', function(event) {
         case 'view':
             viewVideo(videoId);
             break;
-        case 'edit':
-            editVideo(videoId);
-            break;
         case 'add-to-playlist':
             addSingleVideoToPlaylist(videoId);
             break;
@@ -4685,6 +4428,7 @@ async function playVideoById(videoId) {
         }
         
         const video = await response.json();
+        console.log('API returned video data:', video);
         playVideo(video.id, video.title, video.local_path, video.video_url);
     } catch (error) {
         console.error('Error fetching video for playback:', error);
@@ -5227,10 +4971,10 @@ function enhanceSearchResults(videos, searchQuery) {
 {% include 'components/add_video_modal.html' %}
 
 <!-- UI Enhancement Scripts - ENABLED for playlist functionality -->
-<script src="{{ url_for('frontend.js_files', filename='video-management-enhanced.js') }}?v=20241213-1620"></script>
+<script src="/static/js/video-management-enhanced.js?v=20250911-1900"></script>
 <!-- Temporarily disabled virtualization to debug loading issue
-<script src="{{ url_for('frontend.js_files', filename='virtualization-engine.js') }}?v=20250813-1447"></script>
-<script src="{{ url_for('frontend.js_files', filename='video-virtualization-integration.js') }}"></script>
+<script src="/static/js/virtualization-engine.js?v=20250813-1447"></script>
+<script src="/static/js/video-virtualization-integration.js"></script>
 -->
 
 <script>
@@ -5798,6 +5542,39 @@ function performVideoMerge(currentVideoId, duplicateVideoId) {
 .artist-link:hover {
     color: var(--primary-color-hover, #6bb6ff);
     text-decoration: underline;
+}
+
+/* Thumbnail artist link styles */
+.thumbnail-artist-link {
+    position: relative;
+    display: block;
+    z-index: 1;
+}
+
+.thumbnail-artist-link img {
+    transition: opacity 0.2s ease;
+}
+
+.thumbnail-artist-link:hover img {
+    opacity: 0.8;
+}
+
+/* Ensure play overlay appears above thumbnail link */
+.video-thumbnail .play-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.video-thumbnail .play-overlay .play-button {
+    pointer-events: auto;
 }
 
 /* Video metadata styles */
@@ -6674,6 +6451,82 @@ function performVideoMerge(currentVideoId, duplicateVideoId) {
 
 .search-input-container {
     position: relative;
+}
+
+/* Thumbnail Generation Progress Bar Styles */
+.progress-container {
+    background: var(--surface-light, #f8fafc);
+    border: 1px solid var(--border-light, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.progress-title {
+    font-weight: 600;
+    color: var(--text-primary, #1a202c);
+    font-size: 14px;
+}
+
+.progress-stats {
+    font-size: 13px;
+    color: var(--text-muted, #64748b);
+    font-family: 'Courier New', monospace;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background-color: var(--surface-dark, #e2e8f0);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    min-width: 0;
+}
+
+.progress-details {
+    font-size: 12px;
+    color: var(--text-muted, #64748b);
+    font-style: italic;
+}
+
+/* Dark theme support for progress bar */
+@media (prefers-color-scheme: dark) {
+    .progress-container {
+        background: var(--surface-light-dark, #2d3748);
+        border-color: var(--border-light-dark, #4a5568);
+    }
+    
+    .progress-title {
+        color: var(--text-primary-dark, #f7fafc);
+    }
+    
+    .progress-stats {
+        color: var(--text-muted-dark, #a0aec0);
+    }
+    
+    .progress-bar-container {
+        background-color: var(--surface-dark-dark, #4a5568);
+    }
+    
+    .progress-details {
+        color: var(--text-muted-dark, #a0aec0);
+    }
 }
 </style>
 

@@ -1,0 +1,41 @@
+{
+  "name": "mvidarr",
+  "version": "1.0.0",
+  "description": "**A comprehensive music video management and discovery platform** that helps you organize, discover, and stream your music video collection with intelligent artist management and advanced search capabilities.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:auth": "playwright test tests/e2e/auth.spec.js",
+    "test:dashboard": "playwright test tests/e2e/dashboard.spec.js", 
+    "test:artists": "playwright test tests/e2e/artists.spec.js",
+    "test:videos": "playwright test tests/e2e/video-management.spec.js",
+    "test:navigation": "playwright test tests/e2e/navigation-ui.spec.js",
+    "test:api": "playwright test tests/e2e/api-validation.spec.js",
+    "test:fixes": "playwright test tests/e2e/fixes-0.9.8.spec.js",
+    "test:core": "playwright test tests/e2e/auth.spec.js tests/e2e/dashboard.spec.js tests/e2e/artists.spec.js",
+    "test:extended": "playwright test tests/e2e/video-management.spec.js tests/e2e/navigation-ui.spec.js tests/e2e/api-validation.spec.js",
+    "test:report": "playwright show-report",
+    "test:install": "playwright install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prefect421/mvidarr.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/prefect421/mvidarr/issues"
+  },
+  "homepage": "https://github.com/prefect421/mvidarr#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}

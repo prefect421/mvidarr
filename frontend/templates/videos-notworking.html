@@ -1133,7 +1133,7 @@ window.onclick = function(event) {
 function downloadVideo(id) {
     // Removed download confirmation popup - direct download
     {
-        fetch(`/api/videos/${id}/download`, {
+        fetch(`/api/videos/${id}/queue-download`, {
             method: 'POST'
         })
         .then(response => response.json())

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - MVidarr</title>
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='themes.css') }}" id="themes-stylesheet">
     <style>
         * {
             margin: 0;
@@ -14,8 +13,8 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg-primary, #f8f9fa);
-            color: var(--text-primary, #333);
+            background: #f8f9fa;
+            color: #333;
         }
         
         .header {
@@ -519,11 +518,70 @@
             
             <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                 <a href="/admin/users/create" class="btn btn-success">➕ Create User</a>
+                <button onclick="showAddArtistModal()" class="btn btn-success">🎤 Add Artist</button>
                 <a href="/admin/system" class="btn btn-primary">⚙️ System Status</a>
                 <a href="/admin/audit" class="btn btn-secondary">📋 View Audit Log</a>
                 <a href="/api/auth/health" class="btn btn-secondary">🔍 Auth Health Check</a>
                 <button onclick="refreshSystemInfo()" class="btn btn-secondary">🔄 Refresh Status</button>
                 <button onclick="viewRecentLogs()" class="btn btn-secondary">📄 Recent Logs</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Artist Modal -->
+    <div id="addArtistModal" class="modal">
+        <div class="modal-content" style="max-width: 600px; width: 95%;">
+            <div class="modal-header">
+                <h3 class="modal-title">🎤 Add New Artist</h3>
+                <span class="close" onclick="hideAddArtistModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Search Section -->
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="margin-bottom: 1rem;">Search IMVDb</h4>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <input type="text" id="addArtistSearchInput" placeholder="Search for artists on IMVDb..." 
+                               style="flex: 1; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;"
+                               onkeyup="searchImvdbForAdd(event)">
+                        <button onclick="searchImvdbForAdd()" class="btn btn-primary">Search</button>
+                    </div>
+                    <div id="addArtistSearchResults" style="max-height: 200px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 4px; padding: 1rem;">
+                        <p>Enter a search term to find artists from IMVDb</p>
+                    </div>
+                </div>
+                
+                <!-- Manual Entry Section -->
+                <div>
+                    <h4 style="margin-bottom: 1rem;">Or Add Manually</h4>
+                    <form id="addArtistForm">
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Artist Name:</label>
+                            <input type="text" id="artistName" name="name" required 
+                                   style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">IMVDB ID (optional):</label>
+                            <input type="text" id="imvdbId" name="imvdb_id" 
+                                   style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="autoDownload" name="auto_download">
+                                Auto-download new videos
+                            </label>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="monitored" name="monitored" checked>
+                                Monitor for new videos
+                            </label>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" onclick="hideAddArtistModal()" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="addArtist()" class="btn btn-primary">Add Artist</button>
             </div>
         </div>
     </div>
@@ -682,48 +740,146 @@
                 });
         }
 
+        // Add Artist Modal Functions
+        function showAddArtistModal() {
+            const modal = document.getElementById('addArtistModal');
+            modal.style.display = 'block';
+        }
+
+        function hideAddArtistModal() {
+            const modal = document.getElementById('addArtistModal');
+            modal.style.display = 'none';
+            
+            // Reset form content
+            document.getElementById('addArtistForm').reset();
+            document.getElementById('addArtistSearchInput').value = '';
+            document.getElementById('addArtistSearchResults').innerHTML = '<p>Enter a search term to find artists from IMVDb</p>';
+        }
+
+        function searchImvdbForAdd(event) {
+            // Handle Enter key press
+            if (event && event.key && event.key !== 'Enter') {
+                return;
+            }
+            
+            const searchTerm = document.getElementById('addArtistSearchInput').value.trim();
+            if (!searchTerm) {
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('addArtistSearchResults');
+            resultsDiv.innerHTML = '<p>Searching database and IMVDb...</p>';
+            
+            // Search IMVDb
+            fetch(`/api/artists/discover?q=${encodeURIComponent(searchTerm)}&limit=10`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.artists && result.artists.length > 0) {
+                        resultsDiv.innerHTML = `
+                            <div style="margin-bottom: 1rem;">
+                                <h5>Found ${result.artists.length} artists on IMVDb:</h5>
+                            </div>
+                            ${result.artists.map(artist => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border: 1px solid #e9ecef; margin-bottom: 0.5rem; border-radius: 4px;">
+                                    <div>
+                                        <strong>${artist.name}</strong>
+                                        ${artist.video_count ? `<div style="font-size: 0.875rem; color: #666;">${artist.video_count} videos on IMVDb</div>` : ''}
+                                    </div>
+                                    <button onclick="addArtistFromImvdb('${artist.imvdb_id}', '${artist.name.replace(/'/g, '\\\'')}')" 
+                                            class="btn btn-primary" style="font-size: 0.875rem; padding: 0.25rem 0.5rem;">
+                                        Add This Artist
+                                    </button>
+                                </div>
+                            `).join('')}
+                        `;
+                    } else {
+                        resultsDiv.innerHTML = '<p>No artists found on IMVDb. Try a different search term or add manually.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching IMVDb:', error);
+                    resultsDiv.innerHTML = '<p>Error searching IMVDb. Try adding manually instead.</p>';
+                });
+        }
+
+        function addArtist() {
+            const formData = new FormData(document.getElementById('addArtistForm'));
+            const data = {
+                name: formData.get('name'),
+                imvdb_id: formData.get('imvdb_id'),
+                auto_download: formData.get('auto_download') === 'on',
+                monitored: formData.get('monitored') === 'on'
+            };
+            
+            fetch('/api/artists/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.error) {
+                    alert('Error: ' + result.error);
+                } else {
+                    alert('Artist added successfully!');
+                    hideAddArtistModal();
+                    // Optionally redirect to artists page
+                    // window.location.href = '/artists';
+                }
+            })
+            .catch(error => {
+                console.error('Error adding artist:', error);
+                alert('Error adding artist');
+            });
+        }
+
+        function addArtistFromImvdb(imvdbId, artistName) {
+            if (confirm(`Add "${artistName}" from IMVDb?`)) {
+                fetch('/api/artists/import-from-imvdb', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imvdb_id: imvdbId,
+                        monitored: true,
+                        auto_download: false
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.error) {
+                        alert('Error: ' + result.error);
+                    } else {
+                        alert(`Artist "${result.name}" added successfully!`);
+                        hideAddArtistModal();
+                        // Optionally redirect to artists page
+                        // window.location.href = '/artists';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error importing artist:', error);
+                    alert('Error importing artist from IMVDb');
+                });
+            }
+        }
+
         // Close modals when clicking outside
         window.onclick = function(event) {
             const restartModal = document.getElementById('restartModal');
             const logsModal = document.getElementById('logsModal');
+            const addArtistModal = document.getElementById('addArtistModal');
             
             if (event.target === restartModal) {
                 hideRestartModal();
             } else if (event.target === logsModal) {
                 hideLogsModal();
+            } else if (event.target === addArtistModal) {
+                hideAddArtistModal();
             }
         }
-        
-        // Theme management
-        window.currentTheme = window.currentTheme || 'default';
-        window.currentMode = window.currentMode || 'dark';
-        
-        function applyCurrentTheme() {
-            document.documentElement.setAttribute('data-theme', window.currentTheme);
-            document.documentElement.setAttribute('data-mode', window.currentMode);
-        }
-        
-        function loadSavedTheme() {
-            const savedDayNightMode = localStorage.getItem('mvidarr-daynight-mode');
-            window.currentMode = savedDayNightMode || 'dark';
-            
-            fetch('/api/settings/ui_theme')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.value) {
-                        window.currentTheme = data.value;
-                    }
-                    applyCurrentTheme();
-                })
-                .catch(error => {
-                    console.log('Theme setting not found, using default');
-                    applyCurrentTheme();
-                });
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            loadSavedTheme();
-        });
     </script>
 </body>
 </html>

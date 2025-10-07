@@ -320,7 +320,7 @@ class MVidarrCore {
                 if (logoutEndpoint === '/simple-auth/logout') {
                     window.location.href = '/simple-auth/login';
                 } else if (logoutEndpoint === '/auth/dynamic-logout') {
-                    window.location.href = '/simple-login';
+                    window.location.href = '/auth/login';
                 } else {
                     window.location.href = '/';
                 }

@@ -181,6 +181,24 @@ function syncLidarrLibrary() {
                 message: `${data.synced_count} artists synced out of ${data.processed_count} total`
             }]);
             loadArtistLibrary(); // Refresh artist display
+            
+            // Search thumbnails for newly synced artists
+            if (data.synced_artists && data.synced_artists.length > 0) {
+                console.log(`🔍 Searching thumbnails for ${data.synced_artists.length} synced artists...`);
+                const thumbnailPromises = data.synced_artists.map(artistId => 
+                    searchThumbnailForArtist(artistId).catch(error => {
+                        console.log(`🔍 Thumbnail search failed for artist ${artistId}:`, error);
+                        return false;
+                    })
+                );
+                
+                Promise.allSettled(thumbnailPromises).then(results => {
+                    const successCount = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
+                    if (successCount > 0) {
+                        showLidarrSuccess(`Found thumbnails for ${successCount} artists during library sync`);
+                    }
+                });
+            }
         } else {
             showLidarrError('Library sync failed: ' + data.error);
         }
@@ -206,6 +224,24 @@ function importMonitoredArtists() {
                 message: `${data.imported_count} artists imported from ${data.monitored_artists} monitored artists`
             }]);
             loadArtistLibrary(); // Refresh artist display
+            
+            // Search thumbnails for newly imported artists
+            if (data.imported_artists && data.imported_artists.length > 0) {
+                console.log(`🔍 Searching thumbnails for ${data.imported_artists.length} imported artists...`);
+                const thumbnailPromises = data.imported_artists.map(artistId => 
+                    searchThumbnailForArtist(artistId).catch(error => {
+                        console.log(`🔍 Thumbnail search failed for artist ${artistId}:`, error);
+                        return false;
+                    })
+                );
+                
+                Promise.allSettled(thumbnailPromises).then(results => {
+                    const successCount = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
+                    if (successCount > 0) {
+                        showLidarrSuccess(`Found thumbnails for ${successCount} artists during import`);
+                    }
+                });
+            }
         } else {
             showLidarrError('Artist import failed: ' + data.error);
         }
@@ -390,6 +426,41 @@ function openLidarrSettings() {
 function refreshLidarrData() {
     checkLidarrConnection();
     loadArtistLibrary();
+}
+
+// Thumbnail search functionality
+async function searchThumbnailForArtist(artistId) {
+    try {
+        const searchResponse = await fetch(`/api/artists/${artistId}/thumbnail/search`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({
+                source: 'auto',
+                query: null
+            })
+        });
+        
+        const searchData = await searchResponse.json();
+        if (searchData.success && searchData.results && searchData.results.length > 0) {
+            const bestResult = searchData.results[0];
+            const setResponse = await fetch(`/api/artists/${artistId}/thumbnail`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({thumbnail_url: bestResult.url}),
+                credentials: 'include'
+            });
+            
+            if (setResponse.ok) {
+                const setData = await setResponse.json();
+                return setData.success;
+            }
+        }
+        return false;
+    } catch (error) {
+        console.log(`🔍 Thumbnail search failed for artist ${artistId}:`, error);
+        return false;
+    }
 }
 
 // Utility functions for notifications - use global toast system

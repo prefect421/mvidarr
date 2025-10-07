@@ -33,12 +33,12 @@ Use our optimized production image:
 
 ```bash
 # Pull the latest release
-docker pull ghcr.io/prefect421/mvidarr:v0.9.7
+docker pull ghcr.io/prefect421/mvidarr:v0.9.8
 
 # Or use in docker-compose.yml
 services:
   mvidarr:
-    image: ghcr.io/prefect421/mvidarr:v0.9.7
+    image: ghcr.io/prefect421/mvidarr:v0.9.8
     # ... other configuration
 ```
 

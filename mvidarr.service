@@ -1,28 +1,32 @@
 [Unit]
-Description=MVidarr Enhanced - Professional Music Video Management System
-Documentation=file:///home/mike/mvidarr/README.md
-After=network-online.target mysql.service mariadb.service
+Description=MVidarr Enhanced - Professional Music Video Management System with Advanced Processing
+Documentation=file:///home/mike/mvidarr/README.md file:///home/mike/mvidarr/MILESTONE_ROADMAP.md file:///home/mike/mvidarr/PHASE_2_WEEKS18-24_ROADMAP.md
+After=network-online.target mysql.service mariadb.service redis.service
 Wants=network-online.target
+Requires=redis.service
 RequiresMountsFor=/home/mike/mvidarr
 
 [Service]
-Type=simple
+Type=exec
 User=mike
 Group=mike
 WorkingDirectory=/home/mike/mvidarr
 
-# Use app_launcher.py for better initialization
-ExecStart=/usr/bin/python3 /home/mike/mvidarr/app_launcher.py
-ExecStartPre=/usr/bin/mkdir -p /home/mike/mvidarr/data/logs /home/mike/mvidarr/data/downloads /home/mike/mvidarr/data/thumbnails /home/mike/mvidarr/data/cache /home/mike/mvidarr/data/backups
+# Create required directories and set permissions
+ExecStartPre=/usr/bin/mkdir -p /home/mike/mvidarr/data/logs /home/mike/mvidarr/data/downloads /home/mike/mvidarr/data/thumbnails /home/mike/mvidarr/data/cache /home/mike/mvidarr/data/backups /home/mike/mvidarr/data/processing /home/mike/mvidarr/scripts
+ExecStartPre=+/usr/bin/chown -R mike:mike /home/mike/mvidarr/data/logs
+ExecStartPre=+/usr/bin/chmod 755 /home/mike/mvidarr/data/logs
+ExecStartPre=/home/mike/mvidarr/venv/bin/python /home/mike/mvidarr/scripts/reset_stuck_downloads.py
+ExecStart=/home/mike/mvidarr/venv/bin/python /home/mike/mvidarr/fastapi_app.py
 ExecReload=/bin/kill -HUP $MAINPID
 
 # Enhanced restart and failure handling
 Restart=always
-RestartSec=15
-StartLimitInterval=300
-StartLimitBurst=5
-TimeoutStartSec=60
-TimeoutStopSec=30
+RestartSec=20
+StartLimitInterval=600
+StartLimitBurst=3
+TimeoutStartSec=120
+TimeoutStopSec=60
 KillMode=mixed
 KillSignal=SIGTERM
 
@@ -31,13 +35,27 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=mvidarr
 
-# Environment variables
-Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# Environment variables for Phase 2 FastAPI Application
+Environment=PATH=/home/mike/mvidarr/venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PYTHONPATH=/home/mike/mvidarr
 Environment=FLASK_ENV=production
+Environment=FASTAPI_ENV=production
 Environment=PYTHONUNBUFFERED=1
+Environment=ASYNC_MODE=enabled
+Environment=PHASE_2_ADVANCED_PROCESSING=enabled
+Environment=FFMPEG_ADVANCED_TASKS=enabled
+Environment=CONCURRENT_VIDEO_PROCESSING=enabled
+Environment=QUALITY_ANALYSIS_ENABLED=enabled
+Environment=BULK_OPERATIONS_ENABLED=enabled
+Environment=REDIS_URL=redis://localhost:6379/0
+Environment=CELERY_BROKER_URL=redis://localhost:6379/0
+Environment=CELERY_RESULT_BACKEND=redis://localhost:6379/0
+Environment=BACKGROUND_JOBS_ENABLED=true
+Environment=JOB_SYSTEM_ENABLED=true
+Environment=JOB_WORKER_COUNT=3
+Environment=JOB_WEBSOCKET_ENABLED=true
 
-# Security settings (relaxed for home directory access)
+# Security settings for home directory access
 NoNewPrivileges=yes
 PrivateTmp=yes
 # Commented out for home directory access
@@ -46,9 +64,9 @@ PrivateTmp=yes
 # ReadWritePaths=/home/mike/mvidarr/data
 # ReadOnlyPaths=/home/mike/mvidarr
 
-# Resource limits
-LimitNOFILE=65536
-LimitNPROC=4096
+# Enhanced resource limits for Phase 2 advanced processing
+LimitNOFILE=131072
+LimitNPROC=8192
 
 [Install]
 WantedBy=multi-user.target

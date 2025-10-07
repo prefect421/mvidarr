@@ -139,12 +139,6 @@ class VideoManagementUI {
                 type: 'btn-success',
                 handler: 'addToPlaylist'
             },
-            {
-                icon: 'tabler:edit',
-                label: 'Edit',
-                type: 'btn-ghost',
-                handler: 'editVideo'
-            }
         ];
         
         const statusActions = {
@@ -563,24 +557,46 @@ class VideoManagementUI {
         const videoIds = Array.from(this.selectedVideos);
         
         try {
-            window.uiEnhancements.info('Download Started', `Downloading ${videoIds.length} videos...`);
+            window.uiEnhancements.info('Bulk Download Started', `Downloading ${videoIds.length} videos...`);
             
             const response = await fetch('/api/videos/bulk/download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ video_ids: videoIds })
+                body: JSON.stringify({ 
+                    video_ids: videoIds
+                })
             });
             
             const result = await response.json();
             
             if (result.success) {
-                window.uiEnhancements.success('Download Initiated', `${result.queued_count} videos queued for download`);
+                window.uiEnhancements.success('Bulk Download Initiated', `${result.total_videos} videos queued for download - Job ID: ${result.job_id}`);
+                
+                // Update all selected video statuses
+                videoIds.forEach(videoId => {
+                    this.updateVideoCardStatus(videoId, 'DOWNLOADING');
+                });
+                
+                // Use background jobs system for progress tracking
+                if (window.backgroundJobs) {
+                    window.backgroundJobs.activeJobs.set(result.job_id, {
+                        id: result.job_id,
+                        type: 'bulk_video_download',
+                        status: 'queued',
+                        progress: 0,
+                        message: `Bulk download: ${result.total_videos} videos queued`,
+                        startTime: Date.now()
+                    });
+                    window.backgroundJobs.subscribeToJob(result.job_id);
+                    window.backgroundJobs.showJobProgress(result.job_id);
+                }
+                
                 this.clearSelection();
             } else {
                 throw new Error(result.error || 'Download failed');
             }
         } catch (error) {
-            window.uiEnhancements.error('Download Failed', error.message);
+            window.uiEnhancements.error('Bulk Download Failed', error.message);
         }
     }
     
@@ -764,9 +780,6 @@ class VideoManagementUI {
                 case 'playVideo':
                     await this.playVideo(videoId);
                     break;
-                case 'editVideo':
-                    this.openVideoEditModal(videoId);
-                    break;
                 case 'addToPlaylist':
                     this.addSingleVideoToPlaylist(videoId);
                     break;
@@ -793,17 +806,35 @@ class VideoManagementUI {
     }
     
     async downloadSingleVideo(videoId) {
-        const response = await fetch('/api/videos/download', {
+        const response = await fetch(`/api/videos/${videoId}/download`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ video_id: videoId })
+            body: JSON.stringify({ 
+                priority: 5,  // High priority (1-10 scale)
+                force_redownload: false 
+            })
         });
         
         const result = await response.json();
         
         if (result.success) {
-            window.uiEnhancements.success('Download Started', 'Video queued for download');
+            window.uiEnhancements.success('Download Started', `Video queued for download - Job ID: ${result.job_id}`);
             this.updateVideoCardStatus(videoId, 'DOWNLOADING');
+            
+            // Use background jobs system for progress tracking
+            if (window.backgroundJobs) {
+                // The job is already started by the API, so we just need to track it
+                window.backgroundJobs.activeJobs.set(result.job_id, {
+                    id: result.job_id,
+                    type: 'video_download',
+                    status: 'queued',
+                    progress: 0,
+                    message: `Downloading: ${result.video_title || `Video ${videoId}`}`,
+                    startTime: Date.now()
+                });
+                window.backgroundJobs.subscribeToJob(result.job_id);
+                window.backgroundJobs.showJobProgress(result.job_id);
+            }
         } else {
             throw new Error(result.error || 'Download failed');
         }

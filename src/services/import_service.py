@@ -1271,7 +1271,91 @@ class ImportService:
                         results["videos_skipped"] += 1
                         continue
 
-                    # Create new video
+                    # Validate video has URL before importing
+                    has_url = bool(
+                        video_data.url
+                        or video_data.youtube_url
+                        or video_data.youtube_id
+                    )
+
+                    if not has_url:
+                        # Try to find URL via IMVDB before rejecting the video
+                        try:
+                            from src.services.imvdb_service import IMVDbService
+
+                            imvdb_service = IMVDbService()
+
+                            # Get artist name for IMVDB search
+                            artist_name = (
+                                artist.name
+                                if artist
+                                else f"Unknown Artist {video_data.artist_id}"
+                            )
+                            logger.info(
+                                f"Video import: No URL found for '{artist_name} - {video_data.title}', checking IMVDB"
+                            )
+
+                            search_results = imvdb_service.search_videos(
+                                artist_name, video_data.title
+                            )
+
+                            if search_results and len(search_results) > 0:
+                                # Get the first result
+                                imvdb_video = search_results[0]
+
+                                # Extract YouTube URL if available
+                                youtube_url = None
+                                if "sources" in imvdb_video:
+                                    for source in imvdb_video["sources"]:
+                                        if source.get(
+                                            "source"
+                                        ) == "youtube" and source.get("source_data"):
+                                            youtube_url = source["source_data"]
+                                            break
+
+                                if youtube_url:
+                                    logger.info(
+                                        f"✅ Found YouTube URL from IMVDB during import: {youtube_url}"
+                                    )
+
+                                    # Update video_data with found URL
+                                    video_data.url = youtube_url
+                                    video_data.youtube_url = youtube_url
+
+                                    # Extract YouTube ID from URL
+                                    if "watch?v=" in youtube_url:
+                                        video_data.youtube_id = youtube_url.split(
+                                            "watch?v="
+                                        )[1].split("&")[0]
+                                    elif "youtu.be/" in youtube_url:
+                                        video_data.youtube_id = youtube_url.split(
+                                            "youtu.be/"
+                                        )[1].split("?")[0]
+
+                                    # Also update IMVDB metadata if available
+                                    if "id" in imvdb_video:
+                                        video_data.imvdb_id = str(imvdb_video["id"])
+                                    if imvdb_video:
+                                        video_data.imvdb_metadata = imvdb_video
+
+                                    has_url = True
+                                    logger.info(
+                                        f"✅ Updated video import data with IMVDB URL"
+                                    )
+
+                        except Exception as imvdb_error:
+                            logger.warning(
+                                f"IMVDB search failed during import for '{video_data.title}': {imvdb_error}"
+                            )
+
+                    if not has_url:
+                        logger.warning(
+                            f"Skipping video import '{video_data.title}': No URL found (not in IMVDB or provided data)"
+                        )
+                        results["videos_skipped"] += 1
+                        continue
+
+                    # Create new video (now guaranteed to have URL)
                     new_video = self._create_video_from_data(video_data, import_options)
                     db.add(new_video)
                     results["videos_imported"] += 1

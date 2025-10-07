@@ -86,11 +86,34 @@ else
     echo "✅ Database already initialized (marker file exists)"
 fi
 
+# Run database migrations
+echo "🔄 Running database migrations..."
+python3 -c "
+import sys
+sys.path.insert(0, '/app')
+sys.path.insert(0, '/app/src')
+print('Running database migrations...')
+try:
+    from src.database.migrations import run_migrations
+    print('✅ Migration module loaded')
+    result = run_migrations()
+    if result:
+        print('✅ Migrations completed successfully')
+    else:
+        print('⚠️ No pending migrations')
+except ImportError as e:
+    print(f'⚠️ Migration module not found: {e}')
+    print('Skipping migrations - will run during database init')
+except Exception as e:
+    print(f'⚠️ Migration error: {e}')
+    print('Continuing with application startup...')
+"
+
 # Start the application
 echo "🚀 Starting MVidarr application..."
 echo "📍 Working directory: $(pwd)"
 echo "🐍 Python path: $PYTHONPATH"
 
 # Start application with error output
-echo "▶️ Executing: python3 app.py"
-exec python3 app.py
+echo "▶️ Executing: python3 fastapi_app.py"
+exec python3 fastapi_app.py

@@ -618,11 +618,13 @@ function loadArtists(page = 1, resetPage = false) {
                             <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})">
                         </div>
                         <div class="artist-thumbnail">
-                            <img src="/api/artists/${artist.id}/thumbnail" 
-                                 alt="${artist.name}" onerror="handleThumbnailError(this)">
+                            <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${artist.name} details">
+                                <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" 
+                                     alt="${artist.name}" onerror="handleThumbnailError(this)">
+                            </a>
                         </div>
                         <div class="artist-info">
-                            <h3>${artist.name}</h3>
+                            <h3><a href="/artist/${artist.id}" class="artist-name-link" title="View ${artist.name} details">${artist.name}</a></h3>
                             <div class="artist-stats">
                                 <span class="stat">Videos: ${artist.video_count || 0}</span>
                                 <span class="stat ${artist.monitored ? 'monitored' : 'not-monitored'}" title="${artist.monitored ? 'Monitored' : 'Not Monitored'}">
@@ -660,7 +662,7 @@ function loadArtists(page = 1, resetPage = false) {
             console.error('Error loading artists from advanced search:', error);
             
             // Fallback to basic artists endpoint
-            console.log('Falling back to basic artists endpoint...');
+            // Fall back to basic artists endpoint
             
             const basicParams = new URLSearchParams();
             basicParams.append('page', page);
@@ -700,11 +702,13 @@ function loadArtists(page = 1, resetPage = false) {
                                     <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})">
                                 </div>
                                 <div class="artist-thumbnail">
-                                    <img src="/api/artists/${artist.id}/thumbnail" 
-                                         alt="${artist.name}" onerror="handleThumbnailError(this)">
+                                    <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${artist.name} details">
+                                        <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" 
+                                             alt="${artist.name}" onerror="handleThumbnailError(this)">
+                                    </a>
                                 </div>
                                 <div class="artist-info">
-                                    <h3>${artist.name}</h3>
+                                    <h3><a href="/artist/${artist.id}" class="artist-name-link" title="View ${artist.name} details">${artist.name}</a></h3>
                                     <div class="artist-stats">
                                         <span class="stat">Videos: N/A</span>
                                         <span class="stat ${artist.monitored ? 'monitored' : 'not-monitored'}" title="${artist.monitored ? 'Monitored' : 'Not Monitored'}">
@@ -808,7 +812,7 @@ function setupModal() {
 
 function showAddArtistModal() {
     const modal = document.getElementById('addArtistModal');
-    console.log('Showing Add Artist modal');
+    // Show Add Artist modal
     
     // Show the modal using our proven overlay approach
     modal.style.cssText = `
@@ -883,7 +887,7 @@ function showAddArtistModal() {
     }
     
     modal.classList.add('show');
-    console.log('Add Artist modal displayed with enhanced visibility');
+    // Add Artist modal displayed with enhanced visibility
 }
 
 function hideAddArtistModal() {
@@ -895,6 +899,67 @@ function hideAddArtistModal() {
     document.getElementById('addArtistForm').reset();
     document.getElementById('addArtistSearchInput').value = '';
     document.getElementById('addArtistSearchResults').innerHTML = '<p>Enter a search term to find artists from IMVDb</p>';
+}
+
+async function searchThumbnailForArtist(artistId) {
+    console.log(`🔍 Searching for artist thumbnail for ID ${artistId}...`);
+    
+    try {
+        // Search for thumbnails from Wikipedia and YouTube
+        const searchResponse = await fetch(`/api/artists/${artistId}/thumbnail/search`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                source: 'auto',
+                query: null
+            })
+        });
+        
+        if (!searchResponse.ok) {
+            throw new Error(`Thumbnail search failed: ${searchResponse.status}`);
+        }
+        
+        const searchData = await searchResponse.json();
+        
+        if (searchData.success && searchData.results && searchData.results.length > 0) {
+            // Use the first result (highest priority)
+            const bestResult = searchData.results[0];
+            console.log(`🔍 Found thumbnail from ${bestResult.source}: ${bestResult.url}`);
+            
+            // Download and set the thumbnail using the correct PUT endpoint
+            const setResponse = await fetch(`/api/artists/${artistId}/thumbnail`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    thumbnail_url: bestResult.url
+                }),
+                credentials: 'include'
+            });
+            
+            if (setResponse.ok) {
+                const setData = await setResponse.json();
+                if (setData.success) {
+                    console.log(`✅ Successfully downloaded and set thumbnail from ${bestResult.source}`);
+                    return true;
+                } else {
+                    throw new Error(setData.error || 'Failed to download thumbnail');
+                }
+            } else {
+                throw new Error(`Thumbnail download failed: ${setResponse.status}`);
+            }
+        } else {
+            console.log('🔍 No thumbnails found from priority sources');
+            return false;
+        }
+    } catch (error) {
+        console.log(`🔍 Thumbnail search error for artist ${artistId}: ${error.message}`);
+        throw error;
+    }
 }
 
 function addArtist() {
@@ -918,6 +983,13 @@ function addArtist() {
         if (result.error) {
             showError('Error: ' + result.error);
         } else {
+            // Search for thumbnail for the newly created artist
+            if (result.id) {
+                console.log(`🔍 Searching thumbnail for newly created artist ${result.id}: ${result.name}`);
+                searchThumbnailForArtist(result.id).catch(error => {
+                    console.log(`🔍 Thumbnail search failed for new artist ${result.id}:`, error);
+                });
+            }
             hideAddArtistModal();
             loadArtists();
         }
@@ -1344,13 +1416,13 @@ function proceedAddArtistFromImvdb(imvdbId, artistName) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            imvdb_id: imvdbId,
+            imvdb_id: parseInt(imvdbId),
             monitored: true,
             auto_download: false
         })
     })
     .then(response => response.json())
-    .then(result => {
+    .then(async result => {
         if (result.error) {
             if (typeof showError === 'function') {
                 showError('Error: ' + result.error);
@@ -1362,6 +1434,56 @@ function proceedAddArtistFromImvdb(imvdbId, artistName) {
                 showSuccess(`Artist "${result.name}" added successfully!`);
             } else {
                 alert(`Artist "${result.name}" added successfully!`);
+            }
+            // Search for thumbnail and run full enrichment for the newly imported artist
+            if (result.id) {
+                try {
+                    // Search for thumbnail
+                    console.log(`🔍 Searching thumbnail for imported artist ${result.id}: ${result.name}`);
+                    const thumbnailSuccess = await searchThumbnailForArtist(result.id);
+                    if (thumbnailSuccess) {
+                        console.log(`🔍 Found thumbnail for "${result.name}"`);
+                    }
+                    
+                    // Run full metadata enrichment
+                    if (typeof showInfo === 'function') {
+                        showInfo(`Enriching metadata for "${result.name}" from all sources...`);
+                    }
+                    const enrichResponse = await fetch(`/api/metadata-enrichment/enrich/${result.id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ force_refresh: true })
+                    });
+                    
+                    console.log(`🔍 Enrichment response status:`, enrichResponse.status);
+                    const enrichData = await enrichResponse.json();
+                    console.log(`🔍 Enrichment response data:`, enrichData);
+                    
+                    if (enrichResponse.ok && enrichData.success) {
+                        const sourcesUsed = enrichData.sources_used || [];
+                        const enrichedFields = enrichData.enriched_fields || [];
+                        console.log(`🔍 Sources used:`, sourcesUsed);
+                        console.log(`🔍 Fields enriched:`, enrichedFields);
+                        
+                        if (sourcesUsed.length > 0) {
+                            if (typeof showSuccess === 'function') {
+                                showSuccess(`"${result.name}" enriched from ${sourcesUsed.join(', ')}`);
+                            }
+                        } else {
+                            console.log(`⚠️ No sources returned data for ${result.name}`);
+                            if (typeof showWarning === 'function') {
+                                showWarning(`No additional metadata found for "${result.name}"`);
+                            }
+                        }
+                    } else {
+                        console.error(`❌ Enrichment failed for ${result.name}:`, enrichData);
+                        if (typeof showError === 'function') {
+                            showError(`Failed to enrich "${result.name}": ${enrichData.error || 'Unknown error'}`);
+                        }
+                    }
+                } catch (error) {
+                    console.log(`🔍 Enrichment failed for ${result.name}:`, error);
+                }
             }
             hideAddArtistModal();
             loadArtists(currentPage); // Refresh the artists list
@@ -1452,19 +1574,61 @@ function importArtist(imvdbId, artistName) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                imvdb_id: imvdbId,
+                imvdb_id: parseInt(imvdbId),
                 monitored: true,
                 auto_download: false
             })
         })
         .then(response => response.json())
-        .then(result => {
+        .then(async result => {
             if (result.error) {
                 showError('Error: ' + result.error);
             } else {
                 showSuccess(`Artist "${result.name}" imported successfully!`);
                 hideDiscoveryModal();
                 loadArtists(currentPage); // Refresh the artists list
+                
+                // Search for thumbnail and run full enrichment
+                if (result.artist_id) {
+                    try {
+                        // Search for thumbnail
+                        const thumbnailSuccess = await searchThumbnailForArtist(result.artist_id);
+                        if (thumbnailSuccess) {
+                            console.log(`🔍 Found thumbnail for "${result.name}"`);
+                        }
+                        
+                        // Run full metadata enrichment
+                        showInfo(`Enriching metadata for "${result.name}" from all sources...`);
+                        const enrichResponse = await fetch(`/api/metadata-enrichment/enrich/${result.artist_id}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ force_refresh: true })
+                        });
+                        
+                        console.log(`🔍 Enrichment response status:`, enrichResponse.status);
+                        const enrichData = await enrichResponse.json();
+                        console.log(`🔍 Enrichment response data:`, enrichData);
+                        
+                        if (enrichResponse.ok && enrichData.success) {
+                            const sourcesUsed = enrichData.sources_used || [];
+                            const enrichedFields = enrichData.enriched_fields || [];
+                            console.log(`🔍 Sources used:`, sourcesUsed);
+                            console.log(`🔍 Fields enriched:`, enrichedFields);
+                            
+                            if (sourcesUsed.length > 0) {
+                                showSuccess(`"${result.name}" enriched from ${sourcesUsed.join(', ')}`);
+                            } else {
+                                console.log(`⚠️ No sources returned data for ${result.name}`);
+                                showWarning(`No additional metadata found for "${result.name}"`);
+                            }
+                        } else {
+                            console.error(`❌ Enrichment failed for ${result.name}:`, enrichData);
+                            showError(`Failed to enrich "${result.name}": ${enrichData.error || 'Unknown error'}`);
+                        }
+                    } catch (error) {
+                        console.log(`🔍 Enrichment failed for ${result.name}:`, error);
+                    }
+                }
             }
         })
         .catch(error => {
@@ -1484,7 +1648,7 @@ function deleteArtist(id) {
     const artistCard = document.querySelector(`[data-artist-id="${id}"]`);
     const artistName = artistCard ? artistCard.querySelector('h3').textContent : 'this artist';
     
-    if (confirm(`Are you sure you want to delete "${artistName}"? This action cannot be undone and will also delete all associated videos.`)) {
+    if (confirm(`Are you sure you want to delete "${artistName}"? This action cannot be undone.`)) {
         // Show loading state
         const deleteBtn = event.target.closest('button');
         const originalContent = deleteBtn.innerHTML;
@@ -1494,9 +1658,10 @@ function deleteArtist(id) {
         fetch(`/api/artists/${id}`, {
             method: 'DELETE'
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+        .then(async response => {
+            const data = await response.json();
+            
+            if (response.ok) {
                 showSuccess(`Artist "${artistName}" deleted successfully`);
                 
                 // Remove the artist card from the grid with animation
@@ -1509,8 +1674,54 @@ function deleteArtist(id) {
                     // Update the results count
                     updateResultsAfterDelete();
                 }, 300);
+            } else if (response.status === 400 && (data.detail || data.message) && (data.detail || data.message).includes('associated videos')) {
+                // Artist has videos, ask if user wants to delete videos too
+                const confirmWithVideos = confirm(
+                    `${data.detail || data.message}\n\nWould you like to delete the artist along with all their videos? This action cannot be undone.`
+                );
+                
+                if (confirmWithVideos) {
+                    // Retry deletion with delete_videos=true
+                    fetch(`/api/artists/${id}?delete_videos=true`, {
+                        method: 'DELETE'
+                    })
+                    .then(async retryResponse => {
+                        const retryData = await retryResponse.json();
+                        
+                        if (retryResponse.ok) {
+                            showSuccess(`Artist "${artistName}" and all associated videos deleted successfully`);
+                            
+                            // Remove the artist card from the grid with animation
+                            artistCard.style.transition = 'all 0.3s ease';
+                            artistCard.style.transform = 'scale(0)';
+                            artistCard.style.opacity = '0';
+                            
+                            setTimeout(() => {
+                                artistCard.remove();
+                                updateResultsAfterDelete();
+                            }, 300);
+                        } else {
+                            showError(retryData.detail || retryData.message || retryData.error || 'Failed to delete artist with videos');
+                            // Restore button
+                            deleteBtn.innerHTML = originalContent;
+                            deleteBtn.disabled = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting artist with videos:', error);
+                        showError('Error deleting artist with videos');
+                        // Restore button
+                        deleteBtn.innerHTML = originalContent;
+                        deleteBtn.disabled = false;
+                    });
+                } else {
+                    // User chose not to delete videos, restore button
+                    deleteBtn.innerHTML = originalContent;
+                    deleteBtn.disabled = false;
+                }
             } else {
-                showError(data.error || 'Failed to delete artist');
+                // Other error
+                showError(data.detail || data.message || data.error || 'Failed to delete artist');
                 // Restore button
                 deleteBtn.innerHTML = originalContent;
                 deleteBtn.disabled = false;
@@ -1715,15 +1926,16 @@ function bulkDeleteArtists() {
             artist_ids: artistIds
         })
     })
-    .then(response => response.json())
-    .then(result => {
-        if (result.error) {
-            showError('Error: ' + result.error);
-        } else {
+    .then(async response => {
+        const result = await response.json();
+        
+        if (response.ok) {
             showSuccess(`Successfully deleted ${result.deleted_count} artist${result.deleted_count > 1 ? 's' : ''}`);
             selectedArtists.clear();
             updateSelectionDisplay();
             loadArtists(currentPage);
+        } else {
+            showError(result.detail || result.message || result.error || 'Failed to delete selected artists');
         }
     })
     .catch(error => {
@@ -1802,7 +2014,7 @@ function loadMergeArtists() {
                 <label>
                     <input type="radio" name="primaryArtist" value="${artist.id}" onchange="selectPrimaryArtist(${artist.id})">
                     <div class="merge-artist-info">
-                        <img src="/api/artists/${artist.id}/thumbnail" alt="${artist.name}" onerror="handleThumbnailError(this)">
+                        <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" alt="${artist.name}" onerror="handleThumbnailError(this)">
                         <div class="merge-artist-details">
                             <h4>${artist.name}</h4>
                             <p>${artist.video_count || 0} videos</p>
@@ -2416,15 +2628,16 @@ function bulkArchive() {
                 artist_ids: artistIds
             })
         })
-        .then(response => response.json())
-        .then(result => {
+        .then(async response => {
+            const result = await response.json();
             hideBulkProgress();
-            if (result.error) {
-                showError('Error: ' + result.error);
-            } else {
+            
+            if (response.ok) {
                 showSuccess(`Successfully archived ${result.archived_count} artist${result.archived_count > 1 ? 's' : ''}`);
                 selectedArtists.clear();
                 loadArtists(currentPage);
+            } else {
+                showError(result.message || result.error || 'Failed to archive selected artists');
             }
         })
         .catch(error => {
@@ -3171,6 +3384,36 @@ function updateArtistPagination(data) {
 }
 
 .artist-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Artist name and thumbnail link styles */
+.artist-name-link {
+    color: var(--text-primary, #fff);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.artist-name-link:hover {
+    color: var(--text-accent, #00d4ff);
+    text-decoration: none;
+}
+
+.artist-thumbnail-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.2s ease;
+}
+
+.artist-thumbnail-link:hover {
+    opacity: 0.8;
+}
+
+.artist-thumbnail-link img {
     width: 100%;
     height: 100%;
     object-fit: cover;

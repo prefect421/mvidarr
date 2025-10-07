@@ -214,13 +214,11 @@ class EnhancedArtistDiscoveryService:
                 # Gather metadata from all sources
                 enrichment_data = []
 
-                # IMVDb enrichment
-                try:
-                    imvdb_data = self._enrich_from_imvdb(artist.name)
-                    if imvdb_data:
-                        enrichment_data.append(imvdb_data)
-                except Exception as e:
-                    logger.error(f"IMVDb enrichment error for {artist.name}: {e}")
+                # IMVDb enrichment - DISABLED per user requirements
+                # IMVDb should only be used for searching, not as a metadata source
+                logger.debug(
+                    f"IMVDb enrichment disabled per configuration for artist: {artist.name}"
+                )
 
                 # Spotify enrichment
                 try:
@@ -780,21 +778,11 @@ class EnhancedArtistDiscoveryService:
     # Enrichment helper methods
 
     def _enrich_from_imvdb(self, artist_name: str) -> Optional[ArtistMetadata]:
-        """Enrich artist from IMVDb"""
-        try:
-            search_results = imvdb_service.search_artists(artist_name, 1)
-            if search_results and search_results.get("artists"):
-                artist_data = search_results["artists"][0]
-                return ArtistMetadata(
-                    name=artist_data.get("name", artist_name),
-                    source=DiscoverySource.IMVDB,
-                    confidence=0.9,
-                    external_ids={"imvdb_id": str(artist_data.get("id", ""))},
-                    image_url=artist_data.get("image_url", ""),
-                    quality_score=MetadataQuality.GOOD,
-                )
-        except Exception as e:
-            logger.error(f"IMVDb enrichment error: {e}")
+        """Enrich artist from IMVDb - DISABLED per user requirements"""
+        # IMVDb should only be used for searching, not as a metadata source
+        logger.debug(
+            f"IMVDb enrichment method disabled per configuration for artist: {artist_name}"
+        )
         return None
 
     def _enrich_from_spotify(self, artist_name: str) -> Optional[ArtistMetadata]:
@@ -1167,3 +1155,13 @@ class EnhancedArtistDiscoveryService:
 
 # Initialize service instance
 enhanced_artist_discovery_service = EnhancedArtistDiscoveryService()
+
+
+async def get_enhanced_artist_discovery() -> EnhancedArtistDiscoveryService:
+    """
+    Get the enhanced artist discovery service instance
+
+    Returns:
+        EnhancedArtistDiscoveryService: Configured service instance
+    """
+    return enhanced_artist_discovery_service

@@ -1,0 +1,82 @@
+# Development environment overrides
+replicaCount: 1
+
+image:
+  pullPolicy: Always
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+app:
+  environment: development
+  logLevel: DEBUG
+  debug: true
+
+autoscaling:
+  enabled: false
+
+database:
+  mariadb:
+    enabled: true
+    auth:
+      rootPassword: "dev-root-password"
+      password: "dev-password"
+    primary:
+      persistence:
+        size: 5Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+
+redis:
+  enabled: true
+  auth:
+    password: "dev-redis-password"
+  master:
+    persistence:
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+storage:
+  media:
+    size: 10Gi
+  thumbnails:
+    size: 2Gi
+  temp:
+    size: 5Gi
+
+ingress:
+  enabled: true
+  hosts:
+    - host: dev.mvidarr.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: mvidarr-dev-tls
+      hosts:
+        - dev.mvidarr.example.com
+
+certManager:
+  enabled: false  # Use self-signed certs in dev
+
+config:
+  session:
+    secretKey: "dev-session-secret-not-for-production"
+  jwt:
+    secretKey: "dev-jwt-secret-not-for-production"

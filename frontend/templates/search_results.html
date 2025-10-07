@@ -410,7 +410,7 @@ class SearchResultsPage {
         const year = result.year ? ` (${result.year})` : '';
         
         return `
-            <div class="result-item" onclick="window.open('/imvdb/video/${result.id}', '_blank')">
+            <div class="result-item" onclick="window.open('https://imvdb.com/video/${result.id}', '_blank')">
                 <h4>${title}${year}</h4>
                 <p class="artist-name">${artistName}</p>
                 ${result.directors && result.directors.length > 0 ? `<p>Director: ${result.directors.join(', ')}</p>` : ''}

@@ -1,7 +1,7 @@
 """
-Advanced Search Service for MVidarr 0.9.7 - Issue #73
-Provides comprehensive search and filtering capabilities with full-text search,
-saved presets, autocomplete, and advanced query building.
+Advanced Search Service - Phase 3 Week 30
+Music-specific search with advanced filters, faceted search, and smart suggestions
+Consumer-focused search for music video collections
 """
 
 import re
@@ -732,6 +732,65 @@ class AdvancedSearchService:
 
         except Exception as e:
             logger.error(f"Error tracking search analytics: {str(e)}")
+
+    def get_search_suggestions(
+        self, query: str, field: str = "title", limit: int = 10
+    ) -> List[str]:
+        """Get search suggestions for autocomplete"""
+        try:
+            with get_db() as db:
+                if field == "title":
+                    results = (
+                        db.query(Video.title)
+                        .filter(Video.title.ilike(f"%{query}%"))
+                        .distinct()
+                        .limit(limit)
+                        .all()
+                    )
+                    return [result[0] for result in results if result[0]]
+
+                elif field == "artist":
+                    results = (
+                        db.query(Artist.name)
+                        .filter(Artist.name.ilike(f"%{query}%"))
+                        .distinct()
+                        .limit(limit)
+                        .all()
+                    )
+                    return [result[0] for result in results if result[0]]
+
+                elif field == "genre":
+                    results = (
+                        db.query(Video.genre)
+                        .filter(Video.genre.ilike(f"%{query}%"))
+                        .filter(Video.genre.isnot(None))
+                        .distinct()
+                        .limit(limit)
+                        .all()
+                    )
+                    return [result[0] for result in results if result[0]]
+
+                elif field == "description":
+                    results = (
+                        db.query(Video.description)
+                        .filter(Video.description.ilike(f"%{query}%"))
+                        .filter(Video.description.isnot(None))
+                        .distinct()
+                        .limit(limit)
+                        .all()
+                    )
+                    return [
+                        result[0][:100] + "..." if len(result[0]) > 100 else result[0]
+                        for result in results
+                        if result[0]
+                    ]
+
+                else:
+                    return []
+
+        except Exception as e:
+            logger.error(f"Error getting search suggestions: {str(e)}")
+            return []
 
 
 # Initialize service instance

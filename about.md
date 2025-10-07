@@ -43,7 +43,7 @@ Our vision is to create the ultimate music video management solution that combin
 
 MVidarr is built using modern, reliable technologies:
 
-- **Backend**: Flask (Python 3.12+)
+- **Backend**: FastAPI (Python 3.12+)
 - **Database**: MariaDB 11.4+ with SQLAlchemy ORM
 - **Frontend**: HTML5/CSS3/JavaScript with responsive design
 - **Media Processing**: FFmpeg, yt-dlp
@@ -62,33 +62,23 @@ We follow these core principles:
 
 ## Project Status
 
-**Current Version**: v0.9.7 (Released)  
-**Development Version**: v0.9.8-dev  
-**Next Milestone**: External Service Integrations
+**Current Version**: v0.9.8 (Released)
+**Development Version**: v0.9.9-dev
+**Next Milestone**: Code Cleanup & Optimization
 
-### Recent Achievements - v0.9.7 Enterprise Media Management
-- ✅ **47 Comprehensive Solutions** - Complete feature matrix across all application areas
-- ✅ **Enterprise Quality** - 185+ comprehensive tests with 6000+ lines documentation
-- ✅ **Production Ready** - Zero known vulnerabilities with automated security monitoring
-- ✅ **Advanced Video Management** - Multi-criteria search, bulk operations, professional players
-- ✅ **User Interface Excellence** - Streamlined workflows with modern responsive design
-- ✅ **Developer Experience** - Complete testing infrastructure and comprehensive API documentation
+### Recent Achievements (v0.9.8)
+- ✅ Complete subtitle system implementation (WebVTT, SRT, ASS, SSA, SUB)
+- ✅ 100% Flask to FastAPI migration complete (200+ endpoints)
+- ✅ User testing fixes: 8/8 critical issues resolved
+- ✅ Pure FastAPI architecture - zero Flask API endpoints remain
+- ✅ Advanced async operations with comprehensive Pydantic validation
 
 ## Roadmap
 
 Our development roadmap focuses on continuous improvement:
 
-- **0.9.7**: ✅ **COMPLETED** - Enterprise Media Management & Production Ready
-- **0.9.8**: External service integrations (Spotify, Plex/Jellyfin/Emby, Discord/Slack)
-- **0.9.9**: Enterprise and multi-user features
-- **1.0.0**: Production readiness and public release
-
-### Next: v0.9.8 - External Service Integrations
-- Enhanced Spotify integration and music discovery capabilities
-- Media server integration (Plex/Jellyfin/Emby) for centralized management
-- Advanced notification system with Discord/Slack integration
-- Third-party metadata providers integration for enriched content
-- Cloud storage integration and comprehensive backup solutions
+- **0.9.9**: Code cleanup and optimization (IN PROGRESS)
+- **1.0.0**: Production readiness and public release (TARGET)
 
 ## Contributing
 

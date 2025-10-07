@@ -163,12 +163,12 @@
 
 <!-- Create/Edit Playlist Modal -->
 <div id="playlistModal" class="modal">
-    <div class="modal-content" style="width: 90%; max-width: 600px;">
+    <div class="modal-content" style="width: 90%; max-width: 600px; max-height: 90vh;">
         <div class="modal-header">
             <h3 id="playlistModalTitle">Create Playlist</h3>
             <span class="modal-close" onclick="closePlaylistModal()">&times;</span>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: calc(90vh - 120px); overflow-y: auto;">
             <form id="playlistForm" onsubmit="savePlaylist(event)">
                 <input type="hidden" id="playlistId" value="">
                 
@@ -220,6 +220,131 @@
                 </div>
                 
                 <div class="form-group">
+                    <label for="playlistType">Playlist Type</label>
+                    <select id="playlistType" class="form-control" onchange="handlePlaylistTypeChange()">
+                        <option value="STATIC">Static - Manually managed videos</option>
+                        <option value="DYNAMIC">Dynamic - Auto-updating based on filters</option>
+                    </select>
+                    <div class="form-help">Dynamic playlists automatically update when videos matching your criteria are added</div>
+                </div>
+
+                <!-- Dynamic Playlist Configuration (hidden by default) -->
+                <div id="dynamicPlaylistConfig" class="dynamic-config" style="display: none;">
+                    <div class="config-header">
+                        <h4>Dynamic Playlist Filters</h4>
+                        <p>Videos matching these criteria will be automatically added to your playlist</p>
+                    </div>
+
+                    <!-- Filter Templates -->
+                    <div class="form-group">
+                        <label for="dynamicTemplate">Quick Templates</label>
+                        <select id="dynamicTemplate" class="form-control" onchange="applyDynamicTemplate()">
+                            <option value="">Custom Configuration</option>
+                            <option value="recent_releases">Recent Releases (Last 2 Years)</option>
+                            <option value="the_80s">The 80s (1980-1989)</option>
+                            <option value="the_90s">The 90s (1990-1999)</option>
+                            <option value="short_videos">Short Videos (Under 4 Minutes)</option>
+                            <option value="hd_quality">HD Quality (720p+)</option>
+                            <option value="rock_music">Rock Music</option>
+                            <option value="pop_hits">Pop Hits</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Criteria -->
+                    <div class="filter-grid">
+                        <!-- Genre Filter -->
+                        <div class="form-group">
+                            <label for="filterGenres">Genres</label>
+                            <input type="text" id="filterGenres" class="form-control" placeholder="rock, pop, electronic (comma-separated)">
+                            <div class="form-help">Leave empty for all genres</div>
+                        </div>
+
+                        <!-- Artist Filter -->
+                        <div class="form-group">
+                            <label for="filterArtists">Artists</label>
+                            <input type="text" id="filterArtists" class="form-control" placeholder="Artist names (comma-separated)">
+                            <div class="form-help">Leave empty for all artists</div>
+                        </div>
+
+                        <!-- Year Range -->
+                        <div class="form-group">
+                            <label>Year Range</label>
+                            <div class="year-range-inputs">
+                                <input type="number" id="filterYearMin" class="form-control" placeholder="From" min="1950" max="2030">
+                                <span class="range-separator">to</span>
+                                <input type="number" id="filterYearMax" class="form-control" placeholder="To" min="1950" max="2030">
+                            </div>
+                        </div>
+
+                        <!-- Duration Range -->
+                        <div class="form-group">
+                            <label>Duration (minutes)</label>
+                            <div class="duration-range-inputs">
+                                <input type="number" id="filterDurationMin" class="form-control" placeholder="Min" min="0" max="60">
+                                <span class="range-separator">to</span>
+                                <input type="number" id="filterDurationMax" class="form-control" placeholder="Max" min="0" max="60">
+                            </div>
+                        </div>
+
+                        <!-- Quality Filter -->
+                        <div class="form-group">
+                            <label for="filterQuality">Video Quality</label>
+                            <select id="filterQuality" class="form-control" multiple>
+                                <option value="240p">240p</option>
+                                <option value="360p">360p</option>
+                                <option value="480p">480p</option>
+                                <option value="720p">720p</option>
+                                <option value="1080p">1080p</option>
+                                <option value="1440p">1440p</option>
+                                <option value="2160p">2160p (4K)</option>
+                            </select>
+                            <div class="form-help">Hold Ctrl/Cmd to select multiple qualities</div>
+                        </div>
+
+                        <!-- Status Filter -->
+                        <div class="form-group">
+                            <label for="filterStatus">Video Status</label>
+                            <select id="filterStatus" class="form-control" multiple>
+                                <option value="DOWNLOADED" selected>Downloaded</option>
+                                <option value="WANTED">Wanted</option>
+                                <option value="MONITORED">Monitored</option>
+                            </select>
+                            <div class="form-help">Only include videos with these statuses</div>
+                        </div>
+
+                        <!-- Keywords Filter -->
+                        <div class="form-group">
+                            <label for="filterKeywords">Keywords</label>
+                            <input type="text" id="filterKeywords" class="form-control" placeholder="Search in titles and descriptions">
+                            <div class="form-help">Videos containing these keywords in title or description</div>
+                        </div>
+
+                        <!-- Auto Update Toggle -->
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="playlistAutoUpdate" checked>
+                                    <span class="checkmark"></span>
+                                    Auto-update playlist
+                                </label>
+                                <div class="form-help">Automatically update when new videos match the criteria</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Section -->
+                    <div class="preview-section">
+                        <button type="button" onclick="previewDynamicPlaylist()" class="btn btn-secondary">
+                            <iconify-icon icon="tabler:eye" aria-hidden="true"></iconify-icon>
+                            Preview Results
+                        </button>
+                        <div id="previewResults" class="preview-results" style="display: none;">
+                            <!-- Preview content will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <div class="checkbox-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="playlistIsPublic">
@@ -255,12 +380,12 @@
 
 <!-- Import Playlist Modal -->
 <div id="importPlaylistModal" class="modal">
-    <div class="modal-content" style="width: 90%; max-width: 700px;">
+    <div class="modal-content" style="width: 90%; max-width: 700px; max-height: 90vh;">
         <div class="modal-header">
             <h3>Import Playlist</h3>
             <span class="modal-close" onclick="closeImportPlaylistModal()">&times;</span>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: calc(90vh - 120px); overflow-y: auto;">
             <div class="import-tabs">
                 <button class="tab-button active" onclick="switchImportTab('url', this)">🔗 From URL</button>
                 <button class="tab-button" onclick="switchImportTab('file', this)">📄 From File</button>
@@ -333,7 +458,7 @@
     </div>
 </div>
 
-<script src="{{ url_for('frontend.js_files', filename='playlists.js') }}"></script>
+<script src="{{ url_for('frontend.static_files', filename='js/playlists.js') }}"></script>
 
 <style>
 /* Playlist-specific styles */
@@ -425,6 +550,43 @@
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
     white-space: nowrap;
+}
+
+/* Modal scrolling enhancements */
+.modal-body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-primary, #4a9eff) var(--bg-tertiary, #333);
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: var(--bg-tertiary, #333);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--accent-primary, #4a9eff);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-secondary, #357abd);
+}
+
+/* Ensure dynamic config section is properly contained */
+.dynamic-config {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
 }
 
 .thumbnail-section {
@@ -567,6 +729,169 @@
     display: block;
 }
 
+/* Dynamic Playlist Styles */
+.dynamic-config {
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    background: var(--bg-secondary);
+}
+
+.config-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.config-header h4 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.config-header p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.year-range-inputs,
+.duration-range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.year-range-inputs input,
+.duration-range-inputs input {
+    flex: 1;
+}
+
+.range-separator {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.preview-section {
+    border-top: 1px solid var(--border-primary);
+    padding-top: 1.5rem;
+}
+
+.preview-results {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    background: var(--bg-primary);
+}
+
+.preview-video-list {
+    display: grid;
+    gap: 0.75rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.preview-video-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    background: var(--bg-secondary);
+}
+
+.preview-video-item img {
+    width: 60px;
+    height: 45px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.preview-video-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.preview-video-title {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.preview-video-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.preview-stats {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-accent-subtle);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.preview-stats-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.preview-stats-number {
+    font-weight: 600;
+    color: var(--accent-primary);
+}
+
+/* Dynamic playlist badges */
+.playlist-badge.dynamic {
+    background: var(--info-bg);
+    color: var(--info-text);
+}
+
+.playlist-badge.auto-update {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+/* Form enhancements for dynamic playlists */
+select[multiple] {
+    min-height: 80px;
+    padding: 0.5rem;
+}
+
+select[multiple] option {
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.125rem;
+}
+
+/* Template quick actions */
+.template-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.template-actions .btn {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .playlists-grid {
@@ -585,6 +910,27 @@
     
     .action-group .btn {
         width: 100%;
+    }
+    
+    .filter-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .year-range-inputs,
+    .duration-range-inputs {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .range-separator {
+        align-self: center;
+    }
+    
+    .preview-stats {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
     }
 }
 </style>

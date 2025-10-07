@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OAuth2 Button Visibility Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .oauth2-status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .status-configured { background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.3); color: #28a745; }
+        .status-unconfigured { background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.3); color: #ffc107; }
+        .oauth2-config { background: #333; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .btn { padding: 8px 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-primary { background: #007bff; color: white; }
+        input { width: 100%; padding: 8px; margin: 5px 0; background: #2a2a2a; color: white; border: 1px solid #555; border-radius: 3px; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>OAuth2 Button Visibility Test</h1>
+    <p>This test simulates the OAuth2 section with different states:</p>
+
+    <div class="oauth2-container">
+        <div id="oauth2Status" class="oauth2-status">
+            <span class="status-text">Checking OAuth2 status...</span>
+        </div>
+        
+        <div class="oauth2-config" id="oauth2Config" style="display: none;">
+            <div class="form-group">
+                <label for="youtube_oauth_client_id">Google API Client ID:</label>
+                <input type="text" id="youtube_oauth_client_id" name="youtube_oauth_client_id" 
+                       placeholder="your-google-client-id.apps.googleusercontent.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="youtube_oauth_client_secret">Google API Client Secret:</label>
+                <input type="password" id="youtube_oauth_client_secret" name="youtube_oauth_client_secret" 
+                       placeholder="Enter your client secret">
+            </div>
+            
+            <div class="oauth2-actions">
+                <button type="button" id="saveOAuth2Credentials" class="btn btn-primary" onclick="saveOAuth2Credentials()">
+                    💾 Save Credentials
+                </button>
+            </div>
+        </div>
+        
+        <!-- OAuth2 Action Buttons - Outside config section so they're always accessible -->
+        <div class="oauth2-main-actions" style="margin: 1rem 0;">
+            <button type="button" id="startOAuth2Flow" class="btn btn-success" onclick="startOAuth2Flow()" style="display: none;">
+                🚀 Start Authorization
+            </button>
+            <button type="button" id="testOAuth2" class="btn btn-info" onclick="testOAuth2Status()" style="display: none;">
+                🧪 Test Connection
+            </button>
+        </div>
+        
+        <div class="oauth2-help">
+            <button type="button" class="btn btn-info" onclick="simulateStatus('unconfigured')">
+                Simulate: Not Configured
+            </button>
+            <button type="button" class="btn btn-info" onclick="simulateStatus('configured')">
+                Simulate: Configured But Not Authenticated
+            </button>
+            <button type="button" class="btn btn-info" onclick="simulateStatus('authenticated')">
+                Simulate: Fully Authenticated
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Simulate the OAuth2 status check function
+        function simulateStatus(state) {
+            const statusElement = document.getElementById('oauth2Status');
+            const configSection = document.getElementById('oauth2Config');
+            const saveBtn = document.getElementById('saveOAuth2Credentials');
+            const startBtn = document.getElementById('startOAuth2Flow');
+            const testBtn = document.getElementById('testOAuth2');
+            
+            // Hide all buttons initially
+            if (saveBtn) saveBtn.style.display = 'none';
+            if (startBtn) startBtn.style.display = 'none';
+            if (testBtn) testBtn.style.display = 'none';
+            
+            if (state === 'authenticated') {
+                // Fully configured and authenticated
+                statusElement.className = 'oauth2-status status-configured';
+                statusElement.innerHTML = '<span class="status-text">✅ OAuth2 Configured and Authenticated</span>';
+                configSection.style.display = 'none';
+                if (testBtn) testBtn.style.display = 'inline-block';
+                
+            } else if (state === 'configured') {
+                // Credentials saved but not authenticated yet
+                statusElement.className = 'oauth2-status status-configured';
+                statusElement.innerHTML = '<span class="status-text">⚠️ OAuth2 Configured but Not Authenticated</span>';
+                configSection.style.display = 'none';
+                if (startBtn) startBtn.style.display = 'inline-block';
+                if (testBtn) testBtn.style.display = 'inline-block';
+                
+            } else {
+                // Not configured at all
+                statusElement.className = 'oauth2-status status-unconfigured';
+                statusElement.innerHTML = '<span class="status-text">❌ OAuth2 Not Configured</span>';
+                configSection.style.display = 'block';
+                if (saveBtn) saveBtn.style.display = 'inline-block';
+            }
+        }
+        
+        function saveOAuth2Credentials() {
+            alert('Save Credentials clicked - would save to API');
+            simulateStatus('configured'); // After saving, show authorization state
+        }
+        
+        function startOAuth2Flow() {
+            alert('Start Authorization clicked - would start OAuth flow');
+            simulateStatus('authenticated'); // After auth, show authenticated state
+        }
+        
+        function testOAuth2Status() {
+            alert('Test Connection clicked - would test download capabilities');
+        }
+        
+        // Start in the configured but not authenticated state (this is what you should see)
+        simulateStatus('configured');
+    </script>
+</body>
+</html>

@@ -1080,7 +1080,7 @@ async function apiCall(url, options = {}) {
             if (e.message !== 'Authentication required') {
                 showError('Authentication required. Please log in.');
                 setTimeout(() => {
-                    window.location.href = '/simple-login';
+                    window.location.href = '/auth/login';
                 }, 2000);
             }
             throw new Error('Authentication required');
@@ -1126,7 +1126,7 @@ async function loadThemes() {
             if (error.message.includes('JSON.parse') || error.message.includes('Unexpected token')) {
                 showError('Failed to load themes. You may need to log in first.');
                 setTimeout(() => {
-                    window.location.href = '/simple-login';
+                    window.location.href = '/auth/login';
                 }, 2000);
             } else {
                 showError('Failed to load themes: ' + error.message);

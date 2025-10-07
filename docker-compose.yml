@@ -24,7 +24,7 @@ services:
         touch /app/data/database/.initialized || true;
         echo 'Starting MVidarr application...';
         umask \$${UMASK_SET:-022};
-        cd /app && su mvidarr -c 'python3 app.py';
+        cd /app && su mvidarr -c 'python3 fastapi_app.py';
       "
     container_name: mvidarr
     ports:
@@ -46,6 +46,13 @@ services:
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - UMASK_SET=${UMASK_SET:-022}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - BACKGROUND_JOBS_ENABLED=true
+      - JOB_SYSTEM_ENABLED=true
+      - JOB_WORKER_COUNT=3
+      - JOB_WEBSOCKET_ENABLED=true
     volumes:
       - ${DOWNLOADS_PATH:-./downloads}:/app/data/downloads
       - ${MUSIC_VIDEOS_PATH:-./music_videos}:/app/data/musicvideos
@@ -55,6 +62,8 @@ services:
       - ${CACHE_PATH:-./cache}:/app/data/cache
     depends_on:
       mariadb:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -90,6 +99,182 @@ services:
       start_period: 60s
     networks:
       - mvidarr-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: mvidarr-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mvidarr-network
+    environment:
+      - TZ=${TZ:-UTC}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  celery-worker:
+    image: ghcr.io/prefect421/mvidarr:dev
+    container_name: mvidarr-celery-worker
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+    volumes:
+      - ${DOWNLOADS_PATH:-./downloads}:/app/data/downloads
+      - ${MUSIC_VIDEOS_PATH:-./music_videos}:/app/data/musicvideos
+      - ${DATABASE_FOLDER:-./database}:/app/data/database
+      - ${THUMBNAILS_PATH:-./thumbnails}:/app/data/thumbnails
+      - ${LOGS_PATH:-./logs}:/app/data/logs
+      - ${CACHE_PATH:-./cache}:/app/data/cache
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=${DB_USER:-mvidarr}
+      - DB_PASSWORD=${DB_PASSWORD:-secure_password}
+      - DB_NAME=${DB_NAME:-mvidarr}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - TZ=${TZ:-UTC}
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+    command: >
+      sh -c "
+        echo 'Waiting for Redis and MariaDB...';
+        while ! nc -z redis 6379 || ! nc -z mariadb 3306; do
+          echo 'Services not ready, waiting...';
+          sleep 3;
+        done;
+        echo 'Starting Celery worker...';
+        PUID=\$${PUID:-1000};
+        PGID=\$${PGID:-1000};
+        usermod -u \$$PUID mvidarr;
+        groupmod -g \$$PGID mvidarr;
+        chown -R \$$PUID:\$$PGID /app/data;
+        su mvidarr -c 'celery -A src.jobs.celery_app worker --loglevel=info --concurrency=3';
+      "
+    networks:
+      - mvidarr-network
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A src.jobs.celery_app inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  celery-beat:
+    image: ghcr.io/prefect421/mvidarr:dev
+    container_name: mvidarr-celery-beat
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ${LOGS_PATH:-./logs}:/app/data/logs
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - TZ=${TZ:-UTC}
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+    command: >
+      sh -c "
+        echo 'Waiting for Redis...';
+        while ! nc -z redis 6379; do
+          echo 'Redis not ready, waiting...';
+          sleep 3;
+        done;
+        echo 'Starting Celery beat scheduler...';
+        PUID=\$${PUID:-1000};
+        PGID=\$${PGID:-1000};
+        usermod -u \$$PUID mvidarr;
+        groupmod -g \$$PGID mvidarr;
+        su mvidarr -c 'celery -A src.jobs.celery_app beat --loglevel=info';
+      "
+    networks:
+      - mvidarr-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  flower:
+    image: ghcr.io/prefect421/mvidarr:dev
+    container_name: mvidarr-flower
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FLOWER_PORT:-5555}:5555"
+    volumes:
+      - ${LOGS_PATH:-./logs}:/app/data/logs
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - TZ=${TZ:-UTC}
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+    command: >
+      sh -c "
+        echo 'Waiting for Redis...';
+        while ! nc -z redis 6379; do
+          echo 'Redis not ready, waiting...';
+          sleep 3;
+        done;
+        echo 'Starting Flower monitoring dashboard...';
+        PUID=\$${PUID:-1000};
+        PGID=\$${PGID:-1000};
+        usermod -u \$$PUID mvidarr;
+        groupmod -g \$$PGID mvidarr;
+        su mvidarr -c 'celery -A src.jobs.celery_app flower --port=5555 --broker=redis://redis:6379/0 --basic_auth=admin:mvidarr123';
+      "
+    networks:
+      - mvidarr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5555"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  redis_data:
+    driver: local
 
 networks:
   mvidarr-network:

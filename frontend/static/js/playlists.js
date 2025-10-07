@@ -145,26 +145,24 @@ class PlaylistManager {
             }
 
             const data = await response.json();
-            
-            if (data.success) {
+
+            if (data.playlists !== undefined) {
                 this.playlists = data.playlists || [];
                 this.totalCount = data.pagination.total;
                 this.totalPages = data.pagination.pages;
-                
+
                 // Debug logging to see playlist data structure
                 console.log('Loaded playlists:', this.playlists.length);
                 if (this.playlists.length > 0) {
                     console.log('Sample playlist data:', this.playlists[0]);
                 }
-                
+
                 this.renderPlaylists();
                 this.renderPagination();
                 this.updateFilterCounts();
-                
-                // Automatically refresh counts to ensure accuracy
-                setTimeout(() => {
-                    this.refreshPlaylistCounts();
-                }, 500);
+
+                // Note: Counts are already accurate from the API response
+                // No need to refresh separately
             } else {
                 throw new Error(data.error || 'Failed to load playlists');
             }
@@ -253,6 +251,14 @@ class PlaylistManager {
         if (playlist.is_featured) badges.push('<span class="playlist-badge featured">Featured</span>');
         if (playlist.is_public) badges.push('<span class="playlist-badge public">Public</span>');
         else badges.push('<span class="playlist-badge private">Private</span>');
+        
+        // Add dynamic playlist badges
+        if (playlist.playlist_type === 'DYNAMIC') {
+            badges.push('<span class="playlist-badge dynamic">Dynamic</span>');
+            if (playlist.auto_update) {
+                badges.push('<span class="playlist-badge auto-update">Auto-Update</span>');
+            }
+        }
 
         return `
             <div class="playlist-card ${isSelected ? 'selected' : ''}" id="playlist-${playlist.id}">
@@ -514,6 +520,15 @@ class PlaylistManager {
             document.getElementById('playlistIsPublic').checked = playlist.is_public;
             document.getElementById('playlistIsFeatured').checked = playlist.is_featured;
             
+            // Handle dynamic playlist fields
+            document.getElementById('playlistType').value = playlist.playlist_type || 'STATIC';
+            this.handlePlaylistTypeChange();
+            
+            if (playlist.playlist_type === 'DYNAMIC' && playlist.filter_criteria) {
+                this.populateDynamicFilters(playlist.filter_criteria);
+                document.getElementById('playlistAutoUpdate').checked = playlist.auto_update || true;
+            }
+            
             document.getElementById('playlistModalTitle').textContent = 'Edit Playlist';
             document.getElementById('savePlaylistBtn').innerHTML = '<iconify-icon icon="tabler:check"></iconify-icon> Save Changes';
             this.showModal('playlistModal');
@@ -529,13 +544,27 @@ class PlaylistManager {
         const form = document.getElementById('playlistForm');
         const formData = new FormData(form);
         
+        const playlistType = document.getElementById('playlistType').value;
+        
         const playlistData = {
             name: document.getElementById('playlistName').value.trim(),
             description: document.getElementById('playlistDescription').value.trim(),
             thumbnail_url: document.getElementById('playlistThumbnailUrl').value.trim(),
             is_public: document.getElementById('playlistIsPublic').checked,
-            is_featured: document.getElementById('playlistIsFeatured').checked
+            is_featured: document.getElementById('playlistIsFeatured').checked,
+            playlist_type: playlistType,
+            auto_update: playlistType === 'DYNAMIC' ? document.getElementById('playlistAutoUpdate').checked : true
         };
+        
+        // Add dynamic playlist filter criteria
+        if (playlistType === 'DYNAMIC') {
+            const filterCriteria = this.collectFilterCriteria();
+            if (Object.keys(filterCriteria).length === 0) {
+                this.showToast('Please configure at least one filter for your dynamic playlist', 'error');
+                return;
+            }
+            playlistData.filter_criteria = filterCriteria;
+        }
         
         if (!playlistData.name) {
             this.showToast('Playlist name is required', 'error');
@@ -559,8 +588,15 @@ class PlaylistManager {
         const isEdit = playlistId && playlistId !== '';
         
         try {
-            const url = isEdit ? `/api/playlists/${playlistId}` : '/api/playlists/';
-            const method = isEdit ? 'PUT' : 'POST';
+            // Use dynamic playlist endpoint if creating a dynamic playlist
+            let url, method;
+            if (playlistType === 'DYNAMIC' && !isEdit) {
+                url = '/api/playlists/dynamic';
+                method = 'POST';
+            } else {
+                url = isEdit ? `/api/playlists/${playlistId}` : '/api/playlists/';
+                method = isEdit ? 'PUT' : 'POST';
+            }
             
             const response = await fetch(url, {
                 method: method,
@@ -569,15 +605,20 @@ class PlaylistManager {
                 },
                 body: JSON.stringify(playlistData)
             });
-            
+
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP ${response.status}`);
+                throw new Error(errorData.error || errorData.detail || `HTTP ${response.status}`);
             }
-            
+
             const data = await response.json();
-            if (!data.success) throw new Error(data.error);
-            
+
+            // Dynamic playlist endpoint returns playlist object directly, not {success: true}
+            // Regular endpoint returns {success: true, playlist: {...}}
+            if (playlistType !== 'DYNAMIC' && !isEdit && !data.success) {
+                throw new Error(data.error || 'Failed to create playlist');
+            }
+
             this.showToast(isEdit ? 'Playlist updated successfully' : 'Playlist created successfully', 'success');
             this.closePlaylistModal();
             await this.loadPlaylists();
@@ -585,6 +626,276 @@ class PlaylistManager {
         } catch (error) {
             this.showToast(`Failed to ${isEdit ? 'update' : 'create'} playlist: ${error.message}`, 'error');
         }
+    }
+
+    // Dynamic Playlist Methods
+    handlePlaylistTypeChange() {
+        const playlistType = document.getElementById('playlistType').value;
+        const dynamicConfig = document.getElementById('dynamicPlaylistConfig');
+        
+        if (dynamicConfig) {
+            dynamicConfig.style.display = playlistType === 'DYNAMIC' ? 'block' : 'none';
+        }
+        
+        // Clear preview when switching types
+        const previewResults = document.getElementById('previewResults');
+        if (previewResults) {
+            previewResults.style.display = 'none';
+        }
+    }
+
+    collectFilterCriteria() {
+        const criteria = {};
+        
+        // Collect filter values
+        const genres = document.getElementById('filterGenres').value.trim();
+        if (genres) {
+            criteria.genres = genres.split(',').map(g => g.trim()).filter(g => g);
+        }
+        
+        const artists = document.getElementById('filterArtists').value.trim();
+        if (artists) {
+            criteria.artists = artists.split(',').map(a => a.trim()).filter(a => a);
+        }
+        
+        const yearMin = document.getElementById('filterYearMin').value;
+        const yearMax = document.getElementById('filterYearMax').value;
+        if (yearMin || yearMax) {
+            criteria.year_range = {};
+            if (yearMin) criteria.year_range.min = parseInt(yearMin);
+            if (yearMax) criteria.year_range.max = parseInt(yearMax);
+        }
+        
+        const durationMin = document.getElementById('filterDurationMin').value;
+        const durationMax = document.getElementById('filterDurationMax').value;
+        if (durationMin || durationMax) {
+            criteria.duration_range = {};
+            if (durationMin) criteria.duration_range.min = parseInt(durationMin) * 60; // Convert to seconds
+            if (durationMax) criteria.duration_range.max = parseInt(durationMax) * 60; // Convert to seconds
+        }
+        
+        const quality = Array.from(document.getElementById('filterQuality').selectedOptions)
+            .map(option => option.value);
+        if (quality.length > 0) {
+            criteria.quality = quality;
+        }
+        
+        const status = Array.from(document.getElementById('filterStatus').selectedOptions)
+            .map(option => option.value);
+        if (status.length > 0) {
+            criteria.status = status;
+        }
+        
+        const keywords = document.getElementById('filterKeywords').value.trim();
+        if (keywords) {
+            criteria.keywords = keywords.split(',').map(k => k.trim()).filter(k => k);
+        }
+        
+        return criteria;
+    }
+
+    populateDynamicFilters(filterCriteria) {
+        if (!filterCriteria) return;
+        
+        // Populate genres
+        if (filterCriteria.genres) {
+            document.getElementById('filterGenres').value = filterCriteria.genres.join(', ');
+        }
+        
+        // Populate artists
+        if (filterCriteria.artists) {
+            document.getElementById('filterArtists').value = filterCriteria.artists.join(', ');
+        }
+        
+        // Populate year range
+        if (filterCriteria.year_range) {
+            if (filterCriteria.year_range.min) {
+                document.getElementById('filterYearMin').value = filterCriteria.year_range.min;
+            }
+            if (filterCriteria.year_range.max) {
+                document.getElementById('filterYearMax').value = filterCriteria.year_range.max;
+            }
+        }
+        
+        // Populate duration range (convert from seconds to minutes)
+        if (filterCriteria.duration_range) {
+            if (filterCriteria.duration_range.min) {
+                document.getElementById('filterDurationMin').value = Math.floor(filterCriteria.duration_range.min / 60);
+            }
+            if (filterCriteria.duration_range.max) {
+                document.getElementById('filterDurationMax').value = Math.floor(filterCriteria.duration_range.max / 60);
+            }
+        }
+        
+        // Populate quality
+        if (filterCriteria.quality) {
+            const qualitySelect = document.getElementById('filterQuality');
+            Array.from(qualitySelect.options).forEach(option => {
+                option.selected = filterCriteria.quality.includes(option.value);
+            });
+        }
+        
+        // Populate status
+        if (filterCriteria.status) {
+            const statusSelect = document.getElementById('filterStatus');
+            Array.from(statusSelect.options).forEach(option => {
+                option.selected = filterCriteria.status.includes(option.value);
+            });
+        }
+        
+        // Populate keywords
+        if (filterCriteria.keywords) {
+            document.getElementById('filterKeywords').value = filterCriteria.keywords.join(', ');
+        }
+    }
+
+    async applyDynamicTemplate() {
+        const templateId = document.getElementById('dynamicTemplate').value;
+        if (!templateId) return;
+
+        try {
+            // Client-side templates (no API call needed)
+            const templates = {
+                'recent_releases': {
+                    name: 'Recent Releases',
+                    description: 'Videos released in the last 2 years',
+                    filter_criteria: {
+                        year_range: { min: new Date().getFullYear() - 2 }
+                    }
+                },
+                'high_quality': {
+                    name: 'High Quality Videos',
+                    description: '1080p and higher quality videos',
+                    filter_criteria: {
+                        quality: ['1080p', '1440p', '2160p', '4320p']
+                    }
+                },
+                'completed': {
+                    name: 'Completed Downloads',
+                    description: 'All successfully downloaded videos',
+                    filter_criteria: {
+                        status: ['DOWNLOADED', 'READY']
+                    }
+                },
+                'pending': {
+                    name: 'Pending Downloads',
+                    description: 'Videos queued or downloading',
+                    filter_criteria: {
+                        status: ['QUEUED', 'DOWNLOADING', 'PENDING']
+                    }
+                }
+            };
+
+            const template = templates[templateId];
+            if (!template) throw new Error('Template not found');
+
+            // Apply template to form
+            this.populateDynamicFilters(template.filter_criteria);
+
+            // Update playlist name if empty
+            const nameInput = document.getElementById('playlistName');
+            if (!nameInput.value.trim()) {
+                nameInput.value = template.name;
+            }
+
+            // Update description if empty
+            const descInput = document.getElementById('playlistDescription');
+            if (!descInput.value.trim()) {
+                descInput.value = template.description;
+            }
+
+            this.showToast(`Applied template: ${template.name}`, 'success');
+
+        } catch (error) {
+            this.showToast(`Failed to apply template: ${error.message}`, 'error');
+        }
+    }
+
+    async previewDynamicPlaylist() {
+        const filterCriteria = this.collectFilterCriteria();
+        
+        if (Object.keys(filterCriteria).length === 0) {
+            this.showToast('Please configure at least one filter to preview results', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/playlists/dynamic/preview', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filter_criteria: filterCriteria,
+                    limit: 50
+                })
+            });
+            
+            if (!response.ok) throw new Error('Failed to preview playlist');
+            
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error);
+            
+            this.displayPreviewResults(data.preview);
+            
+        } catch (error) {
+            this.showToast(`Failed to preview playlist: ${error.message}`, 'error');
+        }
+    }
+
+    displayPreviewResults(previewData) {
+        const previewResults = document.getElementById('previewResults');
+        const totalMatches = previewData.total_matches || 0;
+        const videos = previewData.preview_videos || [];
+        
+        let html = `
+            <div class="preview-stats">
+                <div class="preview-stats-item">
+                    <iconify-icon icon="tabler:music"></iconify-icon>
+                    <span><span class="preview-stats-number">${totalMatches}</span> matching videos</span>
+                </div>
+                <div class="preview-stats-item">
+                    <iconify-icon icon="tabler:eye"></iconify-icon>
+                    <span>Showing first <span class="preview-stats-number">${Math.min(videos.length, 50)}</span></span>
+                </div>
+            </div>
+        `;
+        
+        if (videos.length > 0) {
+            html += '<div class="preview-video-list">';
+            
+            videos.forEach(video => {
+                const thumbnailUrl = video.thumbnail_url || '/static/default-thumbnail.jpg';
+                html += `
+                    <div class="preview-video-item">
+                        <img src="${this.escapeHtml(thumbnailUrl)}" alt="Thumbnail" loading="lazy">
+                        <div class="preview-video-info">
+                            <div class="preview-video-title">${this.escapeHtml(video.title)}</div>
+                            <div class="preview-video-meta">
+                                ${video.artist ? this.escapeHtml(video.artist) + ' • ' : ''}
+                                ${video.year || 'Unknown Year'} • 
+                                ${video.quality || 'Unknown Quality'} • 
+                                ${video.duration ? this.formatDuration(video.duration) : 'Unknown Duration'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        } else {
+            html += '<p>No videos match the current filter criteria. Try adjusting your filters.</p>';
+        }
+        
+        previewResults.innerHTML = html;
+        previewResults.style.display = 'block';
+    }
+
+    formatDuration(seconds) {
+        if (!seconds) return 'Unknown';
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
     }
 
     async deletePlaylist(playlistId) {
@@ -1018,6 +1329,34 @@ class PlaylistManager {
         document.getElementById('playlistId').value = '';
         document.getElementById('playlistThumbnailUrl').value = '';
         
+        // Reset playlist type to static
+        document.getElementById('playlistType').value = 'STATIC';
+        this.handlePlaylistTypeChange();
+        
+        // Reset dynamic playlist fields
+        document.getElementById('dynamicTemplate').value = '';
+        document.getElementById('filterGenres').value = '';
+        document.getElementById('filterArtists').value = '';
+        document.getElementById('filterYearMin').value = '';
+        document.getElementById('filterYearMax').value = '';
+        document.getElementById('filterDurationMin').value = '';
+        document.getElementById('filterDurationMax').value = '';
+        document.getElementById('filterKeywords').value = '';
+        document.getElementById('playlistAutoUpdate').checked = true;
+        
+        // Reset multi-select fields
+        const qualitySelect = document.getElementById('filterQuality');
+        const statusSelect = document.getElementById('filterStatus');
+        
+        Array.from(qualitySelect.options).forEach(option => option.selected = false);
+        Array.from(statusSelect.options).forEach(option => {
+            option.selected = option.value === 'DOWNLOADED'; // Default to Downloaded
+        });
+        
+        // Hide preview
+        const previewResults = document.getElementById('previewResults');
+        if (previewResults) previewResults.style.display = 'none';
+        
         // Reset file upload fields
         const fileInput = document.getElementById('playlistThumbnailFile');
         const fileNameInput = document.getElementById('playlistThumbnailFileName');
@@ -1361,6 +1700,25 @@ async function uploadPlaylistThumbnail() {
         const originalContent = '<iconify-icon icon="tabler:upload" aria-hidden="true"></iconify-icon> Upload';
         uploadBtn.innerHTML = originalContent;
         uploadBtn.disabled = !fileInput.files.length;
+    }
+}
+
+// Dynamic Playlist Global Functions
+function handlePlaylistTypeChange() {
+    if (playlistManager) {
+        playlistManager.handlePlaylistTypeChange();
+    }
+}
+
+function applyDynamicTemplate() {
+    if (playlistManager) {
+        playlistManager.applyDynamicTemplate();
+    }
+}
+
+function previewDynamicPlaylist() {
+    if (playlistManager) {
+        playlistManager.previewDynamicPlaylist();
     }
 }
 

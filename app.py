@@ -123,6 +123,27 @@ def create_app():
 
     # Register API routes
     register_routes(app)
+    
+    # Initialize background job system with SocketIO
+    try:
+        from src.services.flask_job_integration import FlaskJobSystemIntegrator
+        from flask_socketio import SocketIO
+        
+        # Initialize SocketIO
+        socketio = SocketIO(app, cors_allowed_origins="*", logger=False, engineio_logger=False)
+        
+        # Initialize job system integrator with app and socketio
+        job_integrator = FlaskJobSystemIntegrator(app=app, socketio=socketio)
+        
+        app.logger.info("Background job system with SocketIO initialized successfully")
+        
+        # Store SocketIO instance for access
+        app.socketio = socketio
+        
+    except Exception as e:
+        app.logger.error(f"Failed to initialize background job system: {e}")
+        # Continue without job system - app will still work
+        app.socketio = None
 
     # Initialize dynamic authentication middleware
     dynamic_auth_middleware.init_app(app)
@@ -178,7 +199,13 @@ def main():
     app.logger.info(f"Starting MVidarr on port {port}")
 
     try:
-        app.run(host="0.0.0.0", port=port, debug=app.config.get("DEBUG", False))
+        # Use SocketIO's run method if available, otherwise use Flask's run method
+        if hasattr(app, 'socketio') and app.socketio is not None:
+            app.logger.info("Starting with SocketIO support for background jobs")
+            app.socketio.run(app, host="0.0.0.0", port=port, debug=app.config.get("DEBUG", False))
+        else:
+            app.logger.info("Starting without SocketIO support")
+            app.run(host="0.0.0.0", port=port, debug=app.config.get("DEBUG", False))
     except Exception as e:
         app.logger.error(f"Failed to start application: {e}")
         sys.exit(1)

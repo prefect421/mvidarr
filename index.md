@@ -25,25 +25,23 @@ title: Home
 - **🔐 User Authentication** - Role-based access control with security features
 - **🌙 Dark/Light Themes** - Multiple theme options with automatic switching
 
-## 🆕 Latest Release (v0.9.7) - Enterprise Media Management
+## 🚀 **NEW in v0.9.8 - Subtitle System & User Testing Fixes!**
 
-### 🏆 Major Achievements
-- **🎯 47 Comprehensive Solutions** - Complete feature matrix across all application areas  
-- **✅ Enterprise Quality** - 185+ comprehensive tests with 6000+ lines documentation
-- **🚀 Production Ready** - Zero known vulnerabilities with automated security monitoring
-- **💫 User Experience** - Modern interface with professional workflows requiring no technical expertise
+**🎉 MAJOR RELEASE: Complete Subtitle Implementation + Critical Bug Fixes**
 
-### 🎮 Advanced Video Management
-- **🔍 Advanced Search & Filtering** - Multi-criteria search with year range and performance optimization
-- **⚡ Bulk Operations** - Enterprise-grade batch processing with real-time progress tracking
-- **📺 Professional Video Players** - Standard, MvTV, and cinematic modes with subtitle support
-- **📁 Intelligent Organization** - Automatic folder creation and cleanup systems
+### Complete Subtitle System ✅
+- **🎬 Universal Subtitle Support** - WebVTT, SRT, ASS, SSA, SUB formats fully supported
+- **🌐 Smart Language Resolution** - Automatic YouTube non-standard language code handling
+- **🎞️ Player Integration** - Subtitles working in popup modal and detail page video players
 
-### 🎨 User Interface Excellence  
-- **🎨 Streamlined Workflows** - Intuitive user journeys eliminating all reported pain points
-- **🎭 Theme System** - Consistent UI with MVIDARR logo and CSS variable compliance
-- **📊 Progress Indicators** - Professional feedback systems with error recovery
-- **📱 Responsive Design** - Modern interface with accessibility features
+### User Testing Fixes (8/8 Critical Issues Resolved) ✅
+- **✅ Authentication & Core Workflows** - Fixed logout, search, video deletion, bulk operations
+- **✅ Playlist System** - Fixed page loading and creation functionality
+- **✅ Service Integration** - Corrected routing for YouTube, Spotify, Last.fm, Lidarr
+
+### 100% Flask to FastAPI Migration Complete ✅
+- **⚡ 200+ API Endpoints** - Migrated across 33 major components with full async support
+- **✨ Pure FastAPI** - Zero Flask API endpoints remain
 
 ## 🚀 Quick Start
 
@@ -57,8 +55,8 @@ docker-compose up -d
 
 **Production Docker Image:**
 ```bash
-# Use the latest stable release
-docker pull ghcr.io/prefect421/mvidarr:v0.9.7
+# Use the latest release
+docker pull ghcr.io/prefect421/mvidarr:v0.9.8
 ```
 
 **Access the application:**
@@ -69,7 +67,7 @@ docker pull ghcr.io/prefect421/mvidarr:v0.9.7
 
 MVidarr is built with:
 
-- **Backend**: Flask (Python 3.12+) with modular service architecture
+- **Backend**: FastAPI (Python 3.12+) with async operations and modular service architecture
 - **Database**: MariaDB 11.4+ with automatic table initialization
 - **Frontend**: Modern HTML5/CSS3/JavaScript with responsive design
 - **Media Processing**: FFmpeg, yt-dlp for video downloading and processing
@@ -83,4 +81,4 @@ This project is licensed under the MIT License - see the [LICENSE]({{ site.githu
 
 ---
 
-**MVidarr v{{ site.data.version.current | default: "0.9.7" }}** - Built with ❤️ for music video enthusiasts
+**MVidarr v{{ site.data.version.current | default: "0.9.8" }}** - Built with ❤️ for music video enthusiasts

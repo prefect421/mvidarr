@@ -797,7 +797,6 @@ class UIEnhancements {
             'menu': 'Menu',
             'user': 'User',
             'settings': 'Settings',
-            'edit': 'Edit',
             'delete': 'Delete',
             'download': 'Download',
             'play': 'Play',

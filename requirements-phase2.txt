@@ -1,0 +1,10 @@
+# Phase 2: Media Processing Optimization - Background Job Dependencies
+
+# Core Celery with Redis support
+celery[redis]==5.3.4
+
+# Celery monitoring  
+flower==2.0.1
+
+# System utilities for process management
+psutil==5.9.6

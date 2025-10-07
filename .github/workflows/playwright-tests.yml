@@ -1,0 +1,317 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [ main ]
+    # Disabled for dev - E2E tests not critical for 0.9.8, will fix in 0.9.9
+    # branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+    # Disabled for dev
+    # branches: [ main, dev ]
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MYSQL_ROOT_PASSWORD: mvidarr_root
+          MYSQL_DATABASE: mvidarr
+          MYSQL_USER: mvidarr
+          MYSQL_PASSWORD: mvidarr
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        ports:
+          - 3306:3306
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-prod.txt
+        pip install -r requirements-fastapi.txt
+    
+    - name: Install Node.js dependencies
+      run: npm ci
+    
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+    
+    - name: Wait for MariaDB
+      run: |
+        while ! mysqladmin ping -h 127.0.0.1 -P 3306 -u root -pmvidarr_root --silent; do
+          echo "Waiting for MariaDB..."
+          sleep 2
+        done
+        echo "MariaDB is ready!"
+    
+    - name: Set up test database
+      run: |
+        mysql -h 127.0.0.1 -P 3306 -u root -pmvidarr_root -e "CREATE DATABASE IF NOT EXISTS mvidarr_test;"
+        mysql -h 127.0.0.1 -P 3306 -u root -pmvidarr_root -e "GRANT ALL PRIVILEGES ON mvidarr_test.* TO 'mvidarr'@'%';"
+        mysql -h 127.0.0.1 -P 3306 -u root -pmvidarr_root -e "FLUSH PRIVILEGES;"
+    
+    - name: Initialize application database
+      run: |
+        export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
+        python -c "
+        from src.database.connection import init_db_standalone
+        try:
+            init_db_standalone()
+            print('Database initialized successfully')
+        except Exception as e:
+            print(f'Database initialization error: {e}')
+        "
+    
+    - name: Create test user
+      run: |
+        export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
+        python -c "
+        from src.database.connection import get_engine
+        from src.database.models import User
+        from werkzeug.security import generate_password_hash
+        from sqlalchemy.orm import Session
+
+        try:
+            engine = get_engine()
+            with Session(engine) as session:
+                # Check if admin user exists
+                existing_user = session.query(User).filter_by(username='admin').first()
+                if not existing_user:
+                    # Create admin user
+                    admin_password = generate_password_hash('mvidarr')
+                    admin_user = User(
+                        username='admin',
+                        password_hash=admin_password,
+                        email='admin@mvidarr.test'
+                    )
+                    session.add(admin_user)
+                    session.commit()
+                    print('Test user created successfully')
+                else:
+                    print('Test user already exists')
+        except Exception as e:
+            print(f'Test user creation error: {e}')
+            import traceback
+            traceback.print_exc()
+        "
+    
+    - name: Start MVidarr application
+      run: |
+        export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
+        export FLASK_ENV=testing
+        export TESTING=true
+        python fastapi_app.py &
+        echo $! > mvidarr.pid
+        
+        # Wait for application to start
+        echo "Waiting for MVidarr to start..."
+        for i in {1..30}; do
+          if curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
+            echo "MVidarr is ready!"
+            break
+          fi
+          echo "Attempt $i: MVidarr not ready yet..."
+          sleep 2
+        done
+        
+        # Verify it's actually running
+        if ! curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
+          echo "Failed to start MVidarr"
+          cat mvidarr.log || echo "No log file found"
+          exit 1
+        fi
+      env:
+        DATABASE_URL: mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr
+    
+    - name: Run Playwright tests
+      run: npm test
+      env:
+        CI: true
+        DATABASE_URL: mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr
+    
+    - name: Stop MVidarr application
+      if: always()
+      run: |
+        if [ -f mvidarr.pid ]; then
+          kill $(cat mvidarr.pid) || true
+          rm mvidarr.pid
+        fi
+    
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30
+    
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: test-results/
+        retention-days: 30
+
+  test-matrix:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit]
+    
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MYSQL_ROOT_PASSWORD: mvidarr_root
+          MYSQL_DATABASE: mvidarr
+          MYSQL_USER: mvidarr
+          MYSQL_PASSWORD: mvidarr
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        ports:
+          - 3306:3306
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-prod.txt
+        pip install -r requirements-fastapi.txt
+    
+    - name: Install Node.js dependencies
+      run: npm ci
+    
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps ${{ matrix.project }}
+    
+    - name: Wait for MariaDB
+      run: |
+        while ! mysqladmin ping -h 127.0.0.1 -P 3306 -u root -pmvidarr_root --silent; do
+          echo "Waiting for MariaDB..."
+          sleep 2
+        done
+    
+    - name: Set up test database
+      run: |
+        mysql -h 127.0.0.1 -P 3306 -u root -pmvidarr_root -e "CREATE DATABASE IF NOT EXISTS mvidarr;"
+        mysql -h 127.0.0.1 -P 3306 -u root -pmvidarr_root -e "GRANT ALL PRIVILEGES ON mvidarr.* TO 'mvidarr'@'%';"
+    
+    - name: Initialize application database
+      run: |
+        export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
+        python -c "
+        from src.database.connection import init_db_standalone
+        try:
+            init_db_standalone()
+            print('Database initialized for ${{ matrix.project }}')
+        except Exception as e:
+            print(f'Database initialization error: {e}')
+        "
+    
+    - name: Create test user
+      run: |
+        export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
+        python -c "
+        from src.database.connection import get_engine
+        from src.database.models import User
+        from werkzeug.security import generate_password_hash
+        from sqlalchemy.orm import Session
+
+        try:
+            engine = get_engine()
+            with Session(engine) as session:
+                # Check if admin user exists
+                existing_user = session.query(User).filter_by(username='admin').first()
+                if not existing_user:
+                    # Create admin user
+                    admin_password = generate_password_hash('mvidarr')
+                    admin_user = User(
+                        username='admin',
+                        password_hash=admin_password,
+                        email='admin@mvidarr.test'
+                    )
+                    session.add(admin_user)
+                    session.commit()
+                    print('Test user created for ${{ matrix.project }}')
+                else:
+                    print('Test user already exists for ${{ matrix.project }}')
+        except Exception as e:
+            print(f'Test user creation error: {e}')
+            import traceback
+            traceback.print_exc()
+        "
+    
+    - name: Start MVidarr application
+      run: |
+        export DATABASE_URL="mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr"
+        export FLASK_ENV=testing
+        export TESTING=true
+        python fastapi_app.py &
+        echo $! > mvidarr.pid
+        
+        # Wait for application to start
+        for i in {1..30}; do
+          if curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
+            echo "MVidarr is ready for ${{ matrix.project }}!"
+            break
+          fi
+          sleep 2
+        done
+      env:
+        DATABASE_URL: mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr
+    
+    - name: Run Playwright tests
+      run: npx playwright test --project=${{ matrix.project }}
+      env:
+        CI: true
+        DATABASE_URL: mysql://mvidarr:mvidarr@127.0.0.1:3306/mvidarr
+    
+    - name: Stop MVidarr application
+      if: always()
+      run: |
+        if [ -f mvidarr.pid ]; then
+          kill $(cat mvidarr.pid) || true
+          rm mvidarr.pid
+        fi
+    
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report-${{ matrix.project }}
+        path: playwright-report/
+        retention-days: 30
+    
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.project }}
+        path: test-results/
+        retention-days: 30

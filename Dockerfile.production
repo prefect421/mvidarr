@@ -22,8 +22,9 @@ WORKDIR /app
 RUN pip install --no-cache-dir --upgrade pip
 
 # Copy requirements and install with increased timeout
-COPY requirements-prod.txt .
-RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements-prod.txt
+COPY requirements-prod.txt requirements-fastapi.txt ./
+RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements-prod.txt && \
+    pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements-fastapi.txt
 
 #################################
 # Stage 2: Runtime Environment
@@ -76,7 +77,7 @@ COPY --chown=mvidarr:mvidarr src/ /app/src/
 COPY --chown=mvidarr:mvidarr frontend/ /app/frontend/
 COPY --chown=mvidarr:mvidarr migrations/ /app/migrations/
 COPY --chown=mvidarr:mvidarr scripts/ /app/scripts/
-COPY --chown=mvidarr:mvidarr app.py version.json /app/
+COPY --chown=mvidarr:mvidarr fastapi_app.py version.json /app/
 
 # Expose the application port
 EXPOSE 5000

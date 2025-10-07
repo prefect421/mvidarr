@@ -141,7 +141,7 @@ def bulk_download():
         return jsonify({"error": str(e)}), 500
 
 
-@bulk_bridge_bp.route("/api/videos/bulk/status", methods=["POST"])
+@bulk_bridge_bp.route("/api/videos/bulk/status", methods=["POST", "PUT"])
 def bulk_status():
     """
     Basic bulk status update - direct bridge to enhanced system
@@ -257,7 +257,7 @@ def enhanced_bulk_download():
         return jsonify({"error": str(e)}), 500
 
 
-@bulk_bridge_bp.route("/api/videos/bulk/enhanced-status", methods=["POST"])
+@bulk_bridge_bp.route("/api/videos/bulk/enhanced-status", methods=["POST", "PUT"])
 def enhanced_bulk_status():
     """
     Enhanced bulk status update using new backend system
@@ -365,6 +365,74 @@ def bulk_refresh_metadata():
 
     except Exception as e:
         logger.error(f"Error in bulk refresh metadata: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@bulk_bridge_bp.route("/api/videos/bulk/enhanced-refresh-metadata", methods=["POST"])
+def bulk_enhanced_refresh_metadata():
+    """
+    Enhanced bulk metadata refresh using comprehensive metadata enrichment
+    """
+    import asyncio
+
+    try:
+        data = request.get_json()
+        if not data or "video_ids" not in data:
+            return jsonify({"error": "video_ids array is required"}), 400
+
+        video_ids = data["video_ids"]
+        force_refresh = data.get("force_refresh", False)
+
+        # Use the enhanced metadata enrichment service directly
+        from src.services.metadata_enrichment_service import metadata_enrichment_service
+
+        results = {
+            "total": len(video_ids),
+            "successful": 0,
+            "failed": 0,
+            "errors": [],
+            "details": [],
+        }
+
+        for video_id in video_ids:
+            try:
+                result = asyncio.run(
+                    metadata_enrichment_service.enrich_video_metadata(
+                        video_id, force_refresh=force_refresh
+                    )
+                )
+
+                if result.get("success", False):
+                    results["successful"] += 1
+                    results["details"].append(
+                        {
+                            "video_id": video_id,
+                            "status": "success",
+                            "sources_used": result.get("sources_used", []),
+                            "updates_made": result.get("updates_made", []),
+                        }
+                    )
+                else:
+                    results["failed"] += 1
+                    error_msg = result.get("error", "Unknown error")
+                    results["errors"].append(f"Video {video_id}: {error_msg}")
+                    results["details"].append(
+                        {"video_id": video_id, "status": "failed", "error": error_msg}
+                    )
+
+            except Exception as e:
+                results["failed"] += 1
+                error_msg = str(e)
+                results["errors"].append(f"Video {video_id}: {error_msg}")
+                results["details"].append(
+                    {"video_id": video_id, "status": "failed", "error": error_msg}
+                )
+                logger.error(f"Error enriching metadata for video {video_id}: {e}")
+
+        return jsonify(results)
+
+    except Exception as e:
+        logger.error(f"Error in bulk enhanced refresh metadata: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 

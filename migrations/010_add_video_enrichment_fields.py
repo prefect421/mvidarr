@@ -11,54 +11,111 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.database.connection import get_db
-from src.utils.logger import get_logger
 from sqlalchemy import text
 
-logger = get_logger('mvidarr.migration_010')
+from src.database.connection import get_db
+from src.utils.logger import get_logger
 
-def upgrade():
+logger = get_logger("mvidarr.migration_010")
+
+
+def upgrade(connection):
     """Add video enrichment fields"""
     try:
-        with get_db() as session:
+        # Use the connection provided by the migration system
+        # DO NOT use get_db() as it will close the connection
+        if True:  # Keep indentation for minimal changes
             logger.info("Starting migration 010: Adding video enrichment fields")
-            
-            # Add album field for track album information
-            session.execute(text("""
-                ALTER TABLE videos ADD COLUMN album VARCHAR(500)
-            """))
-            
-            # Add last_enriched timestamp field  
-            session.execute(text("""
-                ALTER TABLE videos ADD COLUMN last_enriched DATETIME
-            """))
-            
-            session.commit()
+
+            # Check if album column exists
+            result = connection.execute(
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'videos'
+                AND column_name = 'album'
+            """
+                )
+            ).fetchone()
+
+            if not result:
+                # Add album field for track album information
+                connection.execute(
+                    text(
+                        """
+                    ALTER TABLE videos ADD COLUMN album VARCHAR(500)
+                """
+                    )
+                )
+                logger.info("Added album column to videos table")
+            else:
+                logger.info("album column already exists in videos table")
+
+            # Check if last_enriched column exists
+            result = connection.execute(
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'videos'
+                AND column_name = 'last_enriched'
+            """
+                )
+            ).fetchone()
+
+            if not result:
+                # Add last_enriched timestamp field
+                connection.execute(
+                    text(
+                        """
+                    ALTER TABLE videos ADD COLUMN last_enriched DATETIME
+                """
+                    )
+                )
+                logger.info("Added last_enriched column to videos table")
+            else:
+                logger.info("last_enriched column already exists in videos table")
+
+            # DO NOT commit here - migration system handles the commit
             logger.info("✅ Migration 010: Successfully added video enrichment fields")
-            
+
     except Exception as e:
         logger.error(f"❌ Migration 010 failed: {e}")
         raise
 
 
-def downgrade():
+def downgrade(connection):
     """Remove video enrichment fields"""
     try:
-        with get_db() as session:
-            logger.info("Starting migration 010 downgrade: Removing video enrichment fields")
-            
+        # Use the connection provided by the migration system
+        if True:  # Keep indentation for minimal changes
+            logger.info(
+                "Starting migration 010 downgrade: Removing video enrichment fields"
+            )
+
             # Remove added columns
-            session.execute(text("""
+            connection.execute(
+                text(
+                    """
                 ALTER TABLE videos DROP COLUMN last_enriched
-            """))
-            
-            session.execute(text("""
+            """
+                )
+            )
+
+            connection.execute(
+                text(
+                    """
                 ALTER TABLE videos DROP COLUMN album
-            """))
-            
-            session.commit()
-            logger.info("✅ Migration 010: Successfully removed video enrichment fields")
-            
+            """
+                )
+            )
+
+            # DO NOT commit here - migration system handles the commit
+            logger.info(
+                "✅ Migration 010: Successfully removed video enrichment fields"
+            )
+
     except Exception as e:
         logger.error(f"❌ Migration 010 downgrade failed: {e}")
         raise

@@ -1,0 +1,31 @@
+[Unit]
+Description=Redis Server for MVidarr
+Documentation=https://redis.io/documentation
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/redis-server /etc/redis/redis.conf
+TimeoutStopSec=0
+Restart=always
+User=redis
+Group=redis
+RuntimeDirectory=redis
+RuntimeDirectoryMode=0755
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/redis
+ReadOnlyPaths=/etc/redis
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=32768
+
+[Install]
+WantedBy=multi-user.target
+Alias=redis.service

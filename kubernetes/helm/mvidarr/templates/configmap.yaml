@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mvidarr.fullname" . }}-config
+  namespace: {{ include "mvidarr.namespace" . }}
+  labels:
+    {{- include "mvidarr.labels" . | nindent 4 }}
+    component: config
+data:
+  # Application Configuration
+  ENVIRONMENT: {{ .Values.app.environment | quote }}
+  LOG_LEVEL: {{ .Values.app.logLevel | quote }}
+  DEBUG: {{ .Values.app.debug | quote }}
+  
+  # Server Configuration
+  HOST: "0.0.0.0"
+  PORT: "5000"
+  WORKERS: "4"
+  WORKER_CLASS: "uvicorn.workers.UvicornWorker"
+  
+  # Media Configuration
+  MEDIA_ROOT: "/app/media"
+  THUMBNAILS_ROOT: "/app/media/thumbnails"
+  TEMP_ROOT: "/app/temp"
+  MAX_UPLOAD_SIZE: {{ .Values.config.media.maxUploadSize | quote }}
+  VIDEO_FORMATS: {{ .Values.config.media.videoFormats | quote }}
+  AUDIO_FORMATS: {{ .Values.config.media.audioFormats | quote }}
+  IMAGE_FORMATS: {{ .Values.config.media.imageFormats | quote }}
+  
+  # Processing Configuration
+  FFMPEG_THREADS: {{ .Values.config.processing.ffmpegThreads | quote }}
+  FFMPEG_TIMEOUT: {{ .Values.config.processing.ffmpegTimeout | quote }}
+  THUMBNAIL_SIZE: {{ .Values.config.processing.thumbnailSize | quote }}
+  TASK_TIMEOUT: {{ .Values.config.processing.taskTimeout | quote }}
+  MAX_RETRIES: {{ .Values.config.processing.maxRetries | quote }}
+  
+  # API Configuration
+  API_VERSION: {{ .Values.config.api.version | quote }}
+  API_GATEWAY_ENABLED: {{ .Values.config.api.gatewayEnabled | quote }}
+  RATE_LIMIT_ENABLED: {{ .Values.config.api.rateLimitEnabled | quote }}
+  RATE_LIMIT_REQUESTS: {{ .Values.config.api.rateLimitRequests | quote }}
+  RATE_LIMIT_WINDOW: {{ .Values.config.api.rateLimitWindow | quote }}
+  
+  # Monitoring Configuration
+  MONITORING_ENABLED: {{ .Values.monitoring.enabled | quote }}
+  METRICS_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  HEALTH_CHECK_INTERVAL: "30"
+  
+  # Security Configuration
+  SESSION_TIMEOUT: {{ .Values.config.session.timeout | quote }}
+  CORS_ORIGINS: "*"
+  SECURE_HEADERS: "true"
+  
+  # Background Jobs
+  CELERY_BROKER_POOL_LIMIT: "10"
+  CELERY_RESULT_EXPIRES: "3600"

@@ -15,188 +15,236 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from sqlalchemy import Column, String, Index, text
-from src.database.connection import get_db, engine
+from sqlalchemy import Column, Index, String, text
+
+from src.database.connection import engine, get_db
 from src.database.models import Artist
-from src.utils.sort_name_generator import generate_sort_name
 from src.utils.logger import get_logger
+from src.utils.sort_name_generator import generate_sort_name
 
 logger = get_logger("mvidarr.migration.006")
 
 
-def add_sort_name_column():
+def add_sort_name_column(connection):
     """Add sort_name column to artists table"""
     try:
-        # Add the column using raw SQL
-        with engine.connect() as conn:
+        # Use the connection provided by the migration system
+        # DO NOT use engine.connect() as it creates a separate connection
+        if True:  # Keep indentation for minimal changes
+            conn = connection
             # Check if column already exists
-            result = conn.execute(text("""
+            result = conn.execute(
+                text(
+                    """
                 SELECT COUNT(*) as count
                 FROM information_schema.columns 
                 WHERE table_name = 'artists' 
                 AND column_name = 'sort_name'
                 AND table_schema = DATABASE()
-            """))
-            
+            """
+                )
+            )
+
             column_exists = result.fetchone()[0] > 0
-            
+
             if not column_exists:
                 logger.info("Adding sort_name column to artists table")
-                conn.execute(text(
-                    "ALTER TABLE artists ADD COLUMN sort_name VARCHAR(255) DEFAULT NULL"
-                ))
-                
+                conn.execute(
+                    text(
+                        "ALTER TABLE artists ADD COLUMN sort_name VARCHAR(255) DEFAULT NULL"
+                    )
+                )
+
                 # Add index for sort_name
                 logger.info("Adding index for sort_name column")
-                conn.execute(text(
-                    "CREATE INDEX idx_artist_sort_name ON artists (sort_name)"
-                ))
-                
-                conn.commit()
+                conn.execute(
+                    text("CREATE INDEX idx_artist_sort_name ON artists (sort_name)")
+                )
+
+                # DO NOT commit here - migration system handles the commit
                 logger.info("✅ Successfully added sort_name column and index")
             else:
                 logger.info("✅ sort_name column already exists")
-                
+
         return True
-        
+
     except Exception as e:
         logger.error(f"❌ Failed to add sort_name column: {e}")
         import traceback
+
         logger.error(traceback.format_exc())
         return False
 
 
-def populate_sort_names():
+def populate_sort_names(connection):
     """
     Populate sort names for all existing artists
     """
     try:
-        with get_db() as session:
+        # Use the connection provided by the migration system
+        # Use raw SQL to avoid SQLAlchemy model attribute issues
+        if True:  # Keep indentation for minimal changes
             logger.info("Starting sort name population for existing artists")
-            
-            # Get all artists
-            all_artists = session.query(Artist).all()
-            logger.info(f"Found {len(all_artists)} total artists")
-            
-            # Find artists without sort names
-            artists_without_sort_names = []
-            artists_with_empty_sort_names = []
-            
-            for artist in all_artists:
-                if not artist.sort_name:
-                    artists_without_sort_names.append(artist)
-                elif artist.sort_name.strip() == '':
-                    artists_with_empty_sort_names.append(artist)
-            
-            total_to_fix = len(artists_without_sort_names) + len(artists_with_empty_sort_names)
-            
+
+            # Get artists needing sort names using raw SQL
+            result = connection.execute(
+                text(
+                    """
+                SELECT id, name
+                FROM artists
+                WHERE sort_name IS NULL OR sort_name = ''
+            """
+                )
+            )
+
+            artists_to_fix = result.fetchall()
+            total_to_fix = len(artists_to_fix)
+
             if total_to_fix == 0:
-                logger.info("✅ All artists already have sort names - no population needed")
+                logger.info(
+                    "✅ All artists already have sort names - no population needed"
+                )
                 return True
-            
-            logger.info(f"Found {len(artists_without_sort_names)} artists with NULL sort_name")
-            logger.info(f"Found {len(artists_with_empty_sort_names)} artists with empty sort_name")
-            logger.info(f"Total artists to fix: {total_to_fix}")
-            
-            # Generate sort names
+
+            logger.info(f"Found {total_to_fix} artists needing sort names")
+
+            # Generate and update sort names using raw SQL
             fixed_count = 0
-            
-            for artist in artists_without_sort_names + artists_with_empty_sort_names:
+
+            for artist_id, artist_name in artists_to_fix:
                 try:
                     # Generate sort name using the utility function
-                    sort_name = generate_sort_name(artist.name)
-                    
-                    # Update the artist
-                    artist.sort_name = sort_name
-                    
-                    logger.info(f"Generated sort name for artist ID {artist.id}: '{artist.name}' -> '{sort_name}'")
+                    sort_name = generate_sort_name(artist_name)
+
+                    # Update using raw SQL
+                    connection.execute(
+                        text(
+                            """
+                        UPDATE artists
+                        SET sort_name = :sort_name
+                        WHERE id = :artist_id
+                    """
+                        ),
+                        {"sort_name": sort_name, "artist_id": artist_id},
+                    )
+
+                    logger.info(
+                        f"Generated sort name for artist ID {artist_id}: '{artist_name}' -> '{sort_name}'"
+                    )
                     fixed_count += 1
-                    
+
                 except Exception as e:
-                    logger.error(f"Failed to generate sort name for artist {artist.id} '{artist.name}': {e}")
+                    logger.error(
+                        f"Failed to generate sort name for artist {artist_id} '{artist_name}': {e}"
+                    )
                     continue
-            
-            # Commit all changes
-            session.commit()
-            
+
+            # DO NOT commit here - migration system handles the commit
             logger.info(f"✅ Sort name population completed successfully")
-            logger.info(f"✅ Generated sort names for {fixed_count}/{total_to_fix} artists")
-            
-            # Verify the fix
-            remaining_without_sort_names = session.query(Artist).filter(
-                (Artist.sort_name.is_(None)) | (Artist.sort_name == '')
-            ).count()
-            
+            logger.info(
+                f"✅ Generated sort names for {fixed_count}/{total_to_fix} artists"
+            )
+
+            # Verify the fix using raw SQL
+            result = connection.execute(
+                text(
+                    """
+                SELECT COUNT(*) as count
+                FROM artists
+                WHERE sort_name IS NULL OR sort_name = ''
+            """
+                )
+            )
+            remaining_without_sort_names = result.fetchone()[0]
+
             if remaining_without_sort_names == 0:
                 logger.info("✅ Verification passed: All artists now have sort names")
                 return True
             else:
-                logger.warning(f"⚠️  {remaining_without_sort_names} artists still without sort names")
+                logger.warning(
+                    f"⚠️  {remaining_without_sort_names} artists still without sort names"
+                )
                 return False
-                
+
     except Exception as e:
         logger.error(f"❌ Sort name population failed: {e}")
         import traceback
+
         logger.error(traceback.format_exc())
         return False
+
+
+def upgrade(connection):
+    """
+    Main migration function (required by migration system)
+    """
+    logger.info("Starting migration 006: Add sort name field to artists")
+
+    # Step 1: Add the column
+    if not add_sort_name_column(connection):
+        raise Exception("Failed to add sort_name column")
+
+    # Step 2: Populate sort names for existing artists
+    if not populate_sort_names(connection):
+        raise Exception("Failed to populate sort names")
+
+    logger.info("✅ Migration 006 completed successfully")
 
 
 def migrate_add_sort_name():
     """
-    Main migration function
+    Wrapper for backwards compatibility
     """
-    logger.info("Starting migration 006: Add sort name field to artists")
-    
-    # Step 1: Add the column
-    if not add_sort_name_column():
-        return False
-    
-    # Step 2: Populate sort names for existing artists
-    if not populate_sort_names():
-        return False
-    
-    logger.info("✅ Migration 006 completed successfully")
+    upgrade()
     return True
+
+
+def downgrade():
+    """
+    Rollback migration - remove sort_name column (required by migration system)
+    """
+    logger.info("Rolling back migration 006: Removing sort_name column")
+
+    with engine.connect() as conn:
+        # Drop index first
+        try:
+            conn.execute(text("DROP INDEX idx_artist_sort_name ON artists"))
+            logger.info("Dropped sort_name index")
+        except Exception as e:
+            logger.warning(f"Could not drop index (may not exist): {e}")
+
+        # Drop column
+        conn.execute(text("ALTER TABLE artists DROP COLUMN sort_name"))
+        conn.commit()
+
+    logger.info("✅ Migration 006 rollback completed successfully")
 
 
 def rollback_migration():
     """
-    Rollback migration - remove sort_name column
+    Wrapper for backwards compatibility
     """
-    try:
-        logger.info("Rolling back migration 006: Removing sort_name column")
-        
-        with engine.connect() as conn:
-            # Drop index first
-            try:
-                conn.execute(text("DROP INDEX idx_artist_sort_name ON artists"))
-                logger.info("Dropped sort_name index")
-            except Exception as e:
-                logger.warning(f"Could not drop index (may not exist): {e}")
-            
-            # Drop column
-            conn.execute(text("ALTER TABLE artists DROP COLUMN sort_name"))
-            conn.commit()
-            
-        logger.info("✅ Migration 006 rollback completed successfully")
-        return True
-        
-    except Exception as e:
-        logger.error(f"❌ Migration 006 rollback failed: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return False
+    downgrade()
+    return True
 
 
 if __name__ == "__main__":
     import argparse
-    
-    parser = argparse.ArgumentParser(description="Migration 006: Add sort name field to artists")
-    parser.add_argument("--rollback", action="store_true", help="Rollback the migration")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be changed without making changes")
-    
+
+    parser = argparse.ArgumentParser(
+        description="Migration 006: Add sort name field to artists"
+    )
+    parser.add_argument(
+        "--rollback", action="store_true", help="Rollback the migration"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be changed without making changes",
+    )
+
     args = parser.parse_args()
-    
+
     if args.rollback:
         success = rollback_migration()
     else:
@@ -207,5 +255,5 @@ if __name__ == "__main__":
             success = True
         else:
             success = migrate_add_sort_name()
-    
+
     sys.exit(0 if success else 1)

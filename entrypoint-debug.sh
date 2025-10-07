@@ -50,10 +50,10 @@ else
 fi
 
 echo "🚀 Attempting to start application..."
-echo "Command: python3 app.py"
+echo "Command: python3 fastapi_app.py"
 
 # Try starting the app and capture any immediate errors
-timeout 10 python3 app.py 2>&1 | head -20 || echo "❌ Application startup failed or timed out"
+timeout 10 python3 fastapi_app.py 2>&1 | head -20 || echo "❌ Application startup failed or timed out"
 
 echo "=============================================="
 echo "🏁 Debug script completed: $(date)"

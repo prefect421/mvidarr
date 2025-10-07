@@ -421,11 +421,11 @@ class SecurityHeaders:
             # Content Security Policy
             "Content-Security-Policy": (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://code.iconify.design; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://code.iconify.design https://cdn.socket.io; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com http://fonts.googleapis.com; "
                 "img-src 'self' data: https:; "
                 "media-src 'self' blob:; "
-                "connect-src 'self' https://api.iconify.design https://api.simplesvg.com; "
+                "connect-src 'self' https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com ws: wss:; "
                 "font-src 'self' https://fonts.gstatic.com http://fonts.gstatic.com; "
                 "object-src 'none'; "
                 "base-uri 'self'; "

@@ -1,0 +1,216 @@
+version: '3.8'
+
+services:
+  # Main MVidarr Application
+  mvidarr:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: mvidarr-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=mysql+pymysql://mvidarr:${MYSQL_PASSWORD}@mvidarr-db:3306/mvidarr
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@mvidarr-redis:6379/0
+      - LOG_LEVEL=INFO
+      - WORKERS=4
+      - MONITORING_ENABLED=true
+      - BACKUP_ENABLED=true
+    volumes:
+      - ./data/media:/app/media
+      - ./data/thumbnails:/app/thumbnails
+      - ./data/logs:/app/logs
+      - ./data/backups:/app/backups
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - mvidarr-db
+      - mvidarr-redis
+    networks:
+      - mvidarr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "mvidarr.service=main"
+
+  # MariaDB Database
+  mvidarr-db:
+    image: mariadb:10.11
+    container_name: mvidarr-database
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=mvidarr
+      - MYSQL_USER=mvidarr
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    volumes:
+      - mvidarr-db-data:/var/lib/mysql
+      - ./data/db-backups:/backup
+      - ./docker/mariadb/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - mvidarr-network
+    command: >
+      --innodb-buffer-pool-size=256M
+      --innodb-log-file-size=64M
+      --max-connections=200
+      --query-cache-type=1
+      --query-cache-size=32M
+      --slow-query-log=1
+      --slow-query-log-file=/var/lib/mysql/slow.log
+      --long-query-time=2
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "mvidarr.service=database"
+
+  # Redis Cache
+  mvidarr-redis:
+    image: redis:7-alpine
+    container_name: mvidarr-cache
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - mvidarr-redis-data:/data
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - mvidarr-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "mvidarr.service=cache"
+
+  # Nginx Reverse Proxy (Optional - for SSL/domains)
+  mvidarr-proxy:
+    image: nginx:alpine
+    container_name: mvidarr-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx-selfhosted.conf:/etc/nginx/nginx.conf:ro
+      - ./data/ssl:/etc/nginx/ssl:ro
+      - ./data/logs/nginx:/var/log/nginx
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - mvidarr
+    networks:
+      - mvidarr-network
+    profiles:
+      - proxy
+    labels:
+      - "mvidarr.service=proxy"
+
+  # System Monitor (Lightweight monitoring)
+  mvidarr-monitor:
+    build:
+      context: .
+      dockerfile: docker/monitor/Dockerfile
+    container_name: mvidarr-monitor
+    restart: unless-stopped
+    environment:
+      - MONITOR_INTERVAL=60
+      - ALERT_EMAIL=${ALERT_EMAIL}
+      - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data/monitor:/app/data
+      - ./data/logs:/app/logs:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - mvidarr
+      - mvidarr-db
+      - mvidarr-redis
+    networks:
+      - mvidarr-network
+    profiles:
+      - monitor
+    labels:
+      - "mvidarr.service=monitor"
+
+  # Automatic Backup Service
+  mvidarr-backup:
+    build:
+      context: .
+      dockerfile: docker/backup/Dockerfile
+    container_name: mvidarr-backup
+    restart: unless-stopped
+    environment:
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}  # Daily at 2 AM
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - ./data:/app/data:ro
+      - ./data/backups:/app/backups
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - mvidarr-db
+    networks:
+      - mvidarr-network
+    profiles:
+      - backup
+    labels:
+      - "mvidarr.service=backup"
+
+  # Watchtower - Automatic Updates (Optional)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: mvidarr-updater
+    restart: unless-stopped
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=86400  # Check daily
+      - WATCHTOWER_NOTIFICATIONS=email
+      - WATCHTOWER_NOTIFICATION_EMAIL_TO=${ALERT_EMAIL}
+      - WATCHTOWER_NOTIFICATION_EMAIL_FROM=${SMTP_USERNAME}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER=${SMTP_SERVER}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT=${SMTP_PORT}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER=${SMTP_USERNAME}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD=${SMTP_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+    profiles:
+      - updater
+    labels:
+      - "mvidarr.service=updater"
+
+volumes:
+  mvidarr-db-data:
+    driver: local
+  mvidarr-redis-data:
+    driver: local
+
+networks:
+  mvidarr-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24

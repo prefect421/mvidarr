@@ -815,13 +815,33 @@ document.addEventListener('DOMContentLoaded', function() {
         hideResults();
 
         try {
-            // Search YouTube only
-            const youtubeData = await searchYouTube(query);
+            // Search using videos universal-search API (properly structured data)
+            const response = await fetch(`/api/videos/universal-search?q=${encodeURIComponent(query)}`);
+            
+            if (!response.ok) {
+                throw new Error(`Search failed: ${response.status}`);
+            }
 
-            console.log('📺 YouTube results:', youtubeData.length);
+            const data = await response.json();
+            
+            // Extract results from the universal-search endpoint structure
+            const localVideos = data.videos || [];
+            const localArtists = data.artists || [];
+            const externalResults = data.external || [];
+            
+            // Separate IMVDb and YouTube from external results
+            const imvdbResults = externalResults.filter(item => item.source === 'IMVDb');
+            const youtubeResults = externalResults.filter(item => item.source === 'YouTube');
+            const localResults = [...localVideos, ...localArtists];
+            
+            console.log('📺 YouTube results:', youtubeResults.length);
+            console.log('🎵 IMVDb results:', imvdbResults.length);
+            console.log('🏠 Local results:', localResults.length);
 
-            if (youtubeData.length > 0) {
-                displayResults(query, [], youtubeData);
+            const totalResults = youtubeResults.length + imvdbResults.length + localResults.length;
+            
+            if (totalResults > 0) {
+                displayResults(query, imvdbResults, youtubeResults, localResults);
             } else {
                 showNoResults();
             }
@@ -872,15 +892,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function displayResults(query, imvdbData, youtubeData) {
-        const totalResults = youtubeData.length;
+    function displayResults(query, imvdbData, youtubeData, localResults) {
+        imvdbData = imvdbData || [];
+        youtubeData = youtubeData || [];
+        localResults = localResults || [];
+        
+        const totalResults = imvdbData.length + youtubeData.length + localResults.length;
         
         resultsTitle.textContent = `Search Results for "${query}"`;
-        resultsCount.textContent = `Found ${totalResults} results`;
+        resultsCount.textContent = `Found ${totalResults} results (IMVDb: ${imvdbData.length}, YouTube: ${youtubeData.length}, Local: ${localResults.length})`;
         
-        // Display YouTube results only
-        if (youtubeData.length > 0) {
-            youtubeResultsList.innerHTML = youtubeData.map(video => createResultCard(video)).join('');
+        // Combine all external results (IMVDb and YouTube) for display
+        const allExternalResults = [...imvdbData, ...youtubeData];
+        
+        // Display external results
+        if (allExternalResults.length > 0) {
+            youtubeResultsList.innerHTML = allExternalResults.map(video => createResultCard(video)).join('');
             youtubeResults.style.display = 'block';
         } else {
             youtubeResults.style.display = 'none';
@@ -893,8 +920,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function createResultCard(video) {
-        const escapedTitle = escapeHtml(video.title);
-        const escapedArtist = escapeHtml(video.artist);
+        const escapedTitle = escapeHtml(video.title || video.name || 'Unknown Title');
+        const escapedArtist = escapeHtml(video.artist || video.channel || 'Unknown Artist');
+        
+        // Generate source icon based on source
+        const sourceIcon = video.source === 'YouTube' ? '📺' : 
+                          video.source === 'IMVDb' ? '🎵' : '🎬';
+        
+        // Handle different URL field names
+        const videoUrl = video.youtube_url || video.imvdb_url || video.url || '';
         
         return `
             <div class="result-card">
@@ -902,11 +936,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="result-thumbnail">
                         ${video.thumbnail ? 
                             `<img src="${video.thumbnail}" alt="Thumbnail" onerror="this.src='/static/default-thumbnail.png'; this.onerror=null;">` :
-                            `<div class="placeholder">🎵</div>`
+                            `<div class="placeholder">${sourceIcon}</div>`
                         }
                     </div>
                     <div class="result-info">
-                        <div class="result-title">${video.sourceIcon} ${escapedTitle}</div>
+                        <div class="result-title">${sourceIcon} ${escapedTitle}</div>
                         <div class="result-artist">${escapedArtist}</div>
                         <div class="result-meta">
                             <div class="result-source">
@@ -918,10 +952,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="result-actions">
                             <button class="btn-add-video" 
                                     data-source="${video.source}" 
-                                    data-video-id="${video.id}" 
+                                    data-video-id="${video.id || video.video_id || ''}" 
                                     data-title="${escapedTitle}" 
                                     data-artist="${escapedArtist}" 
-                                    data-url="${video.url}">
+                                    data-url="${videoUrl}">
                                 <iconify-icon icon="tabler:plus"></iconify-icon>
                                 Add to Library
                             </button>

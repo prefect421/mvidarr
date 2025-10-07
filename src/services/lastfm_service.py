@@ -31,6 +31,9 @@ class LastFmService:
 
     def refresh_credentials(self):
         """Refresh API credentials from environment or settings"""
+        # Use SettingsService class methods directly for better Flask context handling
+        from src.services.settings_service import SettingsService
+
         # Try environment variables first, then settings
         self.api_key = os.getenv("LASTFM_API_KEY") or SettingsService.get(
             "lastfm_api_key"
@@ -41,6 +44,13 @@ class LastFmService:
         logger.debug(
             f"Last.fm credentials refreshed - API key: {'present' if self.api_key else 'missing'}, secret: {'present' if self.api_secret else 'missing'}"
         )
+
+    @property
+    def enabled(self):
+        """Check if Last.fm integration is enabled"""
+        self.refresh_credentials()
+        # Last.fm is enabled if we have an API key
+        return bool(self.api_key)
 
     def get_auth_url(self) -> str:
         """Generate Last.fm authentication URL"""
@@ -299,6 +309,38 @@ class LastFmService:
             "total_pages": int(recent_tracks.get("@attr", {}).get("totalPages", 1)),
         }
 
+    def search_artist(self, artist_name: str, limit: int = 10) -> List[Dict]:
+        """Search for artists by name"""
+        try:
+            params = {"artist": artist_name, "limit": limit}
+            data = self._make_request("artist.search", params)
+
+            results = []
+            artists = data.get("results", {}).get("artistmatches", {}).get("artist", [])
+
+            # Handle single result case
+            if isinstance(artists, dict):
+                artists = [artists]
+
+            for artist in artists:
+                results.append(
+                    {
+                        "name": artist.get("name"),
+                        "mbid": artist.get("mbid"),
+                        "url": artist.get("url"),
+                        "image": artist.get("image", []),
+                        "streamable": artist.get("streamable") == "1",
+                        "listeners": int(artist.get("listeners", 0)),
+                        "source": "lastfm",
+                    }
+                )
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Error searching Last.fm for artist '{artist_name}': {e}")
+            return []
+
     def get_artist_info(self, artist_name: str, username: str = None) -> Dict:
         """Get artist information"""
         params = {"artist": artist_name}
@@ -329,7 +371,80 @@ class LastFmService:
             "tags": [
                 tag.get("name") for tag in artist_info.get("tags", {}).get("tag", [])
             ],
+            # Extract similar artists from the artist info if available
+            "similar": (
+                [
+                    similar.get("name")
+                    for similar in artist_info.get("similar", {}).get("artist", [])
+                ]
+                if "similar" in artist_info
+                else []
+            ),
         }
+
+    def get_artist_top_tracks(self, artist_name: str, limit: int = 5) -> Dict:
+        """Get artist's top tracks from Last.fm"""
+        try:
+            params = {"artist": artist_name, "limit": limit}
+            data = self._make_request("artist.getTopTracks", params)
+
+            top_tracks_data = data.get("toptracks", {})
+            tracks = []
+
+            track_list = top_tracks_data.get("track", [])
+            # Handle single track case
+            if isinstance(track_list, dict):
+                track_list = [track_list]
+
+            for track_data in track_list:
+                tracks.append(
+                    {
+                        "name": track_data.get("name"),
+                        "playcount": int(track_data.get("playcount", 0)),
+                        "listeners": int(track_data.get("listeners", 0)),
+                        "mbid": track_data.get("mbid"),
+                        "url": track_data.get("url"),
+                        "image": track_data.get("image", []),
+                        "rank": int(track_data.get("@attr", {}).get("rank", 0)),
+                    }
+                )
+
+            logger.debug(
+                f"🎵 LAST.FM: Found {len(tracks)} top tracks for {artist_name}"
+            )
+            return {
+                "toptracks": {
+                    "track": tracks,
+                    "@attr": top_tracks_data.get("@attr", {}),
+                }
+            }
+
+        except Exception as e:
+            logger.warning(
+                f"🎵 LAST.FM: Could not get top tracks for {artist_name}: {e}"
+            )
+            return {"toptracks": {"track": []}}
+
+    def get_similar_artists(self, artist_name: str, limit: int = 5) -> List[str]:
+        """Get similar artists from Last.fm"""
+        try:
+            params = {"artist": artist_name, "limit": limit}
+            data = self._make_request("artist.getSimilar", params)
+
+            similar_artists = data.get("similarartists", {})
+            artists = []
+
+            for artist_data in similar_artists.get("artist", []):
+                artist_name = artist_data.get("name")
+                if artist_name:
+                    artists.append(artist_name)
+
+            logger.debug(f"🎵 LAST.FM: Found {len(artists)} similar artists: {artists}")
+            return artists
+
+        except Exception as e:
+            logger.warning(f"🎵 LAST.FM: Could not get similar artists: {e}")
+            return []
 
     def get_loved_tracks(
         self, username: str = None, limit: int = 50, page: int = 1

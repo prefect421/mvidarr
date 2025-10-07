@@ -1,0 +1,202 @@
+---
+# Peer Authentication - Enable mutual TLS for all services in namespace
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: mvidarr-peer-auth
+  namespace: mvidarr
+  labels:
+    app: mvidarr
+    component: security
+spec:
+  mtls:
+    mode: STRICT
+---
+# Authorization Policy - API Service access control
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: mvidarr-api-authz
+  namespace: mvidarr
+  labels:
+    app: mvidarr
+    component: security
+spec:
+  selector:
+    matchLabels:
+      app: mvidarr-api
+  rules:
+  # Allow health checks from anywhere
+  - to:
+    - operation:
+        paths: ["/health", "/api/monitoring/readiness", "/api/monitoring/liveness"]
+        methods: ["GET"]
+  # Allow API access with proper authentication
+  - to:
+    - operation:
+        paths: ["/api/*"]
+        methods: ["GET", "POST", "PUT", "DELETE"]
+    when:
+    - key: source.namespace
+      values: ["mvidarr", "istio-system"]
+  # Allow gateway access
+  - to:
+    - operation:
+        paths: ["/gateway/*"]
+        methods: ["GET", "POST", "PUT", "DELETE"]
+    when:
+    - key: source.namespace
+      values: ["mvidarr", "istio-system"]
+  # Allow metrics collection
+  - to:
+    - operation:
+        paths: ["/api/monitoring/metrics"]
+        methods: ["GET"]
+    when:
+    - key: source.namespace
+      values: ["mvidarr", "istio-system", "monitoring"]
+  # Allow web interface access
+  - to:
+    - operation:
+        paths: ["/", "/static/*", "/assets/*"]
+        methods: ["GET"]
+---
+# Authorization Policy - Database access control
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: mvidarr-database-authz
+  namespace: mvidarr
+  labels:
+    app: mvidarr-database
+    component: security
+spec:
+  selector:
+    matchLabels:
+      app: mvidarr-database
+  rules:
+  # Only allow access from API services
+  - to:
+    - operation:
+        ports: ["3306"]
+    when:
+    - key: source.labels[app]
+      values: ["mvidarr-api"]
+  # Allow metrics collection
+  - to:
+    - operation:
+        ports: ["9104"]
+    when:
+    - key: source.namespace
+      values: ["monitoring", "istio-system"]
+---
+# Authorization Policy - Redis access control
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: mvidarr-redis-authz
+  namespace: mvidarr
+  labels:
+    app: mvidarr-redis
+    component: security
+spec:
+  selector:
+    matchLabels:
+      app: mvidarr-redis
+  rules:
+  # Only allow access from API services
+  - to:
+    - operation:
+        ports: ["6379"]
+    when:
+    - key: source.labels[app]
+      values: ["mvidarr-api"]
+  # Allow metrics collection
+  - to:
+    - operation:
+        ports: ["9121"]
+    when:
+    - key: source.namespace
+      values: ["monitoring", "istio-system"]
+---
+# Request Authentication - JWT validation
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: mvidarr-jwt-auth
+  namespace: mvidarr
+  labels:
+    app: mvidarr
+    component: security
+spec:
+  selector:
+    matchLabels:
+      app: mvidarr-api
+  jwtRules:
+  - issuer: "mvidarr-api"
+    jwksUri: "http://mvidarr-api-service/api/auth/jwks"
+    audiences:
+    - "mvidarr-api"
+    forwardOriginalToken: true
+  - issuer: "https://accounts.google.com"
+    jwksUri: "https://www.googleapis.com/oauth2/v3/certs"
+    audiences:
+    - "mvidarr-google-oauth"
+---
+# Network Policy for additional security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mvidarr-istio-network-policy
+  namespace: mvidarr
+  labels:
+    app: mvidarr
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: mvidarr-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow Istio sidecar traffic
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+  # Allow intra-namespace traffic
+  - from:
+    - podSelector: {}
+  egress:
+  # Allow traffic to database
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mvidarr-database
+    ports:
+    - protocol: TCP
+      port: 3306
+  # Allow traffic to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app: mvidarr-redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow Istio system traffic
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: istio-system
+  # Allow external HTTPS
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow DNS
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53

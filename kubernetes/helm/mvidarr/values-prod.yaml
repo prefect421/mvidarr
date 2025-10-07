@@ -1,0 +1,169 @@
+# Production environment overrides
+replicaCount: 5
+
+image:
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+app:
+  environment: production
+  logLevel: INFO
+  debug: false
+
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 20
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3
+
+database:
+  # Use external managed database in production
+  external:
+    enabled: true
+    host: "prod-db.mvidarr.example.com"
+    port: 3306
+    database: "mvidarr_prod"
+    username: "mvidarr_prod"
+    password: ""  # Set via secret
+  mariadb:
+    enabled: false
+
+redis:
+  # Use external managed Redis in production
+  enabled: false
+  external:
+    enabled: true
+    host: "prod-redis.mvidarr.example.com"
+    port: 6379
+    password: ""  # Set via secret
+
+storage:
+  media:
+    size: 500Gi
+    storageClass: fast-ssd
+  thumbnails:
+    size: 100Gi
+    storageClass: fast-ssd
+  temp:
+    size: 200Gi
+    storageClass: fast-ssd
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1g"
+    nginx.ingress.kubernetes.io/rate-limit: "200"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # WAF and DDoS protection
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/enable-owasp-core-rules: "true"
+  hosts:
+    - host: mvidarr.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: api.mvidarr.example.com
+      paths:
+        - path: /api
+          pathType: Prefix
+        - path: /gateway
+          pathType: Prefix
+  tls:
+    - secretName: mvidarr-prod-tls
+      hosts:
+        - mvidarr.example.com
+        - api.mvidarr.example.com
+
+certManager:
+  enabled: true
+  issuer:
+    name: letsencrypt-prod
+    email: admin@mvidarr.example.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+security:
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    capabilities:
+      drop:
+        - ALL
+        
+  networkPolicy:
+    enabled: true
+
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+
+config:
+  # Production secrets should be managed externally
+  session:
+    secretKey: ""  # Set via external secret management
+  jwt:
+    secretKey: ""  # Set via external secret management
+  
+  api:
+    rateLimitRequests: 200
+    rateLimitWindow: 60
+
+# Production-specific node selection
+nodeSelector:
+  node-type: "production"
+  
+tolerations:
+- key: "production-workload"
+  operator: "Equal"
+  value: "true"
+  effect: "NoSchedule"
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchExpressions:
+        - key: app.kubernetes.io/name
+          operator: In
+          values:
+          - mvidarr
+      topologyKey: kubernetes.io/hostname
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      preference:
+        matchExpressions:
+        - key: node-type
+          operator: In
+          values:
+          - production

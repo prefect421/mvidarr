@@ -48,7 +48,7 @@ class SettingsService:
             cls.load_cache()
         except Exception as e:
             logger.error(f"Failed to load settings cache in get(): {e}")
-            cls._cache_loaded = True  # Prevent further recursion
+            # Don't prevent future retries - database might become available later
 
         value = cls._cache.get(key)
 

@@ -15,7 +15,7 @@ logger = get_logger("mvidarr.api.video_indexing")
 
 @video_indexing_bp.route("/index-all", methods=["POST"])
 def index_all_videos():
-    """Index all videos in the music videos directory"""
+    """Index all videos in the music videos directory (background job)"""
     try:
         # Get optional parameters
         data = request.get_json() or {}
@@ -26,30 +26,61 @@ def index_all_videos():
             f"Starting video indexing process (fetch_metadata={fetch_metadata}, max_files={max_files})"
         )
 
-        result = video_indexing_service.index_all_videos(
-            fetch_metadata=fetch_metadata, max_files=max_files
+        # Create background job for video indexing
+        import asyncio
+
+        from src.services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
         )
+
+        job = BackgroundJob(
+            type=JobType.VIDEO_INDEX_ALL,
+            priority=JobPriority.NORMAL,
+            payload={"fetch_metadata": fetch_metadata, "max_files": max_files},
+            created_by=getattr(request, "user_id", None),
+        )
+
+        # Enqueue job
+        async def queue_job():
+            job_queue = await get_job_queue()
+            return await job_queue.enqueue(job)
+
+        job_id = asyncio.run(queue_job())
+
+        logger.info(f"Enqueued video indexing job {job_id}")
 
         return (
             jsonify(
                 {
                     "success": True,
-                    "message": f"Indexed {result['successful']} of {result['total_files']} videos",
-                    "summary": result,
+                    "job_id": job_id,
+                    "message": f"Video indexing job queued (fetch_metadata={fetch_metadata}, max_files={max_files or 'all'})",
                 }
             ),
-            200,
+            202,
         )
 
     except Exception as e:
-        logger.error(f"Failed to index all videos: {e}")
+        logger.error(f"Failed to queue video indexing job: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @video_indexing_bp.route("/index-single", methods=["POST"])
 def index_single_video():
-    """Index a specific video file"""
+    """Index a specific video file (background job)"""
     try:
+        import asyncio
+
+        from src.services.job_queue import (
+            BackgroundJob,
+            JobPriority,
+            JobType,
+            get_job_queue,
+        )
+
         data = request.get_json()
         if not data or "file_path" not in data:
             return jsonify({"success": False, "error": "file_path is required"}), 400
@@ -57,31 +88,36 @@ def index_single_video():
         file_path = data["file_path"]
         fetch_metadata = data.get("fetch_metadata", True)
 
-        from pathlib import Path
-
-        result = video_indexing_service.index_single_file(
-            Path(file_path), fetch_metadata=fetch_metadata
+        # Create background job for single video indexing
+        job = BackgroundJob(
+            type=JobType.VIDEO_INDEX_SINGLE,
+            priority=JobPriority.HIGH,  # Single video indexing is higher priority
+            payload={"file_path": file_path, "fetch_metadata": fetch_metadata},
+            created_by=getattr(request, "user_id", None),
         )
 
-        if result["success"]:
-            return (
-                jsonify(
-                    {
-                        "success": True,
-                        "message": f"Successfully indexed {file_path}",
-                        "result": result,
-                    }
-                ),
-                200,
-            )
-        else:
-            return (
-                jsonify({"success": False, "error": result["error"], "result": result}),
-                400,
-            )
+        # Enqueue job
+        async def queue_job():
+            job_queue = await get_job_queue()
+            return await job_queue.enqueue(job)
+
+        job_id = asyncio.run(queue_job())
+
+        logger.info(f"Enqueued single video indexing job {job_id} for {file_path}")
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "job_id": job_id,
+                    "message": f"Single video indexing job queued for {file_path}",
+                }
+            ),
+            202,
+        )
 
     except Exception as e:
-        logger.error(f"Failed to index single video: {e}")
+        logger.error(f"Failed to queue single video indexing job: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

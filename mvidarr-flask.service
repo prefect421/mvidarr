@@ -1,0 +1,56 @@
+[Unit]
+Description=MVidarr Flask Frontend - Web Interface on Port 5010
+Documentation=file:///home/mike/mvidarr/README.md file:///home/mike/mvidarr/MILESTONE_ROADMAP.md
+After=network-online.target mysql.service mariadb.service mvidarr.service
+Wants=network-online.target
+RequiresMountsFor=/home/mike/mvidarr
+
+[Service]
+Type=exec
+User=mike
+Group=mike
+WorkingDirectory=/home/mike/mvidarr
+
+# Create required directories and start Flask application
+ExecStartPre=/usr/bin/mkdir -p /home/mike/mvidarr/data/logs /home/mike/mvidarr/data/downloads /home/mike/mvidarr/data/thumbnails /home/mike/mvidarr/data/cache /home/mike/mvidarr/data/backups
+ExecStart=/home/mike/mvidarr/venv/bin/python /home/mike/mvidarr/flask_app_5010.py
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Enhanced restart and failure handling
+Restart=always
+RestartSec=15
+StartLimitInterval=600
+StartLimitBurst=3
+TimeoutStartSec=60
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mvidarr-flask
+
+# Environment variables for Flask Application
+Environment=PATH=/home/mike/mvidarr/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/home/mike/mvidarr
+Environment=FLASK_ENV=production
+Environment=PYTHONUNBUFFERED=1
+Environment=FLASK_PORT=5010
+Environment=HYBRID_MODE=enabled
+
+# Security settings for home directory access
+NoNewPrivileges=yes
+PrivateTmp=yes
+# Commented out for home directory access
+# ProtectSystem=strict
+# ProtectHome=yes
+# ReadWritePaths=/home/mike/mvidarr/data
+# ReadOnlyPaths=/home/mike/mvidarr
+
+# Resource limits for Flask frontend
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

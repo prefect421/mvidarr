@@ -1,0 +1,219 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mvidarr-api
+  namespace: mvidarr
+  labels:
+    app: mvidarr-api
+    component: api
+    version: v1
+    app.kubernetes.io/name: mvidarr-api
+    app.kubernetes.io/version: "0.9.8"
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: mvidarr
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: mvidarr-api
+      component: api
+  template:
+    metadata:
+      labels:
+        app: mvidarr-api
+        component: api
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+        prometheus.io/path: "/api/monitoring/metrics"
+    spec:
+      containers:
+      - name: mvidarr-api
+        image: mvidarr/api:0.9.8
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 5000
+          protocol: TCP
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: mvidarr-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: mvidarr-secrets
+              key: redis-url
+        - name: API_GATEWAY_ENABLED
+          value: "true"
+        - name: MONITORING_ENABLED
+          value: "true"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: WORKERS
+          value: "4"
+        envFrom:
+        - configMapRef:
+            name: mvidarr-config
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/monitoring/readiness
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 10
+        volumeMounts:
+        - name: media-storage
+          mountPath: /app/media
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        - name: logs-volume
+          mountPath: /app/logs
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: media-storage
+        persistentVolumeClaim:
+          claimName: mvidarr-media-pvc
+      - name: config-volume
+        configMap:
+          name: mvidarr-config
+      - name: logs-volume
+        emptyDir:
+          sizeLimit: 1Gi
+      serviceAccountName: mvidarr-api-sa
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - mvidarr-api
+              topologyKey: kubernetes.io/hostname
+      tolerations:
+      - key: "node.kubernetes.io/memory-pressure"
+        operator: "Exists"
+        effect: "NoSchedule"
+        tolerationSeconds: 300
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mvidarr-api-service
+  namespace: mvidarr
+  labels:
+    app: mvidarr-api
+    component: api
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  - name: metrics
+    port: 8080
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app: mvidarr-api
+    component: api
+  sessionAffinity: None
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mvidarr-api-sa
+  namespace: mvidarr
+  labels:
+    app: mvidarr-api
+    component: api
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: mvidarr
+  name: mvidarr-api-role
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mvidarr-api-role-binding
+  namespace: mvidarr
+subjects:
+- kind: ServiceAccount
+  name: mvidarr-api-sa
+  namespace: mvidarr
+roleRef:
+  kind: Role
+  name: mvidarr-api-role
+  apiGroup: rbac.authorization.k8s.io

@@ -3634,6 +3634,37 @@ body {
     padding-top: 20px;
 }
 
+.results-container {
+    background: #3d3d3d;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #444;
+    margin-top: 15px;
+}
+
+.deletion-confirmation-section {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: 8px;
+}
+
+.deletion-confirmation-section h4 {
+    color: #ff6b6b;
+    margin-top: 0;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.button-group .btn {
+    min-width: 120px;
+}
+
 .dependency-summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

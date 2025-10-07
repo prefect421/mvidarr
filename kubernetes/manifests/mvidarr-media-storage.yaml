@@ -1,0 +1,87 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mvidarr-media-pvc
+  namespace: mvidarr
+  labels:
+    app: mvidarr-media
+    component: storage
+    type: media
+spec:
+  accessModes:
+    - ReadWriteMany  # Multiple pods need access to media files
+  resources:
+    requests:
+      storage: 100Gi  # Large storage for media files
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mvidarr-thumbnails-pvc
+  namespace: mvidarr
+  labels:
+    app: mvidarr-media
+    component: storage
+    type: thumbnails
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi  # Thumbnail cache storage
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mvidarr-temp-pvc
+  namespace: mvidarr
+  labels:
+    app: mvidarr-media
+    component: storage
+    type: temporary
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi  # Temporary processing storage
+  storageClassName: fast-ssd
+---
+# Storage Class for high-performance SSD storage
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd
+  labels:
+    app.kubernetes.io/name: fast-ssd
+    app.kubernetes.io/component: storage-class
+provisioner: kubernetes.io/gce-pd  # Change based on cloud provider
+parameters:
+  type: pd-ssd
+  replication-type: regional-pd
+  zones: us-central1-a,us-central1-b,us-central1-c
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+---
+# Alternative storage class for AWS EKS
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd-aws
+  labels:
+    app.kubernetes.io/name: fast-ssd-aws
+    app.kubernetes.io/component: storage-class
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  fsType: ext4
+  encrypted: "true"
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer

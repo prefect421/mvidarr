@@ -12,8 +12,6 @@
             <!-- Import Method Tabs -->
             <div class="import-tabs">
                 <button class="tab-button active" onclick="switchImportTab('single', this)">🎵 Single Video</button>
-                <button class="tab-button" onclick="switchImportTab('batch', this)">📋 Batch Import</button>
-                <button class="tab-button" onclick="switchImportTab('csv', this)">📄 CSV Import</button>
                 <button class="tab-button" onclick="switchImportTab('playlist', this)">🎬 Playlist</button>
             </div>
             
@@ -29,41 +27,6 @@
                 </div>
                 <div class="form-actions">
                     <button onclick="searchForVideos()" class="btn btn-primary">🔍 Search Videos</button>
-                    <button onclick="closeAddVideoModal()" class="btn btn-secondary">Cancel</button>
-                </div>
-            </div>
-            
-            <!-- Batch URL Import -->
-            <div id="batchImportTab" class="import-tab-content">
-                <div class="form-group">
-                    <label for="batchUrlInput">YouTube URLs (one per line):</label>
-                    <textarea id="batchUrlInput" rows="8" placeholder="https://www.youtube.com/watch?v=...&#10;https://youtu.be/...&#10;&#10;Paste multiple YouTube URLs here, one per line" class="form-control"></textarea>
-                    <small class="form-help">Supported: YouTube video URLs, YouTube Music URLs, Shortened youtu.be links</small>
-                </div>
-                <div class="form-actions">
-                    <button onclick="processBatchUrls()" class="btn btn-primary">📥 Import URLs</button>
-                    <button onclick="closeAddVideoModal()" class="btn btn-secondary">Cancel</button>
-                </div>
-            </div>
-            
-            <!-- CSV Import -->
-            <div id="csvImportTab" class="import-tab-content">
-                <div class="form-group">
-                    <label for="csvFileInput">CSV File:</label>
-                    <input type="file" id="csvFileInput" accept=".csv" class="form-control">
-                    <small class="form-help">CSV format: Title, Artist, URL (optional). First row will be treated as headers.</small>
-                </div>
-                <div class="form-group">
-                    <label for="csvTextInput">Or paste CSV data:</label>
-                    <textarea id="csvTextInput" rows="6" placeholder="Title,Artist,URL&#10;Song Name 1,Artist Name 1,https://youtube.com/...&#10;Song Name 2,Artist Name 2,&#10;..." class="form-control"></textarea>
-                </div>
-                <div class="csv-options">
-                    <label>
-                        <input type="checkbox" id="csvHasHeaders" checked> First row contains headers
-                    </label>
-                </div>
-                <div class="form-actions">
-                    <button onclick="processCsvImport()" class="btn btn-primary">📊 Import CSV</button>
                     <button onclick="closeAddVideoModal()" class="btn btn-secondary">Cancel</button>
                 </div>
             </div>
@@ -86,16 +49,6 @@
                     <button onclick="processPlaylistImport()" class="btn btn-primary">🎬 Import Playlist</button>
                     <button onclick="closeAddVideoModal()" class="btn btn-secondary">Cancel</button>
                 </div>
-            </div>
-            
-            <!-- Batch Import Progress -->
-            <div id="batchImportProgress" class="batch-import-progress" style="display: none; margin-top: 20px;">
-                <h4>Import Progress:</h4>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="batchImportProgressFill"></div>
-                </div>
-                <div class="progress-text" id="batchImportProgressText">Preparing...</div>
-                <div class="import-results" id="batchImportResults"></div>
             </div>
             
             <div id="videoSearchResults" class="add-video-search-results" style="display: none; margin-top: 20px;">
@@ -410,7 +363,7 @@
     font-style: italic;
 }
 
-.csv-options, .playlist-options {
+.playlist-options {
     margin: 15px 0;
     padding: 10px;
     background: var(--bg-tertiary, rgba(255, 255, 255, 0.05));
@@ -418,29 +371,6 @@
     border-left: 3px solid var(--accent-primary, #00d4ff);
 }
 
-.batch-import-progress {
-    background: var(--bg-tertiary, rgba(255, 255, 255, 0.05));
-    border-radius: 8px;
-    padding: 20px;
-    border-left: 4px solid var(--accent-primary, #00d4ff);
-}
-
-.batch-import-progress .progress-bar {
-    width: 100%;
-    height: 12px;
-    background: var(--bg-primary, rgba(255, 255, 255, 0.1));
-    border-radius: 6px;
-    margin-bottom: 10px;
-    overflow: hidden;
-}
-
-.batch-import-progress .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent-primary, #00d4ff), var(--accent-secondary, #0099cc));
-    border-radius: 6px;
-    transition: width 0.3s ease;
-    width: 0%;
-}
 </style>
 
 <script>
@@ -455,9 +385,9 @@ function showAddVideoModal() {
     
     // Clear previous search results
     document.getElementById('videoSearchResults').style.display = 'none';
-    document.getElementById('batchImportProgress').style.display = 'none';
     document.getElementById('songTitleInput').value = '';
     document.getElementById('artistNameInput').value = '';
+    
     
     // Reset to single import tab
     switchImportTab('single');
@@ -477,14 +407,39 @@ function closeAddVideoModal() {
     // Clear all content
     document.getElementById('videoSearchResults').style.display = 'none';
     document.getElementById('videoSearchResultsList').innerHTML = '';
-    document.getElementById('batchImportProgress').style.display = 'none';
     
     // Clear all input fields
     document.getElementById('songTitleInput').value = '';
     document.getElementById('artistNameInput').value = '';
-    document.getElementById('batchUrlInput').value = '';
-    document.getElementById('csvTextInput').value = '';
     document.getElementById('playlistUrlInput').value = '';
+}
+
+function processPlaylistImport() {
+    const playlistUrl = document.getElementById('playlistUrlInput').value.trim();
+    const maxCount = parseInt(document.getElementById('playlistMaxCount').value) || 20;
+    
+    if (!playlistUrl) {
+        alert('Please enter a playlist URL to import.');
+        return;
+    }
+    
+    // Show loading state
+    const button = event.target;
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = '⏳ Processing...';
+    
+    // Mock playlist import for now
+    setTimeout(() => {
+        alert(`Playlist import functionality is coming soon!\n\nURL: ${playlistUrl}\nMax videos: ${maxCount}`);
+        
+        // Reset button
+        button.disabled = false;
+        button.textContent = originalText;
+        
+        // Close modal
+        closeAddVideoModal();
+    }, 1000);
 }
 
 // Main Search Function
@@ -492,7 +447,6 @@ function searchForVideos() {
     const songTitle = document.getElementById('songTitleInput').value.trim();
     const artistName = document.getElementById('artistNameInput').value.trim();
     
-    console.log('🔍 Starting video search:', { songTitle, artistName });
     
     if (!songTitle) {
         alert('Please enter a song title to search for videos.');
@@ -500,7 +454,6 @@ function searchForVideos() {
     }
     
     const searchQuery = artistName ? `${artistName} ${songTitle}` : songTitle;
-    console.log('📝 Search query:', searchQuery);
     
     // Show loading state
     const resultsDiv = document.getElementById('videoSearchResults');
@@ -514,9 +467,6 @@ function searchForVideos() {
         searchIMVDb(searchQuery, artistName, songTitle),
         searchYouTube(searchQuery, artistName, songTitle)
     ]).then(([imvdbResults, youtubeResults]) => {
-        console.log('🎬 IMVDb results:', imvdbResults.length);
-        console.log('📺 YouTube results:', youtubeResults.length);
-        console.log('🔍 Combined results:', [...imvdbResults, ...youtubeResults].length);
         displayModalSearchResults([...imvdbResults, ...youtubeResults]);
     }).catch(error => {
         console.error('❌ Error searching for videos:', error);
@@ -527,7 +477,6 @@ function searchForVideos() {
 // Search Provider Functions
 async function searchIMVDb(searchQuery, artistName, songTitle) {
     try {
-        console.log('🎬 Searching IMVDb...', { searchQuery, artistName, songTitle });
         
         let imvdbArtistId = null;
         if (artistName) {
@@ -557,7 +506,6 @@ async function searchIMVDb(searchQuery, artistName, songTitle) {
         }
         
         const videoData = await videoResponse.json();
-        console.log('🎬 IMVDb API response:', videoData);
         const videos = videoData.results || [];
         console.log('🎬 IMVDb videos array:', videos);
         
@@ -794,11 +742,14 @@ async function addVideoToLibrary(source, videoId, title, artist, url) {
             const result = await response.json();
             console.log('✅ Video added successfully:', result);
             
+            // Use the API response message which contains the correct title
+            const successMessage = result.message || `Video "${title || 'Unknown'}" by ${artist || 'Unknown Artist'} has been added to your library!`;
+            
             // Use global success function if available, otherwise use alert
             if (typeof showSuccess === 'function') {
-                showSuccess(`✅ Video "${title}" by ${artist} has been added to your library!`);
+                showSuccess(`✅ ${successMessage}`);
             } else {
-                alert(`✅ Video "${title}" by ${artist} has been added to your library!`);
+                alert(`✅ ${successMessage}`);
             }
             
             closeAddVideoModal();
@@ -892,8 +843,6 @@ function switchImportTab(tabName, clickedButton = null) {
         buttons.forEach(btn => {
             const btnText = btn.textContent.toLowerCase();
             if ((tabName === 'single' && btnText.includes('single')) ||
-                (tabName === 'batch' && btnText.includes('batch')) ||
-                (tabName === 'csv' && btnText.includes('csv')) ||
                 (tabName === 'playlist' && btnText.includes('playlist'))) {
                 btn.classList.add('active');
             }
@@ -907,105 +856,6 @@ function switchImportTab(tabName, clickedButton = null) {
     
     // Hide any previous results or progress
     document.getElementById('videoSearchResults').style.display = 'none';
-    document.getElementById('batchImportProgress').style.display = 'none';
 }
 
-// Batch URL Import Function
-async function processBatchUrls() {
-    const urlInput = document.getElementById('batchUrlInput');
-    const urls = urlInput.value.split('\n').filter(url => url.trim());
-    
-    if (urls.length === 0) {
-        showToast('Please enter at least one YouTube URL', 'warning');
-        return;
-    }
-    
-    showBatchImportProgress('Processing URLs...', urls.length);
-    
-    const results = [];
-    let processed = 0;
-    let successful = 0;
-    
-    for (const url of urls) {
-        const cleanUrl = url.trim();
-        if (!cleanUrl) continue;
-        
-        try {
-            updateBatchImportProgress({
-                completed: successful,
-                failed: processed - successful,
-                total: urls.length,
-                currentItem: `Processing: ${cleanUrl.substring(0, 50)}...`
-            });
-            
-            // Extract video ID and add to library
-            const result = await addVideoFromUrl(cleanUrl);
-            
-            if (result.success) {
-                successful++;
-                results.push({ url: cleanUrl, status: 'success', message: result.message });
-            } else {
-                results.push({ url: cleanUrl, status: 'error', message: result.error });
-            }
-        } catch (error) {
-            results.push({ url: cleanUrl, status: 'error', message: error.message });
-        }
-        
-        processed++;
-    }
-    
-    displayBatchImportResults(results);
-    showToast(`Batch import completed: ${successful}/${urls.length} successful`, 'success');
-}
-
-// Helper Functions
-function showBatchImportProgress(text, total = 0) {
-    const progressDiv = document.getElementById('batchImportProgress');
-    const progressText = document.getElementById('batchImportProgressText');
-    const progressFill = document.getElementById('batchImportProgressFill');
-    
-    progressText.textContent = text + (total > 0 ? ` (0/${total})` : '');
-    progressFill.style.width = '0%';
-    progressDiv.style.display = 'block';
-}
-
-function updateBatchImportProgress({ completed = 0, failed = 0, total = 0, currentItem = '' }) {
-    const progressText = document.getElementById('batchImportProgressText');
-    const progressFill = document.getElementById('batchImportProgressFill');
-    
-    const processed = completed + failed;
-    const percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
-    
-    progressFill.style.width = `${percentage}%`;
-    
-    let statusText = `Processing (${processed}/${total})`;
-    if (failed > 0) statusText += ` - ${failed} failed`;
-    if (currentItem) statusText += ` - ${currentItem}`;
-    
-    progressText.textContent = statusText;
-}
-
-function displayBatchImportResults(results) {
-    const resultsDiv = document.getElementById('batchImportResults');
-    
-    const successCount = results.filter(r => r.status === 'success').length;
-    const errorCount = results.filter(r => r.status === 'error').length;
-    
-    resultsDiv.innerHTML = `
-        <div style="margin-bottom: 15px;">
-            <strong>Import Summary:</strong> ${successCount} successful, ${errorCount} failed
-        </div>
-        ${results.slice(0, 10).map(result => `
-            <div class="import-result-item import-result-${result.status}">
-                <strong>${result.title || result.url || 'Unknown'}:</strong> ${result.message}
-            </div>
-        `).join('')}
-        ${results.length > 10 ? `<div style="margin-top: 10px; font-style: italic;">... and ${results.length - 10} more results</div>` : ''}
-    `;
-}
-
-async function addVideoFromUrl(url) {
-    // Placeholder - would need backend implementation
-    return { success: true, message: `Added video from ${url}` };
-}
 </script>

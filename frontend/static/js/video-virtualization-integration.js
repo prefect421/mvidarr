@@ -489,7 +489,6 @@ class VideoVirtualizationIntegration {
         
         const actions = [
             { label: 'View Details', action: 'viewVideo', icon: 'tabler:eye' },
-            { label: 'Edit', action: 'editVideo', icon: 'tabler:edit' },
             { label: 'Download', action: 'downloadVideo', icon: 'tabler:download' },
             { label: 'Delete', action: 'deleteVideo', icon: 'tabler:trash' }
         ];

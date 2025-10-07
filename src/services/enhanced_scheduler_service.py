@@ -428,15 +428,18 @@ class EnhancedSchedulerService:
         logger.info("Enhanced scheduler thread stopped")
 
     def _run_scheduled_download(self) -> Dict[str, Any]:
-        """Run scheduled download with enhanced logging and error handling"""
-        logger.info("🔽 Starting scheduled download task...")
+        """Run scheduled download using background job system"""
+        logger.info("🔽 Starting scheduled download task (background job)...")
         start_time = datetime.now()
 
         try:
-            # Import here to avoid circular dependencies
-            from src.api.videos import (
-                get_wanted_videos_for_download,
-                start_video_download,
+            import asyncio
+
+            from src.services.job_queue import (
+                BackgroundJob,
+                JobPriority,
+                JobType,
+                get_job_queue,
             )
 
             max_downloads = self._get_setting(
@@ -444,61 +447,36 @@ class EnhancedSchedulerService:
                 self.env_config["max_downloads_per_run"],
             )
 
-            # Get wanted videos
-            wanted_videos = get_wanted_videos_for_download(limit=max_downloads)
+            # Create background job for scheduled download
+            job = BackgroundJob(
+                type=JobType.SCHEDULED_DOWNLOAD,
+                priority=JobPriority.NORMAL,
+                payload={
+                    "max_downloads": max_downloads,
+                    "scheduled_time": start_time.isoformat(),
+                },
+            )
 
-            if not wanted_videos:
-                logger.info("📭 No videos found for download")
-                self._last_run_times["download"] = start_time
-                return {
-                    "status": "success",
-                    "downloaded": 0,
-                    "message": "No videos to download",
-                }
+            # Enqueue job
+            async def queue_job():
+                job_queue = await get_job_queue()
+                return await job_queue.enqueue(job)
 
-            logger.info(f"📋 Found {len(wanted_videos)} videos to download")
-            downloaded_count = 0
-            errors = []
-
-            for video in wanted_videos:
-                try:
-                    logger.info(
-                        f"⬇️ Downloading: {video.get('title', 'Unknown')} by {video.get('artist_name', 'Unknown')}"
-                    )
-                    result = start_video_download(video["id"])
-                    if result.get("success"):
-                        downloaded_count += 1
-                        logger.info(
-                            f"✅ Successfully started download for video ID {video['id']}"
-                        )
-                    else:
-                        errors.append(
-                            f"Video {video['id']}: {result.get('message', 'Unknown error')}"
-                        )
-                        logger.error(
-                            f"❌ Failed to download video ID {video['id']}: {result.get('message')}"
-                        )
-
-                except Exception as e:
-                    error_msg = f"Video {video.get('id', 'unknown')}: {str(e)}"
-                    errors.append(error_msg)
-                    logger.error(f"❌ Error downloading video: {e}")
+            job_id = asyncio.run(queue_job())
 
             end_time = datetime.now()
             duration = (end_time - start_time).total_seconds()
-
             self._last_run_times["download"] = start_time
 
             result = {
                 "status": "completed",
-                "downloaded": downloaded_count,
-                "total_found": len(wanted_videos),
+                "job_id": job_id,
+                "max_downloads": max_downloads,
                 "duration_seconds": duration,
-                "errors": errors,
             }
 
             logger.info(
-                f"📊 Download task completed: {downloaded_count}/{len(wanted_videos)} downloads started in {duration:.1f}s"
+                f"🔽 Scheduled download job {job_id} queued (took {duration:.1f}s)"
             )
             return result
 
@@ -509,13 +487,19 @@ class EnhancedSchedulerService:
             return {"status": "error", "message": error_msg}
 
     def _run_scheduled_discovery(self) -> Dict[str, Any]:
-        """Run scheduled video discovery with enhanced logging"""
-        logger.info("🔍 Starting scheduled video discovery task...")
+        """Run scheduled video discovery using background job system"""
+        logger.info("🔍 Starting scheduled video discovery task (background job)...")
         start_time = datetime.now()
 
         try:
-            # Import here to avoid circular dependencies
-            from src.api.video_discovery import discover_videos_for_artists
+            import asyncio
+
+            from src.services.job_queue import (
+                BackgroundJob,
+                JobPriority,
+                JobType,
+                get_job_queue,
+            )
 
             # Get discovery settings
             max_artists = self._get_setting("scheduler_max_artists_per_discovery", 5)
@@ -524,19 +508,42 @@ class EnhancedSchedulerService:
             )
 
             logger.info(
-                f"🎯 Running discovery for up to {max_artists} artists, {max_videos_per_artist} videos each"
+                f"🎯 Queueing discovery for up to {max_artists} artists, {max_videos_per_artist} videos each"
             )
 
-            result = discover_videos_for_artists(
-                limit_artists=max_artists, limit_videos_per_artist=max_videos_per_artist
+            # Create background job for scheduled discovery
+            job = BackgroundJob(
+                type=JobType.SCHEDULED_DISCOVERY,
+                priority=JobPriority.NORMAL,
+                payload={
+                    "max_artists": max_artists,
+                    "max_videos_per_artist": max_videos_per_artist,
+                    "scheduled_time": start_time.isoformat(),
+                },
             )
+
+            # Enqueue job
+            async def queue_job():
+                job_queue = await get_job_queue()
+                return await job_queue.enqueue(job)
+
+            job_id = asyncio.run(queue_job())
 
             end_time = datetime.now()
             duration = (end_time - start_time).total_seconds()
-
             self._last_run_times["discovery"] = start_time
 
-            logger.info(f"📊 Discovery task completed in {duration:.1f}s: {result}")
+            result = {
+                "status": "completed",
+                "job_id": job_id,
+                "max_artists": max_artists,
+                "max_videos_per_artist": max_videos_per_artist,
+                "duration_seconds": duration,
+            }
+
+            logger.info(
+                f"🔍 Scheduled discovery job {job_id} queued (took {duration:.1f}s)"
+            )
             return result
 
         except Exception as e:

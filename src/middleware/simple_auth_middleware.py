@@ -66,6 +66,14 @@ def init_simple_auth_middleware(app):
         if "/subtitles/" in request.path:
             return
 
+        # Skip authentication check for endpoints marked as public
+        if request.endpoint:
+            from flask import current_app
+
+            endpoint_func = current_app.view_functions.get(request.endpoint)
+            if endpoint_func and hasattr(endpoint_func, "_auth_protected"):
+                return
+
         # Check if authentication is required
         require_auth = SettingsService.get_bool("require_authentication", False)
 

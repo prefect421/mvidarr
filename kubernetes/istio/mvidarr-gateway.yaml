@@ -1,0 +1,216 @@
+---
+# Istio Gateway for MVidarr
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: mvidarr-gateway
+  namespace: mvidarr
+  labels:
+    app: mvidarr
+    component: gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  # HTTP server (redirects to HTTPS)
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - mvidarr.example.com
+    - api.mvidarr.example.com
+    - monitoring.mvidarr.example.com
+    tls:
+      httpsRedirect: true
+  # HTTPS server
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: mvidarr-tls-secret
+    hosts:
+    - mvidarr.example.com
+    - api.mvidarr.example.com
+    - monitoring.mvidarr.example.com
+  # Internal gRPC gateway (for microservices communication)
+  - port:
+      number: 15443
+      name: tls
+      protocol: TLS
+    tls:
+      mode: ISTIO_MUTUAL
+    hosts:
+    - "*.mvidarr.svc.cluster.local"
+---
+# Virtual Service for main application
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: mvidarr-main
+  namespace: mvidarr
+  labels:
+    app: mvidarr
+    component: virtual-service
+spec:
+  hosts:
+  - mvidarr.example.com
+  gateways:
+  - mvidarr-gateway
+  http:
+  # Health check route
+  - match:
+    - uri:
+        exact: /health
+    route:
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 80
+    timeout: 5s
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+  # API routes
+  - match:
+    - uri:
+        prefix: /api/
+    route:
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 80
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 5s
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: 5xx,gateway-error,connect-failure,refused-stream
+  # Static files and web interface
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 80
+    timeout: 15s
+---
+# Virtual Service for API Gateway
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: mvidarr-api-gateway
+  namespace: mvidarr
+  labels:
+    app: mvidarr
+    component: virtual-service
+    type: api-gateway
+spec:
+  hosts:
+  - api.mvidarr.example.com
+  gateways:
+  - mvidarr-gateway
+  http:
+  # API Gateway routes with advanced traffic management
+  - match:
+    - uri:
+        prefix: /gateway/
+    route:
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 80
+      weight: 90
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 80
+        subset: canary
+      weight: 10
+    fault:
+      abort:
+        percentage:
+          value: 0.01
+        httpStatus: 503
+    timeout: 60s
+    retries:
+      attempts: 5
+      perTryTimeout: 15s
+      retryOn: 5xx,gateway-error,connect-failure,refused-stream
+  # API versioning routes
+  - match:
+    - uri:
+        prefix: /api/v1/
+    headers:
+      Accept-Version:
+        exact: "1.0"
+    route:
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 80
+        subset: v1
+  - match:
+    - uri:
+        prefix: /api/v2/
+    headers:
+      Accept-Version:
+        exact: "2.0"
+    route:
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 80
+        subset: v2
+  # Default API route
+  - match:
+    - uri:
+        prefix: /api/
+    route:
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 80
+---
+# Virtual Service for monitoring
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: mvidarr-monitoring
+  namespace: mvidarr
+  labels:
+    app: mvidarr
+    component: virtual-service
+    type: monitoring
+spec:
+  hosts:
+  - monitoring.mvidarr.example.com
+  gateways:
+  - mvidarr-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /metrics
+    route:
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 8080
+    timeout: 10s
+  - match:
+    - uri:
+        prefix: /health
+    route:
+    - destination:
+        host: mvidarr-api-service
+        port:
+          number: 80
+    timeout: 5s

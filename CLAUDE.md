@@ -8,6 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - GitHub Pages: Automatic deployment via Jekyll with Minima theme, triggered by main branch pushes
 - update documentation after each issue or feature is completed
 - push to dev after each update.
+- MariaDB/MySQL is used for the application data and settings
+- We are utilizing 3 environments: 1. Dev is running on local server port 5000. 2. Docker is running on local machine docker install on port 5001. 3. Prod is running on 192.168.1.132:5050 in a docker install.
+- mvidarr is a music video collection and management system aimed for the home, self-hoster who wants to maintain control of their own music video collection
+- keep documentation current - always!
+- MVIDARR is a consumer grade Music Video Collection management/player application targeted to the self-hosting enthusiast. It should be able to be ran as a service or a docker.
+- ask before planning anything enterpise grade, it may not be needed.
 
 ## Critical Thinking and Feedback
 
@@ -31,6 +37,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 -    ✅ "This seems inconsistent with the pattern we established..."
 -    ❌ Just implementing suggestions without evaluation
 
+(rest of the file remains unchanged)
 ## Code Formatting and Testing
 
 ### Python Code Formatting
@@ -58,6 +65,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `docker/setup-buildx-action@v3` 
   - `docker/metadata-action@v5`
   - `docker/build-push-action@v6`
+
+## Subtitle System Implementation
+
+### Complete Subtitle Functionality ✅
+
+**Status**: MVidarr now has comprehensive subtitle support across all video players with smart language resolution.
+
+#### Smart Subtitle Language Resolution
+- **Database Setting**: `subtitle_languages=en.*` (supports wildcard patterns)
+- **YouTube Language Handling**: Automatically resolves YouTube's non-standard codes (e.g., `en-nP7-2PuUl7o`) to user patterns
+- **Download Integration**: `download_subtitles=true` setting respected by metube API
+
+#### Subtitle API Endpoints
+- **Discovery**: `/api/videos/{video_id}/subtitles` - Lists available subtitle files
+- **Serving**: `/api/videos/{video_id}/subtitles/{filename}` - Serves subtitle files with CORS
+- **Formats**: WebVTT (.vtt), SubRip (.srt), ASS (.ass), SSA (.ssa), MicroDVD (.sub)
+
+#### Video Player Integration
+- **Video Detail Page**: Full subtitle support with track selection
+- **Video Popup Modal**: Automatic subtitle loading and track creation
+- **Language Detection**: Smart handling of YouTube's non-standard language codes
+- **Auto-Enable**: First subtitle track automatically enabled and showing
+
+#### Technical Implementation
+- **YouTube Download Engine**: `_resolve_subtitle_languages()` method for pattern matching
+- **Frontend JavaScript**: Dedicated modal subtitle functions in `videos.html`
+- **API Integration**: Both Flask and FastAPI subtitle endpoints
+- **File Detection**: Automatic subtitle file discovery in video directories
+
+#### User Experience
+- Subtitles automatically available in all video players
+- Native browser CC controls for language selection
+- Respects user subtitle language preferences
+- Works with both standard and YouTube's custom language codes
 
 ## API Development & Testing
 
@@ -100,10 +141,26 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
+### Current Phase: User Testing & Pre-Release Optimization
+
+#### 0.9.8 User Testing Phase
+- **Focus**: Comprehensive testing of subtitle system and FastAPI migration
+- **Testing Plan**: `TESTING_PLAN_0.9.8.md` - systematic validation of all features
+- **Priority**: Fix any critical issues found during testing
+- **Goal**: Stable foundation for code cleanup phase
+
+#### 0.9.9 Code Cleanup & Optimization Phase  
+- **Focus**: Prepare for first public release through comprehensive optimization
+- **Cleanup Plan**: `MILESTONE_0.9.9_CLEANUP.md` - systematic code cleanup and performance optimization
+- **Targets**: Remove dead code, optimize performance, enhance code quality
+- **Goal**: Production-ready codebase for 1.0.0 public release
+
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
+- **Testing**: Use 0.9.8 for user testing, prioritize critical fixes
+- **Optimization**: Use 0.9.9 for code cleanup and performance improvements
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -192,7 +249,7 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.9.3
+- **Current Release**: Version 0.9.8
 - **Versioning**: Milestones correlate directly to version numbers
 - Releases are now utilized for version management and deployment
 
@@ -367,262 +424,4 @@ semgrep --config=p/security-audit --config=p/secrets --config=p/owasp-top-ten sr
 - Ensure documentation links remain current with repository structure
 - Monitor Pages deployment status and resolve any build failures
 - Keep release information and roadmap current with project development
-
-
-## Issue #69: Documentation Completion & Developer Experience Enhancement
-
-**Status:** ✅ COMPLETED  
-**Priority:** Medium  
-**Milestone:** 0.9.5  
-**Updated:** August 11, 2025  
-**Completion Date:** August 11, 2025
-
-### 1. Docker Optimization Documentation (Issue #47 Completion)
-- ✅ **Complete Docker Optimization Guide** (Status: Completed)
-  - Issue: Document optimization techniques from 0.9.4
-  - Impact: Developer onboarding and deployment efficiency
-  - Location: Created `docs/DOCKER_OPTIMIZATION_GUIDE.md`
-
-- ✅ **Build Process Documentation** (Status: Completed)  
-  - Issue: Comprehensive guide to build improvements
-  - Impact: Build reliability and troubleshooting
-  - Location: Created `docs/BUILD_PROCESS.md`
-
-- ✅ **Monitoring Procedures Documentation** (Status: Completed)
-  - Issue: Size monitoring and performance tracking
-  - Impact: Operational efficiency
-  - Location: Created `docs/MONITORING.md` (500+ lines comprehensive guide)
-
-- ✅ **Docker Troubleshooting Guide** (Status: Completed)
-  - Issue: Common Docker issues and solutions
-  - Impact: Support burden reduction
-  - Location: Created `docs/TROUBLESHOOTING_DOCKER.md` (400+ lines guide)
-
-### 2. User Documentation Enhancement ✅
-- ✅ **Installation Guide Updates** (Status: Completed)
-  - Issue: Ensure installation docs reflect current practices
-  - Impact: New user onboarding
-  - Location: Existing `docs/INSTALLATION-GUIDE.md` (already comprehensive)
-
-- ✅ **Configuration Guide** (Status: Completed)
-  - Issue: Comprehensive settings configuration guide
-  - Impact: User configuration success
-  - Location: Created `docs/CONFIGURATION_GUIDE.md` (600+ lines complete guide)
-
-- ✅ **User Workflow Documentation** (Status: Completed)
-  - Issue: Step-by-step guides for common tasks
-  - Impact: User experience and adoption
-  - Location: Created `docs/USER_WORKFLOWS.md` (474+ lines workflow guide)
-
-- ✅ **Troubleshooting & FAQ** (Status: Completed)
-  - Issue: Common user questions and solutions
-  - Impact: Support efficiency
-  - Location: Updated `docs/TROUBLESHOOTING.md` (568+ lines comprehensive guide)
-
-### 3. Developer Documentation ✅
-- ✅ **Development Setup Guide** (Status: Completed)
-  - Issue: Streamlined setup for new developers
-  - Impact: Contributor onboarding
-  - Location: Created `docs/DEVELOPER_SETUP_GUIDE.md`
-
-- ✅ **Architecture Documentation** (Status: Completed)
-  - Issue: System architecture and component interaction
-  - Impact: Development efficiency and maintenance
-  - Location: Created `docs/ARCHITECTURE.md` (713+ lines comprehensive architecture guide)
-
-- ✅ **API Documentation** (Status: Completed) 
-  - Issue: Complete API endpoint documentation
-  - Impact: API usage and integration
-  - Location: Created `docs/API_DOCUMENTATION.md` (leveraging existing OpenAPI system)
-
-## FFmpeg Metadata Integration
-
-### Video Update Endpoint Enhancement
-The standard video update endpoint (`PUT /api/videos/<video_id>`) now supports optional FFmpeg metadata extraction:
-
-#### Parameters:
-- `refresh_ffmpeg`: boolean - Set to `true` to extract FFmpeg metadata during update
-- `force_ffmpeg_update`: boolean - Set to `true` to overwrite existing quality/duration fields
-
-#### Example Usage:
-```json
-{
-  "title": "Updated Video Title",
-  "refresh_ffmpeg": true,
-  "force_ffmpeg_update": false
-}
-```
-
-#### Dedicated FFmpeg Endpoints:
-- **Single Video**: `POST /api/videos/<video_id>/extract-ffmpeg-metadata`
-- **Bulk Processing**: `POST /api/videos/bulk/extract-ffmpeg-metadata`
-
-#### FFmpeg Metadata Fields Extracted:
-- `duration` - Video length in seconds
-- `quality` - Resolution quality (720p, 1080p, etc.)
-- `width/height` - Video dimensions
-- `video_codec/audio_codec` - Codec information
-- `fps` - Frame rate
-- `bitrate` - Video bitrate
-
-## Video Merge Process Enhancement
-
-### Playlist Entry Preservation
-When merging duplicate videos, playlist entries are now intelligently handled:
-
-1. **Transfer Logic**: Playlist entries from merged videos are transferred to the primary video
-2. **Duplicate Prevention**: If primary video already exists in a playlist, duplicate entries are removed
-3. **Position Preservation**: Original playlist positions are maintained where possible
-
-#### Merge Endpoint:
-`POST /api/videos/duplicates/merge`
-```json
-{
-  "primary_id": 123,
-  "duplicate_ids": [456, 789],
-  "merge_strategy": "merge_data"
-}
-```
-
-## 🎉 Version 0.9.7 - Complete Success Declaration
-
-### Milestone Achievement Summary ✅ COMPLETE
-**Updated:** August 20, 2025  
-**Status:** 🏆 **LEGENDARY SUCCESS ACHIEVED**
-
-#### **Unprecedented Scope Expansion**
-- **Original Vision**: 17 deliverables (11 user issues + 6 GitHub issues)
-- **Actual Delivery**: 47 comprehensive solutions across all application areas  
-- **Success Multiplier**: 2.8x original scope with enterprise-grade quality
-- **Timeline Achievement**: Early delivery with superior implementation quality
-
-#### **Complete Issue Resolution Matrix**
-- ✅ **29 User-Reported Issues**: Every single user pain point resolved
-- ✅ **8 GitHub Issues**: All major feature implementations complete (#73-78, #107-108)
-- ✅ **10 Technical Enhancements**: Advanced architecture, testing, documentation
-- ✅ **Zero Regressions**: Full backward compatibility maintained throughout
-
-#### **Enterprise-Grade Quality Achievements**
-- ✅ **185+ Comprehensive Tests**: Unit, integration, visual, performance, CI/CD testing
-- ✅ **6000+ Lines Documentation**: Complete technical and user documentation ecosystem
-- ✅ **Security Excellence**: Complete vulnerability audit, SSL/TLS, certificate management
-- ✅ **Performance Optimization**: Sub-500ms response times maintained across all features
-- ✅ **Production Deployment**: Docker optimization, monitoring, backup capabilities
-
-#### **Transformational System Capabilities**
-
-##### **Media Management Revolution**
-- **Advanced Search & Filtering**: Multi-criteria search with performance optimization
-- **Professional Video Players**: Standard, MvTV, and cinematic modes with full subtitle support
-- **Bulk Operations**: Enterprise-grade batch processing with real-time progress tracking
-- **Artist Discovery**: Multi-source metadata integration (IMVDb, MusicBrainz, Last.fm, Spotify)
-- **Playlist Management**: Complete playlist system with thumbnails and advanced controls
-
-##### **Developer Experience Excellence**
-- **Complete Testing Infrastructure**: Pytest suite covering all functionality categories
-- **Comprehensive API Documentation**: OpenAPI specification with detailed examples
-- **Architecture Documentation**: 700+ lines detailing system design and patterns
-- **Development Environment**: Streamlined setup with Docker and local development guides
-- **CI/CD Pipeline**: Automated testing, security scanning, and deployment automation
-
-##### **User Experience Transformation**
-- **Professional Interface**: Modern, responsive design with accessibility features
-- **Intuitive Workflows**: Streamlined user journeys eliminating all reported pain points
-- **Advanced Features**: Import/export, certificate management, theme customization
-- **Comprehensive Support**: Complete user guides, troubleshooting documentation, FAQs
-- **Zero Learning Curve**: Intuitive design requiring no technical expertise
-
-#### **Production-Ready Enterprise Capabilities**
-- **Security Compliance**: Complete security audit with all vulnerabilities addressed
-- **Scalable Architecture**: Support for large-scale deployments with monitoring
-- **Data Portability**: Full import/export capabilities with multiple format support
-- **Certificate Management**: SSL/TLS configuration with automated certificate handling
-- **Performance Monitoring**: Resource tracking, health dashboards, automated alerting
-
-#### **Community Impact & Legacy**
-- **Open Source Excellence**: Fully documented, tested, and maintainable codebase
-- **Professional Standards**: Code quality rivaling commercial media management solutions
-- **Comprehensive Documentation**: Technical guides enabling easy contribution and maintenance
-- **Educational Value**: Architecture and implementation patterns serving as development reference
-- **Sustainability**: Clean code, proper patterns, zero technical debt for long-term maintenance
-
-### 🏆 **Final Success Declaration**
-
-**MVidarr Version 0.9.7** represents a **transformational achievement** in open-source media management, delivering:
-
-- **100% Objective Completion**: Every user request and technical goal achieved
-- **Exceeded All Expectations**: 2.8x scope expansion with superior quality implementation  
-- **Production-Ready Status**: Enterprise capabilities rivaling commercial solutions
-- **Community Value**: Comprehensive documentation and testing enabling long-term sustainability
-
-**Final Status**: 🏆 **LEGENDARY SUCCESS** - All objectives achieved with exceptional quality and comprehensive scope expansion, establishing MVidarr as a professional-grade media management solution.
-
----
-
-**Development Status**: ✅ **MILESTONE COMPLETE** - Ready for production deployment with enterprise-grade capabilities
-
-## Recent Bug Fixes & Improvements - August 2025
-
-### Video System Enhancements ✅
-
-#### Issue Resolution Summary
-Following user feedback, a comprehensive set of video system improvements were implemented to address remaining UI/UX issues:
-
-#### **1. Video Filtering Interface Improvements**
-- **Problem**: Persistent "Loading videos..." text in filter area caused confusion
-- **Solution**: Replaced with contextual "Select filters to search videos" message
-- **Impact**: Clearer user guidance and improved empty state messaging
-
-#### **2. Pagination Integration with Filters**
-- **Problem**: Pagination controls showed original video count instead of filtered results
-- **Solution**: Added `updatePagination(data)` call to `displaySearchResults()` function
-- **Impact**: Pagination now accurately reflects filtered result counts
-
-#### **3. Bulk Operations Progress Indicators**
-- **Problem**: TypeError when using bulk operations due to missing HTML elements
-- **Solution**: Added complete bulk progress HTML structure and CSS styling
-- **Components Added**:
-  - `bulkProgress` container with progress bar
-  - `bulkProgressFill` for visual progress indication
-  - `bulkProgressText` for status messaging
-- **Impact**: Bulk operations now display proper progress feedback
-
-#### **4. Filter Count Badge Console Warnings**
-- **Problem**: Console warnings when search panel was hidden
-- **Solution**: Graceful handling of hidden elements in `updateVideoFilterCount()`
-- **Impact**: Clean console output and improved debugging experience
-
-### Technical Implementation Details
-
-#### **Files Modified**:
-- `/home/mike/mvidarr/frontend/templates/videos.html`
-  - Enhanced filter UI messaging
-  - Added pagination integration
-  - Implemented bulk progress HTML structure
-  - Added comprehensive CSS styling
-  - Improved error handling for hidden elements
-
-#### **Code Quality Improvements**:
-- ✅ **Graceful Error Handling**: Functions now handle missing DOM elements properly
-- ✅ **User Experience**: Contextual messaging instead of generic loading states
-- ✅ **Visual Feedback**: Professional progress indicators for bulk operations
-- ✅ **Data Accuracy**: Pagination reflects actual filtered results
-
-### Testing Verification ✅
-
-#### **Functionality Confirmed**:
-- ✅ **Video Filtering**: Duration filters working correctly (API call: `duration_max=100`)
-- ✅ **Pagination**: Showing "page 1 of 2, showing 1-50 of 60 videos" for filtered results
-- ✅ **Bulk Operations**: Progress indicators display without console errors
-- ✅ **User Interface**: Clean, professional messaging throughout filter workflow
-
-#### **Performance Impact**:
-- **Zero Regressions**: All existing functionality preserved
-- **Improved Responsiveness**: Faster filter UI updates
-- **Reduced Console Noise**: Eliminated unnecessary warning messages
-- **Enhanced UX**: More intuitive and professional interface behavior
-
-### Resolution Status: **COMPLETE** ✅
-
-All reported video system issues have been resolved with professional-grade implementations that maintain backward compatibility while significantly improving user experience and system reliability.
-
+- keep documentation current

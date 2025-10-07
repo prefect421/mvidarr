@@ -1,0 +1,9 @@
+Collecting aiomysql
+  Downloading aiomysql-0.2.0-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: sqlalchemy>=2.0.23 in ./venv/lib/python3.12/site-packages (from sqlalchemy[asyncio]>=2.0.23) (2.0.23)
+Requirement already satisfied: PyMySQL>=1.0 in ./venv/lib/python3.12/site-packages (from aiomysql) (1.1.1)
+Requirement already satisfied: typing-extensions>=4.2.0 in ./venv/lib/python3.12/site-packages (from sqlalchemy>=2.0.23->sqlalchemy[asyncio]>=2.0.23) (4.14.1)
+Requirement already satisfied: greenlet!=0.4.17 in ./venv/lib/python3.12/site-packages (from sqlalchemy>=2.0.23->sqlalchemy[asyncio]>=2.0.23) (3.2.3)
+Downloading aiomysql-0.2.0-py3-none-any.whl (44 kB)
+Installing collected packages: aiomysql
+Successfully installed aiomysql-0.2.0

@@ -1,0 +1,23 @@
+[flake8]
+max-line-length = 120
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .venv,
+    venv,
+    *.egg-info,
+    .tox,
+    .eggs,
+    # Exclude demo/example files with disabled code
+    src/api/fastapi/model_demo.py,
+    src/api/fastapi/job_management.py,
+    src/api/fastapi/playlists.py
+ignore =
+    # E203: whitespace before ':' (conflicts with black)
+    E203,
+    # W503: line break before binary operator (conflicts with black)
+    W503
+per-file-ignores =
+    __init__.py:F401

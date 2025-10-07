@@ -26,7 +26,68 @@ def search_artist():
         if not query:
             return jsonify({"error": "Query parameter is required"}), 400
 
-        # Search MusicBrainz for artists
+        # TEMPORARY DEBUG: Direct API call to MusicBrainz bypassing service
+        from urllib.parse import quote_plus
+
+        import requests
+
+        try:
+            # Direct MusicBrainz API call
+            base_url = "https://musicbrainz.org/ws/2"
+            endpoint = "artist"
+            params = {
+                "query": f'artist:"{query}"',
+                "limit": 10,
+                "offset": 0,
+                "fmt": "json",
+            }
+            headers = {
+                "User-Agent": "MVidarr/0.9.8 (https://github.com/prefect421/mvidarr)",
+                "Accept": "application/json",
+            }
+
+            response = requests.get(
+                f"{base_url}/{endpoint}", params=params, headers=headers, timeout=10
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                artists = []
+
+                for artist in data.get("artists", []):
+                    artist_info = {
+                        "mbid": artist.get("id"),
+                        "name": artist.get("name"),
+                        "sort_name": artist.get("sort-name"),
+                        "type": artist.get("type"),
+                        "country": artist.get("country"),
+                        "area": (
+                            artist.get("area", {}).get("name")
+                            if artist.get("area")
+                            else None
+                        ),
+                        "confidence": 1.0,  # Direct match confidence
+                        "disambiguation": artist.get("disambiguation", ""),
+                    }
+                    artists.append(artist_info)
+
+                return (
+                    jsonify(
+                        {
+                            "success": True,
+                            "query": query,
+                            "results": artists,
+                            "count": len(artists),
+                            "debug": "Direct MusicBrainz API call",
+                        }
+                    ),
+                    200,
+                )
+
+        except Exception as direct_error:
+            logger.error(f"Direct MusicBrainz API call failed: {direct_error}")
+
+        # Fallback to original service call
         results = musicbrainz_service.search_artist(query)
 
         return (
@@ -43,6 +104,66 @@ def search_artist():
 
     except Exception as e:
         logger.error(f"Failed to search MusicBrainz artists: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@musicbrainz_bp.route("/test-direct", methods=["POST"])
+@auth_required
+def test_direct_api():
+    """Test direct MusicBrainz API call for debugging"""
+    try:
+        if not request.is_json:
+            return jsonify({"error": "JSON payload required"}), 400
+
+        data = request.get_json()
+        query = data.get("query", "Bad Religion").strip()
+
+        # Direct test call
+        import requests
+
+        try:
+            base_url = "https://musicbrainz.org/ws/2"
+            params = {"query": f'artist:"{query}"', "limit": 5, "fmt": "json"}
+            headers = {
+                "User-Agent": "MVidarr/0.9.8 (https://github.com/prefect421/mvidarr)",
+                "Accept": "application/json",
+            }
+
+            response = requests.get(
+                f"{base_url}/artist", params=params, headers=headers, timeout=15
+            )
+
+            return (
+                jsonify(
+                    {
+                        "test": "direct_api_call",
+                        "status_code": response.status_code,
+                        "response_size": len(response.text),
+                        "url": response.url,
+                        "headers_sent": dict(headers),
+                        "raw_response": (
+                            response.text[:500] + "..."
+                            if len(response.text) > 500
+                            else response.text
+                        ),
+                    }
+                ),
+                200,
+            )
+
+        except Exception as e:
+            return (
+                jsonify(
+                    {
+                        "test": "direct_api_call",
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    }
+                ),
+                200,
+            )
+
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 

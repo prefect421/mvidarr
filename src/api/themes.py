@@ -17,6 +17,51 @@ logger = logging.getLogger(__name__)
 themes_bp = Blueprint("themes", __name__)
 
 
+def extract_built_in_theme_data():
+    """Extract hardcoded built-in theme data for merging with database records"""
+    return {
+        "default": {
+            # Default theme variables
+            "--bg-primary": "#1a1a1a",
+            "--bg-secondary": "#2d2d2d",
+            "--bg-tertiary": "#3a3a3a",
+            "--text-primary": "#ffffff",
+            "--text-secondary": "#cccccc",
+            "--text-accent": "#4a9eff",
+            "--btn-primary-bg": "#4a9eff",
+            "--btn-primary-text": "#ffffff",
+            "--border-primary": "#444444",
+            "--success": "#28a745",
+            "--warning": "#ffc107",
+            "--error": "#dc3545",
+            "--info": "#17a2b8",
+            "--sidebar-bg": "#1a1a1a",
+            "--search-bar-bg": "#333333",
+            "--top-bar-bg": "#1a1a1a",
+        },
+        "cyber": {
+            # Cyber theme variables with updated button color
+            "--bg-primary": "#000000",
+            "--bg-secondary": "#0d1117",
+            "--bg-tertiary": "#161b22",
+            "--text-primary": "#00fff7",
+            "--text-secondary": "#7dd3fc",
+            "--text-accent": "#00fff7",
+            "--btn-primary-bg": "#78f5fc",
+            "--btn-primary-text": "#000000",
+            "--border-primary": "#00fff7",
+            "--success": "#00ff00",
+            "--warning": "#ffff00",
+            "--error": "#ff0000",
+            "--info": "#00ffff",
+            "--sidebar-bg": "#000000",
+            "--search-bar-bg": "#161b22",
+            "--top-bar-bg": "#0d1117",
+        },
+        # Add other themes as needed when they require updates
+    }
+
+
 def simple_auth_required(f):
     """
     Simple authentication decorator compatible with MVidarr's simple auth system
@@ -177,9 +222,26 @@ def get_themes():
                 set()
             )  # Track which built-in themes have been customized
 
+            # Get the latest hardcoded built-in theme definitions
+            hardcoded_themes = extract_built_in_theme_data()
+
             for theme in themes:
                 try:
                     theme_dict = theme.to_dict()
+
+                    # If this is a built-in theme with a database record, merge with latest hardcoded definition
+                    if theme.is_built_in and theme.name in hardcoded_themes:
+                        hardcoded_data = hardcoded_themes[theme.name]
+                        # Update the database theme with any new properties from hardcoded definition
+                        if theme.theme_data:
+                            # Merge hardcoded updates into existing theme data
+                            updated_theme_data = hardcoded_data.copy()
+                            updated_theme_data.update(theme.theme_data)
+                            theme_dict["theme_data"] = updated_theme_data
+                        else:
+                            # Use hardcoded data if no database theme_data exists
+                            theme_dict["theme_data"] = hardcoded_data
+
                     custom_themes.append(theme_dict)
                     if theme.is_built_in:
                         custom_theme_names.add(theme.name)
@@ -555,7 +617,7 @@ def extract_built_in_theme(theme_name):
                 "--text-primary": "#00fff7",
                 "--text-secondary": "#7dd3fc",
                 "--text-accent": "#00fff7",
-                "--btn-primary-bg": "#00fff7",
+                "--btn-primary-bg": "#78f5fc",
                 "--btn-primary-text": "#000000",
                 "--border-primary": "#00fff7",
                 "--success": "#00ff00",
@@ -922,6 +984,78 @@ def extract_built_in_theme(theme_name):
     except Exception as e:
         logger.error(f"Error extracting built-in theme {theme_name}: {e}")
         return jsonify({"error": "Failed to extract theme", "details": str(e)}), 500
+
+
+@themes_bp.route("/built-in/<theme_name>", methods=["PUT"])
+@simple_auth_required
+def update_built_in_theme(theme_name):
+    """Update a built-in theme by creating or updating its database record"""
+    try:
+        user_id = (
+            request.current_user.id if hasattr(request.current_user, "id") else None
+        )
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        # Validate that the theme_name exists in our built-in themes
+        built_in_theme_names = [
+            "default",
+            "cyber",
+            "vaporwave",
+            "tardis",
+            "punk77",
+            "mtv",
+            "lcars",
+        ]
+        if theme_name not in built_in_theme_names:
+            return jsonify({"error": f"Built-in theme '{theme_name}' not found"}), 404
+
+        with get_db() as session:
+            # Check if a database record already exists for this built-in theme
+            existing_theme = (
+                session.query(CustomTheme)
+                .filter_by(name=theme_name, is_built_in=True)
+                .first()
+            )
+
+            if existing_theme:
+                # Update existing theme
+                if "theme_data" in data:
+                    existing_theme.theme_data = data["theme_data"]
+                if "display_name" in data:
+                    existing_theme.display_name = data["display_name"]
+                if "description" in data:
+                    existing_theme.description = data["description"]
+
+                session.commit()
+                logger.info(f"Updated built-in theme '{theme_name}' in database")
+                return jsonify(existing_theme.to_dict())
+            else:
+                # Create new database record for this built-in theme
+                new_theme = CustomTheme(
+                    name=theme_name,
+                    display_name=data.get("display_name", theme_name.title()),
+                    description=data.get(
+                        "description", f"Customized {theme_name} theme"
+                    ),
+                    created_by=user_id,
+                    is_public=True,
+                    is_built_in=True,
+                    theme_data=data.get("theme_data", {}),
+                )
+
+                session.add(new_theme)
+                session.commit()
+                logger.info(
+                    f"Created database record for built-in theme '{theme_name}'"
+                )
+                return jsonify(new_theme.to_dict())
+
+    except Exception as e:
+        logger.error(f"Error updating built-in theme {theme_name}: {e}")
+        return jsonify({"error": "Failed to update theme", "details": str(e)}), 500
 
 
 @themes_bp.route("/<int:theme_id>/export", methods=["GET"])

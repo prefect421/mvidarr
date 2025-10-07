@@ -428,9 +428,6 @@ class VideoVirtualization extends VirtualizationEngine {
                     </div>
                 </div>
                 <div class="video-actions">
-                    <button data-video-id="${video.id}" data-action="edit" class="btn-icon" title="Edit Video">
-                        <iconify-icon icon="tabler:edit"></iconify-icon>
-                    </button>
                     <button data-video-id="${video.id}" data-action="download" class="btn-icon" title="Download Video">
                         <iconify-icon icon="tabler:download"></iconify-icon>
                     </button>

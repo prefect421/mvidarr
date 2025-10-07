@@ -1,10 +1,6 @@
-<div align="center">
-  <img src="./frontend/src/Content/Images/mvidarr-logo.png" alt="MVidarr Logo" width="200" height="200">
-  
-  # MVidarr
-  
-  **A comprehensive music video management and discovery platform** that helps you organize, discover, and stream your music video collection with intelligent artist management and advanced search capabilities.
-</div>
+# MVidarr
+
+**A comprehensive music video management and discovery platform** that helps you organize, discover, and stream your music video collection with intelligent artist management and advanced search capabilities.
 
 ## ✨ Key Features
 
@@ -24,53 +20,30 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🆕 Latest Stable (v0.9.7)
+## 🚀 **NEW in v0.9.8 - Subtitle System & User Testing Fixes!**
 
-**Enterprise Media Management & Production Ready Release**
+**🎉 MAJOR RELEASE: Complete Subtitle Implementation + Critical Bug Fixes**
 
-### 🏆 Major Achievements
-- **🎯 47 Comprehensive Solutions** - Complete feature matrix across all application areas  
-- **✅ Enterprise Quality** - 185+ comprehensive tests with 6000+ lines documentation
-- **🚀 Production Ready** - Zero known vulnerabilities with automated security monitoring
-- **💫 User Experience** - Modern interface with professional workflows requiring no technical expertise
+### Complete Subtitle System ✅
+- **🎬 Universal Subtitle Support** - WebVTT, SRT, ASS, SSA, SUB formats fully supported
+- **🌐 Smart Language Resolution** - Automatic YouTube non-standard language code handling
+- **🎞️ Player Integration** - Subtitles working in popup modal and detail page video players
+- **📡 FastAPI Endpoints** - Complete subtitle discovery and serving API with CORS support
+- **🎯 Auto-Enable** - First subtitle track automatically loaded and displayed
 
-### 🎮 Advanced Video Management
-- **🔍 Advanced Search & Filtering** - Multi-criteria search with year range and performance optimization
-- **⚡ Bulk Operations** - Enterprise-grade batch processing with real-time progress tracking
-- **📺 Professional Video Players** - Standard, MvTV, and cinematic modes with subtitle support
-- **📁 Intelligent Organization** - Automatic folder creation and cleanup systems
+### User Testing Fixes (8/8 Critical Issues Resolved) ✅
+- **✅ Authentication & Core Workflows** - Fixed logout, search, video deletion, bulk operations
+- **✅ Playlist System** - Fixed page loading and creation functionality
+- **✅ Toast Notifications** - Restored notification system across all workflows
+- **✅ Service Integration** - Corrected routing for YouTube, Spotify, Last.fm, Lidarr
 
-### 🎨 User Interface Excellence  
-- **🎨 Streamlined Workflows** - Intuitive user journeys eliminating all reported pain points
-- **🎭 Theme System** - Consistent UI with MVIDARR logo and CSS variable compliance
-- **📊 Progress Indicators** - Professional feedback systems with error recovery
-- **📱 Responsive Design** - Modern interface with accessibility features
+### 100% Flask to FastAPI Migration Complete ✅
+- **⚡ 200+ API Endpoints** - Migrated across 33 major components with full async support
+- **🔧 17 FastAPI Routers** - Created with comprehensive Pydantic validation
+- **🛡️ Consistent Authentication** - Session-based auth across all endpoints
+- **✨ Pure FastAPI** - Zero Flask API endpoints remain
 
-## 🆕 Previous Updates (v0.9.6)
-
-**Quality Assurance & Testing Infrastructure Release**
-
-- **🧪 Enterprise Testing Infrastructure** - 185+ comprehensive tests across all testing categories
-- **🎨 Enhanced Video Management** - Icon-based video actions with intuitive UI and advanced delete functionality
-- **📊 Complete Test Coverage** - Unit, integration, API, functional, visual, and monitoring tests
-- **🔍 Advanced Testing Intelligence** - Flaky test detection, performance baselines, and automated maintenance
-- **📚 Documentation Excellence** - 6000+ lines of technical documentation with comprehensive guides
-- **🛡️ Security Operations** - Zero known vulnerabilities with enterprise-grade automated monitoring
-- **⚡ FFmpeg Integration** - Technical metadata extraction with video quality analysis
-- **🎭 Playlist Enhancements** - Complete playlist functionality with MvTV integration
-
-## 🆕 Previous Updates (v0.9.5)
-
-**UI/UX Excellence & Documentation Complete Release**
-
-- **🎨 UI/UX Excellence** - Streamlined design with clean headers and improved navigation across all pages
-- **📚 Complete Documentation Portfolio** - Comprehensive guides for developers, users, and operations
-- **📄 Artists Page Pagination** - Full navigation controls with customizable page sizes  
-- **⚡ Performance Optimizations** - 60% CI time reduction and enhanced system reliability
-- **🔧 Enhanced Scheduler Service** - Flexible time intervals and improved error handling
-- **🐛 Critical Bug Fixes** - SQLAlchemy compatibility, API authentication, and UI issues resolved
-
-## 🆕 Previous Updates (v0.9.4)
+## 🆕 Previous Updates (v0.9.4-0.9.7)
 
 - **🐳 Docker Optimization** - Reduced build time from timeout failures to consistent 8-minute builds
 - **📦 Container Size Optimization** - Efficient multi-stage builds with optimized caching (1.41GB optimized size)
@@ -91,8 +64,8 @@ docker-compose up -d
 
 **Production Docker Image:**
 ```bash
-# Use the latest stable release
-docker pull ghcr.io/prefect421/mvidarr:v0.9.7
+# Use the latest release
+docker pull ghcr.io/prefect421/mvidarr:v0.9.8
 ```
 
 **Access the application:**
@@ -111,18 +84,34 @@ docker pull ghcr.io/prefect421/mvidarr:v0.9.7
 # Clone and setup
 git clone https://github.com/prefect421/mvidarr.git
 cd mvidarr
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Start application
-python app.py
+# Start FastAPI application
+python fastapi_app.py
+```
+
+**Production Service:**
+```bash
+# Install as systemd service (recommended)
+sudo cp mvidarr.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable mvidarr.service
+sudo systemctl start mvidarr.service
+
+# Check service status
+sudo systemctl status mvidarr.service
 ```
 
 **Access:** `http://localhost:5000`
 
 ## 📚 Documentation
 
+- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Complete deployment with Celery + Redis background jobs
 - **[User Guide](docs/USER-GUIDE.md)** - Feature documentation and tutorials
 - **[Installation Guide](docs/INSTALLATION-GUIDE.md)** - Comprehensive setup instructions
+- **[Celery Background Jobs](CELERY_BACKGROUND_JOBS_IMPLEMENTATION.md)** - Background job system documentation
 - **[Docker Optimization Guide](docs/DOCKER_OPTIMIZATION_GUIDE.md)** - Container build optimization and monitoring
 - **[Security Implementation](docs/SECURITY_IMPLEMENTATION.md)** - Security features and configuration
 - **[Final Project Status](docs/FINAL_PROJECT_STATUS.md)** - Complete feature status and changelog
@@ -130,11 +119,17 @@ python app.py
 
 ## 🏗️ Architecture
 
-MVidarr is built with:
+MVidarr is built with modern, high-performance architecture:
 
-- **Backend**: Flask (Python 3.12+) with modular service architecture
-- **Database**: MariaDB 11.4+ with automatic table initialization
-- **Frontend**: Modern HTML5/CSS3/JavaScript with responsive design
+- **Backend**: **FastAPI** (Python 3.12+) with async operations and advanced features
+- **API Layer**: Comprehensive FastAPI with versioning, request logging, and auto-generated clients
+- **Template System**: Async Jinja2 templates with performance optimization and caching
+- **WebSocket Support**: Native FastAPI WebSockets for real-time features
+- **Background Jobs**: **Celery + Redis** for reliable metadata enrichment and processing
+- **Database**: MariaDB 11.4+ with async connection pooling and optimization
+- **Frontend**: Modern HTML5/CSS3/JavaScript with ES6+ async patterns
+- **Performance**: Multi-layer caching (Memory + Redis), compression, and optimization
+- **Testing**: Enterprise-grade validation and load testing frameworks
 - **Media Processing**: FFmpeg, yt-dlp for video downloading and processing
 - **Authentication**: Secure user management with role-based access control
 - **Security**: bcrypt password hashing, session management, audit logging
@@ -149,11 +144,19 @@ Configuration is managed through:
 
 Key environment variables:
 ```bash
+# Database
 DB_HOST=mariadb
 DB_PASSWORD=secure_password
 SECRET_KEY=your-secret-key
+
+# External APIs
 IMVDB_API_KEY=your-imvdb-key
 YOUTUBE_API_KEY=your-youtube-key
+
+# Background Jobs (New!)
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+BACKGROUND_JOBS_ENABLED=true
 ```
 
 ## 🛡️ Security
@@ -209,4 +212,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.9.7** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.9.8** - Built with ❤️ for music video enthusiasts
