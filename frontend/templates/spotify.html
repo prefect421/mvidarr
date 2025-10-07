@@ -135,11 +135,13 @@ async function testConnection() {
         showLoading('Testing Spotify connection...');
         const response = await fetch('/api/spotify/test', { method: 'POST' });
         const data = await response.json();
-        
-        if (data.status === 'success') {
-            showSpotifySuccess('Spotify connection test successful!');
+
+        if (data.success) {
+            const message = data.note || 'Spotify connection test successful!';
+            showSpotifySuccess(message);
         } else {
-            showSpotifyError('Spotify connection test failed: ' + data.message);
+            const errorMsg = data.error || data.message || 'Unknown error';
+            showSpotifyError('Spotify connection test failed: ' + errorMsg);
         }
     } catch (error) {
         showSpotifyError('Failed to test Spotify connection: ' + error.message);
