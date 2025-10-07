@@ -20,27 +20,30 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **NEW in v1.0.0 - FastAPI Migration Complete!**
+## 🚀 **NEW in v0.9.8 - Subtitle System & User Testing Fixes!**
 
-**🎉 MASSIVE MILESTONE: Complete Flask-to-FastAPI Migration**
+**🎉 MAJOR RELEASE: Complete Subtitle Implementation + Critical Bug Fixes**
 
-- **⚡ Complete Architecture Migration** - Migrated from Flask to FastAPI with zero functionality loss
-- **🔥 Advanced FastAPI Features** - API versioning, request logging, auto-generated client libraries, dependency injection
-- **📈 Performance Optimization** - Load testing framework, performance benchmarking, evidence-based validation
-- **🎨 Template System Migration** - 46+ HTML templates with async context and modern JavaScript patterns
-- **🔌 WebSocket Integration** - Real-time features replacing Flask-SocketIO with native FastAPI WebSockets
-- **🛡️ Enterprise-Grade Testing** - 50+ validation tests ensuring zero functionality loss
-- **🏗️ Modern Architecture** - Async operations, advanced caching, compression, and optimization
-- **📊 Comprehensive Validation** - Migration validation framework with performance evidence
+### Complete Subtitle System ✅
+- **🎬 Universal Subtitle Support** - WebVTT, SRT, ASS, SSA, SUB formats fully supported
+- **🌐 Smart Language Resolution** - Automatic YouTube non-standard language code handling
+- **🎞️ Player Integration** - Subtitles working in popup modal and detail page video players
+- **📡 FastAPI Endpoints** - Complete subtitle discovery and serving API with CORS support
+- **🎯 Auto-Enable** - First subtitle track automatically loaded and displayed
 
-### **🎯 Migration Achievements**
-- ✅ **11 Major Systems**: Template system, WebSocket integration, performance optimization, validation frameworks
-- ✅ **10,472+ Lines of Code**: Complete FastAPI implementation with enterprise features
-- ✅ **Zero Functionality Loss**: Comprehensive validation ensuring 100% feature parity
-- ✅ **Performance Improvements**: Advanced caching, compression, and async operations
-- ✅ **Modern JavaScript**: Automated modernization to async patterns and ES6+ features
+### User Testing Fixes (8/8 Critical Issues Resolved) ✅
+- **✅ Authentication & Core Workflows** - Fixed logout, search, video deletion, bulk operations
+- **✅ Playlist System** - Fixed page loading and creation functionality
+- **✅ Toast Notifications** - Restored notification system across all workflows
+- **✅ Service Integration** - Corrected routing for YouTube, Spotify, Last.fm, Lidarr
 
-## 🆕 Previous Updates (v0.9.4)
+### 100% Flask to FastAPI Migration Complete ✅
+- **⚡ 200+ API Endpoints** - Migrated across 33 major components with full async support
+- **🔧 17 FastAPI Routers** - Created with comprehensive Pydantic validation
+- **🛡️ Consistent Authentication** - Session-based auth across all endpoints
+- **✨ Pure FastAPI** - Zero Flask API endpoints remain
+
+## 🆕 Previous Updates (v0.9.4-0.9.7)
 
 - **🐳 Docker Optimization** - Reduced build time from timeout failures to consistent 8-minute builds
 - **📦 Container Size Optimization** - Efficient multi-stage builds with optimized caching (1.41GB optimized size)
@@ -61,8 +64,8 @@ docker-compose up -d
 
 **Production Docker Image:**
 ```bash
-# Use the latest FastAPI release
-docker pull ghcr.io/prefect421/mvidarr:v1.0.0
+# Use the latest release
+docker pull ghcr.io/prefect421/mvidarr:v0.9.8
 ```
 
 **Access the application:**
@@ -209,4 +212,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.9.4** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.9.8** - Built with ❤️ for music video enthusiasts

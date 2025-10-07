@@ -62,7 +62,7 @@ We follow these core principles:
 
 ## Project Status
 
-**Current Version**: v0.9.4 (Released)  
+**Current Version**: v0.9.8 (Released)  
 **Development Version**: v0.9.5-dev  
 **Next Milestone**: Performance & User Experience Enhancements
 

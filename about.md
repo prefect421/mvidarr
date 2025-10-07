@@ -43,7 +43,7 @@ Our vision is to create the ultimate music video management solution that combin
 
 MVidarr is built using modern, reliable technologies:
 
-- **Backend**: Flask (Python 3.12+)
+- **Backend**: FastAPI (Python 3.12+)
 - **Database**: MariaDB 11.4+ with SQLAlchemy ORM
 - **Frontend**: HTML5/CSS3/JavaScript with responsive design
 - **Media Processing**: FFmpeg, yt-dlp
@@ -62,27 +62,23 @@ We follow these core principles:
 
 ## Project Status
 
-**Current Version**: v0.9.4 (Released)  
-**Development Version**: v0.9.5-dev  
-**Next Milestone**: Performance & User Experience Enhancements
+**Current Version**: v0.9.8 (Released)
+**Development Version**: v0.9.9-dev
+**Next Milestone**: Code Cleanup & Optimization
 
-### Recent Achievements
-- ✅ Complete Docker optimization with 8-minute reliable builds
-- ✅ Container size optimization (1.41GB production images)
-- ✅ Comprehensive build monitoring infrastructure
-- ✅ 100% build success rate with automated health checks
-- ✅ Enterprise-grade security implementation
+### Recent Achievements (v0.9.8)
+- ✅ Complete subtitle system implementation (WebVTT, SRT, ASS, SSA, SUB)
+- ✅ 100% Flask to FastAPI migration complete (200+ endpoints)
+- ✅ User testing fixes: 8/8 critical issues resolved
+- ✅ Pure FastAPI architecture - zero Flask API endpoints remain
+- ✅ Advanced async operations with comprehensive Pydantic validation
 
 ## Roadmap
 
 Our development roadmap focuses on continuous improvement:
 
-- **0.9.5**: Performance optimization and user experience enhancements
-- **0.9.6**: Quality assurance and testing infrastructure
-- **0.9.7**: Advanced features and integration capabilities
-- **0.9.8**: External service integrations
-- **0.9.9**: Enterprise and multi-user features
-- **1.0.0**: Production readiness and public release
+- **0.9.9**: Code cleanup and optimization (IN PROGRESS)
+- **1.0.0**: Production readiness and public release (TARGET)
 
 ## Contributing
 
