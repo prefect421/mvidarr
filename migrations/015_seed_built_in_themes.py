@@ -400,11 +400,34 @@ def upgrade(connection):
             ).fetchone()
 
             if not existing:
-                # Use the first admin user or NULL for system themes
+                # Use the first admin user, or create a system user if no users exist
                 admin_user_result = connection.execute(
                     text("SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1")
                 ).fetchone()
-                admin_user_id = admin_user_result[0] if admin_user_result else None
+
+                if admin_user_result:
+                    admin_user_id = admin_user_result[0]
+                else:
+                    # No admin user exists yet - use first user or create system marker
+                    any_user_result = connection.execute(
+                        text("SELECT id FROM users LIMIT 1")
+                    ).fetchone()
+
+                    if any_user_result:
+                        admin_user_id = any_user_result[0]
+                    else:
+                        # No users at all - create a system user for built-in themes
+                        connection.execute(
+                            text("""
+                                INSERT INTO users (username, password_hash, email, role, created_at)
+                                VALUES ('system', '', 'system@mvidarr.local', 'ADMIN', CURRENT_TIMESTAMP)
+                            """)
+                        )
+                        system_user_result = connection.execute(
+                            text("SELECT id FROM users WHERE username = 'system'")
+                        ).fetchone()
+                        admin_user_id = system_user_result[0]
+                        logger.info("Created system user for built-in themes")
 
                 connection.execute(
                     text(
