@@ -953,12 +953,27 @@ function renderVideoDetails(video) {
     document.getElementById('videoHeader').innerHTML = headerHtml;
     
     // Render player section
+    // Determine MIME type based on file extension
+    let mimeType = 'video/mp4'; // default
+    if (video.local_path) {
+        const localPath = video.local_path.toLowerCase();
+        if (localPath.endsWith('.mkv')) {
+            mimeType = 'video/x-matroska';
+        } else if (localPath.endsWith('.webm')) {
+            mimeType = 'video/webm';
+        } else if (localPath.endsWith('.avi')) {
+            mimeType = 'video/x-msvideo';
+        } else if (localPath.endsWith('.mov')) {
+            mimeType = 'video/quicktime';
+        }
+    }
+
     const playerHtml = `
         <div class="video-player">
             ${video.local_path ? `
                 <video id="videoElement" controls class="video-element">
-                    <source src="/api/videos/${video.id}/stream" type="video/mp4">
-                    Your browser does not support the video tag.
+                    <source src="/api/videos/${video.id}/stream" type="${mimeType}">
+                    Your browser does not support the video tag or this video format.
                 </video>
             ` : `
                 <div class="video-thumbnail-large">
