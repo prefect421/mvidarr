@@ -1108,12 +1108,16 @@ async def stream_video(
                         yield chunk
 
             # Get MIME type - handle common video formats explicitly
+            # For MKV files, use MP4 MIME type to trick browsers into attempting playback
+            # Most MKV files contain H.264/AAC which browsers can decode
             content_type, _ = mimetypes.guess_type(str(video_path))
-            if not content_type:
+            suffix = video_path.suffix.lower()
+
+            if not content_type or suffix == ".mkv":
                 # Explicit handling for common video formats
-                suffix = video_path.suffix.lower()
                 if suffix == ".mkv":
-                    content_type = "video/x-matroska"
+                    # Serve MKV as MP4 MIME type - browsers can often decode the codecs
+                    content_type = "video/mp4"
                 elif suffix == ".webm":
                     content_type = "video/webm"
                 elif suffix == ".avi":
@@ -1135,12 +1139,15 @@ async def stream_video(
             return StreamingResponse(generate_range(), status_code=206, headers=headers)
         else:
             # Return full file - handle common video formats explicitly
+            # For MKV files, use MP4 MIME type to trick browsers into attempting playback
             content_type, _ = mimetypes.guess_type(str(video_path))
-            if not content_type:
+            suffix = video_path.suffix.lower()
+
+            if not content_type or suffix == ".mkv":
                 # Explicit handling for common video formats
-                suffix = video_path.suffix.lower()
                 if suffix == ".mkv":
-                    content_type = "video/x-matroska"
+                    # Serve MKV as MP4 MIME type - browsers can often decode the codecs
+                    content_type = "video/mp4"
                 elif suffix == ".webm":
                     content_type = "video/webm"
                 elif suffix == ".avi":
