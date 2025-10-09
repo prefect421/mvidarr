@@ -161,9 +161,7 @@ async def mvtv(request: Request, playlist: Optional[int] = Query(None)):
         raise HTTPException(status_code=500, detail="Failed to load MvTV page")
 
 
-@frontend_router.get(
-    "/frontend.jobs", response_class=HTMLResponse, name="frontend_jobs"
-)
+@frontend_router.get("/jobs", response_class=HTMLResponse, name="frontend_jobs")
 async def jobs(request: Request):
     """Background Jobs Dashboard"""
     try:
