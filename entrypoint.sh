@@ -114,6 +114,12 @@ echo "🚀 Starting MVidarr application..."
 echo "📍 Working directory: $(pwd)"
 echo "🐍 Python path: $PYTHONPATH"
 
-# Start application with error output
-echo "▶️ Executing: python3 fastapi_app.py"
-exec python3 fastapi_app.py
+# Check if a command was passed as arguments
+if [ "$#" -gt 0 ]; then
+    echo "▶️ Executing custom command: $@"
+    exec "$@"
+else
+    # Default: Start FastAPI application
+    echo "▶️ Executing: python3 fastapi_app.py"
+    exec python3 fastapi_app.py
+fi
