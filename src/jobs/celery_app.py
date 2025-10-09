@@ -158,7 +158,12 @@ class JobManager:
                     for worker, tasks in task_dict.items():
                         if tasks:
                             # Filter by queue name
-                            queue_tasks = [t for t in tasks if t.get('delivery_info', {}).get('routing_key') == queue_name]
+                            queue_tasks = [
+                                t
+                                for t in tasks
+                                if t.get("delivery_info", {}).get("routing_key")
+                                == queue_name
+                            ]
                             total_count += len(queue_tasks)
 
             return total_count
