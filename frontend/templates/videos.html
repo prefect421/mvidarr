@@ -4205,9 +4205,10 @@ function formatDuration(seconds) {
 
 // Update pagination controls based on API response
 function updatePagination(data) {
-    const totalVideos = data.total || 0;
-    const currentTotal = data.count || 0;
-    
+    // Support both old format (data.total) and new format (data.pagination.total)
+    const totalVideos = data.pagination?.total || data.total || 0;
+    const currentTotal = data.count || data.videos?.length || 0;
+
     // Calculate pagination values
     totalPages = Math.ceil(totalVideos / pageSize);
     const startIndex = totalVideos > 0 ? ((currentPage - 1) * pageSize) + 1 : 0;
