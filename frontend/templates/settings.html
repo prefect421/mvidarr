@@ -2708,12 +2708,12 @@ function proceedIndexAllVideosNoMeta() {
 
 function startIndexing(fetchMetadata) {
     showProgress('Starting video indexing...');
-    
+
     const requestData = {
         fetch_metadata: fetchMetadata,
         max_files: null // Process all files
     };
-    
+
     fetch('/api/video-indexing/index-all', {
         method: 'POST',
         headers: {
@@ -2724,8 +2724,36 @@ function startIndexing(fetchMetadata) {
     .then(response => response.json())
     .then(data => {
         hideProgress();
-        
-        if (data.success) {
+
+        if (data.success && data.job_id) {
+            // Background job was queued successfully
+            const result = `
+                <div class="indexing-results">
+                    <h4>📋 Video Indexing Job Started</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Job ID:</strong> ${data.job_id}
+                        </div>
+                        <div class="result-item">
+                            <strong>Status:</strong> Processing in background
+                        </div>
+                        <div class="result-item">
+                            <strong>Message:</strong> ${data.message}
+                        </div>
+                    </div>
+                    <p class="info-message">
+                        📡 The indexing job is running in the background.
+                        You can monitor progress in the Background Jobs panel at the bottom of the page,
+                        or check the Videos page for newly indexed videos.
+                    </p>
+                </div>
+            `;
+            showResults(result);
+
+            // Refresh stats after a delay to show updated counts
+            setTimeout(refreshStats, 5000);
+        } else if (data.success && data.summary) {
+            // Legacy synchronous response (fallback)
             const summary = data.summary;
             const result = `
                 <div class="indexing-results">
@@ -2761,11 +2789,9 @@ function startIndexing(fetchMetadata) {
                 </div>
             `;
             showResults(result);
-            
-            // Refresh stats after indexing
             setTimeout(refreshStats, 1000);
         } else {
-            showResults('<span class="error">Indexing failed: ' + data.error + '</span>');
+            showResults('<span class="error">Indexing failed: ' + (data.error || 'Unknown error') + '</span>');
         }
     })
     .catch(error => {
