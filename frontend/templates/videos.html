@@ -1886,12 +1886,30 @@ function confirmDeleteVideo() {
 function toggleSelectAll() {
     const selectAllCheckbox = document.getElementById('selectAllVideos');
     const videoCheckboxes = document.querySelectorAll('.video-checkbox');
-    
+
     videoCheckboxes.forEach(checkbox => {
         checkbox.checked = selectAllCheckbox.checked;
     });
-    
+
     updateSelectedCount();
+}
+
+function selectAllVideos() {
+    // Programmatically check the "select all" checkbox and trigger selection
+    const selectAllCheckbox = document.getElementById('selectAllVideos');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = true;
+        toggleSelectAll();
+    }
+}
+
+function clearSelection() {
+    // Programmatically uncheck the "select all" checkbox and clear selection
+    const selectAllCheckbox = document.getElementById('selectAllVideos');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+        toggleSelectAll();
+    }
 }
 
 function updateSelectedCount() {
