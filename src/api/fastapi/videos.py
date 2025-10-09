@@ -2186,7 +2186,7 @@ async def queue_download_video(
     video_id: int = FastAPIPath(..., ge=1),
     session: Session = Depends(get_db_session),
 ):
-    """Working video download endpoint (bypasses validation issues)"""
+    """Queue video download and start immediately (no Celery required)"""
     try:
         logger.info(f"WORKING DOWNLOAD: Processing video {video_id}")
 
@@ -2209,7 +2209,7 @@ async def queue_download_video(
             session.query(Download)
             .filter(
                 Download.video_id == video_id,
-                Download.status.in_(["queued", "downloading"]),
+                Download.status.in_(["queued", "downloading", "pending"]),
             )
             .first()
         )
@@ -2223,38 +2223,53 @@ async def queue_download_video(
                 "status": "already_queued",
             }
 
-        # Create new download entry
-        download = Download(
-            artist_id=video.artist_id,
-            video_id=video_id,
+        # Get artist info
+        artist = session.query(Artist).filter(Artist.id == video.artist_id).first()
+        if not artist:
+            return {"success": False, "error": "Artist not found"}
+
+        # Get YouTube URL
+        youtube_url = video.youtube_url if hasattr(video, "youtube_url") and video.youtube_url else None
+        if not youtube_url:
+            return {"success": False, "error": "No YouTube URL found for this video"}
+
+        # Get subtitle settings
+        from src.services.settings_service import settings
+        download_subtitles = settings.get_bool("download_subtitles", False)
+        subtitle_languages = settings.get("subtitle_languages", "en,en-US")
+
+        # Start download immediately via ytdlp_service
+        from src.services.ytdlp_service import ytdlp_service
+
+        result = ytdlp_service.add_music_video_download(
+            artist=artist.name,
             title=video.title,
-            original_url=(
-                video.youtube_url
-                if hasattr(video, "youtube_url") and video.youtube_url
-                else "Unknown URL"
-            ),
-            status="queued",
-            priority=1,  # Default priority
-            created_at=datetime.utcnow(),
+            url=youtube_url,
+            quality="best",
+            video_id=video_id,
+            download_subtitles=download_subtitles,
+            subtitle_languages=subtitle_languages,
         )
 
-        session.add(download)
-        session.commit()
-
-        logger.info(f"WORKING DOWNLOAD: Successfully queued video {video_id}")
-
-        return {
-            "success": True,
-            "message": "Video download queued successfully",
-            "video_id": video_id,
-            "download_id": download.id,
-            "priority": 1,
-            "status": "queued",
-        }
+        if result.get("success"):
+            logger.info(f"WORKING DOWNLOAD: Successfully started download for video {video_id}")
+            return {
+                "success": True,
+                "message": "Video download started successfully",
+                "video_id": video_id,
+                "download_id": result.get("id"),
+                "status": "downloading",
+            }
+        else:
+            logger.error(f"WORKING DOWNLOAD: Failed to start download: {result.get('error')}")
+            return {
+                "success": False,
+                "error": result.get("error", "Unknown error"),
+                "video_id": video_id,
+            }
 
     except Exception as e:
         logger.error(f"WORKING DOWNLOAD: Error for video {video_id}: {e}")
-        session.rollback()
         return {"success": False, "error": str(e), "video_id": video_id}
 
 
