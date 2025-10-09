@@ -2228,14 +2228,18 @@ async def queue_download_video(
         if not artist:
             return {"success": False, "error": "Artist not found"}
 
-        # Get YouTube URL
-        youtube_url = (
-            video.youtube_url
-            if hasattr(video, "youtube_url") and video.youtube_url
-            else None
-        )
+        # Get YouTube URL - check multiple possible fields
+        youtube_url = None
+        if hasattr(video, "youtube_url") and video.youtube_url:
+            youtube_url = video.youtube_url
+        elif hasattr(video, "url") and video.url:
+            youtube_url = video.url
+
         if not youtube_url:
-            return {"success": False, "error": "No YouTube URL found for this video"}
+            return {
+                "success": False,
+                "error": "No YouTube URL found for this video. Please add a URL to enable downloading.",
+            }
 
         # Get subtitle settings
         from src.services.settings_service import settings
