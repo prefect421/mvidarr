@@ -18,7 +18,7 @@ mysqlclient>=2.2.0
 requests==2.32.4
 urllib3==2.5.0
 httpx==0.25.2
-aiohttp==3.10.11
+aiohttp==3.12.14
 
 # Image Processing
 Pillow==10.3.0
