@@ -1127,50 +1127,6 @@ function playVideo(videoId, title, localPath, videoUrl) {
     
     // Prioritize local file if available
     if (localPath && localPath !== 'null' && localPath !== 'undefined') {
-        // Check if this is a known unsupported format that needs VLC streaming
-        let needsVLCStreaming = localPath.toLowerCase().endsWith('.mkv') || 
-                                localPath.toLowerCase().endsWith('.avi');
-        
-        if (needsVLCStreaming) {
-            // Use direct streaming for unsupported formats
-            playerDiv.innerHTML = `
-                <div class="video-loading">
-                    <h3>🎬 Starting Video Stream...</h3>
-                    <p>Transcoding video for browser playback using FFmpeg.</p>
-                    <div class="loading-spinner">
-                        <img src="{{ url_for('static', filename='MVidarr.png') }}" alt="MVidarr" class="spinning mvidarr-logo-spinner" style="width: 24px; height: 24px;">
-                    </div>
-                </div>
-            `;
-            
-            // Show modal
-            document.getElementById('videoModal').style.display = 'block';
-            
-            // Track current video ID for cleanup
-            window.currentVideoId = videoId;
-            
-            // Use the direct streaming endpoint
-            const streamUrl = `/api/videos/${videoId}/stream`;
-            
-            // Give it a moment to show the loading message, then start the stream
-            setTimeout(() => {
-                playerDiv.innerHTML = `
-                    <video id="modalVideoElement" width="800" height="450" controls autoplay>
-                        <source src="${streamUrl}" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video>
-                    <div class="stream-info">
-                        <p><small>Streaming via FFmpeg transcoding</small></p>
-                    </div>
-                `;
-                
-                // Load subtitles for this video
-                loadModalVideoSubtitles(videoId);
-            }, 1000);
-            
-            return;
-        }
-        
         // Determine MIME type based on file extension
         let mimeType = 'video/mp4'; // default
         if (localPath.toLowerCase().endsWith('.mkv')) {
@@ -1185,7 +1141,7 @@ function playVideo(videoId, title, localPath, videoUrl) {
         
         // Play local file via streaming endpoint with proper MIME type
         playerDiv.innerHTML = `
-            <video id="modalVideoElement" width="800" height="450" controls preload="metadata">
+            <video id="modalVideoElement" width="800" height="450" controls autoplay preload="metadata">
                 <source src="/api/videos/${videoId}/stream" type="${mimeType}">
                 Your browser does not support the video tag or this video format.
             </video>
