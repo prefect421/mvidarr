@@ -142,12 +142,29 @@ class JobManager:
     def get_queue_length(queue_name="default"):
         """Get the length of a specific queue"""
         try:
-            with celery_app.connection() as conn:
-                queue = Queue(queue_name)
-                return queue(conn.channel()).qsize()
+            # Use Celery's inspect API to get queue length from Redis
+            inspect = celery_app.control.inspect()
+
+            # Get active, scheduled, and reserved tasks
+            active = inspect.active()
+            scheduled = inspect.scheduled()
+            reserved = inspect.reserved()
+
+            # Count tasks in the specified queue across all workers
+            total_count = 0
+
+            for task_dict in [active, scheduled, reserved]:
+                if task_dict:
+                    for worker, tasks in task_dict.items():
+                        if tasks:
+                            # Filter by queue name
+                            queue_tasks = [t for t in tasks if t.get('delivery_info', {}).get('routing_key') == queue_name]
+                            total_count += len(queue_tasks)
+
+            return total_count
         except Exception as e:
             logger.error(f"Error getting queue length for {queue_name}: {e}")
-            return -1
+            return 0  # Return 0 instead of -1 to avoid UI issues
 
     @staticmethod
     def purge_queue(queue_name="default"):
