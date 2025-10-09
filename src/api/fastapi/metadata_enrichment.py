@@ -1048,6 +1048,80 @@ async def get_celery_health(current_user: dict = Depends(require_authentication)
         )
 
 
+@router.get("/celery/inspect")
+async def get_celery_inspect(current_user: dict = Depends(require_authentication)):
+    """Get all Celery job information for the jobs dashboard"""
+    try:
+        from src.jobs.celery_app import celery_app
+
+        inspect = celery_app.control.inspect()
+
+        # Get active, scheduled, and reserved tasks
+        active = inspect.active() or {}
+        scheduled = inspect.scheduled() or {}
+        reserved = inspect.reserved() or {}
+
+        # Collect all jobs from all workers
+        jobs = []
+
+        # Process active tasks
+        for worker, tasks in active.items():
+            for task in tasks:
+                jobs.append(
+                    {
+                        "job_id": task.get("id"),
+                        "type": task.get("name", "").replace(".", "_"),
+                        "status": "processing",
+                        "worker": worker,
+                        "created_at": task.get("time_start"),
+                        "args": task.get("args"),
+                        "kwargs": task.get("kwargs"),
+                    }
+                )
+
+        # Process scheduled tasks
+        for worker, tasks in scheduled.items():
+            for task in tasks:
+                jobs.append(
+                    {
+                        "job_id": task.get("id"),
+                        "type": task.get("name", "").replace(".", "_"),
+                        "status": "queued",
+                        "worker": worker,
+                        "created_at": task.get("time_start"),
+                        "args": task.get("args"),
+                        "kwargs": task.get("kwargs"),
+                    }
+                )
+
+        # Process reserved tasks
+        for worker, tasks in reserved.items():
+            for task in tasks:
+                jobs.append(
+                    {
+                        "job_id": task.get("id"),
+                        "type": task.get("name", "").replace(".", "_"),
+                        "status": "queued",
+                        "worker": worker,
+                        "created_at": task.get("time_start"),
+                        "args": task.get("args"),
+                        "kwargs": task.get("kwargs"),
+                    }
+                )
+
+        return {
+            "jobs": jobs,
+            "total": len(jobs),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+    except Exception as e:
+        logger.error(f"Error inspecting Celery jobs: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to inspect Celery jobs: {str(e)}"
+        )
+
+
 @router.get("/stats")
 async def get_enrichment_stats(current_user: dict = Depends(require_authentication)):
     """Get metadata enrichment statistics"""

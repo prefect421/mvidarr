@@ -449,59 +449,77 @@ async function loadSystemStats() {
     }
 }
 
-function refreshActiveJobs() {
-    const activeJobs = window.backgroundJobs ? window.backgroundJobs.getActiveJobs() : [];
+async function refreshActiveJobs() {
     const container = document.getElementById('activeJobsList');
     const countElements = [
         document.getElementById('activeJobBadge'),
         document.getElementById('activeJobCount')
     ];
-    
-    // Update counts
-    countElements.forEach(el => {
-        if (el) el.textContent = activeJobs.length;
-    });
-    
-    if (activeJobs.length === 0) {
+
+    try {
+        // Fetch active jobs from Celery inspect endpoint
+        const response = await fetch('/api/metadata-enrichment/celery/inspect', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch active jobs');
+        }
+
+        const data = await response.json();
+        const activeJobs = data.jobs || [];
+
+        // Filter to only show processing and queued jobs
+        const filteredJobs = activeJobs.filter(job =>
+            job.status === 'processing' || job.status === 'queued'
+        );
+
+        // Update counts
+        countElements.forEach(el => {
+            if (el) el.textContent = filteredJobs.length;
+        });
+
+        if (filteredJobs.length === 0) {
+            container.innerHTML = `
+                <div class="no-jobs">
+                    <iconify-icon icon="tabler:check-circle"></iconify-icon>
+                    <p>No active jobs</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = filteredJobs.map(job => `
+            <div class="job-item">
+                <div class="job-info">
+                    <div class="job-title">
+                        <iconify-icon icon="${getJobStatusIcon(job.status)}"></iconify-icon>
+                        ${getJobTypeDisplay(job.type)}
+                    </div>
+                    <div class="job-details">
+                        <span class="job-message">${job.status === 'processing' ? 'Processing...' : 'Queued'}</span>
+                        <span class="job-worker">Worker: ${job.worker || 'Unknown'}</span>
+                    </div>
+                </div>
+                <div class="job-actions">
+                    ${job.status === 'processing' || job.status === 'queued' ?
+                        `<button class="btn btn-sm btn-danger" onclick="cancelJob('${job.job_id}')" title="Cancel Job">
+                            <iconify-icon icon="tabler:x"></iconify-icon>
+                         </button>` : ''
+                    }
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Failed to fetch active jobs:', error);
         container.innerHTML = `
             <div class="no-jobs">
-                <iconify-icon icon="tabler:check-circle"></iconify-icon>
-                <p>No active jobs</p>
+                <iconify-icon icon="tabler:alert-circle"></iconify-icon>
+                <p>Failed to load active jobs</p>
             </div>
         `;
-        return;
     }
-    
-    container.innerHTML = activeJobs.map(job => `
-        <div class="job-item">
-            <div class="job-info">
-                <div class="job-title">
-                    <iconify-icon icon="${getJobStatusIcon(job.status)}"></iconify-icon>
-                    ${getJobTypeDisplay(job.type)}
-                </div>
-                <div class="job-details">
-                    <span class="job-message">${job.message || 'Processing...'}</span>
-                    <span class="job-time">${formatJobTime(job.startTime)}</span>
-                </div>
-            </div>
-            <div class="job-progress">
-                <div class="job-progress-bar">
-                    <div class="job-progress-fill" style="width: ${job.progress || 0}%"></div>
-                </div>
-                <span class="job-percentage">${job.progress || 0}%</span>
-            </div>
-            <div class="job-actions">
-                ${job.status === 'processing' || job.status === 'queued' ? 
-                    `<button class="btn btn-sm btn-danger" onclick="cancelJob('${job.id}')" title="Cancel Job">
-                        <iconify-icon icon="tabler:x"></iconify-icon>
-                     </button>` : ''
-                }
-                <button class="btn btn-sm" onclick="hideJobFromActiveList('${job.id}')" title="Hide">
-                    <iconify-icon icon="tabler:eye-off"></iconify-icon>
-                </button>
-            </div>
-        </div>
-    `).join('');
 }
 
 async function refreshJobHistory() {
@@ -574,18 +592,34 @@ function applyJobFilters() {
     `).join('');
 }
 
-function cancelJob(jobId) {
-    if (window.backgroundJobs) {
-        window.backgroundJobs.cancelJob(jobId);
+async function cancelJob(jobId) {
+    if (!confirm('Are you sure you want to cancel this job?')) {
+        return;
     }
-    refreshActiveJobs();
-}
 
-function hideJobFromActiveList(jobId) {
-    if (window.backgroundJobs) {
-        window.backgroundJobs.hideJobProgress(jobId);
+    try {
+        const response = await fetch(`/api/metadata-enrichment/job/${jobId}/cancel`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to cancel job');
+        }
+
+        const result = await response.json();
+        console.log('Job cancelled:', result);
+
+        // Refresh the active jobs list
+        refreshActiveJobs();
+
+    } catch (error) {
+        console.error('Failed to cancel job:', error);
+        alert('Failed to cancel job: ' + error.message);
     }
-    refreshActiveJobs();
 }
 
 function clearCompletedJobs() {
