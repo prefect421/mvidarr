@@ -2229,12 +2229,17 @@ async def queue_download_video(
             return {"success": False, "error": "Artist not found"}
 
         # Get YouTube URL
-        youtube_url = video.youtube_url if hasattr(video, "youtube_url") and video.youtube_url else None
+        youtube_url = (
+            video.youtube_url
+            if hasattr(video, "youtube_url") and video.youtube_url
+            else None
+        )
         if not youtube_url:
             return {"success": False, "error": "No YouTube URL found for this video"}
 
         # Get subtitle settings
         from src.services.settings_service import settings
+
         download_subtitles = settings.get_bool("download_subtitles", False)
         subtitle_languages = settings.get("subtitle_languages", "en,en-US")
 
@@ -2252,7 +2257,9 @@ async def queue_download_video(
         )
 
         if result.get("success"):
-            logger.info(f"WORKING DOWNLOAD: Successfully started download for video {video_id}")
+            logger.info(
+                f"WORKING DOWNLOAD: Successfully started download for video {video_id}"
+            )
             return {
                 "success": True,
                 "message": "Video download started successfully",
@@ -2261,7 +2268,9 @@ async def queue_download_video(
                 "status": "downloading",
             }
         else:
-            logger.error(f"WORKING DOWNLOAD: Failed to start download: {result.get('error')}")
+            logger.error(
+                f"WORKING DOWNLOAD: Failed to start download: {result.get('error')}"
+            )
             return {
                 "success": False,
                 "error": result.get("error", "Unknown error"),
