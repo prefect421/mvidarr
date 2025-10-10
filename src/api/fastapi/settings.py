@@ -570,7 +570,7 @@ async def trigger_scheduled_download():
         max_videos = SettingsService.get_int("auto_download_max_videos", 50)
 
         # Import and run the download function
-        from src.api.videos import download_all_wanted_videos_internal
+        from src.services.video_batch_service import download_all_wanted_videos_internal
 
         result = download_all_wanted_videos_internal(limit=max_videos)
 

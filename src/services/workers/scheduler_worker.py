@@ -40,7 +40,7 @@ class SchedulerWorker(BaseWorker):
         await self.update_progress(10, "Getting videos for scheduled download...")
 
         # Import here to avoid circular dependencies
-        from src.api.videos import get_wanted_videos_for_download
+        from src.services.video_batch_service import get_wanted_videos_for_download
 
         # Get wanted videos
         wanted_videos = await self.run_async_service(
@@ -128,15 +128,13 @@ class SchedulerWorker(BaseWorker):
         await self.update_progress(10, "Starting scheduled video discovery...")
 
         # Import here to avoid circular dependencies
-        from src.api.video_discovery import discover_videos_for_artists
+        from src.api.fastapi.video_discovery import discover_videos_for_artists
 
-        # Run discovery through thread pool
-        result = await self.run_async_service(
-            lambda: discover_videos_for_artists(
-                max_artists=max_artists,
-                max_videos_per_artist=max_videos_per_artist,
-                scheduled=True,  # Mark as scheduled discovery
-            )
+        # Run discovery - FastAPI version is async so we await directly
+        result = await discover_videos_for_artists(
+            max_artists=max_artists,
+            max_videos_per_artist=max_videos_per_artist,
+            scheduled=True,  # Mark as scheduled discovery
         )
 
         await self.update_progress(100, "Scheduled video discovery completed")

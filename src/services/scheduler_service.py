@@ -397,7 +397,9 @@ class SchedulerService:
                     )
 
             # Import here to avoid circular imports
-            from src.api.videos import download_all_wanted_videos_internal
+            from src.services.video_batch_service import (
+                download_all_wanted_videos_internal,
+            )
 
             # Run the download function
             result = download_all_wanted_videos_internal(limit=max_videos)
