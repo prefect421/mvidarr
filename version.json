@@ -1,7 +1,7 @@
 {
   "version": "0.9.9-dev",
-  "build_date": "2025-10-10T13:44:06.009332",
-  "git_commit": "cf68f47",
+  "build_date": "2025-10-10T17:30:00.000000",
+  "git_commit": "1070585",
   "git_branch": "dev",
   "release_name": "Code Cleanup & Pre-Release Optimization",
   "features": [

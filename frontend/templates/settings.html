@@ -160,6 +160,51 @@ input:checked + .slider:before {
                 <h3>Settings</h3>
             </div>
 
+            <ul class="sidebar-nav">
+                <li>
+                    <button class="settings-tab-btn active" onclick="switchTab(event, 'general-tab')"
+                            role="tab" aria-selected="true" aria-controls="general-tab" id="tab-general">
+                        <iconify-icon icon="tabler:settings" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>General</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'services-tab')"
+                            role="tab" aria-selected="false" aria-controls="services-tab" id="tab-services">
+                        <iconify-icon icon="tabler:link" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>Services</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'downloads-tab')"
+                            role="tab" aria-selected="false" aria-controls="downloads-tab" id="tab-downloads">
+                        <iconify-icon icon="tabler:download" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>Downloads</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'system-tab')"
+                            role="tab" aria-selected="false" aria-controls="system-tab" id="tab-system">
+                        <iconify-icon icon="tabler:tools" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>System</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'themes-tab')"
+                            role="tab" aria-selected="false" aria-controls="themes-tab" id="tab-themes">
+                        <iconify-icon icon="tabler:palette" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>Themes</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'blacklist-tab')"
+                            role="tab" aria-selected="false" aria-controls="blacklist-tab" id="tab-blacklist">
+                        <iconify-icon icon="tabler:list-x" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>Blacklist</span>
+                    </button>
+                </li>
+            </ul>
+
             <!-- Advanced Mode Toggle -->
             <div class="advanced-mode-toggle">
                 <label class="switch">
@@ -169,14 +214,8 @@ input:checked + .slider:before {
                 <span class="toggle-label">Show Advanced Settings</span>
             </div>
 
-            <ul class="sidebar-nav">
-                <li>
-                    <button class="settings-tab-btn active" onclick="switchTab(event, 'general-tab')" 
-                            role="tab" aria-selected="true" aria-controls="general-tab" id="tab-general">
-                        <iconify-icon icon="tabler:settings" class="tab-icon" aria-hidden="true"></iconify-icon> 
-                        <span>General</span>
-                    </button>
-                </li>
+            <!-- Advanced Settings Tabs (shown when toggle is enabled) -->
+            <ul class="sidebar-nav advanced-nav">
                 <li class="advanced-tab-item">
                     <button class="settings-tab-btn" onclick="switchTab(event, 'security-tab')"
                             role="tab" aria-selected="false" aria-controls="security-tab" id="tab-security">
@@ -184,46 +223,11 @@ input:checked + .slider:before {
                         <span>Security</span>
                     </button>
                 </li>
-                <li>
-                    <button class="settings-tab-btn" onclick="switchTab(event, 'services-tab')"
-                            role="tab" aria-selected="false" aria-controls="services-tab" id="tab-services">
-                        <iconify-icon icon="tabler:link" class="tab-icon" aria-hidden="true"></iconify-icon> 
-                        <span>Services</span>
-                    </button>
-                </li>
-                <li>
-                    <button class="settings-tab-btn" onclick="switchTab(event, 'downloads-tab')"
-                            role="tab" aria-selected="false" aria-controls="downloads-tab" id="tab-downloads">
-                        <iconify-icon icon="tabler:download" class="tab-icon" aria-hidden="true"></iconify-icon> 
-                        <span>Downloads</span>
-                    </button>
-                </li>
                 <li class="advanced-tab-item">
                     <button class="settings-tab-btn" onclick="switchTab(event, 'database-tab')"
                             role="tab" aria-selected="false" aria-controls="database-tab" id="tab-database">
                         <iconify-icon icon="tabler:database" class="tab-icon" aria-hidden="true"></iconify-icon>
                         <span>Database</span>
-                    </button>
-                </li>
-                <li>
-                    <button class="settings-tab-btn" onclick="switchTab(event, 'system-tab')"
-                            role="tab" aria-selected="false" aria-controls="system-tab" id="tab-system">
-                        <iconify-icon icon="tabler:tools" class="tab-icon" aria-hidden="true"></iconify-icon> 
-                        <span>System</span>
-                    </button>
-                </li>
-                <li>
-                    <button class="settings-tab-btn" onclick="switchTab(event, 'themes-tab')"
-                            role="tab" aria-selected="false" aria-controls="themes-tab" id="tab-themes">
-                        <iconify-icon icon="tabler:palette" class="tab-icon" aria-hidden="true"></iconify-icon> 
-                        <span>Themes</span>
-                    </button>
-                </li>
-                <li>
-                    <button class="settings-tab-btn" onclick="switchTab(event, 'blacklist-tab')"
-                            role="tab" aria-selected="false" aria-controls="blacklist-tab" id="tab-blacklist">
-                        <iconify-icon icon="tabler:list-x" class="tab-icon" aria-hidden="true"></iconify-icon> 
-                        <span>Blacklist</span>
                     </button>
                 </li>
             </ul>
@@ -2086,51 +2090,6 @@ function initializeTab() {
         }
     }
 }
-
-// Advanced Settings Toggle
-function toggleAdvancedSettings() {
-    const advancedToggle = document.getElementById('advancedModeToggle');
-    const sidebarNav = document.querySelector('.sidebar-nav');
-    const isAdvanced = advancedToggle.checked;
-
-    // Toggle show-advanced class on sidebar navigation
-    if (isAdvanced) {
-        sidebarNav.classList.add('show-advanced');
-    } else {
-        sidebarNav.classList.remove('show-advanced');
-    }
-
-    // Save preference to localStorage
-    localStorage.setItem('mvidarr_settings_advanced_mode', isAdvanced ? 'true' : 'false');
-
-    // If currently on an advanced tab and switching to basic mode, switch to general tab
-    if (!isAdvanced) {
-        const activeTab = document.querySelector('.settings-tab-btn.active');
-        if (activeTab && activeTab.closest('.advanced-tab-item')) {
-            // Switch to general tab
-            const generalTab = document.querySelector('[onclick*="general-tab"]');
-            if (generalTab) {
-                generalTab.click();
-            }
-        }
-    }
-}
-
-// Initialize advanced mode from localStorage on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const advancedToggle = document.getElementById('advancedModeToggle');
-    const savedMode = localStorage.getItem('mvidarr_settings_advanced_mode');
-
-    // Default to hidden (false) if not set
-    if (savedMode === 'true') {
-        advancedToggle.checked = true;
-    } else {
-        advancedToggle.checked = false;
-    }
-
-    // Apply the saved setting
-    toggleAdvancedSettings();
-});
 
 // Video Quality Management Functions
 async function loadQualityStatistics() {
@@ -5307,7 +5266,9 @@ async function loadCertificateStatus() {
     align-items: center;
     gap: 0.75rem;
     padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-secondary, #444);
     border-bottom: 1px solid var(--border-secondary, #444);
+    margin-top: 0.5rem;
     margin-bottom: 0.5rem;
 }
 
@@ -5317,13 +5278,21 @@ async function loadCertificateStatus() {
     user-select: none;
 }
 
-/* Hide advanced tabs by default */
-.advanced-tab-item {
+/* Advanced navigation container */
+.advanced-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
     display: none;
 }
 
-/* Show advanced tabs when advanced mode is enabled */
-.sidebar-nav.show-advanced .advanced-tab-item {
+/* Show advanced nav when toggle is enabled */
+.advanced-nav.show-advanced {
+    display: block;
+}
+
+/* Advanced tab items are always visible within the advanced-nav container */
+.advanced-tab-item {
     display: block;
 }
 
@@ -8587,13 +8556,13 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function toggleAdvancedSettings() {
     const toggle = document.getElementById('advancedModeToggle');
-    const sidebarNav = document.querySelector('.sidebar-nav');
+    const advancedNav = document.querySelector('.advanced-nav');
 
     if (toggle.checked) {
-        sidebarNav.classList.add('show-advanced');
+        advancedNav.classList.add('show-advanced');
         localStorage.setItem('mvidarr_settings_advanced_mode', 'true');
     } else {
-        sidebarNav.classList.remove('show-advanced');
+        advancedNav.classList.remove('show-advanced');
         localStorage.setItem('mvidarr_settings_advanced_mode', 'false');
 
         // If user is currently on an advanced tab, switch to General tab
@@ -8613,15 +8582,15 @@ function toggleAdvancedSettings() {
 function initializeAdvancedMode() {
     const advancedMode = localStorage.getItem('mvidarr_settings_advanced_mode');
     const toggle = document.getElementById('advancedModeToggle');
-    const sidebarNav = document.querySelector('.sidebar-nav');
+    const advancedNav = document.querySelector('.advanced-nav');
 
     // Default to hidden (advanced mode OFF)
     if (advancedMode === 'true') {
         toggle.checked = true;
-        sidebarNav.classList.add('show-advanced');
+        advancedNav.classList.add('show-advanced');
     } else {
         toggle.checked = false;
-        sidebarNav.classList.remove('show-advanced');
+        advancedNav.classList.remove('show-advanced');
     }
 }
 
