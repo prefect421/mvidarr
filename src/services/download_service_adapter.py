@@ -79,7 +79,7 @@ class DownloadServiceAdapter:
             context = DownloadContext(
                 video_id=video_id or 0,
                 url=url,
-                title=FilenameCleanup.sanitize_filename(title),
+                title=FilenameCleanup.sanitize_folder_name(title),
                 artist=artist,
                 quality=format_string
                 or quality,  # Pass format_string as quality if provided
