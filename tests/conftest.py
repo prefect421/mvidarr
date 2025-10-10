@@ -25,9 +25,17 @@ from typing import Any, Dict, Generator
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+# Conditional Flask import (Flask removed in 0.9.9 Phase 1)
+try:
+    from flask import Flask
+
+    _has_flask = True
+except ImportError:
+    _has_flask = False
+    Flask = None
 
 # Conditional imports - only import if modules exist
 try:
@@ -138,6 +146,10 @@ def app(test_config, test_db):
     Flask application fixture with test configuration.
     Creates isolated app instance for each test.
     """
+    # Skip if Flask not available (removed in 0.9.9 Phase 1)
+    if not _has_flask:
+        pytest.skip("Flask not available (removed in 0.9.9)")
+
     # Skip if we can't create the app
     if not _has_config:
         pytest.skip("Config module not available")
