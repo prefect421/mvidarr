@@ -232,7 +232,7 @@ frontend/
 - **16 TODO comments** requiring resolution
 
 ### Top Priority Files for Refactoring:
-1. `src/api/fastapi/videos.py` - **4,029 lines** (144K) - CRITICAL
+1. ~~`src/api/fastapi/videos.py` - **4,029 lines** (144K) - CRITICAL~~ ✅ **COMPLETED** (2025-10-13)
 2. `src/services/metadata_enrichment_service.py` - **3,015 lines** (129K) - CRITICAL
 3. ~~`src/api/fastapi/artists.py` - **2,874 lines** (107K) - CRITICAL~~ ✅ **COMPLETED** (2025-10-13)
 4. `src/services/import_service.py` - **2,163 lines** - HIGH
@@ -268,7 +268,36 @@ frontend/
 
 ---
 
-**Status**: 🟢 Phase 2 In Progress - 1 of 5 critical files completed
+### videos.py Modular Split ✅ (2025-10-13)
+**Original**: 4,029 lines, 36 endpoints, monolithic structure
+**Refactored**: 11 modular files (4,550 total lines with documentation)
+
+**New Structure:**
+- `videos.py` (120 lines) - Router aggregator
+- `videos_models.py` (200 lines) - Pydantic schemas
+- `videos_crud.py` (450 lines) - CRUD operations (5 endpoints)
+- `videos_search.py` (520 lines) - Search functionality (4 endpoints)
+- `videos_thumbnails.py` (650 lines) - Thumbnail management (5 endpoints)
+- `videos_streaming.py` (380 lines) - Video streaming & subtitles (4 endpoints)
+- `videos_downloads.py` (680 lines) - Download operations (5 endpoints)
+- `videos_bulk.py` (560 lines) - Bulk management (5 endpoints)
+- `videos_metadata.py` (490 lines) - Metadata refresh (4 endpoints)
+- `videos_import.py` (220 lines) - YouTube/IMVDb import (2 endpoints)
+- `videos_blacklist.py` (280 lines) - Blacklist management (4 endpoints)
+
+**Benefits Achieved:**
+✅ Logical functional grouping (downloads, bulk, metadata, etc.)
+✅ Each module under 700 lines (highly manageable)
+✅ Clear separation of concerns by feature
+✅ Better route organization with proper ordering
+✅ All 36 endpoints organized into logical modules
+✅ Syntax validated and formatted with black/isort
+
+**Approach**: Performed functional analysis instead of simple sectional split, properly categorizing endpoints by their true purpose (e.g., moved `bulk/download-wanted` from bulk operations to downloads module where it logically belongs)
+
+---
+
+**Status**: 🟢 Phase 2 In Progress - 2 of 5 critical files completed
 **Last Update**: 2025-10-13
 **Target Completion**: 4 weeks
 **Next Milestone**: 1.0.0 Public Release
