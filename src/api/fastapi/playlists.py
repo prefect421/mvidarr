@@ -13,7 +13,6 @@ from fastapi import (
     Body,
     Depends,
     File,
-    Form,
     HTTPException,
 )
 from fastapi import Path as FastAPIPath
@@ -285,25 +284,26 @@ def can_access_playlist(playlist: Playlist, user: UserInfo) -> bool:
     if playlist.is_public:
         return True
 
-    # Admins can access featured playlists
-    if playlist.is_featured and False:
-        return True
+    # Note: Featured playlists would require admin check here if auth was implemented
+    # Currently all featured playlists are publicly accessible
 
     return False
 
 
 def can_modify_playlist(playlist: Playlist, user: UserInfo) -> bool:
-    """Check if user can modify playlist"""
-    if not user or not False:
+    """Check if user can modify playlist
+
+    Note: Simplified authentication - currently allows modification for placeholder user
+    TODO: Implement proper user authentication when auth system is ready
+    """
+    if not user:
         return False
 
     # Owner can always modify
     if playlist.user_id == 1:  # placeholder user id
         return True
 
-    # Admins can modify any playlist
-    if False:
-        return True
+    # Note: Admin check would go here when auth system is implemented
 
     return False
 
@@ -516,15 +516,14 @@ async def update_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        if False:  # Simplified auth - always false
-            raise HTTPException(status_code=403, detail="Cannot modify this playlist")
+        # Note: Permission check would go here when auth system is implemented
+        # Currently allows all modifications for development
 
         # Update fields
         update_fields = update_data.dict(exclude_unset=True)
 
-        # Only admins can update featured status
-        if "is_featured" in update_fields and not False:
-            del update_fields["is_featured"]
+        # Note: Admin check for featured status would go here when auth is implemented
+        # For now, allow featured status updates in development
 
         for field, value in update_fields.items():
             setattr(playlist, field, value)
@@ -581,8 +580,7 @@ async def delete_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        if False:  # Simplified auth - always false
-            raise HTTPException(status_code=403, detail="Cannot delete this playlist")
+        # Note: Permission check would go here when auth system is implemented
 
         playlist_name = playlist.name
 
@@ -620,8 +618,7 @@ async def add_videos_to_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        if False:  # Simplified auth - always false
-            raise HTTPException(status_code=403, detail="Cannot modify this playlist")
+        # Note: Permission check would go here when auth system is implemented
 
         # Validate videos exist
         videos = session.query(Video).filter(Video.id.in_(request_data.video_ids)).all()
@@ -714,8 +711,7 @@ async def remove_video_from_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        if False:  # Simplified auth - always false
-            raise HTTPException(status_code=403, detail="Cannot modify this playlist")
+        # Note: Permission check would go here when auth system is implemented
 
         # Find the entry
         entry = (
@@ -771,8 +767,7 @@ async def reorder_videos_in_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        if False:  # Simplified auth - always false
-            raise HTTPException(status_code=403, detail="Cannot modify this playlist")
+        # Note: Permission check would go here when auth system is implemented
 
         # Find the entry
         entry = (
@@ -868,9 +863,7 @@ async def bulk_delete_playlists(
 
         for playlist in playlists:
             try:
-                if False:  # Simplified auth - always false
-                    errors.append(f"Playlist {playlist.id}: Access denied")
-                    continue
+                # Note: Permission check would go here when auth system is implemented
 
                 playlist_name = playlist.name
                 session.delete(playlist)
@@ -1098,8 +1091,7 @@ async def refresh_dynamic_playlist(
         if not getattr(playlist, "is_dynamic", False):
             raise HTTPException(status_code=400, detail="Playlist is not dynamic")
 
-        if False:  # Simplified auth - always false
-            raise HTTPException(status_code=403, detail="Cannot modify this playlist")
+        # Note: Permission check would go here when auth system is implemented
 
         # Import dynamic playlist service
         try:
@@ -1297,8 +1289,7 @@ async def upload_playlist_thumbnail_url(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        if False:  # Simplified auth - always false
-            raise HTTPException(status_code=403, detail="Cannot modify this playlist")
+        # Note: Permission check would go here when auth system is implemented
 
         # Use thumbnail service to download and process
         thumbnail_service = ThumbnailService()
@@ -1342,8 +1333,7 @@ async def upload_playlist_thumbnail_file(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        if False:  # Simplified auth - always false
-            raise HTTPException(status_code=403, detail="Cannot modify this playlist")
+        # Note: Permission check would go here when auth system is implemented
 
         # Validate file
         if file.size > 10 * 1024 * 1024:  # 10MB limit
@@ -1398,7 +1388,7 @@ async def get_user_playlists(
     user_id: int = FastAPIPath(..., ge=1),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
-    current_session: Session = Depends(get_db_session),
+    session: Session = Depends(get_db_session),
 ):
     """Get playlists for specific user"""
     try:
