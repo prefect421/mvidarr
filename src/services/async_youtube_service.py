@@ -3,12 +3,9 @@ Async YouTube API Service for FastAPI Migration
 Handles YouTube API integration for video search and data retrieval with async operations
 """
 
-import asyncio
-import logging
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlencode
 
-from src.services.async_base_service import AsyncBaseService, AsyncServiceError
+from src.services.async_base_service import AsyncBaseService
 from src.utils.httpx_async_client import get_global_httpx_client
 from src.utils.logger import get_logger
 

@@ -3,12 +3,11 @@ Enhanced error handling service for MVidarr
 Provides comprehensive error categorization, recovery, and user feedback
 """
 
-import json
 import sys
 import traceback
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from src.utils.logger import get_logger
 

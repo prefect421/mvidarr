@@ -3,8 +3,7 @@ Spotify Connect integration service for playback control
 """
 
 import time
-from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict
 
 import requests
 

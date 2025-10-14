@@ -4,7 +4,6 @@ Handles user authentication, password management, and user operations
 """
 
 import logging
-from datetime import datetime
 from typing import Dict, List, Optional
 
 # Optional bcrypt import with fallback

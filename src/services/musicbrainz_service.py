@@ -10,11 +10,7 @@ from typing import Dict, List, Optional
 from urllib.parse import quote_plus
 
 import requests
-from sqlalchemy.orm import Session
 
-from src.database.connection import get_db
-from src.database.models import Artist, Video
-from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.musicbrainz")

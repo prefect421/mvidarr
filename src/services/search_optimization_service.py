@@ -5,7 +5,6 @@ Provides caching and query optimization for search operations
 
 import hashlib
 import time
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
