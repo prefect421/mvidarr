@@ -3,16 +3,13 @@ MVidarr Image Processing Tasks - Phase 2 Week 20
 Advanced concurrent image processing with thread pool optimization
 """
 
-import asyncio
-import json
-import logging
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class TaskStatus(Enum):
@@ -41,8 +38,6 @@ except ImportError:
     OPENCV_AVAILABLE = False
     cv2 = None
     np = None
-
-from src.jobs.base_task import BaseTask
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.image_processing")

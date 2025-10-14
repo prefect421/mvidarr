@@ -6,13 +6,11 @@ and batch processing with real-time progress tracking.
 """
 
 import asyncio
-import json
-import statistics
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from src.database.connection import get_db
-from src.database.models import Video, VideoStatus
+from src.database.models import Video
 from src.jobs.base_task import BaseTask
 from src.services.ffmpeg_stream_manager import ffmpeg_stream_manager
 from src.utils.logger import get_logger

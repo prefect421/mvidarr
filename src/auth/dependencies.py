@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional
 
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError
 
 from src.auth.jwt_handler import jwt_handler
 from src.services.async_base_service import AsyncBaseService
@@ -288,7 +287,6 @@ if __name__ == "__main__":
     import asyncio
     import os
     import sys
-    import time
 
     # Add project root to path
     sys.path.insert(

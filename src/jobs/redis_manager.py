@@ -3,11 +3,10 @@ Redis Connection and Management for Background Jobs
 Phase 2: Media Processing Optimization - Redis Infrastructure
 """
 
-import asyncio
 import json
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import redis

@@ -7,18 +7,12 @@ Centralized models for all administration and system management operations.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import EmailStr, Field, validator
 
 from .auth import UserRole
-from .base import (
-    BaseRequest,
-    BaseResponse,
-    PaginationRequest,
-    TaskStatus,
-    TimestampMixin,
-)
+from .base import BaseRequest, BaseResponse, PaginationRequest, TimestampMixin
 
 
 class SystemStatus(str, Enum):

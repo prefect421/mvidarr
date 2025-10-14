@@ -7,9 +7,9 @@ Provides commonly-used models that are shared across multiple API endpoints.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator, validator
+from pydantic import BaseModel, Field, field_validator, validator
 
 from .base import BaseRequest, BaseResponse, SortOrder
 

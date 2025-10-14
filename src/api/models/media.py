@@ -6,12 +6,11 @@ Centralized models for media processing operations including video conversion,
 metadata extraction, and bulk media operations.
 """
 
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import Field, validator
 
 from .base import (
     BaseRequest,
@@ -19,7 +18,6 @@ from .base import (
     BulkOperationRequest,
     BulkOperationResponse,
     FilePathRequest,
-    TaskPriority,
     TaskSubmissionResponse,
 )
 from .common import PriorityRequest

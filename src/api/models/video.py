@@ -5,25 +5,15 @@ Phase 3 Week 32: Pydantic Validation and Models
 Centralized models for all video-related API operations.
 """
 
-from datetime import datetime
-from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator, validator
+from pydantic import Field, HttpUrl, field_validator, validator
 
-from .base import (
-    BaseRequest,
-    BaseResponse,
-    BulkOperationRequest,
-    BulkOperationResponse,
-    PaginationRequest,
-    SortOrder,
-)
+from .base import BaseRequest, BaseResponse, BulkOperationRequest, PaginationRequest
 from .common import (
     GenresMixin,
     MetadataMixin,
     PriorityRequest,
-    SearchFilters,
     TimestampMixin,
     UrlValidationMixin,
 )

@@ -5,13 +5,12 @@ Phase 3 Week 32: Pydantic Validation and Models
 Centralized models for all playlist-related API operations.
 """
 
-from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import Field, validator
 
-from .base import BaseRequest, BaseResponse, BulkOperationRequest, PaginationRequest
+from .base import BaseRequest, BaseResponse, PaginationRequest
 from .common import MetadataMixin, TimestampMixin
 
 

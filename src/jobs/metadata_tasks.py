@@ -7,7 +7,7 @@ import asyncio
 import json
 import traceback
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from celery import Task
 

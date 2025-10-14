@@ -3,8 +3,6 @@ Download Processor Task
 Periodic task to process pending downloads from ytdlp_service
 """
 
-from datetime import timedelta
-
 from src.jobs.celery_app import celery_app
 from src.utils.logger import get_logger
 
