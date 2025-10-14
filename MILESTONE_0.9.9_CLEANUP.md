@@ -54,7 +54,13 @@
 - 5 files cleaned, 13 lines removed
 - Commit: `5b6f9ca`
 
-**Total Progress: 211 unused imports removed (23% of 900 total)**
+**Batch 4 - Small Services (2025-10-14):**
+- 15 imports removed from small service files
+- Files: redis_service.py (4), redis_manager.py (4), genre_service.py (2), settings_service.py (1), youtube_service.py (2), job_scheduler.py (2), vlc_streaming_service.py (1), wikipedia_service.py (1)
+- 8 files cleaned, 19 lines removed
+- Commit: `2fd139e`
+
+**Total Progress: 226 unused imports removed (25% of 900 total)**
 
 ### 2. Code Optimization 🚀
 **Priority: HIGH**
@@ -199,10 +205,10 @@ frontend/
 - Batch 2: 89 imports removed (auth, config, jobs, api/models)
 
 **Remaining Import Cleanup:**
-- ~497 unused imports in services/
+- ~482 unused imports in services/ (15 removed in Batch 4)
 - ~179 unused imports in api/fastapi/ (10 removed in Batch 3)
 - ~13 unused imports in other files
-- **Total remaining: ~689 imports**
+- **Total remaining: ~674 imports**
 
 ### Phase 3: Structure & Organization (Not Started)
 - [ ] Reorganize file structure
