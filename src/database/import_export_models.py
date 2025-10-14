@@ -448,8 +448,8 @@ class ExportedPlaylist:
 
     id: int
     name: str
-    description: Optional[str] = None
     user_id: int
+    description: Optional[str] = None
     is_public: bool = False
     is_featured: bool = False
     total_duration: Optional[int] = None

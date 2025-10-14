@@ -235,7 +235,7 @@ frontend/
 1. ~~`src/api/fastapi/videos.py` - **4,029 lines** (144K) - CRITICAL~~ ✅ **COMPLETED** (2025-10-13)
 2. ~~`src/services/metadata_enrichment_service.py` - **3,015 lines** (129K) - CRITICAL~~ ✅ **COMPLETED** (2025-10-13)
 3. ~~`src/api/fastapi/artists.py` - **2,874 lines** (107K) - CRITICAL~~ ✅ **COMPLETED** (2025-10-13)
-4. `src/services/import_service.py` - **2,163 lines** - HIGH
+4. ~~`src/services/import_service.py` - **2,163 lines** - HIGH~~ ✅ **COMPLETED** (2025-10-14)
 5. `src/services/ytdlp_service.py` - **1,940 lines** - HIGH
 
 **Detailed Analysis**: See `ANALYSIS_REPORT_0.9.9.md`
@@ -322,7 +322,30 @@ frontend/
 
 ---
 
-**Status**: 🟢 Phase 2 In Progress - 3 of 5 critical files completed
-**Last Update**: 2025-10-13
+### import_service.py Modular Split ✅ (2025-10-14)
+**Original**: 2,163 lines, 40+ methods, monolithic structure
+**Refactored**: 4 modular files (similar total lines with documentation)
+
+**New Structure:**
+- `import_service.py` (447 lines) - Main service aggregator (79% reduction from 2,163 lines)
+- `import_parsers.py` (585 lines) - File parsing functions (14 functions)
+- `import_validators.py` (495 lines) - Validation functions (8 functions)
+- `import_operations.py` (890 lines) - Import/CRUD operations (14 functions)
+
+**Benefits Achieved:**
+✅ Clear functional separation by responsibility
+✅ Each module focused on specific task domain (parsing, validation, operations)
+✅ Main service reduced from 2,163 → 447 lines (79% reduction)
+✅ Easier to test individual components
+✅ Better code organization for maintenance
+✅ All functionality preserved and working
+✅ Fixed dataclass field ordering bug in ExportedPlaylist
+
+**Approach**: Extracted methods into standalone functions, organized by responsibility (parsing, validation, import operations). Main service now delegates to specialized modules while maintaining same public API and progress tracking.
+
+---
+
+**Status**: 🟢 Phase 2 In Progress - 4 of 5 critical files completed
+**Last Update**: 2025-10-14
 **Target Completion**: 4 weeks
 **Next Milestone**: 1.0.0 Public Release
