@@ -3,10 +3,7 @@ Simplified Redis Manager - Phase 3 Week 33
 Basic Redis operations for MVidarr caching system
 """
 
-import asyncio
-import json
-import time
-from typing import Any, Optional, Union
+from typing import Optional
 
 from src.utils.logger import get_logger
 

@@ -2,7 +2,7 @@
 Settings service for database-driven configuration
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from src.database.connection import get_db
 from src.database.models import Setting

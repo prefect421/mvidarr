@@ -4,8 +4,7 @@ Manages scheduled jobs, dependencies, and background processing
 """
 
 import asyncio
-import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from src.services.job_queue import get_job_queue

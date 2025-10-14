@@ -3,13 +3,13 @@ MVidarr - YouTube API Service
 Handles YouTube API integration for video search and data retrieval
 """
 
-import logging
-from typing import Any, Dict, List, Optional
-from urllib.parse import urlencode
+from typing import Any, Dict, Optional
 
 import requests
 
-logger = logging.getLogger(__name__)
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class YouTubeService:

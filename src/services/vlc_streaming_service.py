@@ -8,7 +8,6 @@ to provide browser-compatible video playback for various formats including MKV.
 import os
 import signal
 import subprocess
-import threading
 import time
 
 import requests
