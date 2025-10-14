@@ -3,8 +3,7 @@ Database Performance Optimizations for MVidarr
 Implements strategic indexes and query optimizations for critical bottlenecks
 """
 
-from sqlalchemy import Index, text
-from sqlalchemy.dialects import mysql, postgresql, sqlite
+from sqlalchemy import text
 
 from src.database.connection import engine
 from src.database.models import Artist, Download, Video, VideoStatus
@@ -561,7 +560,6 @@ class DatabasePerformanceOptimizer:
 
     def get_bulk_video_files_data(self, session, file_paths_list):
         """Optimized bulk retrieval of video file data to avoid N+1 queries during indexing"""
-        from sqlalchemy import func, or_
 
         if not file_paths_list:
             return {}

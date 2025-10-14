@@ -6,7 +6,6 @@ Real-world performance testing tools for Phase 3 validation
 import json
 import statistics
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 

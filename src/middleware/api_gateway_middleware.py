@@ -4,14 +4,10 @@ FastAPI middleware integration for API Gateway functionality
 """
 
 import asyncio
-import json
-import time
-from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse, StreamingResponse
+from starlette.responses import JSONResponse
 
 from src.services.api_gateway import (
     RouteRule,

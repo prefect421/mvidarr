@@ -3,14 +3,11 @@ Async Database Connection Manager - Phase 3 Week 33
 High-performance async database operations with advanced connection pooling for FastAPI
 """
 
-import asyncio
-import logging
 import time
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from sqlalchemy import event, func, select, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import func, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,

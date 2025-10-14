@@ -4,11 +4,9 @@ Automated modernization of JavaScript files for FastAPI compatibility
 """
 
 import json
-import logging
-import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from src.utils.logger import get_logger
 

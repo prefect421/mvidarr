@@ -5,12 +5,11 @@ Comprehensive validation to ensure zero functionality loss from Flask to FastAPI
 
 import asyncio
 import json
-import logging
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import aiohttp
 

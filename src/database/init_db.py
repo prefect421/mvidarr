@@ -4,16 +4,8 @@ Database initialization and migration utilities
 
 from sqlalchemy import text
 
-from src.database.connection import Base, get_engine
-from src.database.models import (
-    Artist,
-    CustomTheme,
-    Download,
-    Setting,
-    TaskQueue,
-    User,
-    Video,
-)
+from src.database.connection import Base
+from src.database.models import CustomTheme, Setting, User
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.database")
@@ -256,7 +248,6 @@ def create_admin_user():
 def init_built_in_themes():
     """Initialize built-in themes in the database"""
     from src.database.connection import get_db
-    from src.database.models import UserRole
 
     try:
         with get_db() as session:
@@ -444,8 +435,6 @@ def initialize_database():
 
 
 if __name__ == "__main__":
-    # Run database initialization
-    from src.config.config import Config
     from src.database.connection import init_db
 
     class DummyApp:

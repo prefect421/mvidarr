@@ -3,8 +3,6 @@ Dynamic Authentication Middleware
 Checks authentication requirements on each request based on database settings.
 """
 
-from functools import wraps
-
 from flask import jsonify, redirect, render_template, request, session, url_for
 
 from src.services.settings_service import SettingsService

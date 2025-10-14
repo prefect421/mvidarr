@@ -4,7 +4,6 @@ Provides non-blocking subprocess execution patterns for system commands
 """
 
 import asyncio
-import logging
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor

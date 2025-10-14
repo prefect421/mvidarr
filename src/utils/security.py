@@ -16,10 +16,10 @@ try:
 except ImportError:
     BLEACH_AVAILABLE = False
 from functools import wraps
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from flask import current_app, jsonify, redirect, request, url_for
+from flask import jsonify, redirect, request
 
 # Handle different versions of werkzeug
 try:

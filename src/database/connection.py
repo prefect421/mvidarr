@@ -2,11 +2,9 @@
 Database connection management for MVidarr
 """
 
-import logging
 from contextlib import contextmanager
 from threading import Lock
 
-import pymysql
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool

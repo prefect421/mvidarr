@@ -4,7 +4,6 @@ Logging utilities for MVidarr
 
 import logging
 import logging.handlers
-from pathlib import Path
 
 from src.config.config import Config
 

@@ -4,14 +4,13 @@ Intelligent rate limiting with adaptive thresholds and attack detection
 """
 
 import asyncio
-import hashlib
 import time
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 

@@ -9,8 +9,7 @@ import logging.handlers
 import uuid
 from contextvars import ContextVar
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from src.config.config import Config
 
