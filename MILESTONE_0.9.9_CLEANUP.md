@@ -48,7 +48,13 @@
 - 26 files cleaned, 119 lines removed
 - Commit: `a4acf59`
 
-**Total Progress: 201 unused imports removed (22% of 900 total)**
+**Batch 3 - Small API Endpoints (2025-10-14):**
+- 10 imports removed from small API endpoint files
+- Files: auth.py (1), frontend_router.py (5), genres.py (3), lastfm.py (2), settings.py (3)
+- 5 files cleaned, 13 lines removed
+- Commit: `5b6f9ca`
+
+**Total Progress: 211 unused imports removed (23% of 900 total)**
 
 ### 2. Code Optimization 🚀
 **Priority: HIGH**
@@ -194,9 +200,9 @@ frontend/
 
 **Remaining Import Cleanup:**
 - ~497 unused imports in services/
-- ~189 unused imports in api/fastapi/
+- ~179 unused imports in api/fastapi/ (10 removed in Batch 3)
 - ~13 unused imports in other files
-- **Total remaining: ~699 imports**
+- **Total remaining: ~689 imports**
 
 ### Phase 3: Structure & Organization (Not Started)
 - [ ] Reorganize file structure
