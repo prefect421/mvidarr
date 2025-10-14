@@ -287,9 +287,3 @@ def register_auth_health_endpoint(app: Flask):
                 ),
                 500,
             )
-
-
-# Import for external usage
-from datetime import datetime
-
-from flask import jsonify

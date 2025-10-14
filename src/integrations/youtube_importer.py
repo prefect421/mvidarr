@@ -9,17 +9,12 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
-import aiofiles
 import yt_dlp
 
-from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
-from src.jobs.base_task import BaseTask
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
 from src.services.music_video_detector import get_music_video_detector
 from src.services.redis_service import get_redis_client
