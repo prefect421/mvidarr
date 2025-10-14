@@ -5,7 +5,7 @@ Migrated from Flask auth.py for enhanced async support and type safety.
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field

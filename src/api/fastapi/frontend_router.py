@@ -3,13 +3,10 @@ FastAPI Frontend Router - Issue 130 Template System Migration
 Complete frontend route handlers with template integration
 """
 
-import asyncio
-import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 
 from src.api.fastapi.template_system import (
     require_admin,

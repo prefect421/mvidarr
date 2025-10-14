@@ -3,10 +3,7 @@ FastAPI Genres API
 Provides genre-related endpoints for video and artist genre management
 """
 
-from typing import Any, Dict, List
-
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db_session

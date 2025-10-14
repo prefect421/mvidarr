@@ -3,8 +3,7 @@ FastAPI Last.fm Router
 Provides Last.fm-specific API endpoints for listening history and artist discovery
 """
 
-import logging
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field

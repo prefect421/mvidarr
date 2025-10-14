@@ -4,12 +4,9 @@ Complete settings management, scheduler control, and application restart endpoin
 Migrated from Flask settings.py for enhanced performance and async support.
 """
 
-import asyncio
 import os
 import signal
 import subprocess
-import threading
-import time
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
