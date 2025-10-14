@@ -12,12 +12,9 @@ This module contains core CRUD operations for artists:
 - Search suggestions
 """
 
-import asyncio
-import json
-import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional
 
 from fastapi import (
     APIRouter,
@@ -28,12 +25,9 @@ from fastapi import (
 from fastapi import Path as FastAPIPath
 from fastapi import (
     Query,
-    Request,
-    Response,
 )
 from sqlalchemy import and_, desc, func, or_
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from src.api.fastapi.artists_models import (
     ArtistCreateRequest,
@@ -45,7 +39,7 @@ from src.api.fastapi.auth_dependencies import (
     require_authentication_legacy,
 )
 from src.database.connection import get_db_session
-from src.database.models import Artist, Download, Video, VideoStatus
+from src.database.models import Artist, Video
 from src.utils.logger import get_logger
 
 router = APIRouter(

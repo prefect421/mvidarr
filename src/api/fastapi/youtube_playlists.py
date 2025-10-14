@@ -7,13 +7,12 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication_legacy
 from src.database.connection import get_db_session
 from src.services.youtube_playlist_service import youtube_playlist_service
-from src.utils.logger import get_logger
 
 logger = logging.getLogger("mvidarr.fastapi.youtube_playlists")
 

@@ -13,7 +13,7 @@ This module handles all artist-specific metadata enrichment operations:
 import asyncio
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -114,7 +114,6 @@ async def _enrich_artist_with_session(
     start_time,
 ):
     """Helper method to perform artist enrichment with an existing session"""
-    from src.services.metadata_enrichment_service import EnrichmentResult
 
     artist = session.query(Artist).filter(Artist.id == artist_id).first()
     if not artist:

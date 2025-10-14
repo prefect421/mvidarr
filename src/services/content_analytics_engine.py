@@ -4,15 +4,13 @@ Advanced analytics for music video content performance, discovery patterns, and 
 """
 
 import asyncio
-import hashlib
-import json
 import statistics
 import time
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
 from src.services.performance_monitor import track_media_processing_time

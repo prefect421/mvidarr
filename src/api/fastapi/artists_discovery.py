@@ -11,7 +11,7 @@ This module contains endpoints for:
 
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath

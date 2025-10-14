@@ -4,15 +4,11 @@ Provides WebP conversion and storage optimization
 """
 
 import hashlib
-import io
-import json
-import os
-import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
-from PIL import Image, ImageOps
+from PIL import Image
 
 from src.services.settings_service import settings
 from src.utils.logger import get_logger

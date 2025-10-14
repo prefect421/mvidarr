@@ -6,14 +6,14 @@ Provides common async patterns and database access for all services
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 
-from src.database.async_connection import async_db_manager, get_async_session
+from src.database.async_connection import async_db_manager
 from src.utils.logger import get_logger
 
 # Type variable for model types

@@ -3,7 +3,6 @@ FastAPI Video Indexing Router
 Migrated from Flask src/api/video_indexing.py - Video indexing endpoints
 """
 
-import asyncio
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -23,7 +22,6 @@ from src.services.job_queue import (
 )
 from src.services.thumbnail_service import thumbnail_service
 from src.services.video_indexing_service import video_indexing_service
-from src.utils.logger import get_logger
 
 logger = logging.getLogger("mvidarr.fastapi.video_indexing")
 

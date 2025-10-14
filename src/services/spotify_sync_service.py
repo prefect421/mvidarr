@@ -2,11 +2,10 @@
 Spotify Synchronization Service for bidirectional playlist sync and real-time updates
 """
 
-import json
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional
 
 from sqlalchemy import and_, or_
 

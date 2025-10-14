@@ -10,13 +10,10 @@ import threading
 import time
 from datetime import datetime
 from datetime import time as dt_time
-from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import schedule
 
-from src.database.connection import get_db
-from src.database.models import Setting
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 

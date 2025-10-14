@@ -6,7 +6,7 @@ Provides automatic video inclusion based on metadata criteria.
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session

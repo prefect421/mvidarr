@@ -4,9 +4,9 @@ Handles saved search presets, suggestions, and user search preferences.
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, desc, func, or_
+from sqlalchemy import and_, desc
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
@@ -16,7 +16,6 @@ from src.database.search_models import (
     SearchAnalyticsEvent,
     SearchPreset,
     SearchPresetType,
-    SearchSuggestion,
 )
 from src.utils.logger import get_logger
 

@@ -3,20 +3,18 @@ Watch History Service - Phase 3 Week 30
 Consumer-focused watch history tracking and continue watching features
 """
 
-import asyncio
 import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, asc, desc, func, or_, select, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.performance_monitor import get_performance_monitor
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger

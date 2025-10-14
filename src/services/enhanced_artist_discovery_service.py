@@ -3,23 +3,19 @@ Enhanced Artist Discovery Service for MVidarr 0.9.7 - Issue #75
 Multi-source artist discovery with metadata enrichment and intelligence.
 """
 
-import asyncio
-import json
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional
 
 import requests
-from sqlalchemy import and_, desc, func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, desc
 
 from src.database.connection import get_db
-from src.database.models import Artist, Video, VideoStatus
+from src.database.models import Artist
 from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import LastFmService
-from src.services.settings_service import settings
 from src.services.spotify_service import SpotifyService
 from src.utils.logger import get_logger
 

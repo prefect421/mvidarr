@@ -6,7 +6,7 @@ Plex API endpoints for library synchronization and metadata exchange
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.api.fastapi.auth_dependencies import (
     get_current_user_legacy,

@@ -4,10 +4,7 @@ Handles video download jobs with progress tracking and error recovery.
 """
 
 import asyncio
-import logging
-from typing import Any, Dict, Optional
-
-from sqlalchemy.exc import SQLAlchemyError
+from typing import Any, Dict
 
 from ...database.connection import get_db
 from ...database.models import Download, Video, VideoStatus

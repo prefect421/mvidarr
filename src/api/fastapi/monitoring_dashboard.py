@@ -5,30 +5,15 @@ Real-time monitoring dashboard with WebSocket support and interactive analytics
 
 import asyncio
 import json
-import os
-import time
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Query,
-    WebSocket,
-    WebSocketDisconnect,
-)
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from src.middleware.auto_scaling_middleware import get_scaling_status
-from src.middleware.circuit_breaker_middleware import CircuitBreakerAPI
-from src.services.analytics_service import (
-    AlertRule,
-    MetricPoint,
-    MetricType,
-    get_analytics_service,
-)
+from src.services.analytics_service import AlertRule, get_analytics_service
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.monitoring_dashboard")

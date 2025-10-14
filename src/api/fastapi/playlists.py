@@ -5,8 +5,7 @@ Phase 3 Week 29: Playlists API Complete Migration
 Migrated from src/api/playlists.py (1,185 lines, 22 endpoints)
 """
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from fastapi import (
     APIRouter,
@@ -21,17 +20,14 @@ from fastapi import (
     Request,
     UploadFile,
 )
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
-from sqlalchemy import and_, func, or_
-from sqlalchemy.exc import IntegrityError
+from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from src.database.connection import get_db_session
-from src.database.models import Artist, Playlist, PlaylistEntry, User, UserRole, Video
+from src.database.models import Playlist, PlaylistEntry, User, UserRole, Video
 from src.services.thumbnail_service import ThumbnailService
 from src.utils.logger import get_logger
-from src.utils.performance_monitor import monitor_performance
 
 router = APIRouter(
     prefix="/api/playlists",

@@ -2,9 +2,8 @@
 AI Content Analyzer Service - Placeholder Implementation
 """
 
-import asyncio
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from src.utils.logger import get_logger
 

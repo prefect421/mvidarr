@@ -8,13 +8,13 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime
 from difflib import SequenceMatcher
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
-from src.database.models import Artist, Download, Video, VideoStatus
+from src.database.models import Artist, Download, Video
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.duplicate_detection")

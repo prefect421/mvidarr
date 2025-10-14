@@ -6,12 +6,11 @@ Consumer-focused duplicate detection and management for music video collections
 import asyncio
 import hashlib
 import json
-import math
 import os
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.services.music_video_detector import get_music_video_detector
 from src.services.redis_service import get_redis_client

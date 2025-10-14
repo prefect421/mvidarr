@@ -8,16 +8,10 @@ import hashlib
 import json
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
-import aiofiles
-import aiohttp
-
-from src.auth.jwt_handler import get_jwt_handler
-from src.jobs.base_task import BaseTask
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
 

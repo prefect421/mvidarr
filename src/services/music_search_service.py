@@ -3,21 +3,20 @@ Music Search Service - Phase 3 Week 30
 Music-specific search with advanced filters, faceted search, and smart suggestions
 """
 
-import asyncio
 import hashlib
 import json
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, asc, desc, func, or_, select, text
+from sqlalchemy import and_, asc, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
 from src.services.music_video_detector import get_music_video_detector
 from src.services.redis_service import get_redis_client

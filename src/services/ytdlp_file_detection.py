@@ -11,7 +11,7 @@ import os
 import re
 import time
 from html import unescape
-from typing import Dict, Optional
+from typing import Optional
 
 from src.utils.logger import get_logger
 

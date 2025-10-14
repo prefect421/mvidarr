@@ -21,7 +21,6 @@ from sqlalchemy.orm import Session
 
 from src.database.connection import get_db_session
 from src.database.models import Video
-from src.services.ffmpeg_stream_manager import ffmpeg_stream_manager
 from src.utils.logger import get_logger
 
 router = APIRouter(

@@ -2,8 +2,6 @@
 Emby Media Server integration service for library synchronization and metadata exchange
 """
 
-import hashlib
-import json
 from datetime import datetime
 from typing import Dict, List, Optional
 from urllib.parse import urljoin

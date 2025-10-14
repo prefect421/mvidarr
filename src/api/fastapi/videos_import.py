@@ -12,7 +12,6 @@ Authentication: All endpoints require session-based authentication via get_curre
 """
 
 from datetime import datetime
-from typing import Any, Dict
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session

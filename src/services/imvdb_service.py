@@ -3,12 +3,10 @@ IMVDb API service for fetching music video metadata
 """
 
 import time
-from typing import Dict, List, Optional, Tuple
-from urllib.parse import quote
+from typing import Dict, List, Optional
 
 import requests
 
-from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.imvdb_service")
@@ -1096,7 +1094,7 @@ class IMVDbService:
         """
         # Since IMVDb doesn't have a specific trending endpoint,
         # we'll simulate this by getting recent videos with good metadata
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         current_year = datetime.now().year
         # Look for videos from recent years with complete metadata

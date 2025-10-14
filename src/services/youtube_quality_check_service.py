@@ -9,9 +9,7 @@ import re
 import subprocess
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-
-from sqlalchemy import and_
+from typing import Dict, List, Optional
 
 from src.database.connection import get_db
 from src.database.models import Video, VideoStatus

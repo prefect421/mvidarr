@@ -4,10 +4,9 @@ Comprehensive API endpoints for analytics, reporting, and real-time dashboards
 """
 
 import time
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -16,8 +15,6 @@ from src.services.content_analytics_engine import (
     ContentType,
     MetricType,
     get_content_analytics_engine,
-    record_engagement_time,
-    record_video_download,
     record_video_view,
 )
 from src.services.performance_monitor import get_performance_monitor

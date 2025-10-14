@@ -4,22 +4,19 @@ Enhanced mobile web interface with offline capabilities for personal music video
 """
 
 import asyncio
-import hashlib
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-import aiofiles
-from sqlalchemy import and_, asc, desc, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import selectinload
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.playlist_management_service import get_playlist_management_service
 from src.services.redis_service import get_redis_client
 from src.services.video_browser_service import get_video_browser_service

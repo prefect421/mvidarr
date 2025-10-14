@@ -5,14 +5,11 @@ Enhanced video quality analysis specifically designed for music video content
 
 import asyncio
 import json
-import logging
-import os
-import tempfile
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
 from src.services.performance_monitor import track_media_processing_time

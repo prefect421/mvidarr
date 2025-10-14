@@ -4,17 +4,13 @@ High-performance thumbnail generation with AI-powered smart selection and optimi
 Enhanced with intelligent thumbnail selection using computer vision and quality assessment
 """
 
-import asyncio
 import hashlib
 import json
-import logging
-import math
 import os
 import time
-from concurrent.futures import as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 try:
     import numpy as np

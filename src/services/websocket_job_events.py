@@ -7,12 +7,11 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional, Set
 
-from flask import request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 from src.middleware.simple_auth_middleware import get_current_user
 
-from .job_queue import BackgroundJob, JobQueue, JobStatus
+from .job_queue import BackgroundJob, JobStatus
 
 logger = logging.getLogger(__name__)
 

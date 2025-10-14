@@ -16,7 +16,7 @@ import urllib.parse
 from typing import Dict, List, Optional, Union
 
 import requests
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Path as FastAPIPath
 from fastapi import Query, status
 from sqlalchemy import func, or_

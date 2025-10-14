@@ -3,11 +3,10 @@ FastAPI Job Management API Endpoints
 Phase 2: Media Processing Optimization - Celery Job Management
 """
 
-import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from src.auth.dependencies import get_current_user_optional

@@ -12,7 +12,6 @@ from typing import Any, Dict, Optional
 import schedule
 
 from src.database.connection import get_db
-from src.database.models import Setting
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 

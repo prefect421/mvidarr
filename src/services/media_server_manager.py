@@ -2,19 +2,15 @@
 Unified Media Server Manager for coordinating Plex, Jellyfin, and Emby integrations
 """
 
-import asyncio
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Set
+from typing import Dict, List
 
-from src.database.connection import get_db
-from src.database.models import Artist, Video, VideoStatus
 from src.services.base_media_server_service import (
     BaseMediaServerService,
     MediaServerType,
-    MediaType,
     SyncDirection,
 )
 from src.services.emby_service import emby_service

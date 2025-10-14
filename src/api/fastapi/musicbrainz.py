@@ -4,13 +4,10 @@ Provides MusicBrainz-specific API endpoints for artist search and metadata
 """
 
 import asyncio
-import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
-from src.database.connection import get_db_session
 from src.middleware.fastapi_auth_middleware import require_authentication
 from src.utils.logger import get_logger
 

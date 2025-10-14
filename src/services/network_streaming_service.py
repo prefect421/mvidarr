@@ -8,19 +8,16 @@ import hashlib
 import ipaddress
 import json
 import socket
-import struct
-import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
 

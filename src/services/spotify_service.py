@@ -4,15 +4,13 @@ Spotify API integration service for importing playlists and discovering music vi
 
 import base64
 import difflib
-import json
-import os
 import re
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from urllib.parse import quote_plus, urlencode
+from typing import Dict, List, Tuple
+from urllib.parse import urlencode
 
 import requests
-from sqlalchemy import and_, func, or_
+from sqlalchemy import or_
 
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus

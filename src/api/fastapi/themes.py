@@ -5,18 +5,16 @@ Migrated from Flask src/api/themes.py
 
 import logging
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Body, Depends, File, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Path as FastAPIPath
-from fastapi import UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db_session
-from src.database.models import CustomTheme, User
+from src.database.models import CustomTheme
 
 logger = logging.getLogger(__name__)
 

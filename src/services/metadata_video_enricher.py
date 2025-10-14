@@ -12,22 +12,19 @@ Handles video metadata enrichment from multiple sources including:
 - Lyrics search (Lyrics.ovh API)
 """
 
-import asyncio
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import requests
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
 from src.database.connection import get_db
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 from src.services.metadata_models import EnrichmentResult
 from src.services.spotify_service import spotify_service
-from src.services.thumbnail_service import ThumbnailService
 from src.services.video_indexing_service import VideoIndexingService
 from src.services.youtube_search_service import YouTubeSearchService
 from src.utils.logger import get_logger

@@ -17,7 +17,7 @@ Refactored into: 6 specialized modules for better maintainability
 import os
 import shutil
 import subprocess
-from typing import Any, Dict, Optional
+from typing import Dict
 
 from src.services.ytdlp_cookie_manager import YtDlpCookieManager
 from src.services.ytdlp_download_manager import (

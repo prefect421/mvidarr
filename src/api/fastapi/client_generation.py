@@ -3,15 +3,11 @@ Client Library Generation - Issue 128 Advanced FastAPI Features
 Auto-generated client libraries for multiple programming languages
 """
 
-import asyncio
 import json
 import os
-import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI

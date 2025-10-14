@@ -3,19 +3,15 @@ Artist & Album Browser Service - Phase 3 Week 30
 Consumer-focused artist and album browsing with cover art and smart grouping
 """
 
-import asyncio
 import hashlib
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-import aiofiles
-import aiohttp
-from sqlalchemy import and_, asc, desc, distinct, func, or_, select
+from sqlalchemy import asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 

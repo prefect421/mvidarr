@@ -3,27 +3,15 @@ Mobile-Optimized Access API - Phase 3 Week 29
 Consumer-focused mobile endpoints for music video collections
 """
 
-import asyncio
 import json
-import mimetypes
-import os
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
-from fastapi.responses import (
-    FileResponse,
-    HTMLResponse,
-    JSONResponse,
-    StreamingResponse,
-)
+from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 
-from src.services.collection_organizer import get_collection_organizer
 from src.services.local_network_share import get_local_network_share
-from src.services.music_video_detector import get_music_video_detector
 from src.services.performance_monitor import get_performance_monitor
-from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.mobile_access")

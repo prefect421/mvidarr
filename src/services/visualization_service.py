@@ -3,12 +3,11 @@ Visualization Service - Phase 3 Week 36
 Chart generation and data visualization for monitoring dashboard  
 """
 
-import json
 import statistics
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.utils.logger import get_logger
 

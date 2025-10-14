@@ -3,17 +3,15 @@ MVidarr Media Cache Manager - Phase 2 Week 23
 Redis-based caching for media operations with intelligent invalidation and performance optimization
 """
 
-import asyncio
 import hashlib
 import json
-import logging
 import pickle
 import time
 import zlib
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 from src.services.redis_manager import RedisManager
 from src.utils.logger import get_logger

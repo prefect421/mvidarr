@@ -11,16 +11,13 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-import aiofiles
-from sqlalchemy import and_, asc, delete, desc, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import selectinload
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
 

@@ -7,7 +7,6 @@ Extracted from ytdlp_service.py as part of code cleanup.
 
 import os
 import threading
-from datetime import datetime
 from typing import Dict, List
 
 from sqlalchemy.orm import joinedload

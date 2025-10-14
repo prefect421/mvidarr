@@ -3,9 +3,9 @@ FastAPI Video Quality API Router
 Native asyncio support for video quality analysis and upgrades
 """
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from src.services.job_queue import BackgroundJob, JobPriority, JobType, get_job_queue

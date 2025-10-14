@@ -4,17 +4,15 @@ FastAPI endpoints for music video recommendations matching existing Flask functi
 """
 
 import asyncio
-import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 from src.services.music_recommendations import (
-    RecommendationRequest,
     RecommendationType,
     get_music_recommendation_service,
     get_music_recommendations,

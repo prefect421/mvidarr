@@ -10,7 +10,7 @@ import json
 import re
 import time
 from pathlib import Path
-from typing import AsyncGenerator, Callable, Dict, List, Optional, Tuple
+from typing import AsyncGenerator, Callable, Dict, List, Optional
 
 from src.jobs.redis_manager import redis_manager
 from src.utils.async_subprocess import AsyncSubprocessManager

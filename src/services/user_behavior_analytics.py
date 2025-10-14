@@ -5,14 +5,12 @@ Track and analyze user interactions, behavior patterns, and engagement metrics f
 
 import asyncio
 import hashlib
-import json
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional
 
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
 from src.services.performance_monitor import track_media_processing_time

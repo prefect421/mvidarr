@@ -5,11 +5,11 @@ Real-time performance metrics and monitoring endpoints
 
 import asyncio
 import time
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import List, Optional
 
 import psutil
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from src.services.media_cache_manager import MediaCacheManager

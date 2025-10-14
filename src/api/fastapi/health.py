@@ -280,10 +280,6 @@ async def get_performance_stats():
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
 
-# Add missing import
-import asyncio
-
-
 @health_router.get("/system", response_model=SystemMetricsResponse)
 async def get_system_metrics():
     """Get system resource metrics for self-hosted monitoring"""

@@ -6,20 +6,17 @@ Simple casting and media server compatibility for consumer self-hosting
 import asyncio
 import json
 import socket
-import struct
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-import aiohttp
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
 

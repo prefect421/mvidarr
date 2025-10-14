@@ -11,7 +11,7 @@ allowing the main orchestrator to manage state.
 import os
 import threading
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict
 
 from src.database.connection import get_db
 from src.database.models import Artist as ArtistModel

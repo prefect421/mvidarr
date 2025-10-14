@@ -4,14 +4,11 @@ API-based music video recommendations using IMVDb, Spotify, Last.fm, and other m
 """
 
 import asyncio
-import json
-import logging
 import time
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.services.allmusic_service import allmusic_service
 from src.services.imvdb_service import imvdb_service

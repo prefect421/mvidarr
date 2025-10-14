@@ -3,7 +3,6 @@ Local Network Sharing Service - Phase 3 Week 29
 Consumer-focused home network sharing for music video collections
 """
 
-import asyncio
 import base64
 import hashlib
 import json
@@ -12,13 +11,11 @@ import socket
 from datetime import datetime, timedelta
 from enum import Enum
 from io import BytesIO
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-import aiofiles
 import netifaces
 import qrcode
-from zeroconf import ServiceBrowser, ServiceInfo, ServiceListener, Zeroconf
+from zeroconf import ServiceInfo, Zeroconf
 
 from src.services.performance_monitor import get_performance_monitor
 from src.services.redis_service import get_redis_client

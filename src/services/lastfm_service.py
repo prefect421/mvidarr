@@ -2,14 +2,12 @@
 Last.fm Integration Service for listening history and artist discovery
 """
 
-import json
 import os
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
+from datetime import datetime
+from typing import Dict, List
 
 import requests
-from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus

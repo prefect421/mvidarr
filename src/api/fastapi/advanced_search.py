@@ -7,9 +7,8 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication_legacy
@@ -17,7 +16,6 @@ from src.database.connection import get_db_session
 from src.database.search_models import SearchPresetType
 from src.services.advanced_search_service import advanced_search_service
 from src.services.search_presets_service import search_presets_service
-from src.utils.logger import get_logger
 
 logger = logging.getLogger("mvidarr.fastapi.advanced_search")
 

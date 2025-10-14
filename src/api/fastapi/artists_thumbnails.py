@@ -29,14 +29,13 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.artists_models import ArtistResponse, ThumbnailSearchRequest
+from src.api.fastapi.artists_models import ThumbnailSearchRequest
 from src.api.fastapi.auth_dependencies import (
     get_current_user_legacy,
     require_authentication_legacy,
 )
 from src.database.connection import get_db_session
 from src.database.models import Artist
-from src.services.imvdb_service import imvdb_service
 from src.services.thumbnail_service import ThumbnailService, thumbnail_service
 from src.services.wikipedia_service import wikipedia_service
 from src.services.youtube_search_service import youtube_search_service

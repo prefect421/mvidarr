@@ -10,10 +10,8 @@ This module contains all bulk operation endpoints for the Artists API:
 - Get artist navigation (prev/next)
 """
 
-import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath
@@ -21,11 +19,7 @@ from fastapi import Query
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.artists_models import (
-    ArtistResponse,
-    BulkDeleteRequest,
-    BulkEditRequest,
-)
+from src.api.fastapi.artists_models import BulkDeleteRequest, BulkEditRequest
 from src.api.fastapi.auth_dependencies import (
     get_current_user_legacy,
     require_authentication_legacy,

@@ -22,7 +22,6 @@ from sqlalchemy import or_
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.services.allmusic_service import allmusic_service
-from src.services.async_spotify_service import get_async_spotify_service
 from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 
@@ -41,7 +40,6 @@ from src.services.musicbrainz_service import musicbrainz_service
 from src.services.settings_service import settings
 from src.services.spotify_service import spotify_service
 from src.services.thumbnail_service import ThumbnailService
-from src.services.video_indexing_service import VideoIndexingService
 from src.services.wikipedia_service import WikipediaService
 from src.services.youtube_search_service import YouTubeSearchService
 from src.utils.logger import get_logger

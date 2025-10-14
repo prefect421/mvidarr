@@ -3,11 +3,9 @@ Authentication and user management service for MVidarr
 """
 
 import re
-import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-from flask import request
 from flask import session as flask_session
 from sqlalchemy.exc import IntegrityError
 

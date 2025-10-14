@@ -4,18 +4,14 @@ Consumer-focused music video collection organization and management
 """
 
 import asyncio
-import hashlib
-import json
 import os
 import re
 import shutil
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
-from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
 from src.services.genre_service import get_genre_service
 from src.services.music_video_detector import (

@@ -10,13 +10,12 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import psutil
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from src.database.async_connection import get_async_db_manager
 from src.middleware.auto_scaling_middleware import get_scaling_status
-from src.middleware.circuit_breaker_middleware import CircuitBreakerAPI
 from src.services.media_cache_manager import MediaCacheManager
 from src.services.security_audit_service import get_security_audit_service
 from src.utils.logger import get_logger

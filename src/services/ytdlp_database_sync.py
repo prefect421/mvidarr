@@ -7,7 +7,6 @@ Extracted from ytdlp_service.py as part of code cleanup.
 
 import os
 from datetime import datetime
-from typing import Optional
 
 from src.database.connection import get_db
 from src.database.models import Download, Video

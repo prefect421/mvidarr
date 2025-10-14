@@ -6,9 +6,9 @@ Consumer-focused music video collection management API
 import os
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -18,10 +18,7 @@ from src.services.collection_organizer import (
     get_collection_organizer,
 )
 from src.services.duplicate_manager import DuplicateConfidence, get_duplicate_manager
-from src.services.music_video_detector import (
-    MusicVideoDetectionResult,
-    get_music_video_detector,
-)
+from src.services.music_video_detector import get_music_video_detector
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.collection_management")

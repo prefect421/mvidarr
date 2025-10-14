@@ -2,17 +2,16 @@
 Base Media Server Service for unified media server integration architecture
 """
 
-import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List
 
 import requests
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
-from src.database.models import Artist, Video, VideoStatus
+from src.database.models import Artist
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.base_media_server")

@@ -3,13 +3,10 @@ MVidarr Advanced Image Processing FastAPI Endpoints - Phase 2 Week 21
 REST API endpoints for advanced image operations and quality enhancement
 """
 
-import asyncio
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException
 from pydantic import BaseModel, Field
 
 from src.jobs.advanced_image_tasks import (
@@ -17,11 +14,7 @@ from src.jobs.advanced_image_tasks import (
     analyze_large_image_collection,
     bulk_convert_image_formats,
 )
-from src.services.image_quality_enhancer import (
-    EnhancementSettings,
-    ImageQualityEnhancer,
-    analyze_and_enhance_images,
-)
+from src.services.image_quality_enhancer import analyze_and_enhance_images
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.advanced_image")

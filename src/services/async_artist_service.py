@@ -3,21 +3,11 @@ Async Artist Management Service for FastAPI Migration
 Handles tracked artists and their automatic video discovery with async operations
 """
 
-import logging
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import delete, func, insert, select, text, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
-from src.services.async_base_service import (
-    AsyncBaseService,
-    AsyncNotFoundError,
-    AsyncServiceError,
-)
-
-# from src.database.models import Artist, Video, TrackedArtist  # TODO: Import when models are ready
-from src.utils.logger import get_logger
+from src.services.async_base_service import AsyncBaseService, AsyncServiceError
 
 
 class AsyncArtistService(AsyncBaseService):

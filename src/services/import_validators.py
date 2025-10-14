@@ -20,7 +20,6 @@ from src.database.import_export_models import (
     ValidationLevel,
     ValidationResult,
 )
-from src.database.models import VideoStatus
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.import_validators")

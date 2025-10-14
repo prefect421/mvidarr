@@ -3,11 +3,10 @@ Video indexing service for scanning and adding existing videos to database
 """
 
 import json
-import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from sqlalchemy.exc import IntegrityError
 

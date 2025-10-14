@@ -3,22 +3,18 @@ Modern Video Browser Service - Phase 3 Week 30
 Consumer-focused video browsing with grid/list views optimized for music videos
 """
 
-import asyncio
 import json
 import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-import aiofiles
 from sqlalchemy import and_, asc, desc, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
 from src.services.music_video_detector import get_music_video_detector
 from src.services.performance_monitor import get_performance_monitor

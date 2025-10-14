@@ -5,17 +5,14 @@ YouTube Playlist Monitoring Service for tracking and downloading playlist videos
 import json
 import os
 import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
-from urllib.parse import parse_qs, urlparse
+from datetime import datetime
+from typing import Dict, List, Optional
 
 import requests
-from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
-from src.database.models import Artist, Download, PlaylistMonitor, Video, VideoStatus
-from src.services.imvdb_service import imvdb_service
+from src.database.models import Artist, PlaylistMonitor, Video, VideoStatus
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 

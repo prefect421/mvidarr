@@ -3,20 +3,17 @@ OAuth authentication service for MVidarr
 Supports multiple OAuth providers including Authentik, Google, GitHub, etc.
 """
 
-import base64
-import json
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 
 import requests
-from flask import current_app, request
+from flask import request
 from flask import session as flask_session
 
 from src.database.connection import get_db
 from src.database.models import User, UserRole, UserSession
-from src.services.auth_service import AuthService
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.oauth")

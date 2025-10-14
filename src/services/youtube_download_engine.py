@@ -9,11 +9,9 @@ import shutil
 import subprocess
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.youtube_engine")
@@ -539,7 +537,6 @@ class YouTubeDownloadEngine:
             # Strategy 3: Last resort - get most recent video file (including .temp files)
             # Prioritize by: 1) Most recent, 2) Largest file size (higher quality)
             if not found_files:
-                import time
 
                 video_files = []
                 for file in os.listdir(base_dir):

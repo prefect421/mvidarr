@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import (
@@ -16,7 +16,6 @@ from src.api.fastapi.auth_dependencies import (
 )
 from src.database.connection import get_db_session
 from src.services.enhanced_scheduler_service import enhanced_scheduler_service
-from src.utils.logger import get_logger
 
 logger = logging.getLogger("mvidarr.fastapi.enhanced_scheduler")
 

@@ -5,12 +5,11 @@ Comprehensive security event logging and monitoring
 
 import hashlib
 import json
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from src.database.async_connection import get_async_db_manager
 from src.services.media_cache_manager import MediaCacheManager

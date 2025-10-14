@@ -3,12 +3,11 @@ FastAPI Lidarr Router - Migrated from Flask Blueprint
 Lidarr API integration for MVidarr
 """
 
-import json
 from typing import Any, Dict, List, Optional
 
 import requests
-from fastapi import APIRouter, Body, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 
 from src.api.fastapi.auth_dependencies import (
     get_current_user_legacy,

@@ -2,21 +2,15 @@
 Bidirectional Metadata Synchronization Service for Media Server Integration
 """
 
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List
 
 from sqlalchemy import and_, or_
 
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
-from src.services.base_media_server_service import (
-    BaseMediaServerService,
-    MediaItem,
-    MediaServerType,
-    SyncDirection,
-)
+from src.services.base_media_server_service import BaseMediaServerService
 from src.services.media_server_manager import media_server_manager
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger

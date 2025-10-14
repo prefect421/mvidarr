@@ -4,12 +4,9 @@ Comprehensive API usage logging with performance metrics and audit trails
 """
 
 import asyncio
-import hashlib
 import json
-import logging
 import time
 import uuid
-from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -18,7 +15,6 @@ from typing import Any, Dict, List, Optional
 import aiofiles
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import StreamingResponse
 
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger

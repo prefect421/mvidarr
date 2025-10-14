@@ -6,13 +6,12 @@ Advanced duplicate detection and video version management for music videos
 import asyncio
 import hashlib
 import json
-import logging
 import os
 import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
 from src.services.performance_monitor import track_media_processing_time

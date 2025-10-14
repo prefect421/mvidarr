@@ -4,22 +4,17 @@ Enhanced system performance analytics dashboard with advanced visualization and 
 """
 
 import asyncio
-import json
-import statistics
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.services.analytics_service import get_analytics_service
 from src.services.content_analytics_engine import get_content_analytics_engine
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
-from src.services.performance_monitor import (
-    get_performance_monitor,
-    track_media_processing_time,
-)
+from src.services.performance_monitor import get_performance_monitor
 from src.services.user_behavior_analytics import get_user_behavior_analytics
 from src.services.visualization_service import (
     ChartConfig,

@@ -35,7 +35,6 @@ from src.api.fastapi.videos_models import ThumbnailSearchRequest
 from src.database.connection import get_db_session
 from src.database.models import Video
 from src.services.imvdb_service import imvdb_service
-from src.services.thumbnail_service import thumbnail_service
 from src.services.youtube_service import youtube_service
 from src.utils.logger import get_logger
 

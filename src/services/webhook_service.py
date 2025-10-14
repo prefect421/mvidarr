@@ -8,16 +8,14 @@ import hmac
 import json
 import threading
 import time
-from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import requests
 
-from src.database.connection import get_db
-from src.database.models import Setting
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 

@@ -4,16 +4,13 @@ Advanced reporting system with scheduled reports, real-time dashboards, and auto
 """
 
 import asyncio
-import hashlib
 import json
-import logging
 import tempfile
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.services.analytics_service import get_analytics_service
 from src.services.content_analytics_engine import get_content_analytics_engine

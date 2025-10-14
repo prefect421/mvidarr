@@ -2,18 +2,16 @@
 Plex Integration Service for library synchronization and metadata exchange
 """
 
-import json
 import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
-from urllib.parse import urljoin, urlparse
+from datetime import datetime
+from typing import Dict, List, Optional
+from urllib.parse import urljoin
 
 import defusedxml.ElementTree as ET
 import requests
-from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
-from src.database.models import Artist, Setting, Video, VideoStatus
+from src.database.models import Artist
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.plex")

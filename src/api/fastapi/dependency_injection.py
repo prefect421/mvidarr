@@ -5,17 +5,15 @@ Advanced dependency injection patterns for scalable FastAPI applications
 
 import asyncio
 import inspect
-import logging
 import weakref
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from functools import lru_cache, wraps
-from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar, get_type_hints
+from functools import wraps
+from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
 from fastapi import Depends, HTTPException, Request
-from pydantic import BaseModel
 
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger

@@ -5,17 +5,15 @@ Comprehensive template migration from Flask to FastAPI with async support
 
 import asyncio
 import json
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Union
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from jinja2.ext import Extension
 
 from src.services.settings_service import settings
 from src.utils.logger import get_logger

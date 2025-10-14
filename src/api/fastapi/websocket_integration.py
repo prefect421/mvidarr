@@ -5,13 +5,11 @@ Real-time WebSocket support replacing Flask-SocketIO
 
 import asyncio
 import json
-import logging
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, Optional, Set
 
-import uvicorn
-from fastapi import Depends, WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.routing import APIRouter
 
 from src.utils.logger import get_logger

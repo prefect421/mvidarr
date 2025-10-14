@@ -7,17 +7,16 @@ import csv
 import gzip
 import hashlib
 import json
-import os
 import tempfile
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional
 
 import yaml
-from sqlalchemy import and_, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_
+from sqlalchemy.orm import joinedload
 
 from src.database.connection import get_db
 from src.database.import_export_models import (
@@ -39,7 +38,6 @@ from src.database.models import (
     Playlist,
     PlaylistEntry,
     Setting,
-    User,
     Video,
     VideoBlacklist,
 )

@@ -6,13 +6,12 @@ Migrated from Flask src/api/security.py - Certificate management endpoints
 import logging
 import os
 import shutil
-import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import serialization
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -20,7 +19,6 @@ from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication_legacy
 from src.database.connection import get_db_session
-from src.utils.logger import get_logger
 
 logger = logging.getLogger("mvidarr.fastapi.security")
 

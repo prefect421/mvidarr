@@ -4,12 +4,10 @@ Thumbnail service for downloading and managing video thumbnails
 
 import hashlib
 import io
-import json
-import os
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
 
 import requests

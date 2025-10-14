@@ -14,8 +14,6 @@ Uses shared utility functions (resolve_video_url) from the parent module.
 Authentication: All endpoints require session-based authentication via get_current_user dependency.
 """
 
-import asyncio
-import json
 from datetime import datetime
 from typing import Any, Dict, Optional
 

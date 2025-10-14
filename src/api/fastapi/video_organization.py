@@ -3,14 +3,13 @@ FastAPI Video Organization Router
 Migrated from Flask src/api/video_organization.py - Video organization endpoints
 """
 
-import asyncio
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Path as PathParam
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication_legacy
@@ -23,7 +22,6 @@ from src.services.job_queue import (
 )
 from src.services.video_organization_service import video_organizer
 from src.utils.filename_cleanup import FilenameCleanup
-from src.utils.logger import get_logger
 
 logger = logging.getLogger("mvidarr.fastapi.video_organization")
 

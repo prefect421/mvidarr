@@ -4,12 +4,11 @@ Video discovery service for finding new music videos for tracked artists
 
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List
 
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
 from src.services.imvdb_service import imvdb_service
-from src.services.settings_service import settings
 from src.services.thumbnail_service import thumbnail_service
 from src.utils.logger import get_logger
 
