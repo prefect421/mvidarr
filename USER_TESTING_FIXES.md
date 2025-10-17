@@ -5,7 +5,10 @@
 **Status**: ALL ISSUES FIXED ✅
 
 **Fixes Committed**:
-- 4c809ca (Issues #1 and #3)
+- 4c809ca (Issues #1 and #3 - Initial fixes)
+- e32da8e (Issue #3 - Aggregation method fix)
+- 72d5ef7 (Issue #3 - Missing source_weights parameter)
+- b4364aa (Issue #3 - Missing extract methods)
 - a3d103d (Issue #4)
 
 **Services**: ✅ Restarted and active
@@ -147,11 +150,13 @@ Aggregating and resolving metadata conflicts...
 ### Root Cause
 The metadata aggregation function at line 169 of `metadata_artist_enricher.py` had no error handling or timeout. If it hung or threw an exception, progress callbacks at 90%, 95%, 98%, and 100% would never be sent to the frontend, causing the UI to appear stuck.
 
-### Fix Applied (Commit: 4c809ca)
+### Fixes Applied
+
+#### Fix 1: Timeout and Error Handling (Commit: 4c809ca)
 
 **File**: `src/services/metadata_artist_enricher.py` (lines 166-189)
 
-Added comprehensive error handling around metadata aggregation:
+Added comprehensive error handling and timeout around metadata aggregation:
 
 ```python
 # Aggregate and resolve conflicts
@@ -188,7 +193,62 @@ except Exception as e:
 5. ✅ Error messages displayed to user
 6. ✅ Full exception traceback logged for debugging
 
-**Status**: ✅ **COMPLETED** - Aggregation now has timeout and error handling, progress always reaches 100%
+#### Fix 2: Import Aggregation Function (Commit: e32da8e)
+
+**Issue**: Called non-existent `service._aggregate_metadata()` method
+
+**Fix**: Import and call standalone `aggregate_metadata` function from `metadata_aggregators.py`
+
+```python
+from src.services.metadata_aggregators import aggregate_metadata
+
+unified_metadata = aggregate_metadata(metadata_sources)
+```
+
+#### Fix 3: Add Missing source_weights Parameter (Commit: 72d5ef7)
+
+**Issue**: `aggregate_metadata()` requires `source_weights` parameter
+
+**Fix**: Pass `service.source_weights` to the function
+
+```python
+unified_metadata = aggregate_metadata(
+    metadata_sources,
+    source_weights=service.source_weights,
+    genre_aggregation_threshold=service.genre_aggregation_threshold,
+    similar_artists_limit=service.similar_artists_limit,
+)
+```
+
+#### Fix 4: Replace Missing Extract Methods (Commit: b4364aa)
+
+**Issue**: Methods `_extract_extended_information()` and `_extract_external_links()` don't exist
+
+**Fix**: Extract data directly from `metadata.raw_data` inline
+
+```python
+# Extract extended information directly from raw data
+extended_info = {}
+if metadata.raw_data:
+    for source_name, source_data in metadata.raw_data.get("sources", {}).items():
+        if isinstance(source_data, dict):
+            # Extract labels, members, formed_year, disbanded_year, origin_country
+            if source_data.get("labels") and not extended_info.get("labels"):
+                extended_info["labels"] = source_data["labels"]
+            # ... (similar for other fields)
+
+# Extract external links directly from metadata
+external_links = {}
+if metadata.raw_data:
+    for source_name, source_data in metadata.raw_data.get("sources", {}).items():
+        if isinstance(source_data, dict):
+            # Extract website_url, spotify_url, youtube_url, etc.
+            if source_data.get("website_url") and not external_links.get("website_url"):
+                external_links["website_url"] = source_data["website_url"]
+            # ... (similar for other URLs)
+```
+
+**Status**: ✅ **COMPLETED** - All 4 fixes applied, enrichment should now complete through 100%
 
 ---
 
