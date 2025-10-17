@@ -6,7 +6,7 @@
 
 **Fixes Committed**:
 - 4c809ca (Issues #1 and #3)
-- TBD (Issue #4)
+- a3d103d (Issue #4)
 
 **Services**: ✅ Restarted and active
 
@@ -206,7 +206,7 @@ The import endpoints (`import-from-youtube` and `import-from-imvdb`) were receiv
 ### Files Fixed
 - `src/api/fastapi/videos_import.py` ✅
 
-### Fix Applied (Commit: TBD)
+### Fix Applied (Commit: a3d103d)
 
 **File**: `src/api/fastapi/videos_import.py`
 
