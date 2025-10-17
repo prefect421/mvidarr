@@ -487,6 +487,7 @@ from src.api.fastapi.playlists import router as fastapi_playlists_router
 from src.api.fastapi.production_monitoring import router as monitoring_router
 from src.api.fastapi.settings import router as fastapi_settings_router
 from src.api.fastapi.videos import router as fastapi_videos_router
+from src.api.fastapi.videos_streaming import router as fastapi_videos_streaming_router
 
 # from src.api.fastapi.music_recommendations import recommendations_router  # Temporarily disabled
 # from src.api.system_health import router as system_health_router
@@ -508,6 +509,7 @@ if bulk_operations_router:
     logger.info("✅ Bulk operations router included")
 # Re-enable real database routers after fixing database initialization
 app.include_router(fastapi_videos_router)
+app.include_router(fastapi_videos_streaming_router, prefix="/api/videos")
 app.include_router(fastapi_artists_router)
 app.include_router(fastapi_playlists_router)
 app.include_router(fastapi_genres_router)

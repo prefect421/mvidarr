@@ -166,7 +166,29 @@ async def _enrich_artist_with_session(
     # Aggregate and resolve conflicts
     if progress_callback:
         progress_callback(80, "Aggregating and resolving metadata conflicts...")
-    unified_metadata = service._aggregate_metadata(metadata_sources)
+
+    logger.info(
+        f"🔄 Starting metadata aggregation for {artist_name} with {len(metadata_sources)} sources"
+    )
+    try:
+        # Add timeout to prevent hanging
+        async with asyncio.timeout(30):  # 30 second timeout for aggregation
+            unified_metadata = service._aggregate_metadata(metadata_sources)
+        logger.info(f"✅ Metadata aggregation complete for {artist_name}")
+    except asyncio.TimeoutError:
+        error_msg = f"Metadata aggregation timed out after 30 seconds for {artist_name}"
+        logger.error(f"❌ {error_msg}")
+        result.errors.append(error_msg)
+        if progress_callback:
+            progress_callback(100, "Error: Aggregation timed out")
+        return result
+    except Exception as e:
+        error_msg = f"Metadata aggregation failed for {artist_name}: {str(e)}"
+        logger.error(f"❌ {error_msg}", exc_info=True)
+        result.errors.append(error_msg)
+        if progress_callback:
+            progress_callback(100, f"Error: {str(e)[:50]}")
+        return result
 
     # Update artist record using the SAME session
     if progress_callback:

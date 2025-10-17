@@ -697,7 +697,8 @@ function addArtistFromImvdb(imvdbId, artistName) {
             if (result.error) {
                 showError('Error: ' + result.error);
             } else {
-                showSuccess(`Artist "${result.name}" added successfully!`);
+                const artistName = result.name || result.artist_name || 'Artist';
+                showSuccess(`Artist "${artistName}" added successfully!`);
                 hideAddArtistModal();
                 
                 // Refresh artist count

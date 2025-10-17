@@ -588,7 +588,8 @@ function addArtistFromImvdb(imvdbId, artistName) {
             if (result.error) {
                 showToast('Error: ' + result.error, 'error');
             } else {
-                showToast(`Artist "${result.name}" added successfully!`, 'success');
+                const artistName = result.name || result.artist_name || 'Artist';
+                showToast(`Artist "${artistName}" added successfully!`, 'success');
                 hideAddArtistModal();
                 
                 // Optionally redirect to artists page after a delay
