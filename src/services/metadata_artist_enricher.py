@@ -606,12 +606,28 @@ def _update_artist_record(
                     image_candidates.append(image)
 
             # Find first non-placeholder image
+            # Placeholder patterns to avoid (Last.fm placeholders, generic images, etc.)
+            placeholder_patterns = [
+                "2a96cbd8b46e442fc41c2b86b821562f",  # Last.fm placeholder
+                "c6f59c1e5e7240a4c0d427abd71f3dbb",  # Another Last.fm placeholder
+                "/avatar/",  # Generic avatar
+                "placeholder",  # Generic placeholder
+                "default",  # Default image
+                "no-image",  # No image available
+            ]
+
             for candidate in image_candidates:
                 candidate_url = candidate.get("url") or candidate.get("#text")
-                if candidate_url and not service._is_placeholder_image(candidate_url):
-                    selected_image = candidate
-                    selected_image_url = candidate_url
-                    break
+                if candidate_url:
+                    # Check if URL contains any placeholder patterns
+                    is_placeholder = any(
+                        pattern in candidate_url.lower()
+                        for pattern in placeholder_patterns
+                    )
+                    if not is_placeholder:
+                        selected_image = candidate
+                        selected_image_url = candidate_url
+                        break
 
             if selected_image_url:
                 # Store thumbnail URL for later background download (avoid hanging here)
