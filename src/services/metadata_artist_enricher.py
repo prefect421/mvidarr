@@ -386,8 +386,33 @@ def _update_artist_record(
             artist.genres = genres_list  # Store as JSON array
             updated_fields["genres"] = genres_list
 
-    # Extract extended information from raw data
-    extended_info = service._extract_extended_information(metadata)
+    # Extract extended information directly from raw data
+    extended_info = {}
+    if metadata.raw_data:
+        # Extract from various sources
+        for source_name, source_data in metadata.raw_data.get("sources", {}).items():
+            if isinstance(source_data, dict):
+                # Extract labels
+                if source_data.get("labels") and not extended_info.get("labels"):
+                    extended_info["labels"] = source_data["labels"]
+                # Extract members
+                if source_data.get("members") and not extended_info.get("members"):
+                    extended_info["members"] = source_data["members"]
+                # Extract formed year
+                if source_data.get("formed_year") and not extended_info.get(
+                    "formed_year"
+                ):
+                    extended_info["formed_year"] = source_data["formed_year"]
+                # Extract disbanded year
+                if source_data.get("disbanded_year") and not extended_info.get(
+                    "disbanded_year"
+                ):
+                    extended_info["disbanded_year"] = source_data["disbanded_year"]
+                # Extract origin country
+                if source_data.get("origin_country") and not extended_info.get(
+                    "origin_country"
+                ):
+                    extended_info["origin_country"] = source_data["origin_country"]
 
     # Update labels from enriched metadata
     if extended_info.get("labels"):
@@ -407,8 +432,47 @@ def _update_artist_record(
             artist.members = members_str
             updated_fields["members"] = members_str
 
-    # Extract external links from metadata
-    external_links = service._extract_external_links(metadata)
+    # Extract external links directly from metadata
+    external_links = {}
+    if metadata.raw_data:
+        # Extract from various sources
+        for source_name, source_data in metadata.raw_data.get("sources", {}).items():
+            if isinstance(source_data, dict):
+                # Extract website URL
+                if source_data.get("website_url") and not external_links.get(
+                    "website_url"
+                ):
+                    external_links["website_url"] = source_data["website_url"]
+                # Extract Spotify URL
+                if source_data.get("spotify_url") and not external_links.get(
+                    "spotify_url"
+                ):
+                    external_links["spotify_url"] = source_data["spotify_url"]
+                # Extract YouTube URL
+                if source_data.get("youtube_url") and not external_links.get(
+                    "youtube_url"
+                ):
+                    external_links["youtube_url"] = source_data["youtube_url"]
+                # Extract Apple Music URL
+                if source_data.get("apple_music_url") and not external_links.get(
+                    "apple_music_url"
+                ):
+                    external_links["apple_music_url"] = source_data["apple_music_url"]
+                # Extract Twitter URL
+                if source_data.get("twitter_url") and not external_links.get(
+                    "twitter_url"
+                ):
+                    external_links["twitter_url"] = source_data["twitter_url"]
+                # Extract Facebook URL
+                if source_data.get("facebook_url") and not external_links.get(
+                    "facebook_url"
+                ):
+                    external_links["facebook_url"] = source_data["facebook_url"]
+                # Extract Instagram URL
+                if source_data.get("instagram_url") and not external_links.get(
+                    "instagram_url"
+                ):
+                    external_links["instagram_url"] = source_data["instagram_url"]
 
     # Update metadata JSON
     enriched_metadata = {
