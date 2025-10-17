@@ -9,6 +9,7 @@
 - e32da8e (Issue #3 - Aggregation method fix)
 - 72d5ef7 (Issue #3 - Missing source_weights parameter)
 - b4364aa (Issue #3 - Missing extract methods)
+- 01aac82 (Issue #3 - Thumbnail update fix)
 - a3d103d (Issue #4)
 
 **Services**: ✅ Restarted and active
@@ -248,7 +249,38 @@ if metadata.raw_data:
             # ... (similar for other URLs)
 ```
 
-**Status**: ✅ **COMPLETED** - All 4 fixes applied, enrichment should now complete through 100%
+#### Fix 5: Replace Missing Placeholder Check (Commit: 01aac82)
+
+**Issue**: Method `_is_placeholder_image()` doesn't exist, causing thumbnail processing to fail
+
+**Fix**: Replace method call with inline placeholder detection
+
+```python
+# Placeholder patterns to avoid (Last.fm placeholders, generic images, etc.)
+placeholder_patterns = [
+    "2a96cbd8b46e442fc41c2b86b821562f",  # Last.fm placeholder
+    "c6f59c1e5e7240a4c0d427abd71f3dbb",  # Another Last.fm placeholder
+    "/avatar/",  # Generic avatar
+    "placeholder",  # Generic placeholder
+    "default",  # Default image
+    "no-image",  # No image available
+]
+
+for candidate in image_candidates:
+    candidate_url = candidate.get("url") or candidate.get("#text")
+    if candidate_url:
+        # Check if URL contains any placeholder patterns
+        is_placeholder = any(
+            pattern in candidate_url.lower()
+            for pattern in placeholder_patterns
+        )
+        if not is_placeholder:
+            selected_image = candidate
+            selected_image_url = candidate_url
+            break
+```
+
+**Status**: ✅ **COMPLETED** - All 5 fixes applied, enrichment completes through 100% and thumbnails are now set correctly
 
 ---
 
