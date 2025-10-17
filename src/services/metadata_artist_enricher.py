@@ -171,9 +171,16 @@ async def _enrich_artist_with_session(
         f"🔄 Starting metadata aggregation for {artist_name} with {len(metadata_sources)} sources"
     )
     try:
+        # Import the standalone aggregation function
+        from src.services.metadata_aggregators import aggregate_metadata
+
         # Add timeout to prevent hanging
         async with asyncio.timeout(30):  # 30 second timeout for aggregation
-            unified_metadata = service._aggregate_metadata(metadata_sources)
+            unified_metadata = aggregate_metadata(
+                metadata_sources,
+                genre_aggregation_threshold=service.genre_aggregation_threshold,
+                similar_artists_limit=service.similar_artists_limit,
+            )
         logger.info(f"✅ Metadata aggregation complete for {artist_name}")
     except asyncio.TimeoutError:
         error_msg = f"Metadata aggregation timed out after 30 seconds for {artist_name}"
