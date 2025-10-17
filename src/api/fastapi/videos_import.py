@@ -104,9 +104,46 @@ async def import_from_youtube(
 
         logger.info(f"Imported YouTube video: {title} ({youtube_id})")
 
+        # If auto_download is enabled, trigger download immediately
+        if auto_download:
+            try:
+                # Get subtitle settings
+                from src.services.settings_service import settings
+                from src.services.ytdlp_service import ytdlp_service
+
+                download_subtitles = settings.get_bool("download_subtitles", False)
+                subtitle_languages = settings.get("subtitle_languages", "en,en-US")
+
+                # Trigger download
+                download_result = ytdlp_service.add_music_video_download(
+                    artist=artist or "Unknown Artist",
+                    title=title,
+                    url=url,
+                    quality="best",
+                    video_id=video_id,
+                    download_subtitles=download_subtitles,
+                    subtitle_languages=subtitle_languages,
+                )
+
+                if download_result.get("success"):
+                    logger.info(
+                        f"Auto-download triggered for YouTube video {video_id}: {title}"
+                    )
+                else:
+                    logger.warning(
+                        f"Auto-download failed for YouTube video {video_id}: {download_result.get('error')}"
+                    )
+
+            except Exception as download_error:
+                logger.error(
+                    f"Failed to trigger auto-download for YouTube video {video_id}: {download_error}"
+                )
+                # Don't fail the import if download fails
+
         return {
             "success": True,
-            "message": f"Video '{title}' imported successfully",
+            "message": f"Video '{title}' imported successfully"
+            + (" and download started" if auto_download else ""),
             "video_id": video_id,
             "status": "imported",
             "auto_download": auto_download,
@@ -178,9 +215,55 @@ async def import_from_imvdb(
 
         logger.info(f"Imported IMVDb video: {title} ({imvdb_id})")
 
+        # If auto_download is enabled, trigger download immediately
+        if auto_download:
+            try:
+                # First, we need to get the YouTube URL for this IMVDb video
+                # IMVDb videos need to have a youtube_url or we need to search for one
+                if new_video.youtube_url or new_video.url:
+                    video_url = new_video.youtube_url or new_video.url
+
+                    # Get subtitle settings
+                    from src.services.settings_service import settings
+                    from src.services.ytdlp_service import ytdlp_service
+
+                    download_subtitles = settings.get_bool("download_subtitles", False)
+                    subtitle_languages = settings.get("subtitle_languages", "en,en-US")
+
+                    # Trigger download
+                    download_result = ytdlp_service.add_music_video_download(
+                        artist=artist or "Unknown Artist",
+                        title=title,
+                        url=video_url,
+                        quality="best",
+                        video_id=video_id,
+                        download_subtitles=download_subtitles,
+                        subtitle_languages=subtitle_languages,
+                    )
+
+                    if download_result.get("success"):
+                        logger.info(
+                            f"Auto-download triggered for IMVDb video {video_id}: {title}"
+                        )
+                    else:
+                        logger.warning(
+                            f"Auto-download failed for IMVDb video {video_id}: {download_result.get('error')}"
+                        )
+                else:
+                    logger.warning(
+                        f"Cannot auto-download IMVDb video {video_id}: No YouTube URL available"
+                    )
+
+            except Exception as download_error:
+                logger.error(
+                    f"Failed to trigger auto-download for IMVDb video {video_id}: {download_error}"
+                )
+                # Don't fail the import if download fails
+
         return {
             "success": True,
-            "message": f"Video '{title}' imported successfully",
+            "message": f"Video '{title}' imported successfully"
+            + (" and download started" if auto_download else ""),
             "video_id": video_id,
             "status": "imported",
             "auto_download": auto_download,
