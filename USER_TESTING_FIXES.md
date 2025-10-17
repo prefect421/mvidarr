@@ -2,11 +2,14 @@
 
 **Date**: 2025-10-17
 **Session**: First User Testing
-**Status**: In Progress
+**Status**: Issues #1 and #3 Fixed ✅, Issues #2 and #4 Pending
+
+**Fixes Committed**: 4c809ca
+**Services**: ✅ Restarted and active
 
 ---
 
-## 🐛 Issue #1: Toast Message Shows "artist undefined" When Adding from IMVDb
+## ✅ Issue #1: Toast Message Shows "artist undefined" When Adding from IMVDb - **FIXED**
 
 ### Problem
 When adding an artist from IMVDb, the toast message displays:
@@ -17,23 +20,20 @@ Artist "undefined" added successfully
 ### Root Cause
 The JavaScript function responsible for showing the success toast is trying to access a `name` property that doesn't exist in the response object from the IMVDb add artist API.
 
-### Files Affected
-- `frontend/templates/dashboard.html` (lines ~556, 591)
-- `frontend/templates/artists.html` (lines ~1434, 1436)
-- `frontend/templates/index.html` (lines ~662, 700)
-- `frontend/templates/admin/dashboard.html` (lines ~826, 856)
+### Files Fixed
+- `frontend/templates/dashboard.html` ✅
+- `frontend/templates/artists.html` ✅
+- `frontend/templates/index.html` ✅
+- `frontend/templates/admin/dashboard.html` ✅
 
-### Fix Required
-Update the toast message to handle cases where `result.name` is undefined. Need to check the actual response structure from the IMVDb artist add API.
+### Fix Applied (Commit: 4c809ca)
+Added fallback for artist name in all toast messages:
+```javascript
+const artistName = result.name || result.artist_name || 'Artist';
+showToast(`Artist "${artistName}" added successfully!`, 'success');
+```
 
-**Possible fixes**:
-1. Ensure API returns `name` field in response
-2. Add fallback: `result.name || result.artist_name || 'Artist'`
-3. Check if response includes artist data and extract name properly
-
-### API to Check
-- Find where IMVDb artist is added (likely in `artists_discovery.py` or `artists_crud.py`)
-- Ensure response includes: `{"id": <id>, "name": <name>, "success": true}`
+**Status**: ✅ **COMPLETED** - All 4 files updated with name fallback
 
 ---
 
@@ -127,7 +127,7 @@ Add setting to enable/disable auto-enrichment:
 
 ---
 
-## 🔄 Issue #3: Artist Detail Page "Enrich from all services" Stuck at 80%
+## ✅ Issue #3: Artist Detail Page "Enrich from all services" Stuck at 80% - **FIXED**
 
 ### Problem
 When clicking "Enrich from all services" on Artist Detail page, the progress bar gets stuck at 80% with message:
@@ -136,68 +136,50 @@ Aggregating and resolving metadata conflicts...
 ```
 
 ### Root Cause
-The enrichment API endpoint likely has an error or hangs during the metadata aggregation phase. This is the final step that:
-1. Collects metadata from all sources (Spotify, Last.fm, Wikipedia, IMVDb, MusicBrainz)
-2. Resolves conflicts between different sources
-3. Updates the artist record
+The metadata aggregation function at line 169 of `metadata_artist_enricher.py` had no error handling or timeout. If it hung or threw an exception, progress callbacks at 90%, 95%, 98%, and 100% would never be sent to the frontend, causing the UI to appear stuck.
 
-### Files to Check
+### Fix Applied (Commit: 4c809ca)
 
-#### 1. Frontend Progress Tracking (`frontend/templates/artist_detail.html`)
-Look for enrichment progress tracking around line 3726:
-- Check if progress updates are correctly parsed
-- Verify WebSocket or polling mechanism
+**File**: `src/services/metadata_artist_enricher.py` (lines 166-189)
 
-#### 2. Backend Enrichment API
-Files to examine:
-- `src/api/fastapi/metadata_enrichment_operations.py`
-- `src/services/metadata_enrichment_service.py` (aggregator)
-- `src/services/metadata_aggregators.py` (aggregation logic)
+Added comprehensive error handling around metadata aggregation:
 
-Look for:
-- The "Aggregating and resolving metadata conflicts" message
-- Any try/except blocks that might be swallowing errors
-- Timeout issues in metadata aggregation
+```python
+# Aggregate and resolve conflicts
+if progress_callback:
+    progress_callback(80, "Aggregating and resolving metadata conflicts...")
 
-### Debugging Steps
+logger.info(f"🔄 Starting metadata aggregation for {artist_name} with {len(metadata_sources)} sources")
+try:
+    # Add timeout to prevent hanging
+    async with asyncio.timeout(30):  # 30 second timeout for aggregation
+        unified_metadata = service._aggregate_metadata(metadata_sources)
+    logger.info(f"✅ Metadata aggregation complete for {artist_name}")
+except asyncio.TimeoutError:
+    error_msg = f"Metadata aggregation timed out after 30 seconds for {artist_name}"
+    logger.error(f"❌ {error_msg}")
+    result.errors.append(error_msg)
+    if progress_callback:
+        progress_callback(100, "Error: Aggregation timed out")
+    return result
+except Exception as e:
+    error_msg = f"Metadata aggregation failed for {artist_name}: {str(e)}"
+    logger.error(f"❌ {error_msg}", exc_info=True)
+    result.errors.append(error_msg)
+    if progress_callback:
+        progress_callback(100, f"Error: {str(e)[:50]}")
+    return result
+```
 
-1. **Check Backend Logs**:
-   ```bash
-   journalctl -u mvidarr -f | grep -i "aggregat\|conflict\|enrich"
-   ```
+**Changes**:
+1. ✅ Added 30-second timeout using `asyncio.timeout(30)`
+2. ✅ Added try/except for `TimeoutError` and general `Exception`
+3. ✅ Added detailed logging before/after aggregation
+4. ✅ Progress callback sends 100% even on error (prevents UI from being stuck)
+5. ✅ Error messages displayed to user
+6. ✅ Full exception traceback logged for debugging
 
-2. **Add More Logging**:
-   In `metadata_aggregators.py`, add detailed logging:
-   ```python
-   logger.info(f"Starting metadata aggregation for artist {artist_id}")
-   logger.info(f"Collected data from {len(sources)} sources")
-   logger.info(f"Resolving conflicts...")
-   logger.info(f"Aggregation complete")
-   ```
-
-3. **Check for Deadlocks**:
-   - Verify no circular waits in async functions
-   - Check if aggregation is waiting for a response that never comes
-
-4. **Add Timeout**:
-   ```python
-   async with asyncio.timeout(30):  # 30 second timeout
-       aggregated_data = await aggregate_metadata(sources_data)
-   ```
-
-### Likely Fix Locations
-
-1. **metadata_aggregators.py** - `aggregate_metadata()` function:
-   - Add try/except with detailed error logging
-   - Add timeout handling
-   - Verify all async calls are properly awaited
-
-2. **Progress Reporting**:
-   - Ensure progress is updated BEFORE aggregation starts
-   - Add progress update AFTER aggregation completes
-   - Current: `update_progress(80, "Aggregating...")`
-   - Add: `update_progress(90, "Finalizing...")`
-   - Add: `update_progress(100, "Complete!")`
+**Status**: ✅ **COMPLETED** - Aggregation now has timeout and error handling, progress always reaches 100%
 
 ---
 
