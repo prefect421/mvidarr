@@ -228,24 +228,21 @@ async def import_artist_from_imvdb(
         session.refresh(artist)
 
         # Return artist in API format
+        # Use getattr for fields that may not exist on the Artist model
         return ArtistResponse(
             id=artist.id,
             name=artist.name,
-            sort_name=getattr(
-                artist, "sort_name", None
-            ),  # Use getattr for optional field
+            sort_name=getattr(artist, "sort_name", None),
             folder_path=artist.folder_path,
             imvdb_id=int(artist.imvdb_id) if artist.imvdb_id else None,
-            imvdb_slug=getattr(
-                artist, "imvdb_slug", None
-            ),  # Use getattr for optional field
+            imvdb_slug=getattr(artist, "imvdb_slug", None),
             thumbnail_url=artist.thumbnail_url,
-            biography=artist.biography,
-            formed_year=artist.formed_year,
-            location=artist.location,
-            website=artist.website,
-            wikipedia_url=artist.wikipedia_url,
-            musicbrainz_id=artist.musicbrainz_id,
+            biography=getattr(artist, "biography", None),
+            formed_year=getattr(artist, "formed_year", None),
+            location=getattr(artist, "location", None),
+            website=getattr(artist, "website", None),
+            wikipedia_url=getattr(artist, "wikipedia_url", None),
+            musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
             monitored=artist.monitored,
             auto_download=artist.auto_download,
