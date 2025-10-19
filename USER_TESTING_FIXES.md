@@ -11,6 +11,8 @@
 - b4364aa (Issue #3 - Missing extract methods)
 - 01aac82 (Issue #3 - Thumbnail update fix)
 - a3d103d (Issue #4)
+- b265d09 (Issue #2 - Fix sort_name AttributeError)
+- f324346 (Issue #2 - Fix event loop conflict)
 
 **Services**: ✅ Restarted and active
 
@@ -50,93 +52,112 @@ showToast(`Artist "${artistName}" added successfully!`, 'success');
 
 ---
 
-## 🤖 Issue #2: Auto-Match and Enrich Not Triggered on New Artist Creation
+## ✅ Issue #2: Auto-Match and Enrich Not Triggered on New Artist Creation - **FIXED**
 
 ### Problem
 When a new artist is added from any source (IMVDb, Spotify, manual, etc.), the system should automatically:
 1. Run Auto-Match Service to link to external services
 2. Run Enrich From All Services to fetch metadata
 
-Currently, these steps must be run manually.
+Auto-processing was being called but was failing with errors that prevented completion.
 
-### Root Cause
-No post-creation hook exists to trigger automatic enrichment workflow.
+### Root Causes Identified
 
-### Files to Modify
+**Issue 2A: AttributeError on API Response (Commit: b265d09)**
+- `artists_discovery.py` line 234 tried to access `artist.sort_name` which doesn't exist on Artist model
+- Also affected `imvdb_slug` on line 237
+- Caused 500 error when returning artist data after successful creation
 
-#### 1. Artist Creation API (`src/api/fastapi/artists_crud.py`)
-Add auto-enrichment after artist creation:
+**Issue 2B: Event Loop Conflict in Metadata Enrichment (Commit: f324346)**
+- `artist_auto_processing_service.py` was creating new event loop with `asyncio.new_event_loop()`
+- Called from FastAPI async context which already has running event loop
+- Caused "Cannot run the event loop while another loop is running" error
+- Prevented metadata enrichment from completing
+
+### Fixes Applied
+
+**Fix 1: Missing Artist Model Attributes (Commit: b265d09)**
+
+**File**: `src/api/fastapi/artists_discovery.py` (lines 234, 237)
+
+Changed from direct attribute access to `getattr()` with fallback:
 
 ```python
-@router.post("/")
-async def create_artist(
-    artist_data: ArtistCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    try:
-        # Existing artist creation logic
-        new_artist = await artist_service.create_artist(db, artist_data)
-
-        # NEW: Trigger automatic enrichment workflow
-        if new_artist:
-            # Run Auto-Match in background
-            from src.jobs.metadata_tasks import auto_match_artist_task
-            auto_match_artist_task.delay(new_artist.id)
-
-            # Wait a moment for auto-match, then enrich
-            from src.jobs.metadata_tasks import enrich_artist_all_services_task
-            enrich_artist_all_services_task.apply_async(
-                args=[new_artist.id],
-                countdown=5  # Wait 5 seconds for auto-match to complete
-            )
-
-        return {"success": True, "artist": new_artist, "id": new_artist.id, "name": new_artist.name}
-    except Exception as e:
-        logger.error(f"Error creating artist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# Return artist in API format
+return ArtistResponse(
+    id=artist.id,
+    name=artist.name,
+    sort_name=getattr(artist, "sort_name", None),  # Use getattr for optional field
+    folder_path=artist.folder_path,
+    imvdb_id=int(artist.imvdb_id) if artist.imvdb_id else None,
+    imvdb_slug=getattr(artist, "imvdb_slug", None),  # Use getattr for optional field
+    # ... rest of fields
+)
 ```
 
-#### 2. Artist Discovery API (`src/api/fastapi/artists_discovery.py`)
-Add same auto-enrichment to artist import functions:
-- `import_artist_from_spotify`
-- `import_artist_from_imvdb`
-- `import_artist_from_lastfm`
+**Changes**:
+1. ✅ Used `getattr(artist, "sort_name", None)` with None fallback
+2. ✅ Used `getattr(artist, "imvdb_slug", None)` with None fallback
+3. ✅ Prevents AttributeError when fields don't exist on model
+4. ✅ Allows successful API response after artist creation
 
-#### 3. Settings Check
-Add setting to enable/disable auto-enrichment:
-- Setting key: `auto_enrich_new_artists` (default: `true`)
-- Check this setting before triggering enrichment
+**Fix 2: Event Loop Conflict (Commit: f324346)**
 
-### Implementation Steps
-1. Create helper function in `artists_crud.py`:
-   ```python
-   async def trigger_auto_enrichment(artist_id: int, delay_seconds: int = 5):
-       """Trigger automatic enrichment workflow for new artist"""
-       from src.services.settings_service import get_setting
+**File**: `src/services/artist_auto_processing_service.py` (method `_run_metadata_enrichment`)
 
-       # Check if auto-enrichment is enabled
-       auto_enrich = get_setting('auto_enrich_new_artists', True)
-       if not auto_enrich:
-           return
+Replaced direct async execution with Celery task:
 
-       # Trigger auto-match
-       from src.jobs.metadata_tasks import auto_match_artist_task
-       auto_match_artist_task.delay(artist_id)
+```python
+@staticmethod
+def _run_metadata_enrichment(artist_id: int) -> Dict[str, Any]:
+    """Run metadata enrichment for the artist using Celery task"""
+    try:
+        from src.jobs.metadata_tasks import enrich_artist_metadata_task
 
-       # Trigger enrich after delay
-       from src.jobs.metadata_tasks import enrich_artist_all_services_task
-       enrich_artist_all_services_task.apply_async(
-           args=[artist_id],
-           countdown=delay_seconds
-       )
-   ```
+        # Use Celery task to run enrichment in background
+        # This avoids event loop conflicts and allows proper async execution
+        logger.info(
+            f"Queueing metadata enrichment Celery task for artist {artist_id}"
+        )
+        task = enrich_artist_metadata_task.delay(
+            artist_id=artist_id, force_refresh=True
+        )
 
-2. Call this helper after every artist creation
+        return {
+            "success": True,
+            "message": "Enrichment task queued",
+            "task_id": task.id,
+            "queued": True,
+        }
 
-3. Add to settings page:
-   - Checkbox: "Auto-enrich newly added artists"
-   - Description: "Automatically run Auto-Match and Enrich From All Services when adding new artists"
+    except Exception as e:
+        logger.error(f"Failed to queue metadata enrichment for artist {artist_id}: {e}")
+        return {"success": False, "error": str(e)}
+```
+
+**Changes**:
+1. ✅ Removed `asyncio.new_event_loop()` and `loop.run_until_complete()` calls
+2. ✅ Replaced with Celery task `enrich_artist_metadata_task.delay()`
+3. ✅ Enrichment now runs in proper Celery worker background context
+4. ✅ No event loop conflicts - Celery handles async execution properly
+5. ✅ Returns task ID for tracking progress
+
+### How Auto-Processing Works Now
+
+When a new artist is added from IMVDb (or any source):
+
+1. **Artist Created** → Artist record saved to database
+2. **Auto-Match Triggered** → Synchronous matching with external services (Last.fm, Spotify, MusicBrainz, IMVDb)
+3. **Metadata Enrichment Queued** → Celery task scheduled for background execution
+4. **Thumbnail Generation** → Attempts to find thumbnail from matched services
+5. **API Response** → Returns artist data with queued task ID
+6. **Background Enrichment** → Celery worker processes enrichment asynchronously
+
+### Implementation Note
+
+Auto-processing was **already implemented** in `artist_auto_processing_service.py` and being called from `artists_discovery.py:208-216`. The issue was not missing functionality, but bugs in the implementation that prevented successful completion.
+
+**Status**: ✅ **COMPLETED** - Auto-processing now works correctly for new artists added from IMVDb and other sources
 
 ---
 
