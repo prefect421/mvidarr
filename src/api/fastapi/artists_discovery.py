@@ -231,10 +231,14 @@ async def import_artist_from_imvdb(
         return ArtistResponse(
             id=artist.id,
             name=artist.name,
-            sort_name=artist.sort_name,
+            sort_name=getattr(
+                artist, "sort_name", None
+            ),  # Use getattr for optional field
             folder_path=artist.folder_path,
             imvdb_id=int(artist.imvdb_id) if artist.imvdb_id else None,
-            imvdb_slug=artist.imvdb_slug,
+            imvdb_slug=getattr(
+                artist, "imvdb_slug", None
+            ),  # Use getattr for optional field
             thumbnail_url=artist.thumbnail_url,
             biography=artist.biography,
             formed_year=artist.formed_year,
