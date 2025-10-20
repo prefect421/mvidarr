@@ -37,7 +37,7 @@ class PlaylistMonitorRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=200)
     auto_download: bool = Field(default=True)
     quality: str = Field(
-        default="720p", pattern="^(144p|240p|360p|480p|720p|1080p|best)$"
+        default="720p", pattern="^(144p|240p|360p|480p|720p|1080p|1440p|2160p|best)$"
     )
     keywords: List[str] = Field(default_factory=list, max_items=20)
 
@@ -48,7 +48,7 @@ class PlaylistMonitorUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=200)
     auto_download: Optional[bool] = None
     quality: Optional[str] = Field(
-        None, pattern="^(144p|240p|360p|480p|720p|1080p|best)$"
+        None, pattern="^(144p|240p|360p|480p|720p|1080p|1440p|2160p|best)$"
     )
     keywords: Optional[List[str]] = Field(None, max_items=20)
 
