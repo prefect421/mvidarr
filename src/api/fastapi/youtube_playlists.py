@@ -69,7 +69,7 @@ class PlaylistPreviewRequest(BaseModel):
 class PlaylistInfoResponse(BaseModel):
     """Playlist information response"""
 
-    playlist_id: str
+    playlist_id: str = Field(..., alias="id")
     title: str
     description: Optional[str] = None
     channel_title: str
@@ -77,6 +77,9 @@ class PlaylistInfoResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     published_at: Optional[str] = None
     valid: bool = True
+
+    class Config:
+        populate_by_name = True  # Allow using both 'id' and 'playlist_id'
 
 
 class PlaylistMonitorResponse(BaseModel):
