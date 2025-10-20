@@ -283,7 +283,11 @@ class YouTubePlaylistService:
 
         except Exception as e:
             logger.error(f"Failed to create playlist monitor: {e}")
-            raise
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Failed to create playlist monitor: {str(e)}",
+            }
 
     def sync_playlist_videos(self, playlist_id: str, session: Session = None) -> Dict:
         """Sync videos from a monitored playlist"""
