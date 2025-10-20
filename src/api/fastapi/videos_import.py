@@ -216,6 +216,7 @@ async def import_from_imvdb(
         logger.info(f"Imported IMVDb video: {title} ({imvdb_id})")
 
         # If auto_download is enabled, trigger download immediately
+        download_started = False
         if auto_download:
             try:
                 # First, we need to get the YouTube URL for this IMVDb video
@@ -242,6 +243,7 @@ async def import_from_imvdb(
                     )
 
                     if download_result.get("success"):
+                        download_started = True
                         logger.info(
                             f"Auto-download triggered for IMVDb video {video_id}: {title}"
                         )
@@ -260,13 +262,21 @@ async def import_from_imvdb(
                 )
                 # Don't fail the import if download fails
 
+        # Build appropriate message based on what actually happened
+        message = f"Video '{title}' imported successfully"
+        if download_started:
+            message += " and download started"
+        elif auto_download:
+            # User wanted auto-download but it couldn't start
+            message += " (download not started - no YouTube URL available)"
+
         return {
             "success": True,
-            "message": f"Video '{title}' imported successfully"
-            + (" and download started" if auto_download else ""),
+            "message": message,
             "video_id": video_id,
             "status": "imported",
             "auto_download": auto_download,
+            "download_started": download_started,
         }
 
     except HTTPException:
