@@ -205,15 +205,43 @@ async def import_artist_from_imvdb(
         session.add(artist)
         session.flush()  # Get the ID
 
-        # Always run auto-processing for new artists (auto-match, metadata, thumbnails)
+        # Phase 1: Run synchronous auto-match for external services (fast, in-transaction)
+        # This populates spotify_id, lastfm_name, imvdb_id fields immediately
         try:
-            auto_results = artist_auto_processing_service.process_new_artist(
-                artist, session
+            from src.services.artist_auto_processing_service import (
+                ArtistAutoProcessingService,
             )
-            logger.info(f"Auto-processing results for {artist.name}: {auto_results}")
+
+            auto_match_results = ArtistAutoProcessingService._run_auto_match(
+                artist.id, artist.name, session
+            )
+            logger.info(
+                f"Auto-match completed for {artist.name}: {auto_match_results['match_count']} services matched"
+            )
 
         except Exception as e:
-            logger.error(f"Auto-processing failed for {artist.name}: {e}")
+            logger.error(f"Auto-match failed for {artist.name}: {e}")
+
+        # Commit the artist with auto-match data BEFORE dispatching Celery tasks
+        # This ensures the artist exists in database before background jobs try to access it
+        session.commit()
+        session.refresh(artist)
+
+        # Phase 2: Dispatch async background tasks AFTER commit (metadata enrichment, thumbnails)
+        # These are slow operations that should run in background via Celery
+        try:
+            from src.jobs.metadata_tasks import enrich_artist_metadata_task
+
+            # Queue metadata enrichment task - it will run after artist is committed
+            task = enrich_artist_metadata_task.delay(
+                artist_id=artist.id, force_refresh=True
+            )
+            logger.info(
+                f"Queued metadata enrichment task {task.id} for {artist.name} (ID: {artist.id})"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to queue metadata enrichment for {artist.name}: {e}")
 
         # Auto-discover videos if specifically requested
         if import_request.auto_discover_videos:
@@ -223,9 +251,6 @@ async def import_artist_from_imvdb(
                 # TODO: Implement video discovery if not already covered by auto-processing
             except Exception as e:
                 logger.error(f"Video discovery failed for {artist.name}: {e}")
-
-        session.commit()
-        session.refresh(artist)
 
         # Return artist in API format
         # Use getattr for fields that may not exist on the Artist model
@@ -639,23 +664,40 @@ async def manually_process_artist(
             f"Manually running auto-processing for artist {artist.name} (ID: {artist_id})"
         )
 
-        # Run the auto-processing pipeline
-        auto_results = artist_auto_processing_service.process_new_artist(
-            artist, session
+        # Phase 1: Run synchronous auto-match (fast operation)
+        from src.services.artist_auto_processing_service import (
+            ArtistAutoProcessingService,
         )
 
+        auto_match_results = ArtistAutoProcessingService._run_auto_match(
+            artist.id, artist.name, session
+        )
+
+        # Commit auto-match results
         session.commit()
 
         logger.info(
-            f"Manual auto-processing completed for {artist.name}: {auto_results}"
+            f"Auto-match completed for {artist.name}: {auto_match_results['match_count']} services matched"
+        )
+
+        # Phase 2: Dispatch async tasks (metadata enrichment, thumbnails)
+        from src.jobs.metadata_tasks import enrich_artist_metadata_task
+
+        task = enrich_artist_metadata_task.delay(
+            artist_id=artist_id, force_refresh=True
+        )
+
+        logger.info(
+            f"Manual auto-processing completed for {artist.name} - metadata enrichment task {task.id} queued"
         )
 
         return {
             "success": True,
             "artist_id": artist_id,
             "artist_name": artist.name,
-            "results": auto_results,
-            "message": f"Auto-processing completed for {artist.name}",
+            "auto_match": auto_match_results,
+            "metadata_task_id": task.id,
+            "message": f"Auto-match completed, metadata enrichment queued for {artist.name}",
         }
 
     except Exception as e:
@@ -712,40 +754,47 @@ async def bulk_auto_process_artists(
         error_count = 0
         results = []
 
+        # Import dependencies
+        from src.jobs.metadata_tasks import enrich_artist_metadata_task
+        from src.services.artist_auto_processing_service import (
+            ArtistAutoProcessingService,
+        )
+
         # Process each artist
         for artist in artists_to_process:
             try:
                 logger.info(f"Auto-processing artist: {artist.name} (ID: {artist.id})")
 
-                auto_results = artist_auto_processing_service.process_new_artist(
-                    artist, session
+                # Phase 1: Run synchronous auto-match (fast)
+                auto_match_results = ArtistAutoProcessingService._run_auto_match(
+                    artist.id, artist.name, session
+                )
+
+                # Commit after auto-match
+                session.commit()
+
+                # Phase 2: Queue async metadata enrichment task
+                task = enrich_artist_metadata_task.delay(
+                    artist_id=artist.id, force_refresh=force_refresh
                 )
 
                 processed_count += 1
-                if auto_results.get("errors"):
-                    error_count += 1
-                else:
-                    success_count += 1
+                success_count += 1
 
                 results.append(
                     {
                         "artist_id": artist.id,
                         "artist_name": artist.name,
-                        "success": len(auto_results.get("errors", [])) == 0,
-                        "auto_match_count": auto_results.get("auto_match", {}).get(
-                            "match_count", 0
-                        ),
-                        "metadata_enriched": auto_results.get(
-                            "metadata_enrichment", {}
-                        ).get("success", False),
-                        "thumbnail_found": auto_results.get(
-                            "thumbnail_generation", {}
-                        ).get("success", False),
+                        "success": True,
+                        "auto_match_count": auto_match_results.get("match_count", 0),
+                        "metadata_task_id": task.id,
+                        "metadata_queued": True,
                     }
                 )
 
-                # Commit after each artist to avoid losing progress on errors
-                session.commit()
+                logger.info(
+                    f"Queued metadata enrichment task {task.id} for {artist.name}"
+                )
 
             except Exception as e:
                 error_count += 1
