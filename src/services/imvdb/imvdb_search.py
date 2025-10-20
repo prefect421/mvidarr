@@ -318,7 +318,7 @@ class IMVDbSearch(IMVDbClient):
         """
         params = {}
         if include_sources:
-            params["include_sources"] = 1
+            params["include"] = "sources"
 
         response = self._make_request(f"video/{imvdb_id}", params)
 

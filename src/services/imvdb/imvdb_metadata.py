@@ -146,31 +146,15 @@ def extract_metadata(video_data: Dict) -> Dict:
             if isinstance(source, dict):
                 source_type = source.get("source", "").lower()
                 source_is_primary = source.get("is_primary", False)
-                source_url = source.get("source_url", "")
+                source_data = source.get("source_data", "")
 
                 # Look for YouTube sources
-                if (
-                    source_type == "youtube"
-                    or "youtube.com" in source_url
-                    or "youtu.be" in source_url
-                ):
-                    metadata["youtube_url"] = source_url
-
-                    # Extract YouTube ID from URL
-                    if source_url:
-                        # Handle different YouTube URL formats
-                        if "youtube.com/watch?v=" in source_url:
-                            # Standard format: https://www.youtube.com/watch?v=VIDEO_ID
-                            youtube_id = source_url.split("watch?v=")[1].split("&")[0]
-                            metadata["youtube_id"] = youtube_id
-                        elif "youtu.be/" in source_url:
-                            # Short format: https://youtu.be/VIDEO_ID
-                            youtube_id = source_url.split("youtu.be/")[1].split("?")[0]
-                            metadata["youtube_id"] = youtube_id
-                        elif "youtube.com/embed/" in source_url:
-                            # Embed format: https://www.youtube.com/embed/VIDEO_ID
-                            youtube_id = source_url.split("embed/")[1].split("?")[0]
-                            metadata["youtube_id"] = youtube_id
+                if source_type == "youtube" and source_data:
+                    # IMVDb provides the YouTube ID directly in source_data
+                    metadata["youtube_id"] = str(source_data)
+                    metadata["youtube_url"] = (
+                        f"https://www.youtube.com/watch?v={source_data}"
+                    )
 
                     # If this is the primary source, use it and stop looking
                     if source_is_primary:
