@@ -185,9 +185,13 @@ async def create_playlist_monitor(
         )
 
         if not result.get("success"):
+            error_detail = result.get(
+                "error", result.get("message", "Failed to create playlist monitor")
+            )
+            logger.error(f"Playlist creation failed: {error_detail}")
             raise HTTPException(
                 status_code=400,
-                detail=result.get("error", "Failed to create playlist monitor"),
+                detail=error_detail,
             )
 
         return result
