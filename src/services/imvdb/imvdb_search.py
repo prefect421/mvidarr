@@ -303,20 +303,29 @@ class IMVDbSearch(IMVDbClient):
             "artist_name": artist_name,
         }
 
-    def get_video_by_id(self, imvdb_id: str) -> Optional[Dict]:
+    def get_video_by_id(
+        self, imvdb_id: str, include_sources: bool = True
+    ) -> Optional[Dict]:
         """
         Get detailed video information by IMVDb ID
 
         Args:
             imvdb_id: IMVDb video ID
+            include_sources: Whether to include video sources (YouTube, etc.)
 
         Returns:
             Video metadata dictionary or None
         """
-        response = self._make_request(f"video/{imvdb_id}")
+        params = {}
+        if include_sources:
+            params["include_sources"] = 1
+
+        response = self._make_request(f"video/{imvdb_id}", params)
 
         if response:
-            logger.info(f"Retrieved video details for IMVDb ID: {imvdb_id}")
+            logger.info(
+                f"Retrieved video details for IMVDb ID: {imvdb_id} (sources: {include_sources})"
+            )
             return response
 
         return None

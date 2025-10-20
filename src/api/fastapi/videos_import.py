@@ -183,14 +183,47 @@ async def import_from_imvdb(
                 "status": "exists",
             }
 
+        # Fetch full video metadata from IMVDb (including sources for YouTube URL)
+        from src.services.imvdb_service import imvdb_service
+
+        imvdb_metadata = imvdb_service.get_video_by_id(
+            str(imvdb_id), include_sources=True
+        )
+
+        # Extract YouTube URL from IMVDb metadata
+        youtube_url = None
+        youtube_id = None
+        if imvdb_metadata:
+            extracted_metadata = imvdb_service.extract_metadata(imvdb_metadata)
+            youtube_url = extracted_metadata.get("youtube_url")
+            youtube_id = extracted_metadata.get("youtube_id")
+
+            # Use IMVDb metadata for title if not provided
+            if not title and extracted_metadata.get("title"):
+                title = extracted_metadata["title"]
+
+            # Use IMVDb metadata for artist if not provided
+            if not artist and extracted_metadata.get("artist_name"):
+                artist = extracted_metadata["artist_name"]
+
+            logger.info(
+                f"IMVDb metadata fetched for {imvdb_id}: YouTube URL {'found' if youtube_url else 'NOT FOUND'}"
+            )
+        else:
+            logger.warning(f"Could not fetch IMVDb metadata for video {imvdb_id}")
+
         # Create new video entry using only valid Video model fields
         new_video = Video(
             title=title or f"IMVDb Video {imvdb_id}",
             imvdb_id=imvdb_id,
+            youtube_url=youtube_url,
+            youtube_id=youtube_id,
+            url=youtube_url,  # Store YouTube URL in generic url field
             source="imvdb_import",
             status=VideoStatus.WANTED if auto_download else VideoStatus.MONITORED,
             duration=None,  # Will be updated when metadata is fetched
             discovered_date=datetime.utcnow(),
+            imvdb_metadata=imvdb_metadata,  # Store full IMVDb metadata
         )
 
         # Try to find or create artist
