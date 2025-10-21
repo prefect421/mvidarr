@@ -99,7 +99,14 @@ class BulkDeleteRequest(BulkArtistRequest):
 class BulkEditRequest(BulkArtistRequest):
     """Request model for bulk artist editing"""
 
-    updates: Dict[str, Any] = Field(..., min_items=1)
+
+class MergeArtistsRequest(BaseModel):
+    """Request model for merging multiple artists into one"""
+
+    primary_artist_id: int = Field(..., description="ID of the artist to keep")
+    secondary_artist_ids: List[int] = Field(
+        ..., min_items=1, description="IDs of artists to merge into the primary"
+    )
 
 
 class ThumbnailSearchRequest(BaseModel):

@@ -19,7 +19,11 @@ from fastapi import Query
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.artists_models import BulkDeleteRequest, BulkEditRequest
+from src.api.fastapi.artists_models import (
+    BulkDeleteRequest,
+    BulkEditRequest,
+    MergeArtistsRequest,
+)
 from src.api.fastapi.auth_dependencies import (
     get_current_user_legacy,
     require_authentication_legacy,
@@ -349,6 +353,108 @@ async def bulk_validate_metadata(
         raise
     except Exception as e:
         logger.error(f"Error validating artist metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/merge")
+async def merge_artists(
+    request: MergeArtistsRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """
+    Merge multiple artists into one primary artist.
+
+    All videos from secondary artists will be reassigned to the primary artist,
+    then the secondary artists will be deleted.
+    """
+    try:
+        # Validate primary artist exists
+        primary_artist = (
+            session.query(Artist).filter(Artist.id == request.primary_artist_id).first()
+        )
+
+        if not primary_artist:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Primary artist {request.primary_artist_id} not found",
+            )
+
+        # Validate all secondary artists exist
+        secondary_artists = (
+            session.query(Artist)
+            .filter(Artist.id.in_(request.secondary_artist_ids))
+            .all()
+        )
+
+        if len(secondary_artists) != len(request.secondary_artist_ids):
+            found_ids = {a.id for a in secondary_artists}
+            missing_ids = set(request.secondary_artist_ids) - found_ids
+            raise HTTPException(
+                status_code=404,
+                detail=f"Secondary artist(s) not found: {list(missing_ids)}",
+            )
+
+        # Check if primary artist is in secondary list
+        if request.primary_artist_id in request.secondary_artist_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Primary artist cannot be in the list of secondary artists",
+            )
+
+        merged_count = 0
+        total_videos_moved = 0
+        secondary_names = []
+
+        for secondary_artist in secondary_artists:
+            secondary_names.append(secondary_artist.name)
+
+            # Move all videos from secondary to primary
+            videos_to_move = (
+                session.query(Video)
+                .filter(Video.artist_id == secondary_artist.id)
+                .all()
+            )
+
+            for video in videos_to_move:
+                video.artist_id = primary_artist.id
+                total_videos_moved += 1
+
+            # Delete the secondary artist
+            session.delete(secondary_artist)
+            merged_count += 1
+
+            logger.info(
+                f"Merged artist '{secondary_artist.name}' (ID: {secondary_artist.id}) "
+                f"into '{primary_artist.name}' (ID: {primary_artist.id}), "
+                f"moved {len(videos_to_move)} videos"
+            )
+
+        # Update primary artist's updated_at timestamp
+        primary_artist.updated_at = datetime.utcnow()
+
+        session.commit()
+
+        logger.info(
+            f"Merge completed: {merged_count} artists merged into '{primary_artist.name}', "
+            f"{total_videos_moved} videos moved"
+        )
+
+        return {
+            "success": True,
+            "message": f"Successfully merged {merged_count} artist(s) into {primary_artist.name}",
+            "merged_count": merged_count,
+            "primary_artist_id": primary_artist.id,
+            "primary_artist_name": primary_artist.name,
+            "secondary_artist_names": secondary_names,
+            "videos_moved": total_videos_moved,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error merging artists: {e}")
+        session.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
