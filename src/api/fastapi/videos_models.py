@@ -78,6 +78,7 @@ class VideoUpdateRequest(BaseModel):
     artist_name: Optional[str] = None  # Allow updating by artist name
     url: Optional[str] = None
     youtube_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None  # Allow updating thumbnail URL
     status: Optional[str] = None
     genres: Optional[List[str]] = None
 
