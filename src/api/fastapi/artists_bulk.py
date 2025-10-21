@@ -257,6 +257,101 @@ async def bulk_edit_artists(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/bulk-validate-metadata")
+async def bulk_validate_metadata(
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Validate metadata for multiple artists and identify issues"""
+    try:
+        artist_ids = request.get("artist_ids", [])
+        if not artist_ids:
+            raise HTTPException(status_code=400, detail="No artist IDs provided")
+
+        # Get artists
+        artists = session.query(Artist).filter(Artist.id.in_(artist_ids)).all()
+
+        if not artists:
+            raise HTTPException(status_code=404, detail="No artists found")
+
+        validation_results = []
+        issues_summary = {
+            "total_artists": len(artists),
+            "artists_with_issues": 0,
+            "missing_imvdb": 0,
+            "missing_thumbnail": 0,
+            "missing_folder_path": 0,
+            "zero_videos": 0,
+        }
+
+        for artist in artists:
+            issues = []
+            has_issues = False
+
+            # Check for IMVDb ID
+            if not artist.imvdb_id:
+                issues.append("No IMVDb ID linked")
+                issues_summary["missing_imvdb"] += 1
+                has_issues = True
+
+            # Check for thumbnail
+            if not artist.thumbnail_path and not artist.thumbnail_url:
+                issues.append("No thumbnail available")
+                issues_summary["missing_thumbnail"] += 1
+                has_issues = True
+
+            # Check for folder path
+            if not artist.folder_path or artist.folder_path.strip() == "":
+                issues.append("No folder path set")
+                issues_summary["missing_folder_path"] += 1
+                has_issues = True
+
+            # Check video count
+            video_count = (
+                session.query(Video).filter(Video.artist_id == artist.id).count()
+            )
+            if video_count == 0:
+                issues.append("No videos")
+                issues_summary["zero_videos"] += 1
+                has_issues = True
+
+            if has_issues:
+                issues_summary["artists_with_issues"] += 1
+
+            validation_results.append(
+                {
+                    "artist_id": artist.id,
+                    "artist_name": artist.name,
+                    "has_issues": has_issues,
+                    "issues": issues,
+                    "video_count": video_count,
+                    "has_imvdb": bool(artist.imvdb_id),
+                    "has_thumbnail": bool(
+                        artist.thumbnail_path or artist.thumbnail_url
+                    ),
+                    "has_folder_path": bool(artist.folder_path),
+                }
+            )
+
+        logger.info(
+            f"Validated {len(artists)} artists: {issues_summary['artists_with_issues']} with issues"
+        )
+
+        return {
+            "success": True,
+            "message": f"Validated {len(artists)} artists",
+            "summary": issues_summary,
+            "results": validation_results,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error validating artist metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/cleanup-zero-videos")
 async def cleanup_zero_video_artists(
     current_user: dict = Depends(require_authentication),
