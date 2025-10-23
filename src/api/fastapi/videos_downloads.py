@@ -407,9 +407,9 @@ async def queue_download_video(
     video_id: int = FastAPIPath(..., ge=1),
     session: Session = Depends(get_db_session),
 ):
-    """Queue video download and start immediately (no Celery required)"""
+    """Queue video download via Celery processor"""
     try:
-        logger.info(f"WORKING DOWNLOAD: Processing video {video_id}")
+        logger.info(f"Queuing download for video {video_id}")
 
         # Get video
         video = session.query(Video).filter(Video.id == video_id).first()
@@ -468,42 +468,42 @@ async def queue_download_video(
         download_subtitles = settings.get_bool("download_subtitles", False)
         subtitle_languages = settings.get("subtitle_languages", "en,en-US")
 
-        # Start download immediately via ytdlp_service
-        from src.services.ytdlp_service import ytdlp_service
-
-        result = ytdlp_service.add_music_video_download(
-            artist=artist.name,
-            title=video.title,
-            url=youtube_url,
-            quality="best",
+        # Create download record in database for Celery to process
+        download = Download(
+            artist_id=video.artist_id,
             video_id=video_id,
-            download_subtitles=download_subtitles,
-            subtitle_languages=subtitle_languages,
+            title=video.title,
+            original_url=youtube_url,
+            status="queued",
+            quality="best",
+            priority=1,
+            created_at=datetime.utcnow(),
         )
 
-        if result.get("success"):
-            logger.info(
-                f"WORKING DOWNLOAD: Successfully started download for video {video_id}"
-            )
-            return {
-                "success": True,
-                "message": "Video download started successfully",
-                "video_id": video_id,
-                "download_id": result.get("id"),
-                "status": "downloading",
-            }
-        else:
-            logger.error(
-                f"WORKING DOWNLOAD: Failed to start download: {result.get('error')}"
-            )
-            return {
-                "success": False,
-                "error": result.get("error", "Unknown error"),
-                "video_id": video_id,
-            }
+        session.add(download)
+        session.flush()  # Get the download ID
+
+        # Update video status
+        video.status = VideoStatus.DOWNLOADING
+        video.updated_at = datetime.utcnow()
+
+        session.commit()
+
+        logger.info(
+            f"Successfully queued download {download.id} for video {video_id}. Celery will process it within 30 seconds."
+        )
+
+        return {
+            "success": True,
+            "message": "Video download queued successfully. Processing will begin shortly.",
+            "video_id": video_id,
+            "download_id": download.id,
+            "status": "queued",
+        }
 
     except Exception as e:
-        logger.error(f"WORKING DOWNLOAD: Error for video {video_id}: {e}")
+        logger.error(f"Error queuing download for video {video_id}: {e}")
+        session.rollback()
         return {"success": False, "error": str(e), "video_id": video_id}
 
 
@@ -567,47 +567,12 @@ async def bulk_download_wanted_videos(
                     else None
                 )
 
-                # If no URL available, try to search for one on YouTube
-                if not video_url and video.artist:
-                    try:
-                        logger.info(
-                            f"Searching YouTube for missing URL: {video.artist.name} - {video.title}"
-                        )
-                        from src.services.youtube_service import youtube_service
-
-                        search_query = f"{video.artist.name} {video.title}"
-                        search_results = youtube_service.search_videos(
-                            search_query, max_results=1
-                        )
-
-                        if search_results.get("success") and search_results.get(
-                            "results"
-                        ):
-                            first_result = search_results["results"][0]
-                            if hasattr(first_result["id"], "get"):
-                                youtube_id = first_result["id"]["videoId"]
-                            else:
-                                youtube_id = first_result["id"]
-
-                            video_url = f"https://youtube.com/watch?v={youtube_id}"
-
-                            # Update the video with the found YouTube information
-                            video.youtube_id = youtube_id
-                            video.youtube_url = video_url
-
-                            logger.info(
-                                f"Found YouTube URL for video {video.id}: {video_url}"
-                            )
-
-                    except Exception as search_error:
-                        logger.warning(
-                            f"YouTube search failed for video {video.id}: {search_error}"
-                        )
-
+                # Skip videos without URLs - don't search YouTube in bulk operations as it's too slow
                 if not video_url:
                     logger.warning(
-                        f"Skipping video {video.id} '{video.title}' - no valid URL available after search attempt"
+                        f"Skipping video {video.id} '{video.title}' - no valid URL available (artist: {video.artist.name if video.artist else 'Unknown'})"
                     )
+                    errors.append(f"Video {video.id} ({video.title}): No URL available")
                     skipped_count += 1
                     continue
 
