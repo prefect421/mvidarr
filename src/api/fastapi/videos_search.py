@@ -451,6 +451,27 @@ async def search_lyrics(
 
         song_title = re.sub(r"\s*[\[\(].*?[\]\)]", "", song_title).strip()
 
+        # Remove common video title suffixes (with or without separators)
+        suffixes_to_remove = [
+            r"\s*-\s*Official\s+Music\s+Video\s*$",
+            r"\s*-\s*Official\s+Video\s*$",
+            r"\s*-\s*Music\s+Video\s*$",
+            r"\s*-\s*Lyric\s+Video\s*$",
+            r"\s*-\s*Lyrics?\s*$",
+            r"\s*-\s*Official\s+Audio\s*$",
+            r"\s*-\s*Audio\s*$",
+            r"\s*-\s*Live\s*$",
+            r"\s*-\s*HD\s*$",
+            r"\s*-\s*4K\s*$",
+            r"\s*\(Official.*?\)\s*$",
+            r"\s*\(Lyric.*?\)\s*$",
+            r"\s*\(Audio.*?\)\s*$",
+            r"\s*\(Music.*?\)\s*$",
+        ]
+
+        for pattern in suffixes_to_remove:
+            song_title = re.sub(pattern, "", song_title, flags=re.IGNORECASE).strip()
+
         logger.info(
             f"🎵 Extracted artist: '{artist_name}', raw title: '{raw_title}', cleaned title: '{song_title}'"
         )
@@ -475,8 +496,14 @@ async def search_lyrics(
                 title_encoded = urllib.parse.quote(title_clean)
                 url = f"https://api.lyrics.ovh/v1/{artist_encoded}/{title_encoded}"
 
+                # Add headers to avoid bot detection
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "application/json",
+                }
+
                 logger.info(f"Making lyrics request to: {url}")
-                response = requests.get(url, timeout=10)
+                response = requests.get(url, headers=headers, timeout=20)
                 logger.info(f"Lyrics API response status: {response.status_code}")
 
                 if response.status_code == 200:
@@ -527,7 +554,8 @@ async def search_lyrics(
 
         if not lyrics_found:
             raise HTTPException(
-                status_code=404, detail="No lyrics found from any source"
+                status_code=404,
+                detail=f"No lyrics found for '{artist_name} - {song_title}'. The lyrics database may not have this song, or the API may be temporarily unavailable.",
             )
 
         # Save lyrics to database (if lyrics field exists)
