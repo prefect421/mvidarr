@@ -404,8 +404,8 @@ class YouTubeDownloadEngine:
             return []
 
     def _get_tv_client_args(self) -> List[str]:
-        """TV client strategy - bypasses most signature extraction"""
-        return [
+        """TV client strategy - with cookies for age-restricted content"""
+        args = [
             "--extractor-args",
             "youtube:player_client=tv",
             "--socket-timeout",
@@ -415,6 +415,11 @@ class YouTubeDownloadEngine:
             "--fragment-retries",
             "3",
         ]
+
+        # Add cookies for age-restricted videos - TV client still needs them!
+        args.extend(self._get_cookie_args(DownloadStrategy.TV_CLIENT))
+
+        return args
 
     def _get_android_client_args(self) -> List[str]:
         """Android client strategy"""
@@ -430,7 +435,7 @@ class YouTubeDownloadEngine:
         ]
 
     def _get_web_cookies_args(self) -> List[str]:
-        """Web client with browser cookies"""
+        """Web client with cookie file or firefox browser cookies"""
         args = [
             "--extractor-args",
             "youtube:player_client=web",
@@ -440,19 +445,14 @@ class YouTubeDownloadEngine:
             "3",
         ]
 
-        # Add cookies if available
-        cookie_path = "data/cookies/youtube_cookies.txt"
-        if os.path.exists(cookie_path):
-            args.extend(["--cookies", cookie_path])
-        else:
-            # Try to extract from browser
-            args.extend(["--cookies-from-browser", "firefox,chrome,chromium,edge"])
+        # Add cookies using helper method - tries file first, then firefox
+        args.extend(self._get_cookie_args(DownloadStrategy.WEB_CLIENT_COOKIES))
 
         return args
 
     def _get_web_fallback_args(self) -> List[str]:
-        """Last resort web client strategy"""
-        return [
+        """Last resort web client strategy with edge/firefox cookies"""
+        args = [
             "--extractor-args",
             "youtube:player_client=web,tv,android",
             "--socket-timeout",
@@ -465,6 +465,45 @@ class YouTubeDownloadEngine:
             "2",
             "--no-check-certificate",
         ]
+
+        # Add cookies for age-restricted videos - tries edge/firefox
+        args.extend(self._get_cookie_args(DownloadStrategy.WEB_CLIENT_FALLBACK))
+
+        return args
+
+    def _get_cookie_args(
+        self, strategy: Optional[DownloadStrategy] = None
+    ) -> List[str]:
+        """
+        Get cookie arguments for yt-dlp
+        Each strategy tries different cookie sources for maximum compatibility
+
+        2025 Best Practice: --cookies-from-browser is more reliable than cookie files
+        """
+        cookie_path = "data/cookies/youtube_cookies.txt"
+
+        # Each strategy tries a different cookie method
+        if strategy == DownloadStrategy.TV_CLIENT:
+            # Strategy 1: Try cookies-from-browser chrome (most common)
+            return ["--cookies-from-browser", "chrome"]
+
+        elif strategy == DownloadStrategy.WEB_CLIENT_COOKIES:
+            # Strategy 2: Use cookie file if available, otherwise try firefox
+            if os.path.exists(cookie_path):
+                logger.debug(f"Using cookie file: {cookie_path}")
+                return ["--cookies", cookie_path]
+            else:
+                logger.debug("Cookie file not found, trying firefox cookies")
+                return ["--cookies-from-browser", "firefox"]
+
+        elif strategy == DownloadStrategy.WEB_CLIENT_FALLBACK:
+            # Strategy 3: Try edge browser as last resort, then firefox
+            logger.debug("Trying edge browser cookies as fallback")
+            return ["--cookies-from-browser", "edge,firefox"]
+
+        else:
+            # Default: try chrome
+            return ["--cookies-from-browser", "chrome"]
 
     def _get_quality_format(self, quality: str) -> str:
         """Get optimized format string - TV client compatible"""
