@@ -579,3 +579,43 @@ async def search_lyrics(
     except Exception as e:
         logger.error(f"Error searching lyrics for video {video_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{video_id}/lyrics")
+async def update_lyrics_manually(
+    video_id: int = FastAPIPath(..., ge=1),
+    lyrics: str = Query(..., min_length=1),
+    session: Session = Depends(get_db_session),
+):
+    """Manually update lyrics for a video
+
+    Use this endpoint to manually add or update lyrics when the automatic search fails.
+    The lyrics will be saved to the database.
+    """
+    try:
+        video = session.query(Video).filter(Video.id == video_id).first()
+
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        # Save lyrics to database
+        video.lyrics = lyrics.strip()
+        session.commit()
+
+        logger.info(
+            f"Manually updated lyrics for video {video_id} ({len(lyrics)} characters)"
+        )
+
+        return {
+            "success": True,
+            "message": "Lyrics updated successfully",
+            "video_id": video_id,
+            "lyrics_length": len(lyrics),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating lyrics for video {video_id}: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
