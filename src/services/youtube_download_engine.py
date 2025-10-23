@@ -476,34 +476,23 @@ class YouTubeDownloadEngine:
     ) -> List[str]:
         """
         Get cookie arguments for yt-dlp
-        Each strategy tries different cookie sources for maximum compatibility
+        Uses cookie file exclusively for server environment
 
-        2025 Best Practice: --cookies-from-browser is more reliable than cookie files
+        Server environment: browsers not available, must use cookie file
         """
         cookie_path = "data/cookies/youtube_cookies.txt"
 
-        # Each strategy tries a different cookie method
-        if strategy == DownloadStrategy.TV_CLIENT:
-            # Strategy 1: Try cookies-from-browser chrome (most common)
-            return ["--cookies-from-browser", "chrome"]
-
-        elif strategy == DownloadStrategy.WEB_CLIENT_COOKIES:
-            # Strategy 2: Use cookie file if available, otherwise try firefox
-            if os.path.exists(cookie_path):
-                logger.debug(f"Using cookie file: {cookie_path}")
-                return ["--cookies", cookie_path]
-            else:
-                logger.debug("Cookie file not found, trying firefox cookies")
-                return ["--cookies-from-browser", "firefox"]
-
-        elif strategy == DownloadStrategy.WEB_CLIENT_FALLBACK:
-            # Strategy 3: Try edge browser as last resort, then firefox
-            logger.debug("Trying edge browser cookies as fallback")
-            return ["--cookies-from-browser", "edge,firefox"]
-
+        # All strategies use the cookie file since this is a server environment
+        # Browsers with GUI aren't available for --cookies-from-browser
+        if os.path.exists(cookie_path):
+            logger.debug(f"Using cookie file: {cookie_path}")
+            return ["--cookies", cookie_path]
         else:
-            # Default: try chrome
-            return ["--cookies-from-browser", "chrome"]
+            logger.warning(
+                f"Cookie file not found at {cookie_path}. Age-restricted videos will fail. "
+                "Please export cookies from your browser using a cookie extension."
+            )
+            return []
 
     def _get_quality_format(self, quality: str) -> str:
         """Get optimized format string - TV client compatible"""
