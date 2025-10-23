@@ -436,13 +436,20 @@ async def search_lyrics(
         # Clean the song title by removing artist name if it's at the beginning
         song_title = raw_title
         if artist_name and raw_title.lower().startswith(artist_name.lower()):
-            # Remove artist name and common separators
-            song_title = raw_title[len(artist_name) :].strip()
-            # Remove common separators like " - ", " | ", etc.
-            for separator in [" - ", " | ", " : ", ": ", " – "]:
+            # Remove artist name
+            song_title = raw_title[len(artist_name) :]
+            # Remove common separators like " - ", " | ", etc. (DON'T strip first!)
+            for separator in [" - ", " | ", " : ", ": ", " – ", "- ", "| ", " :"]:
                 if song_title.startswith(separator):
-                    song_title = song_title[len(separator) :].strip()
+                    song_title = song_title[len(separator) :]
                     break
+            # Now strip any remaining whitespace
+            song_title = song_title.strip()
+
+        # Remove bracketed content like [Official Music Video], (Official Video), etc.
+        import re
+
+        song_title = re.sub(r"\s*[\[\(].*?[\]\)]", "", song_title).strip()
 
         logger.info(
             f"🎵 Extracted artist: '{artist_name}', raw title: '{raw_title}', cleaned title: '{song_title}'"
