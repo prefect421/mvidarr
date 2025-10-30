@@ -187,3 +187,62 @@ scripts/*_agent_config.json
 scripts/setup_*_agent.sh
 scripts/add_pma_shortcut.sh
 README_*_AGENT.md
+
+# =============================================================================
+# Testing Files and Artifacts (Added 2025-10-30)
+# =============================================================================
+
+# Playwright test results and artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+tests/playwright/.auth/
+*.spec.ts.snap
+
+# Test documentation and reports (keep only essential test plans in docs/)
+*TEST*.md
+*TESTING*.md
+E2E_*.md
+PLAYWRIGHT_*.md
+USER_TESTING_*.md
+WEEK_*_TESTING_*.md
+
+# Test-specific markdown files (root level only)
+/*.usertesting.md
+/*TEST*.md
+/*TESTING*.md
+
+# Test Docker files
+Dockerfile.test*
+docker-compose.test*.yml
+
+# Test thumbnails and media
+data/thumbnails/playlists/*test*
+data/thumbnails/playlists/playlist_test_*
+
+# Test databases and data
+*.db-test
+*test*.db
+test_data/
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage*.xml
+coverage*.json
+.pytest_cache/
+
+# Test temporary files
+/tmp/test_*
+/tmp/bandit_*.json
+/tmp/*_test_*
+
+
+# Simple test files in root
+simple_*_test.py
+test_*.html
+
+# Archive documentation that was moved
+docs/archive/*TESTING*.md
+docs/archive/*TEST*.md
+
