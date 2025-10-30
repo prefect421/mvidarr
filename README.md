@@ -45,6 +45,13 @@
 - **📊 Zero High-Severity Issues** - Comprehensive security audit complete
 - **📚 Complete Documentation** - API, scripts, and deployment guides updated
 
+### Docker Architecture Simplification ✅
+- **🐳 3-Container Deployment** - Reduced from 6 to 3 containers for home users
+- **⚙️ Supervisord Integration** - FastAPI + Celery worker in single container
+- **📦 Lower Resource Usage** - Optimized for consumer-grade deployments
+- **🎯 Simplified Management** - Easier troubleshooting and maintenance
+- **✨ Full Functionality** - All background jobs and features preserved
+
 ## 🎯 Previous Releases
 
 ### v0.9.8 - Subtitle System & User Testing Fixes
@@ -65,6 +72,12 @@
 
 ### Docker Deployment (Recommended)
 
+**Simplified 3-Container Architecture:**
+MVidarr uses a streamlined consumer-grade deployment with only 3 containers:
+- **mvidarr** - FastAPI application + Celery worker (managed by supervisord)
+- **mariadb** - Database
+- **redis** - Cache and job queue
+
 **Quick Start:**
 ```bash
 git clone https://github.com/prefect421/mvidarr.git
@@ -81,8 +94,13 @@ docker pull ghcr.io/prefect421/mvidarr:v0.9.9
 ```
 
 **Access the application:**
-- Open your browser to `http://localhost:5001`
+- Open your browser to `http://localhost:5000`
 - Default login: `admin` / `admin` (change immediately)
+
+**What's Running:**
+- All background jobs (Celery) run automatically inside the main container
+- Supervisord manages both FastAPI and Celery processes
+- Simple, efficient, and optimized for home users
 
 ### Manual Installation
 

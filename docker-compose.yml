@@ -60,10 +60,8 @@ services:
       - ${LOGS_PATH:-./logs}:/app/data/logs
       - ${CACHE_PATH:-./cache}:/app/data/cache
     depends_on:
-      mariadb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - mariadb
+      - redis
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
@@ -91,7 +89,7 @@ services:
       - "127.0.0.1:${MARIADB_PORT:-3306}:3306"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 5

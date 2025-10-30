@@ -1,7 +1,8 @@
 # Documentation Update Summary - v0.9.9
 
-**Date**: 2025-10-30  
+**Date**: 2025-10-30
 **Version**: 0.9.9 (Production-Ready Release)
+**Update**: Complete refresh including Docker simplification
 
 ## Overview
 Comprehensive update of all documentation, installation instructions, Docker configurations, and service files to reflect the completion of milestone 0.9.9 and preparation for 1.0.0 release.
@@ -109,13 +110,62 @@ Comprehensive update of all documentation, installation instructions, Docker con
 3. **Cross-Reference Check**: Version numbers match across all files
 4. **Content Review**: Removed outdated Phase 2 references
 
+## Docker Architecture Simplification (Added 2025-10-30)
+
+### Additional Files Updated
+
+#### 7. docker-compose.yml (RE-UPDATED)
+**Updates:**
+- Removed health check conditions on depends_on (simplified to basic dependencies)
+- Updated MariaDB healthcheck to use mysqladmin instead of healthcheck.sh
+- Maintained 3-container structure (mvidarr, mariadb, redis)
+- All Celery processes now managed by supervisord inside mvidarr container
+
+#### 8. docker-compose.local.yml (NEW)
+**Purpose:** Local testing configuration
+- Port 5001 for local testing (vs 5000 for production)
+- Uses mvidarr:local-test image tag
+- Separate volumes in ./volumes/ directory
+- Same 3-container simplified architecture
+
+#### 9. README.md (RE-UPDATED)
+**Updates:**
+- Added "Docker Architecture Simplification" section to v0.9.9 highlights
+- Updated Quick Start to explain 3-container architecture
+- Changed default port from 5001 to 5000
+- Added "What's Running" explanation of supervisord management
+
+#### 10. version.json (RE-UPDATED)
+**Updates:**
+- Build date: Updated to 2025-10-30T15:30:00
+- Git commit: Updated to 4501c44 (Docker simplification commit)
+- Added 4 new Docker-related features to features list:
+  - "🐳 Simplified 3-Container Docker Architecture"
+  - "⚙️ Supervisord Process Management (FastAPI + Celery)"
+  - "📦 Optimized for Consumer-Grade Home Deployments"
+  - "🎯 Lower Resource Usage - Reduced Container Overhead"
+
+#### 11. Dockerfile (UPDATED in previous commit)
+**Already committed with:**
+- Supervisord installation and configuration
+- Permission fixes for mvidarr user
+- Both requirements-prod.txt and requirements-fastapi.txt installation
+- Build dependencies (pkg-config, libmysqlclient-dev)
+
+#### 12. supervisord.conf (NEW in previous commit)
+**Already committed:** Process manager configuration for FastAPI + Celery
+
+#### 13. DOCKER_SIMPLIFICATION_SUMMARY.md (NEW in previous commit)
+**Already committed:** Complete documentation of Docker simplification changes
+
 ## Next Steps
 
 1. ✅ Commit documentation updates
-2. ⏭️ Push to dev branch
-3. ⏭️ Tag release v0.9.9 when ready
-4. ⏭️ Update GitHub Pages documentation
-5. ⏭️ Prepare 1.0.0 release notes
+2. ✅ Update Docker architecture to 3 containers
+3. ⏭️ Push to dev branch
+4. ⏭️ Tag release v0.9.9 when ready
+5. ⏭️ Update GitHub Pages documentation
+6. ⏭️ Prepare 1.0.0 release notes
 
 ## Notes
 
