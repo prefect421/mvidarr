@@ -1,8 +1,12 @@
-# Lyrics Integration Alternatives
+# Lyrics Integration - Removed
 
 ## Current Status
 
-The lyrics.ovh API is currently unreachable and appears to be deprecated or experiencing service issues. This document outlines alternative solutions for lyrics integration.
+**Lyrics functionality has been removed from MVidarr** as of October 23, 2025.
+
+The lyrics.ovh API was unreachable and deprecated. After evaluating alternatives including ChartLyrics, Genius API, and Spotify-based solutions, it was determined that lyrics integration added unnecessary complexity without sufficient value for a music video management application.
+
+This document is kept for historical reference only.
 
 ## Short-Term Solution: Manual Entry
 

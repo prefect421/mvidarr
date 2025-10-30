@@ -127,7 +127,7 @@ class VideoFingerprintingService:
 
             # Generate video ID if not provided
             if not video_id:
-                video_id = hashlib.md5(video_path.encode()).hexdigest()[:16]
+                video_id = hashlib.md5(video_path.encode(), usedforsecurity=False).hexdigest()[:16]
 
             # Check if fingerprint already exists in cache
             cache_manager = await get_media_cache_manager()
@@ -210,9 +210,9 @@ class VideoFingerprintingService:
             return None
 
     async def _generate_file_hash(self, video_path: str) -> str:
-        """Generate MD5 hash of video file"""
+        """Generate MD5 hash of video file (for fingerprinting, not security)"""
         try:
-            hash_md5 = hashlib.md5()
+            hash_md5 = hashlib.md5(usedforsecurity=False)
 
             # Read file in chunks to handle large videos
             with open(video_path, "rb") as f:
@@ -312,7 +312,7 @@ class VideoFingerprintingService:
             }
 
             metadata_str = json.dumps(normalized, sort_keys=True)
-            return hashlib.md5(metadata_str.encode()).hexdigest()
+            return hashlib.md5(metadata_str.encode(), usedforsecurity=False).hexdigest()
 
         except Exception as e:
             logger.error(f"Failed to generate metadata hash: {e}")
@@ -358,7 +358,7 @@ class VideoFingerprintingService:
                 # Generate hash of audio data
                 with open(temp_audio_path, "rb") as f:
                     audio_data = f.read()
-                    return hashlib.md5(audio_data).hexdigest()
+                    return hashlib.md5(audio_data, usedforsecurity=False).hexdigest()
 
             finally:
                 # Clean up temp file
@@ -405,7 +405,7 @@ class VideoFingerprintingService:
                 # Generate hash of frame data
                 with open(temp_frame_path, "rb") as f:
                     frame_data = f.read()
-                    return hashlib.md5(frame_data).hexdigest()
+                    return hashlib.md5(frame_data, usedforsecurity=False).hexdigest()
 
             finally:
                 # Clean up temp file

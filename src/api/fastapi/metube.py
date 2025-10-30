@@ -5,6 +5,7 @@ Migrated from Flask src/api/metube.py - yt-dlp CLI API endpoints for video downl
 
 import logging
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -105,6 +106,10 @@ class CookieStatusResponse(BaseModel):
     modified_time: Optional[float] = None
     path: Optional[str] = None
     message: Optional[str] = None
+    # Freshness tracking fields
+    status: Optional[str] = None  # "fresh", "expiring_soon", "expired", "missing"
+    age_days: Optional[float] = None
+    action: Optional[str] = None  # "none", "warning", "refresh", "upload"
 
 
 # ========================================================================================
@@ -695,18 +700,41 @@ async def cookies_status(
             file_size = stat.st_size
             modified_time = stat.st_mtime
 
+            # Calculate cookie age and freshness
+            age_days = (time.time() - modified_time) / 86400  # seconds to days
+
+            # Determine status and action based on age
+            if age_days > 14:
+                status = "expired"
+                action = "refresh"
+                message = f"Cookies expired {int(age_days)} days ago. Please upload fresh cookies."
+            elif age_days > 10:
+                status = "expiring_soon"
+                action = "warning"
+                message = f"Cookies are {int(age_days)} days old and will expire soon. Consider refreshing."
+            else:
+                status = "fresh"
+                action = "none"
+                message = f"Cookies are fresh ({int(age_days)} days old)."
+
             return CookieStatusResponse(
                 success=True,
                 cookies_available=True,
                 file_size=file_size,
                 modified_time=modified_time,
                 path=cookie_path,
+                status=status,
+                age_days=round(age_days, 1),
+                action=action,
+                message=message,
             )
         else:
             return CookieStatusResponse(
                 success=True,
                 cookies_available=False,
-                message="No cookies file uploaded",
+                status="missing",
+                action="upload",
+                message="No cookies file uploaded. Upload cookies to download age-restricted videos.",
             )
 
     except Exception as e:

@@ -156,11 +156,11 @@ class RequestContext:
 
     # Tracing
     trace_id: str = field(
-        default_factory=lambda: hashlib.md5(str(time.time()).encode()).hexdigest()[:16]
+        default_factory=lambda: hashlib.md5(str(time.time()).encode(), usedforsecurity=False).hexdigest()[:16]
     )
     parent_span_id: Optional[str] = None
     span_id: str = field(
-        default_factory=lambda: hashlib.md5(str(random.random()).encode()).hexdigest()[
+        default_factory=lambda: hashlib.md5(str(random.random()).encode(), usedforsecurity=False).hexdigest()[
             :8
         ]
     )
@@ -495,12 +495,12 @@ class APIGateway:
 
         # Create request context
         context = RequestContext(
-            request_id=hashlib.md5(f"{time.time()}:{client_ip}".encode()).hexdigest()[
+            request_id=hashlib.md5(f"{time.time()}:{client_ip}".encode(), usedforsecurity=False).hexdigest()[
                 :12
             ],
             correlation_id=headers.get(
                 "X-Correlation-ID",
-                hashlib.md5(str(time.time()).encode()).hexdigest()[:16],
+                hashlib.md5(str(time.time()).encode(), usedforsecurity=False).hexdigest()[:16],
             ),
             client_ip=client_ip,
             user_agent=headers.get("User-Agent", "unknown"),

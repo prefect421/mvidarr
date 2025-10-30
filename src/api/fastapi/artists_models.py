@@ -99,6 +99,27 @@ class BulkDeleteRequest(BulkArtistRequest):
 class BulkEditRequest(BulkArtistRequest):
     """Request model for bulk artist editing"""
 
+    updates: Dict[str, Any] = Field(..., description="Fields to update")
+
+
+class BulkMonitoringRequest(BulkArtistRequest):
+    """Request model for bulk monitoring updates"""
+
+    monitored: Optional[bool] = None
+    monitor_new_items: Optional[str] = None
+
+
+class RenameCommandRequest(BulkArtistRequest):
+    """Request model for rename artist command"""
+
+    pass
+
+
+class RetagCommandRequest(BulkArtistRequest):
+    """Request model for retag artist command"""
+
+    pass
+
 
 class MergeArtistsRequest(BaseModel):
     """Request model for merging multiple artists into one"""

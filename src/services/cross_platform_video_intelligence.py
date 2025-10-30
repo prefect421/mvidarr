@@ -162,7 +162,7 @@ class CrossPlatformVideoIntelligence:
 
             # Check cache first
             cache_manager = await get_media_cache_manager()
-            cache_key = f"cross_platform_{hashlib.md5(f'{artist}_{title}'.encode()).hexdigest()}"
+            cache_key = f"cross_platform_{hashlib.md5(f'{artist}_{title}'.encode(), usedforsecurity=False).hexdigest()}"
 
             cached_result = await cache_manager.get(
                 CacheType.BULK_OPERATION_RESULT, cache_key

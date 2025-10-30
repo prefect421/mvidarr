@@ -249,7 +249,7 @@ class NetworkStreamingService:
                     return {"success": False, "message": "Video not found"}
 
                 # Create streaming session
-                session_id = f"stream_{int(time.time())}_{hashlib.md5(f'{video_id}_{client_id}'.encode()).hexdigest()[:8]}"
+                session_id = f"stream_{int(time.time())}_{hashlib.md5(f'{video_id}_{client_id}'.encode(), usedforsecurity=False).hexdigest()[:8]}"
 
                 # Generate stream URL based on protocol
                 stream_url = await self._generate_stream_url(video, protocol, quality)

@@ -1,8 +1,7 @@
 import { orderBy } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import Artist from 'Artist/Artist';
-import { RETAG_ARTIST } from 'Commands/commandNames';
 import Alert from 'Components/Alert';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
@@ -11,8 +10,8 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { icons, kinds } from 'Helpers/Props';
-import { executeCommand } from 'Store/Actions/commandActions';
 import createAllArtistSelector from 'Store/Selectors/createAllArtistSelector';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
 import translate from 'Utilities/String/translate';
 import styles from './RetagArtistModalContent.css';
 
@@ -25,7 +24,6 @@ function RetagArtistModalContent(props: RetagArtistModalContentProps) {
   const { artistIds, onModalClose } = props;
 
   const allArtists: Artist[] = useSelector(createAllArtistSelector());
-  const dispatch = useDispatch();
 
   const artistNames = useMemo(() => {
     const artists = artistIds.reduce((acc: Artist[], id) => {
@@ -44,15 +42,24 @@ function RetagArtistModalContent(props: RetagArtistModalContentProps) {
   }, [artistIds, allArtists]);
 
   const onRetagPress = useCallback(() => {
-    dispatch(
-      executeCommand({
-        name: RETAG_ARTIST,
-        artistIds,
-      })
-    );
+    // Call FastAPI retag command endpoint
+    const promise = createAjaxRequest({
+      url: '/api/artists/command/retag',
+      method: 'POST',
+      data: JSON.stringify({
+        artist_ids: artistIds,
+      }),
+      dataType: 'json',
+    }).request;
 
-    onModalClose();
-  }, [artistIds, onModalClose, dispatch]);
+    promise.done(() => {
+      onModalClose();
+    });
+
+    promise.fail((xhr) => {
+      console.error('Failed to execute retag command:', xhr);
+    });
+  }, [artistIds, onModalClose]);
 
   return (
     <ModalContent onModalClose={onModalClose}>

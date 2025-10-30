@@ -51,6 +51,9 @@ class VideoResponse(BaseModel):
     quality: Optional[str] = None
     video_metadata: Optional[Dict[str, Any]] = None
     lyrics: Optional[str] = None
+    year: Optional[int] = None
+    release_date: Optional[datetime] = None
+    album: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     genres: Optional[List[str]] = []
@@ -80,6 +83,11 @@ class VideoUpdateRequest(BaseModel):
     youtube_url: Optional[str] = None
     thumbnail_url: Optional[str] = None  # Allow updating thumbnail URL
     status: Optional[str] = None
+    year: Optional[int] = None
+    release_date: Optional[str] = (
+        None  # Allow updating release date (YYYY-MM-DD format)
+    )
+    album: Optional[str] = None  # Allow updating album name
     genres: Optional[List[str]] = None
 
 

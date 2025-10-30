@@ -49,11 +49,11 @@ class ThumbnailCache:
         try:
             stat = source_path.stat()
             key_data = f"{source_path}:{stat.st_mtime}:{stat.st_size}:{config}"
-            return hashlib.md5(key_data.encode()).hexdigest()
+            return hashlib.md5(key_data.encode(), usedforsecurity=False).hexdigest()
         except OSError:
             # File doesn't exist, use path + config only
             key_data = f"{source_path}:{config}"
-            return hashlib.md5(key_data.encode()).hexdigest()
+            return hashlib.md5(key_data.encode(), usedforsecurity=False).hexdigest()
 
     def get_cached_thumbnail(
         self, source_path: Path, config: ThumbnailConfig

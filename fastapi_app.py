@@ -519,6 +519,7 @@ app.include_router(fastapi_auth_legacy_router)
 app.include_router(frontend_router)
 
 from src.api.fastapi.advanced_search import router as advanced_search_router
+from src.api.fastapi.discogs import router as discogs_router
 from src.api.fastapi.lastfm import router as lastfm_router
 
 # Metadata enrichment routers
@@ -532,6 +533,7 @@ from src.api.fastapi.users import router as users_router
 app.include_router(metadata_enrichment_router)
 app.include_router(spotify_router)
 app.include_router(musicbrainz_router)
+app.include_router(discogs_router)
 app.include_router(themes_router)
 app.include_router(users_router)
 app.include_router(lastfm_router)

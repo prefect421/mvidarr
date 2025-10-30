@@ -902,9 +902,6 @@ class MvTVPlayer {
                     data = { videos: validVideos };
                     console.log(`Converted ${validVideos.length} playlist videos from ${playlistData.playlist.entries.length} entries:`, validVideos); // Debug logging
 
-                    // DEBUG: Force alert to see what's happening
-                    alert(`Loaded ${validVideos.length} videos from playlist. Titles: ${validVideos.map(v => v.title).join(', ')}`);
-
                     if (validVideos.length === 0) {
                         console.log('No valid videos found in playlist entries. Raw entries:', playlistData.playlist.entries);
                     }

@@ -431,7 +431,7 @@ def enrich_artist_metadata_task(
                         self.update_progress(
                             task_id,
                             progress,
-                            f"Enriching video: {video.title[:50]}...",
+                            f"Enriching video: {video_title[:50]}...",
                         )
 
                         # Simulate video enrichment (in real implementation, call video enrichment service)
@@ -439,7 +439,7 @@ def enrich_artist_metadata_task(
                         enriched_count += 1
 
                     except Exception as e:
-                        logger.warning(f"Failed to enrich video {video.id}: {e}")
+                        logger.warning(f"Failed to enrich video {video_id}: {e}")
 
                 session.commit()
 
@@ -478,7 +478,7 @@ def enrich_video_metadata_task(
             if not video:
                 raise ValueError(f"Video with ID {video_id} not found")
 
-            video_title = video.title or f"Video {video_id}"
+            video_title = video_title or f"Video {video_id}"
             artist_name = video.artist.name if video.artist else "Unknown Artist"
 
         self.update_progress(task_id, 25, f"Enriching metadata for: {video_title}")
@@ -747,7 +747,7 @@ def bulk_thumbnail_url_download(
                         task_id,
                         {
                             "percent": progress,
-                            "message": f"Downloading thumbnail for {video.title[:50]}...",
+                            "message": f"Downloading thumbnail for {video_title[:50]}...",
                             "status": "PROGRESS",
                             "current_step": f"Processing video {i+1} of {len(url_video_ids)}",
                         },
@@ -865,3 +865,220 @@ def submit_bulk_thumbnail_url_download_task(
 
     logger.info(f"Submitted bulk thumbnail URL download task: {task.id}")
     return task.id
+
+
+@celery_app.task(bind=True, base=CallbackTask, name="metadata.bulk_enrich_videos")
+def bulk_enrich_videos_metadata_task(
+    self,
+    video_ids: list[int] = None,
+    force_refresh: bool = True,
+    days_since_enriched: int = 7,
+    limit: int = None,
+) -> Dict[str, Any]:
+    """
+    Celery task for bulk video metadata enrichment
+
+    Args:
+        video_ids: List of specific video IDs to enrich (if None, enrich all matching videos)
+        force_refresh: Whether to force refresh existing metadata
+        days_since_enriched: Only enrich videos not enriched in the last N days (0 = all videos)
+        limit: Maximum number of videos to process
+
+    Returns:
+        Dictionary with bulk enrichment results
+    """
+    task_id = self.request.id
+    logger.info(
+        f"Starting bulk video metadata enrichment task {task_id}: "
+        f"video_ids={video_ids}, force_refresh={force_refresh}, "
+        f"days_since_enriched={days_since_enriched}, limit={limit}"
+    )
+
+    try:
+        # Initialize database
+        init_db_standalone()
+
+        # Update progress
+        self.update_progress(task_id, 5, "Initializing enrichment service...")
+
+        # Query videos to process and extract IDs while session is active
+        with get_db() as session:
+            query = session.query(Video)
+
+            # Filter by specific video IDs if provided
+            if video_ids:
+                query = query.filter(Video.id.in_(video_ids))
+                logger.info(f"Processing {len(video_ids)} specific video IDs")
+            else:
+                # Filter by last_enriched date if days_since_enriched > 0
+                if days_since_enriched > 0:
+                    from datetime import timedelta
+
+                    cutoff_date = datetime.utcnow() - timedelta(
+                        days=days_since_enriched
+                    )
+                    from sqlalchemy import or_
+
+                    query = query.filter(
+                        or_(
+                            Video.last_enriched == None,
+                            Video.last_enriched < cutoff_date,
+                        )
+                    )
+                    logger.info(f"Filtering videos not enriched since {cutoff_date}")
+
+            if limit:
+                query = query.limit(limit)
+
+            videos = query.all()
+            # Extract video IDs and titles while session is active to avoid detached instance errors
+            video_data = [{"id": v.id, "title": v.title} for v in videos]
+            total_videos = len(video_data)
+
+        if total_videos == 0:
+            self.update_progress(task_id, 100, "No videos found to process")
+            return {
+                "success": True,
+                "processed": 0,
+                "updated": 0,
+                "errors": 0,
+                "message": "No videos found to process",
+            }
+
+        logger.info(f"Found {total_videos} videos to enrich")
+        self.update_progress(task_id, 10, f"Processing {total_videos} videos...")
+
+        # Initialize enrichment service
+        enrichment_service = MetadataEnrichmentService()
+
+        # Process videos
+        processed = 0
+        updated = 0
+        errors = 0
+        error_details = []
+
+        # Create event loop for async operations
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            for video_info in video_data:
+                try:
+                    video_id = video_info["id"]
+                    video_title = video_info["title"]
+
+                    # Calculate progress (10-95% range for video processing)
+                    progress = int(10 + (processed / total_videos) * 85)
+                    self.update_progress(
+                        task_id,
+                        progress,
+                        f"Enriching {video_title[:50]}... ({processed + 1}/{total_videos})",
+                    )
+
+                    logger.info(f"Enriching video {video_id}: {video_title}")
+
+                    # Call the enrichment service
+                    enrichment_result = loop.run_until_complete(
+                        enrichment_service.enrich_video_metadata(
+                            video_id, force_refresh=force_refresh
+                        )
+                    )
+
+                    if enrichment_result.success:
+                        if enrichment_result.enriched_fields:
+                            updated += 1
+                            logger.info(
+                                f"Video {video_id} enriched successfully. "
+                                f"Fields updated: {enrichment_result.enriched_fields}"
+                            )
+                        else:
+                            logger.info(
+                                f"Video {video_id} processed but no fields updated"
+                            )
+                    else:
+                        errors += 1
+                        error_msg = (
+                            "; ".join(enrichment_result.errors)
+                            if enrichment_result.errors
+                            else "Unknown error"
+                        )
+                        error_details.append(
+                            {
+                                "video_id": video_id,
+                                "title": video_title,
+                                "error": error_msg,
+                            }
+                        )
+                        logger.warning(
+                            f"Video {video_id} enrichment completed with errors: {error_msg}"
+                        )
+
+                    processed += 1
+
+                    # Small delay to prevent overwhelming external APIs
+                    import time
+
+                    time.sleep(0.5)
+
+                except Exception as e:
+                    errors += 1
+                    error_msg = str(e)
+                    error_details.append(
+                        {"video_id": video_id, "title": video_title, "error": error_msg}
+                    )
+                    logger.error(
+                        f"Error enriching video {video_id}: {e}", exc_info=True
+                    )
+
+        finally:
+            loop.close()
+
+        self.update_progress(task_id, 95, "Finalizing results...")
+
+        logger.info(
+            f"Bulk video metadata enrichment completed: "
+            f"{processed} processed, {updated} updated, {errors} errors"
+        )
+
+        # Brief pause to ensure final WebSocket transmission
+        import time
+
+        time.sleep(0.5)
+
+        self.update_progress(
+            task_id,
+            100,
+            f"Completed: {processed} processed, {updated} updated, {errors} errors",
+        )
+
+        result = {
+            "success": True,
+            "processed": processed,
+            "updated": updated,
+            "errors": errors,
+            "total_videos": total_videos,
+            "error_details": error_details if error_details else [],
+            "message": f"Processed {processed} videos ({updated} updated, {errors} errors)",
+        }
+
+        logger.info(
+            f"Successfully completed bulk video metadata enrichment task {task_id}"
+        )
+        return result
+
+    except Exception as e:
+        error_msg = f"Bulk video metadata enrichment failed: {str(e)}"
+        logger.error(f"{error_msg}\n{traceback.format_exc()}")
+
+        # Update task state to failed
+        self.update_state(
+            state="FAILURE",
+            meta={
+                "error": error_msg,
+                "traceback": traceback.format_exc(),
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+
+        # Re-raise for Celery to handle
+        raise Exception(error_msg)

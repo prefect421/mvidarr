@@ -27,7 +27,7 @@ class SearchCache:
         # Sort parameters for consistent hashing
         sorted_params = sorted(query_params.items())
         cache_string = str(sorted_params)
-        return hashlib.md5(cache_string.encode()).hexdigest()
+        return hashlib.md5(cache_string.encode(), usedforsecurity=False).hexdigest()
 
     def get(self, query_params: Dict[str, Any]) -> Optional[Any]:
         """Get cached result if available and not expired"""

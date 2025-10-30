@@ -330,7 +330,7 @@ async def create_report_configuration(request: ReportConfigRequest):
         # Generate report ID
         import hashlib
 
-        report_id = f"report_{hashlib.md5(f'{request.title}_{time.time()}'.encode()).hexdigest()[:12]}"
+        report_id = f"report_{hashlib.md5(f'{request.title}_{time.time()}'.encode(), usedforsecurity=False).hexdigest()[:12]}"
 
         # Create configuration
         config = ReportConfiguration(

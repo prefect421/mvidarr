@@ -77,7 +77,13 @@
                     <label for="videoYear">Year:</label>
                     <input type="number" id="videoYear" name="year" min="1900" max="2050">
                 </div>
-                
+
+                <div class="form-group">
+                    <label for="videoReleaseDate">Release Date:</label>
+                    <input type="date" id="videoReleaseDate" name="release_date">
+                    <small class="help-text">Exact release date if known</small>
+                </div>
+
                 <div class="form-group">
                     <label for="videoStatus">Status:</label>
                     <select id="videoStatus" name="status" required>
@@ -133,12 +139,7 @@
                     <label for="videoDescription">Description:</label>
                     <textarea id="videoDescription" name="description" rows="4" placeholder="Enter video description"></textarea>
                 </div>
-                
-                <div class="form-group">
-                    <label for="videoLyrics">Lyrics:</label>
-                    <textarea id="videoLyrics" name="lyrics" rows="8" placeholder="Enter song lyrics"></textarea>
-                </div>
-                
+
                 <div class="form-group">
                     <label>
                         <input type="checkbox" id="moveFile" name="move_file" checked>
@@ -1164,26 +1165,9 @@ function renderVideoDetails(video) {
                 </div>
             ` : ''}
         </div>
-        
-        <!-- Lyrics Section -->
-        <div class="lyrics-section" id="lyricsSection">
-            <div class="lyrics-header">
-                <h4>🎵 Lyrics</h4>
-                <div class="lyrics-actions">
-                    <button onclick="searchLyrics()" class="btn btn-small btn-secondary">🔍 Search Lyrics</button>
-                    <button onclick="editLyrics()" class="btn btn-small btn-info">✏️ Edit</button>
-                </div>
-            </div>
-            <div class="lyrics-content" id="lyricsContent">
-                <div class="lyrics-placeholder">No lyrics available. Click "Search Lyrics" to find them automatically.</div>
-            </div>
-        </div>
     `;
     document.getElementById('videoInfoSection').innerHTML = infoHtml;
-    
-    // Load and display lyrics if available
-    loadVideoLyrics();
-    
+
     // Render actions
     const actionsHtml = `
         <div class="video-action-buttons">
@@ -1339,12 +1323,21 @@ function editVideo() {
     console.log('  album:', currentVideo.album);
     console.log('  search_keywords:', currentVideo.search_keywords);
     console.log('  description:', currentVideo.description);
-    console.log('  lyrics:', currentVideo.lyrics);
-    
+
     // Populate the form with current video data
     document.getElementById('videoTitle').value = currentVideo.title || '';
     document.getElementById('videoArtist').value = currentVideo.artist_name || '';
     document.getElementById('videoYear').value = currentVideo.year || '';
+
+    // Handle release_date - convert to YYYY-MM-DD format for date input
+    const releaseDateField = document.getElementById('videoReleaseDate');
+    if (releaseDateField && currentVideo.release_date) {
+        const date = new Date(currentVideo.release_date);
+        if (!isNaN(date.getTime())) {
+            releaseDateField.value = date.toISOString().split('T')[0];
+        }
+    }
+
     document.getElementById('videoStatus').value = currentVideo.status || 'DOWNLOADED';
     document.getElementById('videoUrl').value = currentVideo.video_url || '';
     document.getElementById('videoThumbnailUrl').value = currentVideo.thumbnail_url || '';
@@ -1372,12 +1365,7 @@ function editVideo() {
     if (descriptionField) {
         descriptionField.value = currentVideo.description || '';
     }
-    
-    const lyricsField = document.getElementById('videoLyrics');
-    if (lyricsField) {
-        lyricsField.value = currentVideo.lyrics || '';
-    }
-    
+
     document.getElementById('moveFile').checked = true;
     
     // Reset the identify artist button and hide suggestions
@@ -1751,6 +1739,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 title: formData.get('title'),
                 artist_name: formData.get('artist_name'),
                 year: formData.get('year') ? parseInt(formData.get('year')) : null,
+                release_date: formData.get('release_date') || null,
                 status: formData.get('status'),
                 video_url: formData.get('video_url'),
                 thumbnail_url: formData.get('thumbnail_url'),
@@ -1761,9 +1750,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 move_file: formData.get('move_file') === 'on'
             };
             
-            // Remove null values
+            // Remove empty strings, but keep explicit null values (to clear fields)
             Object.keys(updateData).forEach(key => {
-                if (updateData[key] === null || updateData[key] === '') {
+                // For year and other numeric fields, keep null to allow clearing
+                // Only delete if it's an empty string
+                if (updateData[key] === '') {
                     delete updateData[key];
                 }
             });
@@ -2024,116 +2015,7 @@ function checkQualityUpgrade() {
     });
 }
 
-// Lyrics Management Functions
-async function loadVideoLyrics() {
-    if (!currentVideo) return;
-    
-    try {
-        // Lyrics are already in the currentVideo object from the main API call
-        if (currentVideo.lyrics && currentVideo.lyrics.trim()) {
-            displayLyrics(currentVideo.lyrics);
-        } else {
-            document.getElementById('lyricsContent').innerHTML = 
-                '<div class="lyrics-placeholder">No lyrics available. Click "Search Lyrics" to find them automatically.</div>';
-        }
-    } catch (error) {
-        console.error('Error loading lyrics:', error);
-        document.getElementById('lyricsContent').innerHTML = 
-            '<div class="lyrics-placeholder">Error loading lyrics.</div>';
-    }
-}
-
-function displayLyrics(lyrics) {
-    const lyricsContent = document.getElementById('lyricsContent');
-    lyricsContent.innerHTML = `<div class="lyrics-text">${lyrics}</div>`;
-}
-
-async function searchLyrics() {
-    if (!currentVideo) return;
-    
-    const searchBtn = event.target;
-    const originalText = searchBtn.textContent;
-    searchBtn.textContent = '🔍 Searching...';
-    searchBtn.disabled = true;
-    
-    try {
-        const response = await fetch(`/api/videos/${currentVideo.id}/lyrics/search`, {
-            method: 'POST'
-        });
-        
-        const result = await response.json();
-        if (response.ok && result.success) {
-            displayLyrics(result.lyrics);
-            // Update the currentVideo object with the new lyrics
-            currentVideo.lyrics = result.lyrics;
-            showSuccess('Lyrics found and saved!');
-        } else {
-            showError('Failed to find lyrics: ' + (result.error || 'Unknown error'));
-        }
-    } catch (error) {
-        console.error('Error searching lyrics:', error);
-        showError('Error searching for lyrics: ' + error.message);
-    } finally {
-        searchBtn.textContent = originalText;
-        searchBtn.disabled = false;
-    }
-}
-
-function editLyrics() {
-    if (!currentVideo) return;
-    
-    const lyricsContent = document.getElementById('lyricsContent');
-    const currentLyrics = lyricsContent.querySelector('.lyrics-text')?.textContent || '';
-    
-    lyricsContent.innerHTML = `
-        <textarea class="lyrics-edit-area" id="lyricsEditArea">${currentLyrics}</textarea>
-        <div class="lyrics-edit-actions">
-            <button onclick="cancelEditLyrics()" class="btn btn-secondary">Cancel</button>
-            <button onclick="saveLyrics()" class="btn btn-primary">Save Lyrics</button>
-        </div>
-    `;
-    
-    document.getElementById('lyricsEditArea').focus();
-}
-
-function cancelEditLyrics() {
-    loadVideoLyrics(); // Reload original lyrics
-}
-
-async function saveLyrics() {
-    if (!currentVideo) return;
-    
-    const lyrics = document.getElementById('lyricsEditArea').value;
-    const saveBtn = event.target;
-    const originalText = saveBtn.textContent;
-    saveBtn.textContent = 'Saving...';
-    saveBtn.disabled = true;
-    
-    try {
-        const response = await fetch(`/api/videos/${currentVideo.id}/lyrics`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ lyrics: lyrics })
-        });
-        
-        const result = await response.json();
-        if (response.ok && result.success) {
-            displayLyrics(lyrics);
-            showSuccess('Lyrics saved successfully!');
-        } else {
-            showError('Failed to save lyrics: ' + (result.error || 'Unknown error'));
-        }
-    } catch (error) {
-        console.error('Error saving lyrics:', error);
-        showError('Error saving lyrics: ' + error.message);
-    } finally {
-        saveBtn.textContent = originalText;
-        saveBtn.disabled = false;
-    }
-}
-
+</script>
 </script>
 
 <style>
@@ -2348,74 +2230,6 @@ async function saveLyrics() {
     white-space: pre-wrap;
     max-height: 120px;
     overflow-y: auto;
-}
-
-/* Lyrics Section Styles */
-.lyrics-section {
-    margin-top: 25px;
-    background: var(--bg-tertiary, rgba(255, 255, 255, 0.05));
-    border-radius: 8px;
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-    overflow: hidden;
-}
-
-.lyrics-header {
-    background: var(--bg-secondary, rgba(255, 255, 255, 0.1));
-    padding: 15px 20px;
-    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.lyrics-header h4 {
-    margin: 0;
-    color: var(--text-primary, #fff);
-}
-
-.lyrics-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.lyrics-content {
-    padding: 20px;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.lyrics-text {
-    white-space: pre-wrap;
-    line-height: 1.6;
-    color: var(--text-primary, #fff);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.lyrics-placeholder {
-    color: var(--text-secondary, #ccc);
-    font-style: italic;
-    text-align: center;
-    padding: 40px 20px;
-}
-
-.lyrics-edit-area {
-    width: 100%;
-    min-height: 200px;
-    background: var(--bg-primary, rgba(255, 255, 255, 0.05));
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-    border-radius: 6px;
-    padding: 15px;
-    color: var(--text-primary, #fff);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.6;
-    resize: vertical;
-}
-
-.lyrics-edit-actions {
-    margin-top: 15px;
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
 }
 
 /* Quality Indicators for Video Metadata */

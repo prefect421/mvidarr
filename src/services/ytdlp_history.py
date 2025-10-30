@@ -186,6 +186,9 @@ def resume_pending_downloads(
         download_video_func: Function to execute download
     """
     try:
+        # Build list of download entries to process (extract all data within session)
+        entries_to_resume = []
+
         with get_db() as session:
             # Get pending/queued downloads with explicit loading
             pending_downloads = (
@@ -234,7 +237,7 @@ def resume_pending_downloads(
                     folder_name = FilenameCleanup.sanitize_folder_name(artist_name)
                     output_dir = os.path.join(music_videos_path, folder_name)
 
-                    # Add to queue with existing download record (use local vars to avoid session issues)
+                    # Build download entry with all plain data (no ORM objects)
                     download_entry = {
                         "id": get_next_id_func(),  # Internal download ID
                         "db_download_id": download_db_id,  # Reference to existing DB record
@@ -250,28 +253,45 @@ def resume_pending_downloads(
                         "quality_format_string": "bv*[height<=1080]+ba/best[height<=1080]/18/worst",  # Quality preference with safe fallback
                     }
 
-                    download_queue.append(download_entry)
-                    active_downloads[download_entry["id"]] = download_entry
-
-                    # Start download thread immediately
-                    thread = threading.Thread(
-                        target=download_video_func, args=(download_entry,)
+                    entries_to_resume.append(download_entry)
+                    logger.info(
+                        f"Prepared download entry: {artist_name} - {video_title}"
                     )
-                    thread.daemon = True
-                    thread.start()
-
-                    logger.info(f"Resumed download: {artist_name} - {video_title}")
 
                 except Exception as e:
                     logger.error(
-                        f"Failed to resume download {download_db_id or 'unknown'}: {e}"
+                        f"Failed to prepare download {download_db_id or 'unknown'}: {e}"
                     )
-                    # If it's a session binding issue, skip and continue
-                    if "not bound to a Session" in str(e):
-                        logger.warning(
-                            f"Skipping download {download_db_id} due to session binding issue"
-                        )
                     continue
+
+        # Session is now closed - safe to start threads with plain data
+        # Start threads and add to tracking OUTSIDE the session context
+        for download_entry in entries_to_resume:
+            try:
+                download_queue.append(download_entry)
+                active_downloads[download_entry["id"]] = download_entry
+
+                # Start download thread with plain data (no session dependencies)
+                thread = threading.Thread(
+                    target=download_video_func, args=(download_entry,)
+                )
+                thread.daemon = True
+                thread.start()
+
+                logger.info(
+                    f"Resumed download: {download_entry['artist']} - {download_entry['title']}"
+                )
+
+            except Exception as e:
+                logger.error(
+                    f"Failed to start download thread for {download_entry['db_download_id']}: {e}"
+                )
+                # Remove from tracking if thread start failed
+                if download_entry["id"] in active_downloads:
+                    del active_downloads[download_entry["id"]]
+                if download_entry in download_queue:
+                    download_queue.remove(download_entry)
+                continue
 
     except Exception as e:
         logger.error(f"Failed to resume pending downloads: {e}")

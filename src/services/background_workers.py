@@ -104,6 +104,15 @@ class BackgroundWorkerManager:
             logger.warning(f"Could not import MetadataEnrichmentWorker: {e}")
             self.register_worker(JobType.METADATA_ENRICHMENT, DummyWorker)  # Fallback
 
+        # Bulk video metadata enrichment worker
+        try:
+            from .workers.bulk_video_metadata_worker import BulkVideoMetadataWorker
+
+            self.register_worker(JobType.BULK_VIDEO_METADATA, BulkVideoMetadataWorker)
+        except ImportError as e:
+            logger.warning(f"Could not import BulkVideoMetadataWorker: {e}")
+            self.register_worker(JobType.BULK_VIDEO_METADATA, DummyWorker)
+
         # Import and register new workers
         try:
             from .workers.video_download_worker import VideoDownloadWorker

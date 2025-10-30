@@ -194,7 +194,7 @@ class LocalNetworkShareService:
 
             # Generate share ID
             share_id = (
-                f"share_{hashlib.md5(f'{name}_{local_path}'.encode()).hexdigest()[:12]}"
+                f"share_{hashlib.md5(f'{name}_{local_path}'.encode(), usedforsecurity=False).hexdigest()[:12]}"
             )
 
             # Create share

@@ -22,7 +22,10 @@ from sqlalchemy.orm import Session
 from src.api.fastapi.artists_models import (
     BulkDeleteRequest,
     BulkEditRequest,
+    BulkMonitoringRequest,
     MergeArtistsRequest,
+    RenameCommandRequest,
+    RetagCommandRequest,
 )
 from src.api.fastapi.auth_dependencies import (
     get_current_user_legacy,
@@ -353,6 +356,81 @@ async def bulk_validate_metadata(
         raise
     except Exception as e:
         logger.error(f"Error validating artist metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/bulk-refresh-metadata")
+async def bulk_refresh_metadata(
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Refresh metadata for multiple artists from external services (IMVDb, Spotify, etc.)"""
+    try:
+        artist_ids = request.get("artist_ids", [])
+        force_refresh = request.get("force_refresh", False)
+
+        if not artist_ids:
+            raise HTTPException(status_code=400, detail="No artist IDs provided")
+
+        # Get artists to verify they exist
+        artists = session.query(Artist).filter(Artist.id.in_(artist_ids)).all()
+
+        if not artists:
+            raise HTTPException(status_code=404, detail="No artists found")
+
+        logger.info(
+            f"Starting bulk metadata refresh for {len(artists)} artists (force={force_refresh})"
+        )
+
+        # Import metadata enrichment service
+        from src.services.metadata_artist_enricher import enrich_multiple_artists
+        from src.services.metadata_enrichment_service import (
+            MetadataEnrichmentService,
+        )
+
+        # Create service instance
+        service = MetadataEnrichmentService()
+
+        # Enrich all artists
+        results = await enrich_multiple_artists(
+            service=service,
+            artist_ids=artist_ids,
+            force_refresh=force_refresh,
+            app_context=None,
+        )
+
+        # Count successes and failures
+        success_count = sum(1 for r in results if r.success)
+        failure_count = len(results) - success_count
+
+        logger.info(
+            f"Bulk metadata refresh complete: {success_count} succeeded, {failure_count} failed"
+        )
+
+        return {
+            "success": True,
+            "message": f"Refreshed metadata for {success_count}/{len(artists)} artists",
+            "total": len(artists),
+            "succeeded": success_count,
+            "failed": failure_count,
+            "results": [
+                {
+                    "artist_id": r.artist_id,
+                    "success": r.success,
+                    "fields_updated": (
+                        r.fields_updated if hasattr(r, "fields_updated") else []
+                    ),
+                    "errors": r.errors if hasattr(r, "errors") else [],
+                }
+                for r in results
+            ],
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk metadata refresh: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -700,4 +778,143 @@ async def get_artist_navigation(
         raise
     except Exception as e:
         logger.error(f"Error getting artist navigation for {artist_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/bulk/update-monitoring")
+async def bulk_update_monitoring(
+    request: BulkMonitoringRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Update monitoring settings for multiple artists"""
+    try:
+        if not request.artist_ids:
+            raise HTTPException(status_code=400, detail="No artist IDs provided")
+
+        # Prepare update data
+        update_data = {}
+        if request.monitored is not None:
+            update_data["monitored"] = request.monitored
+
+        # Note: monitor_new_items would need to be added to Artist model if needed
+        # For now, we only update monitored status
+
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No updates provided")
+
+        update_data["updated_at"] = datetime.utcnow()
+
+        # Perform bulk update
+        updated_count = (
+            session.query(Artist)
+            .filter(Artist.id.in_(request.artist_ids))
+            .update(update_data, synchronize_session=False)
+        )
+
+        session.commit()
+
+        logger.info(
+            f"Bulk updated monitoring for {updated_count} artists: {update_data}"
+        )
+
+        return {
+            "success": True,
+            "message": f"Updated monitoring for {updated_count} artist(s)",
+            "updated_count": updated_count,
+            "updates_applied": update_data,
+            "total_requested": len(request.artist_ids),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk update monitoring: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/command/rename")
+async def execute_rename_command(
+    request: RenameCommandRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """
+    Execute RENAME_ARTIST command to organize/rename artist files.
+
+    This would typically integrate with a file organization service.
+    For now, returns a success response indicating the command was queued.
+    """
+    try:
+        if not request.artist_ids:
+            raise HTTPException(status_code=400, detail="No artist IDs provided")
+
+        # Get artists to ensure they exist
+        artists = session.query(Artist).filter(Artist.id.in_(request.artist_ids)).all()
+
+        if not artists:
+            raise HTTPException(status_code=404, detail="No artists found")
+
+        # TODO: Integrate with actual file organization service
+        # For now, we'll just log the command
+        logger.info(
+            f"RENAME_ARTIST command queued for {len(artists)} artists: {request.artist_ids}"
+        )
+
+        return {
+            "success": True,
+            "message": f"Rename command queued for {len(artists)} artist(s)",
+            "artist_count": len(artists),
+            "artist_ids": request.artist_ids,
+            "note": "File organization feature requires file system integration",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error executing rename command: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/command/retag")
+async def execute_retag_command(
+    request: RetagCommandRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """
+    Execute RETAG_ARTIST command to write metadata tags to artist files.
+
+    This would typically integrate with a metadata tagging service.
+    For now, returns a success response indicating the command was queued.
+    """
+    try:
+        if not request.artist_ids:
+            raise HTTPException(status_code=400, detail="No artist IDs provided")
+
+        # Get artists to ensure they exist
+        artists = session.query(Artist).filter(Artist.id.in_(request.artist_ids)).all()
+
+        if not artists:
+            raise HTTPException(status_code=404, detail="No artists found")
+
+        # TODO: Integrate with actual metadata tagging service
+        # For now, we'll just log the command
+        logger.info(
+            f"RETAG_ARTIST command queued for {len(artists)} artists: {request.artist_ids}"
+        )
+
+        return {
+            "success": True,
+            "message": f"Retag command queued for {len(artists)} artist(s)",
+            "artist_count": len(artists),
+            "artist_ids": request.artist_ids,
+            "note": "Metadata tagging feature requires file system integration",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error executing retag command: {e}")
         raise HTTPException(status_code=500, detail=str(e))

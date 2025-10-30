@@ -243,7 +243,7 @@ class YouTubeImporter:
         """Create a new YouTube import job"""
         try:
             # Generate job ID
-            job_id = f"yt_import_{int(time.time())}_{hashlib.md5(source_url.encode()).hexdigest()[:8]}"
+            job_id = f"yt_import_{int(time.time())}_{hashlib.md5(source_url.encode(), usedforsecurity=False).hexdigest()[:8]}"
 
             # Determine import type from URL
             import_type = self._determine_import_type(source_url)

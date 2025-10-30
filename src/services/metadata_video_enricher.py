@@ -21,9 +21,11 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from src.database.connection import get_db
 from src.database.models import Video
+from src.services.discogs_service import discogs_service
 from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 from src.services.metadata_models import EnrichmentResult
+from src.services.musicbrainz_service import musicbrainz_service
 from src.services.spotify_service import spotify_service
 from src.services.video_indexing_service import VideoIndexingService
 from src.services.youtube_search_service import YouTubeSearchService
@@ -71,6 +73,86 @@ def search_lyrics_azlyrics(artist: str, title: str) -> Optional[str]:
     except Exception as e:
         logger.warning(f"Lyrics.ovh search failed for {artist} - {title}: {e}")
         return None
+
+
+def clean_title_for_metadata_search(title: str, artist_name: str = None) -> str:
+    """
+    Clean video title for metadata searches (MusicBrainz, Discogs, etc.)
+
+    Removes common video title patterns that interfere with metadata searches:
+    - (Official Video), (Official Music Video), (Lyric Video), etc.
+    - Artist name prefix if it's redundant
+    - [HD], [4K], quality markers
+    - "feat.", "ft.", featuring artists
+
+    Args:
+        title: Raw video title
+        artist_name: Artist name to remove if it's a prefix (optional)
+
+    Returns:
+        Cleaned title suitable for metadata searches
+    """
+    import re
+
+    cleaned = title.strip()
+
+    # Remove artist name from beginning if present (case insensitive)
+    if artist_name:
+        # Remove "Artist - " prefix
+        pattern = rf"^{re.escape(artist_name)}\s*-\s*"
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+
+    # Remove common video type markers (case insensitive)
+    # These patterns match with or without brackets/parentheses
+    video_patterns = [
+        r"\s*-\s*Official Music Video",
+        r"\s*-\s*Official Video",
+        r"\s*-\s*Music Video",
+        r"\s*-\s*Lyric Video",
+        r"\s*-\s*Official Lyric Video",
+        r"\s*-\s*Official Audio",
+        r"\s*-\s*Audio",
+        r"\(Official Music Video\)",
+        r"\(Official Video\)",
+        r"\(Music Video\)",
+        r"\(Lyric Video\)",
+        r"\(Official Lyric Video\)",
+        r"\(Official Audio\)",
+        r"\(Audio\)",
+        r"\[Official Music Video\]",
+        r"\[Official Video\]",
+        r"\[Music Video\]",
+        r"\[Lyric Video\]",
+        r"\[Official Audio\]",
+        r"\[Audio\]",
+    ]
+
+    for pattern in video_patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+
+    # Remove quality markers
+    quality_patterns = [
+        r"\[HD\]",
+        r"\[4K\]",
+        r"\[HQ\]",
+        r"\(HD\)",
+        r"\(4K\)",
+        r"\(HQ\)",
+        r"\bHD\b",
+        r"\b4K\b",
+    ]
+
+    for pattern in quality_patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+
+    # Remove year markers at the end (e.g., "(2019)", "[2019]")
+    cleaned = re.sub(r"\s*[\(\[](?:19|20)\d{2}[\)\]]\s*$", "", cleaned)
+
+    # Clean up extra whitespace and punctuation
+    cleaned = re.sub(r"\s+", " ", cleaned)  # Collapse multiple spaces
+    cleaned = cleaned.strip(" -–—")  # Remove leading/trailing spaces and dashes
+
+    return cleaned
 
 
 async def enrich_video_metadata(
@@ -200,7 +282,159 @@ async def enrich_video_metadata(
                 errors.append(f"IMVDb enrichment failed: {str(e)}")
                 logger.warning(f"IMVDb enrichment failed for video {video_id}: {e}")
 
-            # 2. Enhanced Spotify enrichment
+            # 2. Discogs enrichment (HIGHEST PRIORITY for release dates and album info)
+            try:
+                # Ensure video stays attached to session
+                video = session.merge(video)
+
+                # Clean title for better metadata matching
+                clean_title = clean_title_for_metadata_search(video_title, artist_name)
+                logger.info(
+                    f"Searching Discogs for '{clean_title}' by '{artist_name}' (original: '{video_title}')"
+                )
+
+                discogs_release_info = discogs_service.get_track_release_date(
+                    clean_title, artist_name
+                )
+
+                if discogs_release_info:
+                    metadata_sources["discogs"] = discogs_release_info
+                    logger.info(
+                        f"Discogs found release info for '{video_title}': {discogs_release_info}"
+                    )
+
+                    # Extract release date
+                    discogs_release_date = discogs_release_info.get("release_date")
+                    discogs_year = discogs_release_info.get("year")
+
+                    # Update year (Discogs is now primary source)
+                    if discogs_year and (not video.year or force_refresh):
+                        video.year = discogs_year
+                        if "year" not in updated_fields:
+                            updated_fields.append("year")
+                        logger.info(
+                            f"Set year to {discogs_year} from Discogs for video {video_id}"
+                        )
+
+                    # Update release_date if we have full date
+                    if discogs_release_date and (
+                        not video.release_date or force_refresh
+                    ):
+                        try:
+                            # Discogs provides dates in YYYY-MM-DD format
+                            video.release_date = datetime.strptime(
+                                discogs_release_date, "%Y-%m-%d"
+                            )
+                            if "release_date" not in updated_fields:
+                                updated_fields.append("release_date")
+                            logger.info(
+                                f"Set release_date to {video.release_date} from Discogs"
+                            )
+                        except (ValueError, TypeError) as e:
+                            logger.warning(
+                                f"Could not parse Discogs date '{discogs_release_date}': {e}"
+                            )
+
+                    # Extract and save album information from Discogs
+                    if discogs_release_info.get("title") and (
+                        not video.album or force_refresh
+                    ):
+                        video.album = discogs_release_info["title"]
+                        if "album" not in updated_fields:
+                            updated_fields.append("album")
+                        logger.info(
+                            f"Set album to '{video.album}' from Discogs for video {video_id}"
+                        )
+
+                    # Extract additional Discogs metadata (genres, styles, etc.)
+                    if not video.genres and discogs_release_info.get("genres"):
+                        video.genres = discogs_release_info["genres"][:3]
+                        if "genres" not in updated_fields:
+                            updated_fields.append("genres")
+
+                    # Store Discogs metadata in video_metadata
+                    video_metadata = video.video_metadata or {}
+                    video_metadata["discogs_info"] = {
+                        "title": discogs_release_info.get("title"),
+                        "genres": discogs_release_info.get("genres", []),
+                        "styles": discogs_release_info.get("styles", []),
+                        "country": discogs_release_info.get("country"),
+                        "confidence": discogs_release_info.get("confidence"),
+                    }
+                    video.video_metadata = video_metadata
+                    if "video_metadata" not in updated_fields:
+                        updated_fields.append("video_metadata")
+
+            except Exception as e:
+                errors.append(f"Discogs enrichment failed: {str(e)}")
+                logger.warning(f"Discogs enrichment failed for video {video_id}: {e}")
+
+            # 3. MusicBrainz recording enrichment (SECONDARY FALLBACK if Discogs doesn't have data)
+            try:
+                # Ensure video stays attached to session
+                video = session.merge(video)
+
+                # Only try MusicBrainz if we still don't have release date from Discogs
+                if not video.year or not video.release_date or force_refresh:
+                    # Clean title for better metadata matching
+                    clean_title = clean_title_for_metadata_search(
+                        video_title, artist_name
+                    )
+                    logger.info(
+                        f"Searching MusicBrainz for '{clean_title}' by '{artist_name}' (original: '{video_title}')"
+                    )
+
+                    # Try MusicBrainz as fallback
+                    mb_release_date = musicbrainz_service.get_recording_release_date(
+                        clean_title, artist_name
+                    )
+
+                    if mb_release_date:
+                        metadata_sources["musicbrainz"] = {
+                            "release_date": mb_release_date
+                        }
+                        logger.info(
+                            f"MusicBrainz found release date for '{video_title}': {mb_release_date}"
+                        )
+
+                        # Parse the release date (format: YYYY-MM-DD or YYYY-MM or YYYY)
+                        try:
+                            # Extract year from release date
+                            release_year = int(mb_release_date.split("-")[0])
+
+                            # Update year only if not already set by Discogs
+                            if not video.year:
+                                video.year = release_year
+                                if "year" not in updated_fields:
+                                    updated_fields.append("year")
+                                logger.info(
+                                    f"Set year to {release_year} from MusicBrainz for video {video_id}"
+                                )
+
+                            # Store full release date if available and not already set
+                            if (
+                                not video.release_date and len(mb_release_date) >= 10
+                            ):  # Full date
+                                video.release_date = datetime.strptime(
+                                    mb_release_date[:10], "%Y-%m-%d"
+                                )
+                                if "release_date" not in updated_fields:
+                                    updated_fields.append("release_date")
+                                logger.info(
+                                    f"Set release_date to {video.release_date} from MusicBrainz"
+                                )
+                        except (ValueError, IndexError) as e:
+                            logger.warning(
+                                f"Could not parse MusicBrainz date '{mb_release_date}': {e}"
+                            )
+
+            except Exception as e:
+                errors.append(f"MusicBrainz recording enrichment failed: {str(e)}")
+                logger.warning(
+                    f"MusicBrainz enrichment failed for video {video_id}: {e}"
+                )
+
+            # 4. Enhanced Spotify enrichment (TERTIARY FALLBACK if Discogs and MusicBrainz don't have data)
             try:
                 # Ensure video stays attached to session
                 video = session.merge(video)
@@ -230,15 +464,28 @@ async def enrich_video_metadata(
                             video.album = album_data["name"]
                             updated_fields.append("album")
 
+                        # Only use Spotify release date if MusicBrainz didn't provide one
                         if not video.year and album_data.get("release_date"):
                             try:
-                                release_year = album_data["release_date"].split("-")[0]
-                                video.year = int(release_year)
+                                spotify_release = album_data["release_date"]
+                                release_year = int(spotify_release.split("-")[0])
+                                video.year = release_year
                                 updated_fields.append("year")
-                            except (ValueError, IndexError):
-                                pass
+                                logger.info(
+                                    f"Set year to {release_year} from Spotify for video {video_id}"
+                                )
 
-                        # Fallback: Extract year from YouTube upload_date if not set by MusicBrainz
+                                # Store full release date if available
+                                if len(spotify_release) >= 10:
+                                    video.release_date = datetime.strptime(
+                                        spotify_release[:10], "%Y-%m-%d"
+                                    )
+                                    updated_fields.append("release_date")
+                            except (ValueError, IndexError) as e:
+                                logger.warning(f"Could not parse Spotify date: {e}")
+
+                        # LAST RESORT: Use YouTube upload_date ONLY if no other source provided year
+                        # This ensures we show YouTube upload year vs nothing, but it's clearly marked
                         if not video.year and video.video_metadata:
                             upload_date = video.video_metadata.get("upload_date")
                             if upload_date:
@@ -250,8 +497,9 @@ async def enrich_video_metadata(
                                     ):
                                         video.year = int(upload_date[:4])
                                         updated_fields.append("year")
-                                        logger.info(
-                                            f"Extracted year {video.year} from YouTube upload_date for video {video_id}"
+                                        logger.warning(
+                                            f"Using YouTube upload year {video.year} as fallback for video {video_id} "
+                                            f"(no MusicBrainz/Spotify release date found)"
                                         )
                                 except (ValueError, TypeError) as e:
                                     logger.debug(
@@ -320,7 +568,7 @@ async def enrich_video_metadata(
                 errors.append(f"Spotify enrichment failed: {str(e)}")
                 logger.warning(f"Spotify enrichment failed for video {video_id}: {e}")
 
-            # 3. Enhanced Last.fm enrichment
+            # 5. Enhanced Last.fm enrichment
             try:
                 # Ensure video stays attached to session
                 video = session.merge(video)
@@ -377,26 +625,10 @@ async def enrich_video_metadata(
                 errors.append(f"Last.fm enrichment failed: {str(e)}")
                 logger.warning(f"Last.fm enrichment failed for video {video_id}: {e}")
 
-            # 4. MusicBrainz enrichment (for authoritative metadata)
-            try:
-                # Ensure video stays attached to session
-                video = session.merge(video)
+            # MusicBrainz enrichment is now handled earlier (step 2) with recording search
+            # Old MusicBrainz section removed as it was redundant and broken
 
-                if video.artist.mbid or not video.album:
-                    # Search for recording in MusicBrainz
-                    # Note: This is a basic implementation - MusicBrainz recording search would need to be added to the service
-                    logger.debug(
-                        f"MusicBrainz recording enrichment not yet implemented for video {video_id}"
-                    )
-                    # TODO: Implement MusicBrainz recording search when service supports it
-
-            except Exception as e:
-                errors.append(f"MusicBrainz enrichment failed: {str(e)}")
-                logger.warning(
-                    f"MusicBrainz enrichment failed for video {video_id}: {e}"
-                )
-
-            # 5. YouTube ID discovery (if we don't have YouTube ID)
+            # 6. YouTube ID discovery (if we don't have YouTube ID)
             try:
                 # Ensure video stays attached to session
                 video = session.merge(video)
@@ -469,7 +701,7 @@ async def enrich_video_metadata(
                 errors.append(f"YouTube ID discovery failed: {str(e)}")
                 logger.warning(f"YouTube ID discovery failed for video {video_id}: {e}")
 
-            # 6. YouTube metadata enhancement (if we have YouTube ID)
+            # 7. YouTube metadata enhancement (if we have YouTube ID)
             try:
                 if video.youtube_id:
                     # Re-attach video to session if needed to prevent detachment issues
@@ -523,7 +755,7 @@ async def enrich_video_metadata(
                 errors.append(f"YouTube enrichment failed: {str(e)}")
                 logger.warning(f"YouTube enrichment failed for video {video_id}: {e}")
 
-            # 7. FFmpeg metadata extraction (if local file exists)
+            # 8. FFmpeg metadata extraction (if local file exists)
             try:
                 if video.local_path and (
                     force_refresh
@@ -581,7 +813,7 @@ async def enrich_video_metadata(
                 errors.append(f"FFmpeg extraction failed: {str(e)}")
                 logger.warning(f"FFmpeg extraction failed for video {video_id}: {e}")
 
-            # 8. Lyrics search (if no existing lyrics or force refresh)
+            # 9. Lyrics search (if no existing lyrics or force refresh)
             try:
                 logger.info(
                     f"Starting lyrics search for video {video_id}. Current lyrics: {'exists' if video.lyrics else 'empty'}, force_refresh: {force_refresh}"
@@ -620,7 +852,7 @@ async def enrich_video_metadata(
                 errors.append(f"Lyrics search failed: {str(e)}")
                 logger.warning(f"Lyrics search failed for video {video_id}: {e}")
 
-            # 9. Genre fallback - Use artist genres if video still has no genres
+            # 10. Genre fallback - Use artist genres if video still has no genres
             try:
                 logger.info(
                     f"Checking genre fallback for video {video_id}. Video genres: {video.genres}, Artist genres: {video.artist.genres if video.artist else 'No artist'}"

@@ -252,7 +252,7 @@ class UserBehaviorAnalytics:
             )
 
             # Generate action ID
-            action_id = f"action_{hashlib.md5(f'{user_id}_{session_id}_{current_time}'.encode()).hexdigest()[:16]}"
+            action_id = f"action_{hashlib.md5(f'{user_id}_{session_id}_{current_time}'.encode(), usedforsecurity=False).hexdigest()[:16]}"
 
             # Create action event
             action = UserAction(
@@ -291,7 +291,7 @@ class UserBehaviorAnalytics:
     def _generate_session_id(self, user_id: str, timestamp: float) -> str:
         """Generate unique session ID"""
         session_data = f"{user_id}_{int(timestamp // 1800)}"  # 30-minute buckets
-        return f"session_{hashlib.md5(session_data.encode()).hexdigest()[:16]}"
+        return f"session_{hashlib.md5(session_data.encode(), usedforsecurity=False).hexdigest()[:16]}"
 
     async def _update_user_session(
         self,

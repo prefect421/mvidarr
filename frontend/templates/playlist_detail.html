@@ -338,6 +338,17 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="filterStatus">Video Status</label>
+                    <select id="filterStatus" class="form-control">
+                        <option value="">Any Status</option>
+                        <option value="DOWNLOADED" selected>Downloaded</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="DOWNLOADING">Downloading</option>
+                        <option value="FAILED">Failed</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label for="filterYear">Year Range</label>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <input type="number" id="filterYearFrom" class="form-control" placeholder="From" min="1900" max="2100" style="flex: 1;">

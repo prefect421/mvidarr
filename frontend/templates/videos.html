@@ -1651,58 +1651,95 @@ function updateSingleVideoCard(videoId) {
 }
 
 function refreshAllMetadata() {
+    // Open the configuration modal
+    openEnhancedMetadataConfigModal();
+}
+
+function openEnhancedMetadataConfigModal() {
+    const modal = document.getElementById('enhancedMetadataConfigModal');
+    if (modal) {
+        modal.style.display = 'block';
+
+        // Pre-fill with selected videos if any
+        const selectedVideoIds = getSelectedVideoIds();
+        if (selectedVideoIds.length > 0) {
+            document.getElementById('metadataVideoLimit').value = selectedVideoIds.length;
+            document.getElementById('metadataVideoLimit').readOnly = true;
+            document.getElementById('metadataVideoLimit').title = `Processing ${selectedVideoIds.length} selected videos`;
+        } else {
+            document.getElementById('metadataVideoLimit').value = '';
+            document.getElementById('metadataVideoLimit').readOnly = false;
+            document.getElementById('metadataVideoLimit').title = '';
+        }
+    }
+}
+
+function closeEnhancedMetadataConfigModal() {
+    const modal = document.getElementById('enhancedMetadataConfigModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function startEnhancedMetadataEnrichment() {
     const selectedVideoIds = getSelectedVideoIds();
     const isSelectedVideos = selectedVideoIds.length > 0;
-    const message = isSelectedVideos 
-        ? `Refresh enhanced metadata for ${selectedVideoIds.length} selected videos using comprehensive sources? This may take several minutes.`
-        : 'Refresh enhanced metadata for all videos using comprehensive sources? This may take several minutes.';
-        
-    toastConfirm(message, () => {
-        const button = event.target;
-        const originalText = button.textContent;
-        button.textContent = 'Enriching...';
-        button.disabled = true;
-        
-        const requestBody = {
-            force_refresh: false,
-            limit: isSelectedVideos ? selectedVideoIds.length : 100  // Process selected videos or first 100
-        };
-        
-        if (isSelectedVideos) {
-            requestBody.video_ids = selectedVideoIds;
+
+    // Get configuration values
+    const limitInput = document.getElementById('metadataVideoLimit').value;
+    const limit = limitInput ? parseInt(limitInput) : null;
+    const refreshCutoffDays = parseInt(document.getElementById('metadataRefreshCutoff').value);
+    const forceRefresh = document.getElementById('metadataForceRefresh').checked;
+
+    // Close the modal
+    closeEnhancedMetadataConfigModal();
+
+    // Build request body
+    const requestBody = {
+        force_refresh: forceRefresh,
+        days_since_enriched: refreshCutoffDays,
+        limit: limit
+    };
+
+    if (isSelectedVideos) {
+        requestBody.video_ids = selectedVideoIds;
+    }
+
+    // Show progress message
+    const videoCount = isSelectedVideos ? selectedVideoIds.length : (limit || 'all');
+    showInfo(`Starting enhanced metadata enrichment for ${videoCount} video(s)... This will take several minutes.`);
+
+    // Make API call
+    fetch('/api/videos/enhanced-refresh-all-metadata', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
-        fetch('/api/videos/enhanced-refresh-all-metadata', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(result => {
-            button.textContent = originalText;
-            button.disabled = false;
-            
-            if (result.error) {
-                showError('Error: ' + result.error);
-            } else {
-                const message = `Metadata refresh completed!\n\nProcessed: ${result.processed}\nUpdated: ${result.updated}\nErrors: ${result.errors}`;
-                showSuccess(message);
-                loadVideos(); // Refresh the video list
-            }
-        })
-        .catch(error => {
-            console.error('Error refreshing all enhanced metadata:', error);
-            showError(`Error refreshing enhanced metadata: ${error.message}`);
-            button.textContent = originalText;
-            button.disabled = false;
-        });
+        return response.json();
+    })
+    .then(result => {
+        if (result.error) {
+            showError('Error: ' + result.error);
+        } else if (result.job_id) {
+            // Background job queued - show notification
+            const videoText = result.video_count === 1 ? 'video' : 'videos';
+            showSuccess(`✅ Metadata enrichment job queued for ${result.video_count} ${videoText}!\n\nThe job is running in the background. You can monitor progress via the job status notifications.\n\nJob ID: ${result.job_id}`);
+            console.log(`Background job queued: ${result.job_id}`);
+            // Don't refresh immediately - will refresh when job completes via WebSocket
+        } else {
+            showSuccess('Metadata enrichment completed!');
+            loadVideos(); // Refresh the video list
+        }
+    })
+    .catch(error => {
+        console.error('Error refreshing enhanced metadata:', error);
+        showError(`Error enriching metadata: ${error.message}`);
     });
 }
 
@@ -2038,6 +2075,61 @@ function loadModalSubtitleTracks() {
 }
 
 </script>
+
+<!-- Enhanced Metadata Configuration Modal -->
+<div id="enhancedMetadataConfigModal" class="modal" style="z-index: 1900;">
+    <div class="modal-content" style="width: 90%; max-width: 600px;">
+        <div class="modal-header">
+            <h3>🔄 Enhanced Metadata Enrichment</h3>
+            <span class="modal-close" onclick="closeEnhancedMetadataConfigModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Configure metadata enrichment settings. This will enrich videos from multiple sources including MusicBrainz, Spotify, IMVDb, Last.fm, and more.</p>
+
+            <div class="form-group">
+                <label for="metadataVideoLimit">
+                    Number of videos to process:
+                    <span class="help-text">(Leave blank for all videos)</span>
+                </label>
+                <input type="number" id="metadataVideoLimit" min="1" max="10000" placeholder="All videos">
+                <small class="help-text">Processing many videos will take several minutes. ~5-10 seconds per video.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="metadataRefreshCutoff">
+                    Only enrich videos not refreshed in the last:
+                    <span class="help-text">(days)</span>
+                </label>
+                <input type="number" id="metadataRefreshCutoff" min="0" max="365" value="7">
+                <small class="help-text">Set to 0 to force refresh all videos regardless of when they were last enriched.</small>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="metadataForceRefresh" checked>
+                    Force refresh all fields (overwrite existing data)
+                </label>
+                <small class="help-text">If unchecked, only empty fields will be populated.</small>
+            </div>
+
+            <div class="metadata-sources-info">
+                <h4>Sources Used:</h4>
+                <ul>
+                    <li><strong>MusicBrainz</strong> - Authoritative release dates and recording info</li>
+                    <li><strong>Spotify</strong> - Album info, track durations, genres</li>
+                    <li><strong>IMVDb</strong> - Music video database</li>
+                    <li><strong>Last.fm</strong> - Additional track metadata</li>
+                    <li><strong>YouTube</strong> - Video discovery and metadata</li>
+                    <li><strong>FFmpeg</strong> - Local file analysis</li>
+                </ul>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeEnhancedMetadataConfigModal()" class="btn btn-secondary">Cancel</button>
+            <button onclick="startEnhancedMetadataEnrichment()" class="btn btn-primary">Start Enrichment</button>
+        </div>
+    </div>
+</div>
 
 <!-- Video Thumbnail Management Modal -->
 <div id="videoThumbnailModal" class="modal" style="z-index: 2000;">
@@ -3104,6 +3196,14 @@ window.addEventListener('click', function(event) {
     const thumbnailModal = document.getElementById('videoThumbnailModal');
     if (event.target === thumbnailModal) {
         closeVideoThumbnailModal();
+    }
+});
+
+// Close enhanced metadata config modal when clicking outside
+window.addEventListener('click', function(event) {
+    const metadataModal = document.getElementById('enhancedMetadataConfigModal');
+    if (event.target === metadataModal) {
+        closeEnhancedMetadataConfigModal();
     }
 });
 

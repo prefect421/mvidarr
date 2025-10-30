@@ -102,11 +102,13 @@ class MusicBrainzService:
         try:
             logger.debug(f"Making MusicBrainz request to: {url} with params: {params}")
             # Disable SSL verification for MusicBrainz due to certificate issues
+            # TODO: Investigate if MusicBrainz certificate issues are resolved and re-enable verify=True
+            # nosec B501 - SSL verification disabled due to known MusicBrainz API certificate issues
             import urllib3
 
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             response = requests.get(
-                url, params=params, headers=headers, timeout=30, verify=False
+                url, params=params, headers=headers, timeout=30, verify=False  # nosec B501
             )
             response.raise_for_status()
 
@@ -383,6 +385,135 @@ class MusicBrainzService:
             return jaccard_similarity
 
         return 0.0
+
+    def search_recording(
+        self, track_name: str, artist_name: str, limit: int = 5
+    ) -> List[Dict]:
+        """
+        Search for recordings (songs) by track name and artist name.
+
+        Returns list of recordings with release dates.
+
+        Args:
+            track_name: Name of the track/song
+            artist_name: Name of the artist
+            limit: Maximum number of results to return
+
+        Returns:
+            List of recording dictionaries with metadata including first-release-date
+        """
+        if not self.enabled:
+            logger.debug("MusicBrainz is disabled, skipping recording search")
+            return []
+
+        try:
+            # Build search query - search for recording with artist name
+            query = f'recording:"{track_name}" AND artist:"{artist_name}"'
+
+            params = {
+                "query": query,
+                "limit": limit,
+                "inc": "artist-credits+releases",  # Include release information
+            }
+
+            logger.debug(f"Searching MusicBrainz recordings: {query}")
+            data = self._make_request("recording", params)
+
+            if not data or "recordings" not in data:
+                logger.debug(f"No recordings found for: {track_name} by {artist_name}")
+                return []
+
+            recordings = data["recordings"]
+            results = []
+
+            for recording in recordings:
+                result = {
+                    "id": recording.get("id"),
+                    "title": recording.get("title"),
+                    "score": recording.get("score", 0),
+                    "first_release_date": recording.get("first-release-date"),
+                    "artist_credits": [],
+                    "releases": [],
+                }
+
+                # Extract artist credits
+                if "artist-credit" in recording:
+                    for credit in recording["artist-credit"]:
+                        if isinstance(credit, dict) and "artist" in credit:
+                            result["artist_credits"].append(
+                                {
+                                    "name": credit["artist"].get("name"),
+                                    "id": credit["artist"].get("id"),
+                                }
+                            )
+
+                # Extract release information
+                if "releases" in recording:
+                    for release in recording["releases"][
+                        :3
+                    ]:  # Limit to first 3 releases
+                        result["releases"].append(
+                            {
+                                "id": release.get("id"),
+                                "title": release.get("title"),
+                                "date": release.get("date"),
+                                "status": release.get("status"),
+                            }
+                        )
+
+                results.append(result)
+                logger.debug(
+                    f"Found recording: {result['title']} - "
+                    f"First release: {result.get('first_release_date', 'Unknown')}"
+                )
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Error searching MusicBrainz recordings: {e}")
+            return []
+
+    def get_recording_release_date(
+        self, track_name: str, artist_name: str
+    ) -> Optional[str]:
+        """
+        Get the earliest release date for a recording.
+
+        Args:
+            track_name: Name of the track/song
+            artist_name: Name of the artist
+
+        Returns:
+            Release date string in YYYY-MM-DD format, or None if not found
+        """
+        recordings = self.search_recording(track_name, artist_name, limit=1)
+
+        if not recordings:
+            return None
+
+        # Get the best match (highest score)
+        best_match = recordings[0]
+
+        # Return first-release-date if available
+        first_release = best_match.get("first_release_date")
+        if first_release:
+            logger.info(
+                f"Found MusicBrainz release date for '{track_name}' by '{artist_name}': {first_release}"
+            )
+            return first_release
+
+        # Fallback to earliest release date from releases list
+        if best_match.get("releases"):
+            release_dates = [r["date"] for r in best_match["releases"] if r.get("date")]
+            if release_dates:
+                earliest_date = min(release_dates)
+                logger.info(
+                    f"Found release date from releases for '{track_name}': {earliest_date}"
+                )
+                return earliest_date
+
+        logger.debug(f"No release date found for '{track_name}' by '{artist_name}'")
+        return None
 
     def test_connection(self) -> bool:
         """Test MusicBrainz API connectivity"""

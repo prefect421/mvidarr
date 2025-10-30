@@ -146,7 +146,7 @@ class MediaCacheManager:
 
         # Hash long identifiers to keep keys manageable
         if len(identifier) > 100:
-            identifier = hashlib.md5(identifier.encode()).hexdigest()
+            identifier = hashlib.md5(identifier.encode(), usedforsecurity=False).hexdigest()
 
         return f"mvidarr:{prefix}{identifier}"
 

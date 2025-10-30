@@ -438,7 +438,7 @@ class DuplicateManager:
 
             # Use cached detection results if available
             for video_path in video_files:
-                cache_key = f"music_video_detection:{hashlib.md5(video_path.encode()).hexdigest()}"
+                cache_key = f"music_video_detection:{hashlib.md5(video_path.encode(), usedforsecurity=False).hexdigest()}"
                 cached_result = await self.redis_client.get(cache_key)
 
                 if cached_result:
@@ -463,8 +463,8 @@ class DuplicateManager:
 
         for i, video_path in enumerate(video_files):
             try:
-                # Calculate MD5 hash of file
-                hash_md5 = hashlib.md5()
+                # Calculate MD5 hash of file (for duplicate detection, not security)
+                hash_md5 = hashlib.md5(usedforsecurity=False)
                 with open(video_path, "rb") as f:
                     for chunk in iter(lambda: f.read(8192), b""):
                         hash_md5.update(chunk)
@@ -584,7 +584,7 @@ class DuplicateManager:
 
                 # Create group if we found similar files
                 if len(similar_files) > 1:
-                    group_id = f"similar_{hashlib.md5(file1.encode()).hexdigest()[:12]}"
+                    group_id = f"similar_{hashlib.md5(file1.encode(), usedforsecurity=False).hexdigest()[:12]}"
                     group = DuplicateGroup(group_id)
 
                     # Determine confidence and type based on average similarity

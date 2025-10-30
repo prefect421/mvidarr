@@ -318,21 +318,74 @@ async function checkCookieStatus() {
     try {
         const response = await fetch('/api/metube/cookies/status');
         const data = await response.json();
-        
+
         const statusDiv = document.getElementById('cookieStatus');
         const deleteBtn = document.getElementById('deleteCookieBtn');
-        
+
         if (data.cookies_available) {
-            statusDiv.innerHTML = '<span class="status-badge success">✅ Cookies uploaded - Age-restricted videos supported</span>';
+            // Visual indicators based on freshness status
+            let indicator = '';
+            let statusClass = '';
+            let icon = '';
+
+            switch (data.status) {
+                case 'fresh':
+                    indicator = '🟢';
+                    statusClass = 'fresh';
+                    icon = '✅';
+                    break;
+                case 'expiring_soon':
+                    indicator = '🟡';
+                    statusClass = 'expiring';
+                    icon = '⚠️';
+                    break;
+                case 'expired':
+                    indicator = '🔴';
+                    statusClass = 'expired';
+                    icon = '❌';
+                    break;
+                default:
+                    indicator = '🟢';
+                    statusClass = 'fresh';
+                    icon = '✅';
+            }
+
+            const ageDays = data.age_days ? Math.round(data.age_days) : 0;
+            const ageText = ageDays === 0 ? 'today' : ageDays === 1 ? '1 day ago' : `${ageDays} days ago`;
+
+            statusDiv.innerHTML = `
+                <div class="cookie-status-widget ${statusClass}">
+                    <span class="status-indicator">${indicator}</span>
+                    <div class="status-details">
+                        <div class="status-primary">${icon} ${data.message || 'Cookies uploaded'}</div>
+                        <div class="status-meta">Uploaded ${ageText}</div>
+                    </div>
+                </div>
+            `;
             deleteBtn.style.display = 'inline-flex';
         } else {
-            statusDiv.innerHTML = '<span class="status-badge warning">❌ No cookies uploaded - Age-restricted videos will fail</span>';
+            statusDiv.innerHTML = `
+                <div class="cookie-status-widget missing">
+                    <span class="status-indicator">🔴</span>
+                    <div class="status-details">
+                        <div class="status-primary">❌ ${data.message || 'No cookies uploaded'}</div>
+                        <div class="status-meta">Age-restricted videos will fail</div>
+                    </div>
+                </div>
+            `;
             deleteBtn.style.display = 'none';
         }
     } catch (error) {
         console.error('Failed to check cookie status:', error);
         const statusDiv = document.getElementById('cookieStatus');
-        statusDiv.innerHTML = '<span class="status-badge error">❓ Status unknown</span>';
+        statusDiv.innerHTML = `
+            <div class="cookie-status-widget error">
+                <span class="status-indicator">❓</span>
+                <div class="status-details">
+                    <div class="status-primary">Status unknown</div>
+                </div>
+            </div>
+        `;
     }
 }
 
@@ -904,6 +957,64 @@ document.addEventListener('DOMContentLoaded', function() {
     .modal-buttons button {
         width: 100%;
     }
+}
+
+/* Cookie Status Widget Styles */
+.cookie-status-widget {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    border-radius: 6px;
+    background: var(--surface-color, #2c2c2e);
+    border: 2px solid;
+    transition: all 0.3s ease;
+}
+
+.cookie-status-widget.fresh {
+    border-color: var(--success, #28a745);
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.cookie-status-widget.expiring {
+    border-color: var(--warning, #ffc107);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.cookie-status-widget.expired,
+.cookie-status-widget.missing {
+    border-color: var(--danger, #dc3545);
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.cookie-status-widget.error {
+    border-color: var(--secondary, #6c757d);
+    background: rgba(108, 117, 125, 0.1);
+}
+
+.cookie-status-widget .status-indicator {
+    font-size: 1.5em;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.cookie-status-widget .status-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cookie-status-widget .status-primary {
+    font-weight: 600;
+    font-size: 0.95em;
+    color: var(--text-primary, #fff);
+}
+
+.cookie-status-widget .status-meta {
+    font-size: 0.8em;
+    color: var(--text-muted, #999);
+    font-style: italic;
 }
 </style>
 {% endblock %}

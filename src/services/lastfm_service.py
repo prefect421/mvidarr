@@ -75,7 +75,7 @@ class LastFmService:
         # Create signature
         sig_params = sorted(params.items())
         sig_string = "".join([f"{k}{v}" for k, v in sig_params]) + self.api_secret
-        signature = hashlib.md5(sig_string.encode()).hexdigest()
+        signature = hashlib.md5(sig_string.encode(), usedforsecurity=False).hexdigest()
 
         params["api_sig"] = signature
         params["format"] = "json"

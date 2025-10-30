@@ -1132,7 +1132,7 @@ class MusicSearchService:
                 "per_page": per_page,
             }
             key_string = json.dumps(key_data, sort_keys=True)
-            return f"music_search:{hashlib.md5(key_string.encode()).hexdigest()}"
+            return f"music_search:{hashlib.md5(key_string.encode(), usedforsecurity=False).hexdigest()}"
 
         except Exception as e:
             logger.error(f"Failed to generate cache key: {e}")

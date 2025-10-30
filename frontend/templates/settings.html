@@ -678,7 +678,45 @@ input:checked + .slider:before {
                     </div>
                 </div>
 
-                <!-- Discogs integration removed -->
+                <!-- Discogs -->
+                <div class="metadata-provider">
+                    <div class="provider-header">
+                        <h3>💿 Discogs</h3>
+                        <div class="form-group inline">
+                            <label class="switch">
+                                <input type="checkbox" id="discogs_enabled" name="discogs_enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="provider-config">
+                        <div class="form-group">
+                            <label for="discogs_token">API Token:</label>
+                            <input type="password" id="discogs_token" name="discogs_token"
+                                   placeholder="Enter your Discogs Personal Access Token">
+                            <div class="help-text">
+                                Get your token from <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>
+                                <br>Provides: Release dates, album titles, genres. <strong>Top priority for release dates!</strong>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="discogs_rate_limit">Rate Limit (requests/minute):</label>
+                            <input type="number" id="discogs_rate_limit" name="discogs_rate_limit"
+                                   min="25" max="60" value="60" step="5">
+                            <div class="help-text">Authenticated: 60/min, Unauthenticated: 25/min</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="discogs_priority">Priority:</label>
+                            <select id="discogs_priority" name="discogs_priority">
+                                <option value="1" selected>Highest</option>
+                                <option value="2">High</option>
+                                <option value="3">Medium</option>
+                                <option value="4">Low</option>
+                                <option value="5">Lowest</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- AllMusic -->
                 <div class="metadata-provider">
@@ -2623,7 +2661,7 @@ function checkImvdbConnection() {
 function testImvdbConnection() {
     const statusElement = document.getElementById('imvdb-status');
     statusElement.innerHTML = '<span class="loading">🔄 Testing...</span>';
-    
+
     fetch('/api/video-indexing/imvdb/test')
         .then(response => response.json())
         .then(data => {
@@ -2652,6 +2690,125 @@ function testImvdbConnection() {
                 alert('IMVDb connection test failed: ' + error.message);
             }
         });
+}
+
+async function testMetadataServices() {
+    // VERSION: 2.0 - All 5 services including Discogs
+    // Test all metadata services and display results
+    const services = [
+        {
+            name: 'IMVDb',
+            endpoint: '/api/video-indexing/imvdb/test',
+            method: 'GET'
+        },
+        {
+            name: 'Discogs',
+            endpoint: '/api/discogs/test',
+            method: 'GET'
+        },
+        {
+            name: 'MusicBrainz',
+            endpoint: '/api/musicbrainz/test',
+            method: 'GET'
+        },
+        {
+            name: 'Spotify',
+            endpoint: '/api/spotify/test',
+            method: 'POST'
+        },
+        {
+            name: 'Last.fm',
+            endpoint: '/api/lastfm/test',
+            method: 'POST'
+        }
+    ];
+
+    // Debug: Confirm function version and service count
+    console.log('=== testMetadataServices VERSION 2.0 ===');
+    console.log('Total services to test:', services.length);
+    console.log('Services:', services.map(s => s.name));
+
+    if (typeof showProgress === 'function') {
+        showProgress('Testing all metadata services...');
+    }
+
+    // Test each service sequentially to maintain order and ensure all complete
+    const results = [];
+
+    for (const service of services) {
+        console.log(`Testing ${service.name}...`);
+
+        try {
+            const fetchOptions = {
+                method: service.method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            const response = await fetch(service.endpoint, fetchOptions);
+            const data = await response.json();
+
+            console.log(`${service.name} response:`, data);
+
+            // Check for success - handle different response formats
+            const success = data.success === true || data.status === 'success' || data.status === 'connected';
+            const statusText = data.status || (data.success ? 'connected' : 'disconnected');
+
+            results.push({
+                service: service.name,
+                success: success,
+                status: statusText,
+                message: success
+                    ? `✅ Connected (${statusText})`
+                    : `❌ ${data.error || data.message || 'Connection failed'} (${statusText})`,
+                rawData: data
+            });
+        } catch (error) {
+            console.error(`Error testing ${service.name}:`, error);
+            results.push({
+                service: service.name,
+                success: false,
+                status: 'error',
+                message: `❌ Error: ${error.message}`,
+                rawData: null
+            });
+        }
+    }
+
+    console.log('All tests complete:', results);
+    displayMetadataTestResults(results);
+}
+
+function displayMetadataTestResults(results) {
+    if (typeof hideProgress === 'function') {
+        hideProgress();
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.length - successCount;
+
+    let message = `<h4>Metadata Services Test Results</h4>`;
+    message += `<p><strong>Total:</strong> ${results.length} services | `;
+    message += `<span style="color: #4CAF50;">✅ ${successCount} passed</span> | `;
+    message += `<span style="color: #f44336;">❌ ${failCount} failed</span></p>`;
+    message += `<ul style="list-style: none; padding: 0;">`;
+
+    results.forEach(result => {
+        message += `<li style="margin: 8px 0;"><strong>${result.service}:</strong> ${result.message}</li>`;
+    });
+
+    message += `</ul>`;
+
+    if (typeof showResults === 'function') {
+        showResults(message);
+    } else if (typeof showSuccess === 'function' && failCount === 0) {
+        showSuccess(`All ${results.length} metadata services passed connection tests!`);
+    } else if (typeof showError === 'function' && failCount > 0) {
+        showError(`${failCount} of ${results.length} metadata services failed connection tests.`);
+    } else {
+        alert(message.replace(/<[^>]*>/g, ''));
+    }
 }
 
 function scanVideoFiles() {
@@ -3439,25 +3596,34 @@ function testScheduledDownload() {
 
 // Enhanced Scheduler Functions
 function triggerEnhancedDownload() {
+    // VERSION: 2.0 - Fixed undefined result bug
     const statusDiv = document.getElementById('scheduler-status');
     if (statusDiv) {
         statusDiv.innerHTML = '<span class="status-loading">🔽 Triggering enhanced download...</span>';
     }
-    
+
+    console.log('triggerEnhancedDownload VERSION 2.0 - with null checks');
+
     fetch('/api/enhanced-scheduler/trigger/download', {
         method: 'POST'
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Enhanced download response:', data);
+
         if (data.success) {
-            const result = data.result;
+            const result = data.result || {};
+            const downloaded = result.downloaded || 0;
+            const totalFound = result.total_found || 0;
+            const duration = result.duration_seconds ? result.duration_seconds.toFixed(1) + 's' : 'Unknown';
+
             const message = `Download triggered successfully!<br>
-                           Downloaded: ${result.downloaded || 0} videos<br>
-                           Total Found: ${result.total_found || 0} videos<br>
-                           Duration: ${result.duration_seconds ? result.duration_seconds.toFixed(1) + 's' : 'Unknown'}`;
+                           Downloaded: ${downloaded} videos<br>
+                           Total Found: ${totalFound} videos<br>
+                           Duration: ${duration}`;
             showSuccess(message);
         } else {
-            showError('Enhanced download trigger failed: ' + data.message);
+            showError('Enhanced download trigger failed: ' + (data.message || 'Unknown error'));
         }
         refreshSchedulerStatus();
     })
@@ -4827,20 +4993,73 @@ async function checkCookieStatusSettings() {
     try {
         const response = await fetch('/api/metube/cookies/status');
         const data = await response.json();
-        
+
         const statusDiv = document.getElementById('cookieStatusSettings');
         const deleteBtn = document.getElementById('deleteCookieBtnSettings');
-        
+
         if (data.cookies_available) {
-            statusDiv.innerHTML = '<span class="status-text success">✅ Cookies uploaded - Age-restricted videos supported</span>';
+            // Visual indicators based on freshness status
+            let indicator = '';
+            let statusClass = '';
+            let icon = '';
+
+            switch (data.status) {
+                case 'fresh':
+                    indicator = '🟢';
+                    statusClass = 'fresh';
+                    icon = '✅';
+                    break;
+                case 'expiring_soon':
+                    indicator = '🟡';
+                    statusClass = 'expiring';
+                    icon = '⚠️';
+                    break;
+                case 'expired':
+                    indicator = '🔴';
+                    statusClass = 'expired';
+                    icon = '❌';
+                    break;
+                default:
+                    indicator = '🟢';
+                    statusClass = 'fresh';
+                    icon = '✅';
+            }
+
+            const ageDays = data.age_days ? Math.round(data.age_days) : 0;
+            const ageText = ageDays === 0 ? 'today' : ageDays === 1 ? '1 day ago' : `${ageDays} days ago`;
+
+            statusDiv.innerHTML = `
+                <div class="cookie-status-widget ${statusClass}">
+                    <span class="status-indicator">${indicator}</span>
+                    <div class="status-details">
+                        <div class="status-primary">${icon} ${data.message || 'Cookies uploaded'}</div>
+                        <div class="status-meta">Uploaded ${ageText}</div>
+                    </div>
+                </div>
+            `;
             deleteBtn.style.display = 'inline-block';
         } else {
-            statusDiv.innerHTML = '<span class="status-text error">❌ No cookies uploaded - Age-restricted videos will fail</span>';
+            statusDiv.innerHTML = `
+                <div class="cookie-status-widget missing">
+                    <span class="status-indicator">🔴</span>
+                    <div class="status-details">
+                        <div class="status-primary">❌ ${data.message || 'No cookies uploaded'}</div>
+                        <div class="status-meta">Age-restricted videos will fail</div>
+                    </div>
+                </div>
+            `;
             deleteBtn.style.display = 'none';
         }
     } catch (error) {
         console.error('Failed to check cookie status:', error);
-        document.getElementById('cookieStatusSettings').innerHTML = '<span class="status-text">❓ Status unknown</span>';
+        document.getElementById('cookieStatusSettings').innerHTML = `
+            <div class="cookie-status-widget error">
+                <span class="status-indicator">❓</span>
+                <div class="status-details">
+                    <div class="status-primary">Status unknown</div>
+                </div>
+            </div>
+        `;
     }
 }
 
@@ -5492,6 +5711,64 @@ async function loadCertificateStatus() {
 .cookie-upload-actions button {
     font-size: 0.9rem;
     padding: 6px 12px;
+}
+
+/* Cookie Status Widget Styles */
+.cookie-status-widget {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    border-radius: 6px;
+    background: var(--surface-color, #2c2c2e);
+    border: 2px solid;
+    transition: all 0.3s ease;
+}
+
+.cookie-status-widget.fresh {
+    border-color: var(--success, #28a745);
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.cookie-status-widget.expiring {
+    border-color: var(--warning, #ffc107);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.cookie-status-widget.expired,
+.cookie-status-widget.missing {
+    border-color: var(--danger, #dc3545);
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.cookie-status-widget.error {
+    border-color: var(--secondary, #6c757d);
+    background: rgba(108, 117, 125, 0.1);
+}
+
+.cookie-status-widget .status-indicator {
+    font-size: 1.5em;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.cookie-status-widget .status-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cookie-status-widget .status-primary {
+    font-weight: 600;
+    font-size: 0.95em;
+    color: var(--text-primary, #fff);
+}
+
+.cookie-status-widget .status-meta {
+    font-size: 0.8em;
+    color: var(--text-muted, #999);
+    font-style: italic;
 }
 
 .help-text {

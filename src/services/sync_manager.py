@@ -217,7 +217,7 @@ class SyncManager:
 
             # Generate profile ID
             profile_id = (
-                f"sync_{hashlib.md5(f'{name}_{local_path}'.encode()).hexdigest()[:12]}"
+                f"sync_{hashlib.md5(f'{name}_{local_path}'.encode(), usedforsecurity=False).hexdigest()[:12]}"
             )
 
             # Create profile
@@ -485,9 +485,9 @@ class SyncManager:
         )
 
     async def _calculate_file_hash(self, file_path: str) -> str:
-        """Calculate MD5 hash of file"""
+        """Calculate MD5 hash of file (for checksums, not security)"""
         try:
-            hash_md5 = hashlib.md5()
+            hash_md5 = hashlib.md5(usedforsecurity=False)
             async with aiofiles.open(file_path, "rb") as f:
                 async for chunk in self._read_chunks(f):
                     hash_md5.update(chunk)

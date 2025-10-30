@@ -286,7 +286,7 @@
             <label for="autoRefreshToggle">Auto-refresh</label>
             <input type="checkbox" id="autoRefreshToggle" checked onchange="toggleAutoRefresh()">
         </div>
-        <button class="btn btn-secondary" onclick="refreshAllJobs()">
+        <button class="btn btn-secondary" onclick="refreshAllJobsPage()">
             <iconify-icon icon="tabler:refresh"></iconify-icon>
             Refresh All
         </button>
@@ -326,7 +326,7 @@
                 Active Jobs
                 <span class="job-count" id="activeJobBadge">0</span>
             </h2>
-            <button class="btn btn-sm" onclick="refreshActiveJobs()">
+            <button class="btn btn-sm" onclick="refreshJobsPageActiveJobs()">
                 <iconify-icon icon="tabler:refresh"></iconify-icon>
                 Refresh
             </button>
@@ -353,7 +353,7 @@
                     <option value="failed">Failed</option>
                     <option value="cancelled">Cancelled</option>
                 </select>
-                <button class="btn btn-sm" onclick="refreshJobHistory()">
+                <button class="btn btn-sm" onclick="refreshJobsPageHistory()">
                     <iconify-icon icon="tabler:refresh"></iconify-icon>
                     Refresh
                 </button>
@@ -375,51 +375,51 @@ let allJobs = [];
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
-    loadSystemStats();
-    refreshActiveJobs();
-    refreshJobHistory();
-    
+    loadJobsPageSystemStats();
+    refreshJobsPageActiveJobs();
+    refreshJobsPageHistory();
+
     if (jobsPageAutoRefreshEnabled) {
-        startAutoRefresh();
+        startJobsPageAutoRefresh();
     }
 });
 
-function startAutoRefresh() {
+function startJobsPageAutoRefresh() {
     if (jobRefreshInterval) {
         clearInterval(jobRefreshInterval);
     }
     
     jobRefreshInterval = setInterval(() => {
-        refreshActiveJobs();
-        loadSystemStats();
+        refreshJobsPageActiveJobs();
+        loadJobsPageSystemStats();
     }, 5000); // Refresh every 5 seconds
 }
 
-function stopAutoRefresh() {
+function stopJobsPageAutoRefresh() {
     if (jobRefreshInterval) {
         clearInterval(jobRefreshInterval);
         jobRefreshInterval = null;
     }
 }
 
-function toggleAutoRefresh() {
+function toggleJobsPageAutoRefresh() {
     const toggle = document.getElementById('autoRefreshToggle');
     jobsPageAutoRefreshEnabled = toggle.checked;
     
     if (jobsPageAutoRefreshEnabled) {
-        startAutoRefresh();
+        startJobsPageAutoRefresh();
     } else {
-        stopAutoRefresh();
+        stopJobsPageAutoRefresh();
     }
 }
 
-function refreshAllJobs() {
-    loadSystemStats();
-    refreshActiveJobs();
-    refreshJobHistory();
+function refreshAllJobsPage() {
+    loadJobsPageSystemStats();
+    refreshJobsPageActiveJobs();
+    refreshJobsPageHistory();
 }
 
-async function loadSystemStats() {
+async function loadJobsPageSystemStats() {
     try {
         const response = await fetch('/api/health/status', {
             credentials: 'include'
@@ -449,7 +449,8 @@ async function loadSystemStats() {
     }
 }
 
-async function refreshActiveJobs() {
+async function refreshJobsPageActiveJobs() {
+    console.log('🔄 refreshJobsPageActiveJobs() called');
     const container = document.getElementById('activeJobsList');
     const countElements = [
         document.getElementById('activeJobBadge'),
@@ -458,16 +459,20 @@ async function refreshActiveJobs() {
 
     try {
         // Fetch active jobs from Celery inspect endpoint
+        console.log('📡 Fetching from /api/metadata-enrichment/celery/inspect');
         const response = await fetch('/api/metadata-enrichment/celery/inspect', {
             credentials: 'include'
         });
 
+        console.log('📡 Response status:', response.status, response.ok);
         if (!response.ok) {
             throw new Error('Failed to fetch active jobs');
         }
 
         const data = await response.json();
+        console.log('📊 Received data:', data);
         const activeJobs = data.jobs || [];
+        console.log('📊 Active jobs:', activeJobs);
 
         // Filter to only show processing and queued jobs
         const filteredJobs = activeJobs.filter(job =>
@@ -522,7 +527,7 @@ async function refreshActiveJobs() {
     }
 }
 
-async function refreshJobHistory() {
+async function refreshJobsPageHistory() {
     const container = document.getElementById('recentJobsList');
     
     try {
@@ -614,7 +619,7 @@ async function cancelJob(jobId) {
         console.log('Job cancelled:', result);
 
         // Refresh the active jobs list
-        refreshActiveJobs();
+        refreshJobsPageActiveJobs();
 
     } catch (error) {
         console.error('Failed to cancel job:', error);
@@ -627,7 +632,7 @@ function clearCompletedJobs() {
         // This would typically call an API endpoint to clear completed jobs
         console.log('Clear completed jobs requested');
         // For now, just refresh the display
-        refreshJobHistory();
+        refreshJobsPageHistory();
     }
 }
 
@@ -748,7 +753,10 @@ function formatDuration(seconds) {
 }
 
 function formatTimestamp(timestamp) {
-    return new Date(timestamp).toLocaleString();
+    if (!timestamp) return '';
+    // Celery returns Unix timestamps in seconds, JavaScript expects milliseconds
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleString();
 }
 </script>
 {% endblock %}

@@ -362,30 +362,18 @@ export const actionHandlers = handleThunks({
       shouldFetchAlbumsAfterUpdate = false
     } = payload;
 
-    const artists = [];
-
-    artistIds.forEach((id) => {
-      const artistsToUpdate = { id };
-
-      if (monitored != null) {
-        artistsToUpdate.monitored = monitored;
-      }
-
-      artists.push(artistsToUpdate);
-    });
-
     dispatch(set({
       section,
       isSaving: true
     }));
 
     const promise = createAjaxRequest({
-      url: '/albumStudio',
+      url: '/api/artists/bulk/update-monitoring',
       method: 'POST',
       data: JSON.stringify({
-        artist: artists,
-        monitoringOptions: { monitor },
-        monitorNewItems
+        artist_ids: artistIds,
+        monitored: monitored,
+        monitor_new_items: monitorNewItems
       }),
       dataType: 'json'
     }).request;
@@ -417,31 +405,40 @@ export const actionHandlers = handleThunks({
       isSaving: true
     }));
 
+    // Extract artist IDs and updates from payload
+    const { artistIds, tags, applyTags, ...updates } = payload;
+
+    // Build the request payload for FastAPI
+    const requestPayload = {
+      artist_ids: artistIds
+    };
+
+    // If tags are being updated, include them in updates
+    if (tags !== undefined) {
+      requestPayload.updates = { tags, applyTags };
+    } else {
+      requestPayload.updates = updates;
+    }
+
     const promise = createAjaxRequest({
-      url: '/artist/editor',
-      method: 'PUT',
-      data: JSON.stringify(payload),
+      url: '/api/artists/bulk/edit',
+      method: 'POST',
+      data: JSON.stringify(requestPayload),
       dataType: 'json'
     }).request;
 
     promise.done((data) => {
+      // Update each artist in the Redux store
+      const updateActions = artistIds.map((id) => {
+        return updateItem({
+          id,
+          section: 'artist',
+          ...updates
+        });
+      });
+
       dispatch(batchActions([
-        ...data.map((artist) => {
-
-          const {
-            images,
-            rootFolderPath,
-            statistics,
-            ...propsToUpdate
-          } = artist;
-
-          return updateItem({
-            id: artist.id,
-            section: 'artist',
-            ...propsToUpdate
-          });
-        }),
-
+        ...updateActions,
         set({
           section,
           isSaving: false,
@@ -465,10 +462,16 @@ export const actionHandlers = handleThunks({
       isDeleting: true
     }));
 
+    // Map payload to FastAPI format
+    const requestPayload = {
+      artist_ids: payload.artistIds,
+      delete_videos: payload.deleteFiles || false
+    };
+
     const promise = createAjaxRequest({
-      url: '/artist/editor',
-      method: 'DELETE',
-      data: JSON.stringify(payload),
+      url: '/api/artists/bulk/delete',
+      method: 'POST',
+      data: JSON.stringify(requestPayload),
       dataType: 'json'
     }).request;
 

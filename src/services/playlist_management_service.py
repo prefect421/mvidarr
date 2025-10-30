@@ -223,7 +223,7 @@ class PlaylistManagementService:
         """Create a new playlist"""
         try:
             # Generate playlist ID
-            playlist_id = f"playlist_{int(datetime.now().timestamp())}_{hashlib.md5(name.encode()).hexdigest()[:8]}"
+            playlist_id = f"playlist_{int(datetime.now().timestamp())}_{hashlib.md5(name.encode(), usedforsecurity=False).hexdigest()[:8]}"
 
             # Create playlist
             now = datetime.now()

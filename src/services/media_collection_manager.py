@@ -558,7 +558,7 @@ async def process_directory_as_collection(
 ) -> Dict[str, Any]:
     """Process an entire directory as a media collection"""
 
-    collection_id = f"dir_{hashlib.md5(source_directory.encode()).hexdigest()[:8]}"
+    collection_id = f"dir_{hashlib.md5(source_directory.encode(), usedforsecurity=False).hexdigest()[:8]}"
 
     manager = MediaCollectionManager(config)
 

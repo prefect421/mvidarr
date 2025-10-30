@@ -336,7 +336,7 @@ class ThumbnailOptimizationService:
                 # Calculate file hash
                 try:
                     with open(img_file, "rb") as f:
-                        file_hash = hashlib.md5(f.read()).hexdigest()
+                        file_hash = hashlib.md5(f.read(), usedforsecurity=False).hexdigest()
 
                     if file_hash in file_hashes:
                         # Duplicate found

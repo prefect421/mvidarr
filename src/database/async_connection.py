@@ -510,7 +510,7 @@ def cache_database_query(ttl: int = 300, key_prefix: str = "db_query"):
                         key_parts.append(f"{k}:{v}")
 
                 cache_key_string = "|".join(key_parts)
-                cache_key_hash = hashlib.md5(cache_key_string.encode()).hexdigest()
+                cache_key_hash = hashlib.md5(cache_key_string.encode(), usedforsecurity=False).hexdigest()
                 final_key = f"{key_prefix}:{cache_key_hash}"
 
                 # Try to get from cache

@@ -152,7 +152,7 @@ class WatchHistoryService:
         """Start a new watch session"""
         try:
             # Generate session ID
-            session_id = f"session_{int(datetime.now().timestamp())}_{hashlib.md5(f'{video_id}_{user_id}'.encode()).hexdigest()[:8]}"
+            session_id = f"session_{int(datetime.now().timestamp())}_{hashlib.md5(f'{video_id}_{user_id}'.encode(), usedforsecurity=False).hexdigest()[:8]}"
 
             # Get video duration
             async with get_async_session() as session:

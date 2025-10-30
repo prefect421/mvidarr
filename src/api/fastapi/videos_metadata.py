@@ -14,10 +14,11 @@ Uses Pydantic models from videos_models.py for request/response validation.
 Authentication: All endpoints require session-based authentication via get_current_user dependency.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from src.api.fastapi.auth_dependencies import get_current_user_legacy
@@ -234,86 +235,93 @@ async def bulk_enhanced_refresh_metadata(
 async def enhanced_refresh_all_metadata(
     request: dict = Body(default={}), session: Session = Depends(get_db_session)
 ):
-    """Enhanced metadata refresh for all videos or specific video IDs"""
+    """
+    Enhanced metadata refresh for all videos or specific video IDs using Celery background job.
+
+    This queues a Celery task that performs full metadata enrichment from multiple sources:
+    - MusicBrainz (release dates, recording info)
+    - Discogs (release info, fallback)
+    - Spotify (album info, genres, durations)
+    - IMVDb (music video database)
+    - Last.fm (track metadata)
+    - YouTube (video discovery)
+    - FFmpeg (local file analysis)
+
+    Request Parameters:
+    - force_refresh (bool): If True, overwrites existing metadata. If False, only fills empty fields.
+    - days_since_enriched (int): Only enrich videos not enriched in the last N days. Set to 0 to force all.
+    - limit (int): Maximum number of videos to process. None = all videos.
+    - video_ids (list): Specific video IDs to process. If provided, overrides limit.
+
+    Returns:
+    - job_id: ID of the Celery task for tracking progress via WebSocket
+    """
     try:
-        force_refresh = request.get("force_refresh", False)
+        from src.jobs.metadata_tasks import bulk_enrich_videos_metadata_task
+
+        force_refresh = request.get("force_refresh", True)
+        days_since_enriched = request.get("days_since_enriched", 7)
         limit = request.get("limit", None)
         video_ids = request.get("video_ids", None)
 
-        # Get videos to process
+        # Count how many videos will be processed
         query = session.query(Video).options(joinedload(Video.artist))
 
         # Filter by specific video IDs if provided
         if video_ids:
             query = query.filter(Video.id.in_(video_ids))
+            video_count = len(video_ids)
+            logger.info(
+                f"Bulk enrichment: queueing Celery task for {video_count} specific video IDs"
+            )
+        else:
+            # Filter by last_enriched date if days_since_enriched > 0
+            if days_since_enriched > 0:
+                cutoff_date = datetime.utcnow() - timedelta(days=days_since_enriched)
+                query = query.filter(
+                    or_(Video.last_enriched == None, Video.last_enriched < cutoff_date)
+                )
+                logger.info(
+                    f"Bulk enrichment: filtering videos not enriched since {cutoff_date}"
+                )
 
         if limit:
             query = query.limit(limit)
 
-        videos = query.all()
+        video_count = query.count()
 
-        if not videos:
+        if video_count == 0:
             return {
                 "success": True,
                 "message": "No videos found to process",
-                "processed": 0,
-                "updated": 0,
-                "errors": 0,
+                "job_id": None,
+                "video_count": 0,
             }
 
-        # Process videos using enhanced metadata service
-        processed = 0
-        updated = 0
-        errors = 0
-        error_details = []
-
-        for video in videos:
-            try:
-                # Simulate enhanced metadata refresh
-                should_refresh = (
-                    force_refresh
-                    or not getattr(video, "last_enriched", None)
-                    or (datetime.utcnow() - video.last_enriched).days > 7
-                )
-
-                if should_refresh:
-                    # Update timestamps
-                    if hasattr(video, "last_enriched"):
-                        video.last_enriched = datetime.utcnow()
-                    video.updated_at = datetime.utcnow()
-                    updated += 1
-
-                processed += 1
-
-            except Exception as e:
-                errors += 1
-                error_details.append(
-                    {"video_id": video.id, "title": video.title, "error": str(e)}
-                )
-                logger.error(
-                    f"Error refreshing enhanced metadata for video {video.id}: {e}"
-                )
-
-        session.commit()
+        # Queue Celery task
+        task = bulk_enrich_videos_metadata_task.delay(
+            video_ids=video_ids,
+            force_refresh=force_refresh,
+            days_since_enriched=days_since_enriched,
+            limit=limit,
+        )
 
         logger.info(
-            f"Enhanced metadata refresh completed: {processed} processed, {updated} updated, {errors} errors"
+            f"Queued Celery bulk video metadata enrichment task {task.id} for {video_count} videos "
+            f"(force_refresh={force_refresh}, days_since_enriched={days_since_enriched})"
         )
 
         return {
             "success": True,
-            "message": f"Processed {processed} videos ({updated} updated, {errors} errors)",
-            "processed": processed,
-            "updated": updated,
-            "errors": errors,
-            "error_details": error_details if error_details else [],
+            "message": f"Queued metadata enrichment for {video_count} videos",
+            "job_id": task.id,
+            "video_count": video_count,
         }
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in enhanced metadata refresh all: {e}")
-        session.rollback()
+        logger.error(f"Error queueing bulk metadata refresh: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

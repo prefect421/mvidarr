@@ -809,7 +809,7 @@ class CollectionMaintenanceService:
             )
             potential_savings = total_size - keeper_size
 
-            group_id = f"dup_{hashlib.md5(''.join(str(v.id) for v in videos).encode()).hexdigest()[:8]}"
+            group_id = f"dup_{hashlib.md5(''.join(str(v.id) for v in videos).encode(), usedforsecurity=False).hexdigest()[:8]}"
 
             return DuplicateGroup(
                 group_id=group_id,

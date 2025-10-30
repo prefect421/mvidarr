@@ -690,7 +690,7 @@ class ArtistBrowserService:
             year = max(years) if years else None
 
             # Generate album ID
-            album_id = f"album_{hashlib.md5(f'{artist_id}_{album_num}'.encode()).hexdigest()[:12]}"
+            album_id = f"album_{hashlib.md5(f'{artist_id}_{album_num}'.encode(), usedforsecurity=False).hexdigest()[:12]}"
 
             return AlbumCard(
                 album_id=album_id,
@@ -733,7 +733,7 @@ class ArtistBrowserService:
         try:
             # Check cache first
             cache_key = (
-                f"artist_cover_art:{hashlib.md5(artist_name.encode()).hexdigest()}"
+                f"artist_cover_art:{hashlib.md5(artist_name.encode(), usedforsecurity=False).hexdigest()}"
             )
             cached_path = await self.redis_client.get(cache_key)
 

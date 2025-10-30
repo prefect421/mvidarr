@@ -110,7 +110,7 @@ class ThumbnailService:
             Generated filename
         """
         # Create hash of URL for unique filename
-        url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
+        url_hash = hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()[:12]
 
         # Try to get extension from URL
         parsed_url = urlparse(url)
