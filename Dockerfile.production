@@ -64,12 +64,9 @@ COPY --chown=mvidarr:mvidarr docker-config.yml.sample /app/config/docker-config.
 COPY entrypoint.sh /app/entrypoint.sh
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Set up static files and permissions in single layer (cached if static files unchanged)
+# Set up static files permissions (cached if static files unchanged)
 RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && \
-    touch /app/.env && chown mvidarr:mvidarr /app/.env && chmod 664 /app/.env && \
-    find /app -type d -exec chmod 755 {} \; && \
-    find /app -type f -exec chmod 644 {} \; && \
-    chmod 755 /app/fastapi_app.py
+    touch /app/.env && chown mvidarr:mvidarr /app/.env && chmod 664 /app/.env
 
 # Set environment variables (cached layer - rarely changes)
 ENV PYTHONPATH=/app/src \
@@ -84,6 +81,11 @@ COPY --chown=mvidarr:mvidarr frontend/ /app/frontend/
 COPY --chown=mvidarr:mvidarr migrations/ /app/migrations/
 COPY --chown=mvidarr:mvidarr scripts/ /app/scripts/
 COPY --chown=mvidarr:mvidarr fastapi_app.py version.json /app/
+
+# Set proper permissions for all application files
+RUN find /app -type d -exec chmod 755 {} \; && \
+    find /app -type f -exec chmod 644 {} \; && \
+    chmod 755 /app/fastapi_app.py
 
 # Expose the application port
 EXPOSE 5000
