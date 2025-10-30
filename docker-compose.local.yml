@@ -1,0 +1,126 @@
+# MVidarr - Local Testing Docker Compose Configuration
+# Uses locally built image for testing simplified 3-container architecture
+
+services:
+  mvidarr:
+    image: mvidarr:local-test
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for MariaDB and Redis to be ready...';
+        while ! nc -z mariadb 3306 || ! nc -z redis 6379; do
+          echo 'Services not ready, waiting...';
+          sleep 3;
+        done;
+        echo 'Services ready, setting up environment...';
+        PUID=\$${PUID:-1000};
+        PGID=\$${PGID:-1000};
+        usermod -u \$$PUID mvidarr 2>/dev/null || true;
+        groupmod -g \$$PGID mvidarr 2>/dev/null || true;
+        echo 'Creating required directories...';
+        mkdir -p /app/data/database /app/data/thumbnails/artists /app/data/cache /app/data/downloads /app/data/logs /app/data/musicvideos /app/data/music_videos;
+        chown -R \$$PUID:\$$PGID /app/data /app/logs;
+        touch /app/data/database/.initialized || true;
+        echo 'Starting MVidarr with supervisord (FastAPI + Celery)...';
+        umask \$${UMASK_SET:-022};
+        exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf;
+      "
+    container_name: mvidarr
+    ports:
+      - "0.0.0.0:5001:5000"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=mvidarr
+      - DB_PASSWORD=secure_password
+      - DB_NAME=mvidarr
+      - SECRET_KEY=mvidarr-local-test-key
+      - MVIDARR_SECRET_KEY=mvidarr-local-test-key
+      - PYTHONUNBUFFERED=1
+      - TZ=America/New_York
+      - PUID=1000
+      - PGID=1000
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - BACKGROUND_JOBS_ENABLED=true
+      - JOB_SYSTEM_ENABLED=true
+      - JOB_WORKER_COUNT=3
+      - JOB_WEBSOCKET_ENABLED=true
+    volumes:
+      - ./volumes/downloads:/app/data/downloads
+      - ./volumes/music_videos:/app/data/musicvideos
+      - ./volumes/database:/app/data/database
+      - ./volumes/thumbnails:/app/data/thumbnails
+      - ./volumes/logs:/app/data/logs
+      - ./volumes/cache:/app/data/cache
+    depends_on:
+      - mariadb
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mvidarr-network
+
+  mariadb:
+    image: mariadb:11.4
+    container_name: mvidarr-mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=mvidarr
+      - MYSQL_USER=mvidarr
+      - MYSQL_PASSWORD=secure_password
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+      - TZ=America/New_York
+    volumes:
+      - ./volumes/database/mariadb:/var/lib/mysql
+    ports:
+      - "127.0.0.1:3307:3306"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - mvidarr-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: mvidarr-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mvidarr-network
+    environment:
+      - TZ=America/New_York
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  mvidarr-network:
+    driver: bridge

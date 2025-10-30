@@ -7,11 +7,13 @@ FROM python:3.12-slim
 # Install system dependencies including supervisord for process management
 RUN apt-get update && apt-get install -y \
     ffmpeg \
-    ffprobe \
     curl \
     procps \
     supervisor \
     netcat-openbsd \
+    pkg-config \
+    default-libmysqlclient-dev \
+    build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -19,10 +21,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements first for better caching
-COPY requirements.txt ./
+COPY requirements-prod.txt requirements-fastapi.txt ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies (both Flask/core and FastAPI)
+RUN pip install --no-cache-dir -r requirements-prod.txt -r requirements-fastapi.txt
 
 # Copy application code
 COPY . .
@@ -33,9 +35,12 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # Create mvidarr user for running processes
 RUN useradd -m -u 1000 -s /bin/bash mvidarr
 
-# Create necessary directories with proper permissions
+# Create necessary directories and set proper permissions for entire app directory
 RUN mkdir -p /app/logs /app/downloads /app/data/musicvideos /app/data/logs \
-    && chown -R mvidarr:mvidarr /app/data /app/logs
+    && chown -R mvidarr:mvidarr /app \
+    && find /app -type d -exec chmod 755 {} \; \
+    && find /app -type f -exec chmod 644 {} \; \
+    && chmod 755 /app/fastapi_app.py
 
 # Set environment variables
 ENV PYTHONPATH=/app
