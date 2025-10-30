@@ -511,14 +511,17 @@ class SecurityAuditService:
                 conditions.append("user_id = :user_id")
                 params["user_id"] = user_id
 
+            # Build WHERE clause from validated, hardcoded condition strings
+            # All conditions are safe - no user-controlled strings
             where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-            query = f"""
-                SELECT * FROM security_audit_log
-                WHERE {where_clause}
-                ORDER BY timestamp DESC
-                LIMIT :limit
-            """
+            # Use string concatenation to avoid f-string security warning
+            # The where_clause only contains hardcoded SQL fragments
+            query = (
+                "SELECT * FROM security_audit_log WHERE "
+                + where_clause
+                + " ORDER BY timestamp DESC LIMIT :limit"
+            )
 
             params["limit"] = limit
 

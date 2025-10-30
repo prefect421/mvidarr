@@ -2,6 +2,7 @@
 Database connection management for MVidarr
 """
 
+import re
 from contextlib import contextmanager
 from threading import Lock
 
@@ -18,6 +19,14 @@ SessionLocal = None
 Base = declarative_base()
 
 logger = get_logger("mvidarr.database")
+
+
+def _validate_sql_identifier(identifier: str) -> bool:
+    """
+    Validate that a string is a safe SQL identifier (database/table/column name).
+    Only allows alphanumeric characters and underscores.
+    """
+    return bool(re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", identifier))
 
 
 class DatabaseManager:
@@ -96,17 +105,22 @@ class DatabaseManager:
                 f"@{self.config.DB_HOST}:{self.config.DB_PORT}/?charset=utf8mb4"
             )
 
+            # Validate database name to prevent SQL injection
+            if not _validate_sql_identifier(self.config.DB_NAME):
+                raise ValueError(f"Invalid database name: {self.config.DB_NAME}")
+
             temp_engine = create_engine(temp_url)
             with temp_engine.connect() as connection:
-                # Check if database exists
+                # Check if database exists - use parameterized query
                 result = connection.execute(
                     text(
-                        f"SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{self.config.DB_NAME}'"
-                    )
+                        "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = :db_name"
+                    ),
+                    {"db_name": self.config.DB_NAME},
                 )
 
                 if not result.fetchone():
-                    # Create database
+                    # Create database - validated identifier is safe to use
                     connection.execute(
                         text(
                             f"CREATE DATABASE {self.config.DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"

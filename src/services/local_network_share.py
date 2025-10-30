@@ -193,9 +193,7 @@ class LocalNetworkShareService:
                 raise ValueError(f"Local path does not exist: {local_path}")
 
             # Generate share ID
-            share_id = (
-                f"share_{hashlib.md5(f'{name}_{local_path}'.encode(), usedforsecurity=False).hexdigest()[:12]}"
-            )
+            share_id = f"share_{hashlib.md5(f'{name}_{local_path}'.encode(), usedforsecurity=False).hexdigest()[:12]}"
 
             # Create share
             share = NetworkShare(share_id)

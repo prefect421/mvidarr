@@ -12,12 +12,12 @@ This module contains all file parsing functionality for various import formats:
 import csv
 import gzip
 import json
-import xml.etree.ElementTree as ET
 import zipfile
 from io import StringIO
 from pathlib import Path
 from typing import Any, Dict, List
 
+import defusedxml.ElementTree as ET
 import yaml
 
 from src.database.import_export_models import (

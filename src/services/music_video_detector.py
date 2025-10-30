@@ -165,9 +165,7 @@ class MusicVideoDetector:
                 await self.initialize()
 
             # Check cache first
-            cache_key = (
-                f"music_video_detection:{hashlib.md5(video_path.encode(), usedforsecurity=False).hexdigest()}"
-            )
+            cache_key = f"music_video_detection:{hashlib.md5(video_path.encode(), usedforsecurity=False).hexdigest()}"
             cached_result = await self.redis_client.get(cache_key)
             if cached_result:
                 logger.debug(f"Using cached detection result for {video_path}")

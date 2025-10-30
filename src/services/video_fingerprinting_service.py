@@ -20,6 +20,21 @@ from src.utils.logger import get_logger
 logger = get_logger("mvidarr.video_fingerprinting")
 
 
+def _safe_parse_frame_rate(frame_rate_str: str) -> float:
+    """
+    Safely parse frame rate fraction string (e.g., "30000/1001") to float.
+    Replaces unsafe eval() with proper parsing.
+    """
+    try:
+        if "/" in frame_rate_str:
+            numerator, denominator = frame_rate_str.split("/", 1)
+            return float(numerator) / float(denominator)
+        else:
+            return float(frame_rate_str)
+    except (ValueError, ZeroDivisionError):
+        return 0.0
+
+
 @dataclass
 class VideoFingerprint:
     """Video fingerprint data structure"""
@@ -127,7 +142,9 @@ class VideoFingerprintingService:
 
             # Generate video ID if not provided
             if not video_id:
-                video_id = hashlib.md5(video_path.encode(), usedforsecurity=False).hexdigest()[:16]
+                video_id = hashlib.md5(
+                    video_path.encode(), usedforsecurity=False
+                ).hexdigest()[:16]
 
             # Check if fingerprint already exists in cache
             cache_manager = await get_media_cache_manager()
@@ -276,7 +293,7 @@ class VideoFingerprintingService:
                 "duration": float(probe_data.get("format", {}).get("duration", 0)),
                 "bitrate": int(probe_data.get("format", {}).get("bit_rate", 0)),
                 "resolution": f"{video_stream.get('width', 0)}x{video_stream.get('height', 0)}",
-                "fps": eval(
+                "fps": _safe_parse_frame_rate(
                     video_stream.get("r_frame_rate", "0/1")
                 ),  # Convert fraction to float
                 "codec": video_stream.get("codec_name", "unknown"),

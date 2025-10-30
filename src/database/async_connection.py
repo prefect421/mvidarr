@@ -3,6 +3,7 @@ Async Database Connection Manager - Phase 3 Week 33
 High-performance async database operations with advanced connection pooling for FastAPI
 """
 
+import re
 import time
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, List, Optional
@@ -19,6 +20,14 @@ from sqlalchemy.pool import QueuePool
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.database.async_connection")
+
+
+def _validate_sql_identifier(identifier: str) -> bool:
+    """
+    Validate that a string is a safe SQL identifier (table/column name).
+    Only allows alphanumeric characters and underscores.
+    """
+    return bool(re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", identifier))
 
 
 class AsyncDatabaseManager:
@@ -192,8 +201,18 @@ class AsyncDatabaseManager:
             if not self._initialized:
                 await initialize_async_database()
 
-            # Build bulk insert query
+            # Validate table name to prevent SQL injection
+            if not _validate_sql_identifier(table_name):
+                raise ValueError(f"Invalid table name: {table_name}")
+
+            # Build bulk insert query with validated identifiers
             columns = list(records[0].keys())
+
+            # Validate all column names
+            for col in columns:
+                if not _validate_sql_identifier(col):
+                    raise ValueError(f"Invalid column name: {col}")
+
             placeholders = ", ".join([f":{col}" for col in columns])
             query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
 
@@ -510,7 +529,9 @@ def cache_database_query(ttl: int = 300, key_prefix: str = "db_query"):
                         key_parts.append(f"{k}:{v}")
 
                 cache_key_string = "|".join(key_parts)
-                cache_key_hash = hashlib.md5(cache_key_string.encode(), usedforsecurity=False).hexdigest()
+                cache_key_hash = hashlib.md5(
+                    cache_key_string.encode(), usedforsecurity=False
+                ).hexdigest()
                 final_key = f"{key_prefix}:{cache_key_hash}"
 
                 # Try to get from cache

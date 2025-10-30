@@ -285,7 +285,9 @@ def cache_response(ttl: int = 300, key_prefix: str = "func_cache"):
                     key_parts.append(f"{k}:{v}")
 
             cache_key = ":".join(key_parts)
-            cache_key_hash = hashlib.md5(cache_key.encode(), usedforsecurity=False).hexdigest()
+            cache_key_hash = hashlib.md5(
+                cache_key.encode(), usedforsecurity=False
+            ).hexdigest()
             final_key = f"func_cache:{cache_key_hash}"
 
             # Try to get from cache

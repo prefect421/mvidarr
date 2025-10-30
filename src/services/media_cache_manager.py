@@ -4,7 +4,9 @@ Redis-based caching for media operations with intelligent invalidation and perfo
 """
 
 import hashlib
+import hmac
 import json
+import os
 import pickle
 import time
 import zlib
@@ -107,6 +109,11 @@ class CacheConfiguration:
 
 
 class MediaCacheManager:
+    # HMAC secret key for pickle integrity verification
+    # In production, this should be loaded from secure config
+    _PICKLE_HMAC_KEY = os.environ.get(
+        "MVIDARR_CACHE_SECRET", "mvidarr-cache-secret-key"
+    ).encode()
     """Advanced Redis-based caching for media operations with intelligent strategies"""
 
     def __init__(self, config: Optional[CacheConfiguration] = None):
@@ -146,7 +153,9 @@ class MediaCacheManager:
 
         # Hash long identifiers to keep keys manageable
         if len(identifier) > 100:
-            identifier = hashlib.md5(identifier.encode(), usedforsecurity=False).hexdigest()
+            identifier = hashlib.md5(
+                identifier.encode(), usedforsecurity=False
+            ).hexdigest()
 
         return f"mvidarr:{prefix}{identifier}"
 
@@ -169,24 +178,54 @@ class MediaCacheManager:
         return data
 
     def _serialize_value(self, value: Any) -> bytes:
-        """Serialize value for storage"""
+        """Serialize value for storage with integrity protection"""
         try:
             # Try JSON first for simple types
             if isinstance(value, (dict, list, str, int, float, bool, type(None))):
                 return json.dumps(value).encode("utf-8")
             else:
-                # Use pickle for complex objects
-                return b"PICKLE:" + pickle.dumps(value)
+                # Use pickle for complex objects with HMAC signing for integrity
+                pickled = pickle.dumps(value)
+                signature = hmac.new(
+                    self._PICKLE_HMAC_KEY, pickled, hashlib.sha256
+                ).digest()
+                return b"PICKLE:" + signature + pickled
         except Exception as e:
             logger.error(f"❌ Failed to serialize cache value: {e}")
-            # Fallback to pickle
-            return b"PICKLE:" + pickle.dumps(value)
+            # Fallback to pickle with HMAC
+            pickled = pickle.dumps(value)
+            signature = hmac.new(
+                self._PICKLE_HMAC_KEY, pickled, hashlib.sha256
+            ).digest()
+            return b"PICKLE:" + signature + pickled
 
     def _deserialize_value(self, data: bytes) -> Any:
-        """Deserialize value from storage"""
+        """Deserialize value from storage with integrity verification"""
         try:
             if data.startswith(b"PICKLE:"):
-                return pickle.loads(data[7:])  # Remove "PICKLE:" prefix
+                # Extract signature and pickled data
+                data_without_prefix = data[7:]  # Remove "PICKLE:" prefix
+                signature_size = 32  # SHA256 produces 32 bytes
+
+                if len(data_without_prefix) < signature_size:
+                    logger.error("❌ Invalid pickled data: too short for signature")
+                    return None
+
+                signature = data_without_prefix[:signature_size]
+                pickled = data_without_prefix[signature_size:]
+
+                # Verify HMAC signature to ensure data integrity
+                expected_signature = hmac.new(
+                    self._PICKLE_HMAC_KEY, pickled, hashlib.sha256
+                ).digest()
+                if not hmac.compare_digest(signature, expected_signature):
+                    logger.error(
+                        "❌ Pickle integrity check failed: invalid HMAC signature"
+                    )
+                    return None
+
+                # Signature verified, safe to unpickle
+                return pickle.loads(pickled)
             else:
                 return json.loads(data.decode("utf-8"))
         except Exception as e:

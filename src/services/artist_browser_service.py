@@ -732,9 +732,7 @@ class ArtistBrowserService:
         """Get or generate cover art for artist"""
         try:
             # Check cache first
-            cache_key = (
-                f"artist_cover_art:{hashlib.md5(artist_name.encode(), usedforsecurity=False).hexdigest()}"
-            )
+            cache_key = f"artist_cover_art:{hashlib.md5(artist_name.encode(), usedforsecurity=False).hexdigest()}"
             cached_path = await self.redis_client.get(cache_key)
 
             if cached_path:

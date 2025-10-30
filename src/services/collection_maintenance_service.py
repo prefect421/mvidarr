@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import shutil
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -121,9 +122,9 @@ class CollectionMaintenanceService:
         self.config = config or {}
         self.redis_client = None
 
-        # Maintenance configuration
+        # Maintenance configuration - use secure temp directory
         self.data_directory = "/data"
-        self.temp_directory = "/tmp/mvidarr"
+        self.temp_directory = os.path.join(tempfile.gettempdir(), "mvidarr")
         self.backup_directory = "/data/backups"
         self.max_temp_age_days = 7
         self.min_free_space_gb = 5.0

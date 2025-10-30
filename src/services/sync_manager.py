@@ -216,9 +216,7 @@ class SyncManager:
                 raise ValueError(f"Local path does not exist: {local_path}")
 
             # Generate profile ID
-            profile_id = (
-                f"sync_{hashlib.md5(f'{name}_{local_path}'.encode(), usedforsecurity=False).hexdigest()[:12]}"
-            )
+            profile_id = f"sync_{hashlib.md5(f'{name}_{local_path}'.encode(), usedforsecurity=False).hexdigest()[:12]}"
 
             # Create profile
             profile = SyncProfile(profile_id)

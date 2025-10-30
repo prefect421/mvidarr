@@ -18,6 +18,9 @@ from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.youtube_playlist")
 
+# Default timeout for HTTP requests (in seconds)
+DEFAULT_REQUEST_TIMEOUT = 30
+
 
 class YouTubePlaylistService:
     """Service for monitoring YouTube playlists and downloading videos"""
@@ -72,7 +75,7 @@ class YouTubePlaylistService:
         }
 
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT)
             response.raise_for_status()
 
             data = response.json()
@@ -124,7 +127,9 @@ class YouTubePlaylistService:
                 params["pageToken"] = page_token
 
             try:
-                response = requests.get(url, params=params)
+                response = requests.get(
+                    url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+                )
                 response.raise_for_status()
 
                 data = response.json()
@@ -192,7 +197,9 @@ class YouTubePlaylistService:
             }
 
             try:
-                response = requests.get(url, params=params)
+                response = requests.get(
+                    url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+                )
                 response.raise_for_status()
 
                 data = response.json()

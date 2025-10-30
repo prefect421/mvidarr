@@ -13,6 +13,7 @@ Refactored into: 4 specialized modules for better maintainability
 """
 
 import os
+import tempfile
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -48,8 +49,9 @@ class ImportService:
         self.max_file_size_mb = 100
         self.max_filename_length = 255
 
-        # Temporary directory for file processing
-        self.temp_dir = Path("/tmp/mvidarr_imports")
+        # Temporary directory for file processing - use secure temp directory
+        temp_base = os.path.join(tempfile.gettempdir(), "mvidarr_imports")
+        self.temp_dir = Path(temp_base)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
     def start_import(

@@ -12,6 +12,9 @@ from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.spotify_connect")
 
+# Default timeout for HTTP requests (in seconds)
+DEFAULT_REQUEST_TIMEOUT = 30
+
 
 class SpotifyConnectService:
     """Service for Spotify Connect playback control"""
@@ -37,11 +40,17 @@ class SpotifyConnectService:
 
         try:
             if method == "GET":
-                response = requests.get(url, headers=headers)
+                response = requests.get(
+                    url, headers=headers, timeout=DEFAULT_REQUEST_TIMEOUT
+                )
             elif method == "POST":
-                response = requests.post(url, headers=headers, json=data)
+                response = requests.post(
+                    url, headers=headers, json=data, timeout=DEFAULT_REQUEST_TIMEOUT
+                )
             elif method == "PUT":
-                response = requests.put(url, headers=headers, json=data)
+                response = requests.put(
+                    url, headers=headers, json=data, timeout=DEFAULT_REQUEST_TIMEOUT
+                )
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 

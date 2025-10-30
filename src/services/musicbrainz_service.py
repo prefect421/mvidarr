@@ -108,7 +108,11 @@ class MusicBrainzService:
 
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             response = requests.get(
-                url, params=params, headers=headers, timeout=30, verify=False  # nosec B501
+                url,
+                params=params,
+                headers=headers,
+                timeout=30,
+                verify=False,  # nosec B501
             )
             response.raise_for_status()
 

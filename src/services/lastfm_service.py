@@ -17,6 +17,9 @@ from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.lastfm")
 
+# Default timeout for HTTP requests (in seconds)
+DEFAULT_REQUEST_TIMEOUT = 30
+
 
 class LastFmService:
     """Service for Last.fm integration and listening history"""
@@ -81,7 +84,9 @@ class LastFmService:
         params["format"] = "json"
 
         try:
-            response = requests.get(self.base_url, params=params)
+            response = requests.get(
+                self.base_url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+            )
             response.raise_for_status()
 
             data = response.json()
@@ -116,7 +121,9 @@ class LastFmService:
             request_params.update(params)
 
         try:
-            response = requests.get(self.base_url, params=request_params)
+            response = requests.get(
+                self.base_url, params=request_params, timeout=DEFAULT_REQUEST_TIMEOUT
+            )
             response.raise_for_status()
 
             data = response.json()

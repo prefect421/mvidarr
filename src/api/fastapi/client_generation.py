@@ -6,6 +6,7 @@ This module serves as the main aggregator, delegating to specialized generators.
 """
 
 import os
+import tempfile
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI
@@ -35,8 +36,9 @@ class ClientLibraryGenerator:
         self.app = app
         self.config = config or {}
 
-        # Generator configuration
-        self.output_base_dir = self.config.get("output_dir", "/tmp/mvidarr_clients")
+        # Generator configuration - use secure temp directory
+        default_output_dir = os.path.join(tempfile.gettempdir(), "mvidarr_clients")
+        self.output_base_dir = self.config.get("output_dir", default_output_dir)
         self.openapi_generator_jar = self.config.get("generator_jar_path")
         self.include_examples = self.config.get("include_examples", True)
         self.generate_docs = self.config.get("generate_docs", True)

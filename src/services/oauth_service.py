@@ -18,6 +18,9 @@ from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.oauth")
 
+# Default timeout for HTTP requests (in seconds)
+DEFAULT_REQUEST_TIMEOUT = 30
+
 
 class OAuthError(Exception):
     """OAuth related errors"""
@@ -69,7 +72,9 @@ class OAuthProvider:
 
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-        response = requests.post(self.token_url, data=data, headers=headers)
+        response = requests.post(
+            self.token_url, data=data, headers=headers, timeout=DEFAULT_REQUEST_TIMEOUT
+        )
         response.raise_for_status()
 
         return response.json()
@@ -78,7 +83,9 @@ class OAuthProvider:
         """Get user information from OAuth provider"""
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        response = requests.get(self.userinfo_url, headers=headers)
+        response = requests.get(
+            self.userinfo_url, headers=headers, timeout=DEFAULT_REQUEST_TIMEOUT
+        )
         response.raise_for_status()
 
         return response.json()
@@ -210,7 +217,9 @@ class GitHubProvider(OAuthProvider):
 
         headers = {"Accept": "application/json"}
 
-        response = requests.post(self.token_url, data=data, headers=headers)
+        response = requests.post(
+            self.token_url, data=data, headers=headers, timeout=DEFAULT_REQUEST_TIMEOUT
+        )
         response.raise_for_status()
 
         return response.json()
@@ -220,13 +229,17 @@ class GitHubProvider(OAuthProvider):
         headers = {"Authorization": f"token {access_token}"}
 
         # Get user info
-        user_response = requests.get(self.userinfo_url, headers=headers)
+        user_response = requests.get(
+            self.userinfo_url, headers=headers, timeout=DEFAULT_REQUEST_TIMEOUT
+        )
         user_response.raise_for_status()
         user_info = user_response.json()
 
         # Get user email (GitHub may not return email in user info)
         email_response = requests.get(
-            "https://api.github.com/user/emails", headers=headers
+            "https://api.github.com/user/emails",
+            headers=headers,
+            timeout=DEFAULT_REQUEST_TIMEOUT,
         )
         emails = email_response.json() if email_response.status_code == 200 else []
 
