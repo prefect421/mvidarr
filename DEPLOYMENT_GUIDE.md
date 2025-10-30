@@ -1,6 +1,8 @@
 # MVidarr Deployment Guide
 
-This guide covers deployment of MVidarr with the new Celery + Redis background job system.
+**Version: 0.9.9 (Production-Ready)**
+
+This guide covers deployment of MVidarr with Celery + Redis background job system, complete security hardening, and optimized production configuration.
 
 ## Overview
 

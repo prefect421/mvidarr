@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# MVidarr Enhanced v2.0 - Complete Installation Script
-# This script handles the complete setup of MVidarr Enhanced
+# MVidarr v0.9.9 - Complete Installation Script
+# Production-ready installation with FastAPI, Celery, Redis, and MariaDB
+# This script handles the complete setup of MVidarr
 
 set -e  # Exit on any error
 

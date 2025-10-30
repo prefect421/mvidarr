@@ -1,5 +1,6 @@
 # Dockerfile for MVidarr FastAPI Application
-# Supports Phase 2 background job processing with FFmpeg
+# Version: 0.9.9 - Production-Ready Release
+# Supports background job processing with Celery + Redis + FFmpeg
 
 FROM python:3.12-slim
 
@@ -16,12 +17,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements first for better caching
-COPY requirements.txt requirements-fastapi.txt requirements-phase2.txt ./
+COPY requirements.txt ./
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r requirements-fastapi.txt && \
-    pip install --no-cache-dir -r requirements-phase2.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
