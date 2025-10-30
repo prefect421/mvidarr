@@ -3,6 +3,7 @@ FastAPI Authentication Dependencies
 Provides dependency injection for JWT authentication in FastAPI routes
 """
 
+import time
 from typing import Any, Dict, Optional
 
 from fastapi import Cookie, Depends, HTTPException, Request, status

@@ -3,6 +3,7 @@ FastAPI Health Check API Endpoints
 Enhanced for self-hosted production monitoring
 """
 
+import asyncio
 import json
 import os
 import time
