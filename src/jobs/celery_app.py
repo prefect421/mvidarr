@@ -78,7 +78,7 @@ celery_app.conf.update(
             "schedule": timedelta(seconds=30),
         },
     },
-    beat_schedule_filename="celerybeat-schedule",
+    beat_schedule_filename="/app/data/celerybeat-schedule",
 )
 
 # Task priority levels
