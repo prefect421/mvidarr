@@ -32,6 +32,7 @@ from src.api.fastapi.auth_dependencies import (
     require_authentication_legacy,
 )
 from src.api.fastapi.videos_models import ThumbnailSearchRequest
+from src.config.config import Config
 from src.database.connection import get_db_session
 from src.database.models import Video
 from src.services.imvdb_service import imvdb_service
@@ -104,7 +105,7 @@ async def get_video_thumbnail(
         if video.thumbnail_url and video.thumbnail_url.strip():
             try:
                 # Download and cache the thumbnail
-                thumbnail_dir = Path("/home/mike/mvidarr/data/thumbnails/videos")
+                thumbnail_dir = Config.THUMBNAILS_DIR / "videos"
                 thumbnail_dir.mkdir(parents=True, exist_ok=True)
 
                 # Determine file extension from URL
@@ -153,7 +154,7 @@ async def get_video_thumbnail(
                 # Continue to fallback logic
 
         # Fall back to old naming pattern for compatibility
-        thumbnail_dir = Path("/home/mike/mvidarr/data/thumbnails/videos")
+        thumbnail_dir = Config.THUMBNAILS_DIR / "videos"
 
         if size:
             thumbnail_file = thumbnail_dir / f"{video_id}_{size}.webp"
@@ -530,7 +531,7 @@ async def upload_thumbnail(
         filename = f"{artist_name} - {video_title}".replace("/", "_").replace("\\", "_")
 
         # Create thumbnail directory
-        thumbnail_dir = Path("/home/mike/mvidarr/data/thumbnails/videos")
+        thumbnail_dir = Config.THUMBNAILS_DIR / "videos"
         thumbnail_dir.mkdir(parents=True, exist_ok=True)
 
         # Save file with video ID and appropriate extension

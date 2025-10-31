@@ -7,10 +7,12 @@ import asyncio
 import json
 import traceback
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict
 
 from celery import Task
 
+from src.config.config import Config
 from src.database.connection import get_db, init_db_standalone
 from src.database.models import Artist, Video
 from src.jobs.celery_app import celery_app
@@ -754,7 +756,7 @@ def bulk_thumbnail_url_download(
                     )
 
                     # Download thumbnail from URL
-                    thumbnail_dir = Path("/home/mike/mvidarr/data/thumbnails/videos")
+                    thumbnail_dir = Config.THUMBNAILS_DIR / "videos"
                     thumbnail_dir.mkdir(parents=True, exist_ok=True)
 
                     parsed_url = urlparse(video.thumbnail_url)
@@ -803,7 +805,7 @@ def bulk_thumbnail_url_download(
             # Submit FFmpeg job and wait for completion
             ffmpeg_job_id = submit_bulk_thumbnail_creation_task(
                 video_paths=ffmpeg_video_paths,
-                output_directory=str(Path("/home/mike/mvidarr/data/thumbnails/videos")),
+                output_directory=str(Config.THUMBNAILS_DIR / "videos"),
                 thumbnail_sizes=[(640, 480)],
                 timestamps_per_video=1,
                 batch_size=3,
