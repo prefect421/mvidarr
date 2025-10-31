@@ -299,17 +299,41 @@ class DiscogsService:
         """
         Get the release date for a specific track.
         Returns a dict with year and full release date if available.
+        Prefers album releases over singles to provide better album metadata.
         """
         # Search for releases
-        releases = self.search_release(track_name, artist_name, limit=5)
+        releases = self.search_release(track_name, artist_name, limit=10)
         if not releases:
             logger.debug(
                 f"No releases found for '{track_name}' by '{artist_name}' on Discogs"
             )
             return None
 
-        # Get the best match (highest confidence)
-        best_release = releases[0]
+        # Prefer album releases over singles for better metadata
+        # Albums provide more context and are more useful for library organization
+        album_releases = [
+            r
+            for r in releases
+            if any("album" in str(fmt).lower() for fmt in r.get("format", []))
+        ]
+        single_releases = [
+            r
+            for r in releases
+            if any("single" in str(fmt).lower() for fmt in r.get("format", []))
+        ]
+
+        # Prioritize: albums first, then singles, then any other releases
+        if album_releases:
+            best_release = album_releases[0]
+            logger.debug(f"Selected album release: {best_release.get('title')}")
+        elif single_releases:
+            best_release = single_releases[0]
+            logger.debug(f"Selected single release: {best_release.get('title')}")
+        else:
+            best_release = releases[0]
+            logger.debug(
+                f"Selected first available release: {best_release.get('title')}"
+            )
 
         # If we have a release ID, get detailed information for exact release date
         release_id = best_release.get("id")

@@ -339,7 +339,17 @@ async def enrich_video_metadata(
                     if discogs_release_info.get("title") and (
                         not video.album or force_refresh
                     ):
-                        video.album = discogs_release_info["title"]
+                        album_title = discogs_release_info["title"]
+
+                        # Clean up album title - remove "Artist - " prefix if present
+                        # Discogs titles are often in format "Artist - Album Name"
+                        if " - " in album_title:
+                            parts = album_title.split(" - ", 1)
+                            # Check if first part matches artist name (case-insensitive)
+                            if parts[0].strip().lower() == artist_name.lower():
+                                album_title = parts[1].strip()
+
+                        video.album = album_title
                         if "album" not in updated_fields:
                             updated_fields.append("album")
                         logger.info(
