@@ -243,6 +243,9 @@ async def get_video(
             quality=getattr(video, "quality", None),
             video_metadata=getattr(video, "video_metadata", None),
             lyrics=getattr(video, "lyrics", None),
+            year=getattr(video, "year", None),
+            release_date=getattr(video, "release_date", None),
+            album=getattr(video, "album", None),
         )
 
     except HTTPException:
@@ -375,6 +378,9 @@ async def update_video(
             quality=getattr(video, "quality", None),
             video_metadata=getattr(video, "video_metadata", None),
             lyrics=getattr(video, "lyrics", None),
+            year=getattr(video, "year", None),
+            release_date=getattr(video, "release_date", None),
+            album=getattr(video, "album", None),
         )
 
     except HTTPException:
