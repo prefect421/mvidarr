@@ -116,7 +116,7 @@ class SecurityAuditConfig:
         self.enable_cache_logging = True
 
         # File logging settings
-        self.log_directory = Path("logs/security")
+        self.log_directory = Path("/app/data/logs/security")
         self.log_file_prefix = "security_audit"
         self.max_log_file_size = 100 * 1024 * 1024  # 100MB
         self.max_log_files = 10
