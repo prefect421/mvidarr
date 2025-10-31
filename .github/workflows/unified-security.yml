@@ -107,15 +107,16 @@ jobs:
     - name: Install Secret Detection Tools
       if: steps.scan-scope.outputs.scan_type == 'comprehensive' || steps.scan-scope.outputs.scan_type == 'secrets-only'
       run: |
-        # Install GitLeaks
-        wget -O gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.21.2_linux_x64.tar.gz
+        # Install GitLeaks - use latest version dynamically
+        GITLEAKS_VERSION=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')
+        wget -O gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
         tar -xzf gitleaks.tar.gz
         chmod +x gitleaks
         sudo mv gitleaks /usr/local/bin/
-        
+
         # Install detect-secrets
         pip install detect-secrets
-        
+
         # Install TruffleHog3
         pip install truffleHog3
 

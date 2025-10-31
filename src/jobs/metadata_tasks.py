@@ -431,7 +431,7 @@ def enrich_artist_metadata_task(
                         self.update_progress(
                             task_id,
                             progress,
-                            f"Enriching video: {video_title[:50]}...",
+                            f"Enriching video: {video.title[:50]}...",
                         )
 
                         # Simulate video enrichment (in real implementation, call video enrichment service)
@@ -439,7 +439,7 @@ def enrich_artist_metadata_task(
                         enriched_count += 1
 
                     except Exception as e:
-                        logger.warning(f"Failed to enrich video {video_id}: {e}")
+                        logger.warning(f"Failed to enrich video {video.id}: {e}")
 
                 session.commit()
 
@@ -478,7 +478,7 @@ def enrich_video_metadata_task(
             if not video:
                 raise ValueError(f"Video with ID {video_id} not found")
 
-            video_title = video_title or f"Video {video_id}"
+            video_title = video.title or f"Video {video_id}"
             artist_name = video.artist.name if video.artist else "Unknown Artist"
 
         self.update_progress(task_id, 25, f"Enriching metadata for: {video_title}")
@@ -747,7 +747,7 @@ def bulk_thumbnail_url_download(
                         task_id,
                         {
                             "percent": progress,
-                            "message": f"Downloading thumbnail for {video_title[:50]}...",
+                            "message": f"Downloading thumbnail for {video.title[:50]}...",
                             "status": "PROGRESS",
                             "current_step": f"Processing video {i+1} of {len(url_video_ids)}",
                         },
