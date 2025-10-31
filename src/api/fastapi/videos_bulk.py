@@ -19,9 +19,10 @@ import re
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
 
 from src.api.fastapi.auth_dependencies import get_current_user_legacy
@@ -458,4 +459,101 @@ async def bulk_organize_videos(
     except Exception as e:
         logger.error(f"Error in bulk organize: {e}")
         session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/refresh-thumbnails")
+async def refresh_video_thumbnails(
+    body: Optional[dict] = Body(None),
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """Refresh thumbnails for videos by downloading from source URLs with progress tracking"""
+    try:
+        video_ids = None
+        if body and "video_ids" in body:
+            video_ids = body["video_ids"]
+
+        if video_ids is None:
+            # Refresh all videos that don't have local thumbnails
+            videos = (
+                session.query(Video)
+                .filter(
+                    or_(
+                        Video.thumbnail_path.is_(None),
+                        Video.thumbnail_path == "",
+                        and_(
+                            Video.thumbnail_url.isnot(None),
+                            Video.thumbnail_url != "",
+                            Video.thumbnail_path.is_(None),
+                        ),
+                    )
+                )
+                .all()
+            )
+        else:
+            # Refresh specific videos
+            videos = session.query(Video).filter(Video.id.in_(video_ids)).all()
+
+        if not videos:
+            return {
+                "message": "No videos found for thumbnail refresh",
+                "total_videos": 0,
+                "job_id": None,
+            }
+
+        # Separate videos into those with thumbnail URLs vs those needing FFmpeg
+        url_videos = []
+        ffmpeg_videos = []
+        video_paths = []
+
+        for video in videos:
+            if video.thumbnail_url and video.thumbnail_url.strip():
+                # Has source thumbnail URL - prioritize downloading from source
+                url_videos.append(video)
+            elif video.local_path and Path(video.local_path).exists():
+                # No thumbnail URL but has local file - use FFmpeg as fallback
+                ffmpeg_videos.append(video)
+                video_paths.append(str(video.local_path))
+
+        total_processable = len(url_videos) + len(ffmpeg_videos)
+
+        if total_processable == 0:
+            return {
+                "message": "No videos found with thumbnail URLs or local files",
+                "total_videos": len(videos),
+                "valid_videos": 0,  # Frontend expects this field name
+                "url_videos": 0,
+                "ffmpeg_videos": 0,
+                "job_id": None,
+            }
+
+        logger.info(
+            f"Starting thumbnail refresh: {len(url_videos)} from URLs, {len(ffmpeg_videos)} from FFmpeg"
+        )
+
+        # Submit background job for mixed thumbnail processing
+        from src.jobs.metadata_tasks import submit_bulk_thumbnail_url_download_task
+
+        job_id = submit_bulk_thumbnail_url_download_task(
+            url_video_ids=[v.id for v in url_videos],
+            ffmpeg_video_paths=video_paths,
+            priority="normal",
+            user_id=current_user.get("user_id", "anonymous"),
+        )
+
+        return {
+            "message": f"Thumbnail refresh job started for {total_processable} videos ({len(url_videos)} from URLs, {len(ffmpeg_videos)} from FFmpeg)",
+            "total_videos": len(videos),
+            "valid_videos": total_processable,  # Frontend expects this field name
+            "url_videos": len(url_videos),
+            "ffmpeg_videos": len(ffmpeg_videos),
+            "job_id": job_id,
+            "status": "started",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error refreshing thumbnails: {e}")
         raise HTTPException(status_code=500, detail=str(e))
