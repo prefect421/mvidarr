@@ -410,3 +410,137 @@ async def search_artists(
     except Exception as e:
         logger.error(f"Error searching artists: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{video_id}/lyrics/search")
+async def search_video_lyrics(
+    video_id: int = FastAPIPath(..., ge=1), session: Session = Depends(get_db_session)
+):
+    """Search and retrieve lyrics for a video"""
+    try:
+        video = (
+            session.query(Video)
+            .options(joinedload(Video.artist))
+            .filter(Video.id == video_id)
+            .first()
+        )
+
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        logger.info(f"Searching lyrics for video {video_id}: {video.title}")
+
+        artist_name = video.artist.name if video.artist else None
+        raw_title = video.title
+
+        # Clean the song title by removing artist name if it's at the beginning
+        song_title = raw_title
+        if artist_name and raw_title.lower().startswith(artist_name.lower()):
+            # Remove artist name and common separators
+            song_title = raw_title[len(artist_name) :].strip()
+            # Remove common separators like " - ", " | ", etc.
+            for separator in [" - ", " | ", " : ", ": ", " – "]:
+                if song_title.startswith(separator):
+                    song_title = song_title[len(separator) :].strip()
+                    break
+
+        logger.info(
+            f"🎵 Extracted artist: '{artist_name}', raw title: '{raw_title}', cleaned title: '{song_title}'"
+        )
+
+        if not artist_name or not song_title:
+            raise HTTPException(
+                status_code=400,
+                detail="Artist name and song title are required for lyrics search",
+            )
+
+        # Search for lyrics using multiple sources
+        lyrics_found = None
+        source_used = None
+
+        # Define lyrics search function locally to avoid import issues
+        def search_lyrics_direct(artist, title):
+            """Search for lyrics using Lyrics.ovh API directly"""
+            try:
+                artist_clean = artist.strip()
+                title_clean = title.strip()
+                artist_encoded = urllib.parse.quote(artist_clean)
+                title_encoded = urllib.parse.quote(title_clean)
+                url = f"https://api.lyrics.ovh/v1/{artist_encoded}/{title_encoded}"
+
+                logger.info(f"Making lyrics request to: {url}")
+                response = requests.get(url, timeout=10)
+                logger.info(f"Lyrics API response status: {response.status_code}")
+
+                if response.status_code == 200:
+                    data = response.json()
+                    lyrics = data.get("lyrics", "")
+                    if lyrics:
+                        lyrics = lyrics.strip()
+                        lyrics = "\n".join(
+                            line.strip() for line in lyrics.split("\n") if line.strip()
+                        )
+                        if len(lyrics) > 50:
+                            return lyrics
+                return None
+            except Exception as e:
+                logger.warning(f"Lyrics search failed: {e}")
+                return None
+
+        # Try lyrics search
+        lyrics_sources = [
+            ("Lyrics.ovh", search_lyrics_direct),
+        ]
+
+        for source_name, search_func in lyrics_sources:
+            try:
+                logger.info(
+                    f"Searching {source_name} for lyrics: {artist_name} - {song_title}"
+                )
+                lyrics_result = search_func(artist_name, song_title)
+                logger.info(
+                    f"Lyrics search result: {lyrics_result[:100] if lyrics_result else 'None'}..."
+                )
+
+                if (
+                    lyrics_result and len(lyrics_result.strip()) > 50
+                ):  # Ensure we got substantial lyrics
+                    lyrics_found = lyrics_result
+                    source_used = source_name
+                    logger.info(
+                        f"✅ Found lyrics from {source_name} ({len(lyrics_result)} chars)"
+                    )
+                    break
+                else:
+                    logger.warning(
+                        f"❌ No substantial lyrics from {source_name} (got: {lyrics_result[:50] if lyrics_result else 'None'})"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to search {source_name}: {e}")
+
+        if not lyrics_found:
+            raise HTTPException(
+                status_code=404, detail="No lyrics found from any source"
+            )
+
+        # Save lyrics to database (if lyrics field exists)
+        try:
+            # Note: Assuming there's a lyrics field on video model
+            video.lyrics = lyrics_found
+            session.commit()
+            logger.info(f"Lyrics saved for video {video_id} from {source_used}")
+        except Exception as e:
+            logger.warning(f"Could not save lyrics to database: {e}")
+
+        return {
+            "success": True,
+            "lyrics": lyrics_found,
+            "source": source_used,
+            "message": f"Lyrics found from {source_used} and saved successfully!",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error searching lyrics for video {video_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -557,3 +557,84 @@ async def refresh_video_thumbnails(
     except Exception as e:
         logger.error(f"Error refreshing thumbnails: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/bulk/refresh-all-thumbnails")
+async def bulk_refresh_all_thumbnails(
+    request: dict = Body(...), session: Session = Depends(get_db_session)
+):
+    """Refresh thumbnails for all videos of an artist"""
+    try:
+        artist_id = request.get("artist_id")
+        if not artist_id:
+            raise HTTPException(status_code=400, detail="artist_id is required")
+
+        # Get all videos for the artist
+        videos = session.query(Video).filter(Video.artist_id == artist_id).all()
+
+        if not videos:
+            return {
+                "success": True,
+                "message": "No videos found for this artist",
+                "artist_id": artist_id,
+                "videos_processed": 0,
+                "thumbnails_updated": 0,
+            }
+
+        logger.info(
+            f"Starting bulk thumbnail refresh for {len(videos)} videos of artist {artist_id}"
+        )
+
+        # Use the real metadata enrichment service
+        from src.services.metadata_enrichment_service import MetadataEnrichmentService
+
+        enrichment_service = MetadataEnrichmentService()
+
+        videos_processed = 0
+        thumbnails_updated = 0
+        errors = []
+
+        for video in videos:
+            try:
+                # Call video metadata enrichment with force refresh to update thumbnails
+                enrichment_result = await enrichment_service.enrich_video_metadata(
+                    video.id, force_refresh=True
+                )
+
+                videos_processed += 1
+
+                if enrichment_result.success and enrichment_result.enriched_fields:
+                    if "thumbnail_url" in enrichment_result.enriched_fields:
+                        thumbnails_updated += 1
+                        logger.info(
+                            f"Updated thumbnail for video {video.id}: {video.title}"
+                        )
+
+            except Exception as e:
+                errors.append(f"Video {video.id} ({video.title}): {str(e)}")
+                logger.error(f"Error refreshing thumbnail for video {video.id}: {e}")
+
+        session.commit()
+
+        result = {
+            "success": True,
+            "message": f"Processed {videos_processed} videos, updated {thumbnails_updated} thumbnails",
+            "artist_id": artist_id,
+            "videos_processed": videos_processed,
+            "thumbnails_updated": thumbnails_updated,
+        }
+
+        if errors:
+            result["errors"] = errors
+
+        logger.info(
+            f"Bulk thumbnail refresh complete: {videos_processed} processed, {thumbnails_updated} updated"
+        )
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk refresh all thumbnails: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
