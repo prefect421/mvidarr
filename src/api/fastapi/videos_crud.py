@@ -273,6 +273,12 @@ async def update_video(
       - youtube_url: YouTube URL
       - status: Video status
       - genres: List of genre strings
+      - year: Release year
+      - release_date: Release date (YYYY-MM-DD format)
+      - album: Album name
+
+    Note: Thumbnail fields are NOT updated through this endpoint.
+    Use PUT /api/videos/{video_id}/thumbnail for thumbnail updates.
 
     Returns:
     - VideoResponse: Updated video metadata
@@ -307,7 +313,24 @@ async def update_video(
                     f"Updated video {video_id} artist to: {artist_name} (ID: {artist.id})"
                 )
 
+        # Fields that should NOT be updated through this endpoint
+        # (they have dedicated endpoints)
+        protected_fields = {
+            "thumbnail_url",
+            "thumbnail_path",
+            "thumbnail_source",
+            "thumbnail_metadata",
+            "thumbnail_uploaded_at",
+        }
+
         for field, value in update_fields.items():
+            # Skip thumbnail fields - they should only be updated through thumbnail endpoints
+            if field in protected_fields:
+                logger.warning(
+                    f"Skipping thumbnail field '{field}' in video update - use thumbnail endpoints instead"
+                )
+                continue
+
             if field == "genres" and value:
                 # Convert genres list to JSON string for database storage
                 value = json.dumps(value)
