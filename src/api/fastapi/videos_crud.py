@@ -172,6 +172,14 @@ async def list_videos(
                 "thumbnail_url": (
                     f"/api/videos/{video.id}/thumbnail" if video.id else None
                 ),
+                "quality": getattr(video, "quality", None),
+                "video_metadata": getattr(video, "video_metadata", None),
+                "lyrics": getattr(video, "lyrics", None),
+                "year": getattr(video, "year", None),
+                "release_date": (
+                    video.release_date.isoformat() if video.release_date else None
+                ),
+                "album": getattr(video, "album", None),
             }
             video_responses.append(video_dict)
 

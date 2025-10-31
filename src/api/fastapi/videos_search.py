@@ -340,11 +340,28 @@ async def search_videos(
                 "status": video.status,
                 "file_path": getattr(video, "file_path", video.local_path),
                 "local_path": video.local_path,  # For JavaScript compatibility
+                "file_size": getattr(video, "file_size", None),
+                "duration": video.duration,
+                "resolution": getattr(video, "resolution", None),
+                "fps": getattr(video, "fps", None),
+                "codec": getattr(video, "codec", None),
+                "bitrate": getattr(video, "bitrate", None),
                 "created_at": (
                     video.created_at.isoformat() if video.created_at else None
                 ),
+                "updated_at": (
+                    video.updated_at.isoformat() if video.updated_at else None
+                ),
                 "genres": _safe_parse_genres(getattr(video, "genres", [])),
                 "thumbnail_url": f"/api/videos/{video.id}/thumbnail",
+                "quality": getattr(video, "quality", None),
+                "video_metadata": getattr(video, "video_metadata", None),
+                "lyrics": getattr(video, "lyrics", None),
+                "year": getattr(video, "year", None),
+                "release_date": (
+                    video.release_date.isoformat() if video.release_date else None
+                ),
+                "album": getattr(video, "album", None),
             }
             video_responses.append(video_dict)
 
