@@ -564,7 +564,17 @@ function applyVideoFilters() {
     }
     
     // Make API call to search/filter videos
-    fetch(`/api/videos/search?${params.toString()}`)
+    // Add cache busting to ensure fresh data
+    params.append('_t', Date.now());
+
+    fetch(`/api/videos/search?${params.toString()}`, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+        }
+    })
         .then(response => response.json())
         .then(data => {
             displaySearchResults(data);
@@ -1110,7 +1120,7 @@ function viewVideo(id) {
 
 
 
-function playVideo(videoId, title, localPath, videoUrl) {
+async function playVideo(videoId, title, localPath, videoUrl) {
     // Debug logging to help diagnose the issue
     console.log('playVideo called with:', {
         videoId: videoId,
@@ -1118,7 +1128,41 @@ function playVideo(videoId, title, localPath, videoUrl) {
         localPath: localPath,
         videoUrl: videoUrl
     });
-    
+
+    // Check if video exists before attempting playback
+    try {
+        const checkResponse = await fetch(`/api/videos/${videoId}`, {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+
+        if (checkResponse.status === 404) {
+            console.error('Video not found in database:', videoId);
+            document.getElementById('videoModalTitle').textContent = 'Video Not Found';
+            const playerDiv = document.getElementById('videoPlayer');
+            playerDiv.innerHTML = `
+                <div class="video-error">
+                    <p>🔍 Video not found</p>
+                    <p class="error-detail">This video (ID: ${videoId}) no longer exists in the database.</p>
+                    <div class="troubleshooting-tips">
+                        <strong>Try these solutions:</strong>
+                        <ul>
+                            <li><button onclick="location.reload()" class="btn-link">Refresh the page</button> to update the video list</li>
+                            <li>The video may have been deleted or moved</li>
+                            <li>Clear your browser cache if the issue persists</li>
+                        </ul>
+                    </div>
+                    <button onclick="closeVideoModal()" class="btn btn-primary">Close</button>
+                </div>
+            `;
+            document.getElementById('videoModal').style.display = 'block';
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking video existence:', error);
+        // Continue with playback attempt even if check fails
+    }
+
     // Set modal title
     document.getElementById('videoModalTitle').textContent = title || 'Playing Video';
     
@@ -1166,14 +1210,15 @@ function playVideo(videoId, title, localPath, videoUrl) {
         video.addEventListener('loadstart', function() {
             console.log('Video load started for:', localPath, 'Type:', mimeType);
             hasLoaded = false;
-            
-            // Set timeout for loading - if video doesn't load within 10 seconds, show error
+
+            // Set timeout for loading - if video doesn't load within 30 seconds, show error
+            // Increased timeout to handle larger files and slower connections
             loadTimeout = setTimeout(() => {
                 if (!hasLoaded) {
                     console.warn('Video loading timeout for:', localPath);
-                    showVideoError(videoId, localPath, mimeType, 'Video loading timeout - format may not be supported');
+                    showVideoError(videoId, localPath, mimeType, 'Video loading timeout - format may not be supported', 'timeout');
                 }
-            }, 10000);
+            }, 30000);
         });
         
         video.addEventListener('loadeddata', function() {
@@ -1420,13 +1465,14 @@ function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     video.addEventListener('loadstart', function() {
         console.log('Video load started for:', localPath, 'Type:', mimeType);
         hasLoaded = false;
-        
+
+        // Increased timeout to 30 seconds for larger files and slower connections
         loadTimeout = setTimeout(() => {
             if (!hasLoaded) {
                 console.warn('Video loading timeout for:', localPath);
-                showVideoError(videoId, localPath, mimeType, 'Video loading timeout - format may not be supported');
+                showVideoError(videoId, localPath, mimeType, 'Video loading timeout - format may not be supported', 'timeout');
             }
-        }, 10000);
+        }, 30000);
     });
     
     video.addEventListener('loadeddata', function() {
@@ -1441,20 +1487,58 @@ function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     });
 }
 
-function showVideoError(videoId, localPath, mimeType, errorMessage) {
+function showVideoError(videoId, localPath, mimeType, errorMessage, errorType = 'unknown') {
     const playerDiv = document.getElementById('videoPlayer');
-    let unsupportedVideoFormat = localPath.toLowerCase().endsWith('.mkv') || 
+    let unsupportedVideoFormat = localPath.toLowerCase().endsWith('.mkv') ||
                                  localPath.toLowerCase().endsWith('.avi');
-    
+
+    // Customize error message and suggestions based on error type
+    let errorIcon = '⚠️';
+    let additionalInfo = '';
+    let troubleshootingTips = '';
+
+    if (errorType === 'not_found' || errorType === '404') {
+        errorIcon = '🔍';
+        additionalInfo = '<p class="error-detail">The video file could not be found in the database. It may have been deleted or moved.</p>';
+        troubleshootingTips = `
+            <div class="troubleshooting-tips">
+                <strong>Try these solutions:</strong>
+                <ul>
+                    <li>Refresh the page to update the video list</li>
+                    <li>Check if the video file still exists on disk</li>
+                    <li>Re-import the video if it was moved</li>
+                </ul>
+            </div>
+        `;
+    } else if (errorType === 'timeout') {
+        errorIcon = '⏱️';
+        additionalInfo = '<p class="error-detail">The video is taking longer than expected to load. This might be due to file size or network speed.</p>';
+        troubleshootingTips = `
+            <div class="troubleshooting-tips">
+                <strong>Try these solutions:</strong>
+                <ul>
+                    <li>Wait a few more seconds and try playing again</li>
+                    <li>Check your network connection</li>
+                    <li>Consider converting large files to smaller formats</li>
+                </ul>
+            </div>
+        `;
+    } else if (errorType === 'format') {
+        errorIcon = '📹';
+        additionalInfo = '<p class="error-detail">Your browser may not support this video format or codec.</p>';
+    }
+
     playerDiv.innerHTML = `
         <div class="video-error">
-            <p>⚠️ ${errorMessage}</p>
+            <p>${errorIcon} ${errorMessage}</p>
+            ${additionalInfo}
             <p><strong>File:</strong> ${localPath}</p>
             <p><strong>Type:</strong> ${mimeType}</p>
             ${unsupportedVideoFormat ? `
                 <p><em>Note: .mkv and .avi files have limited browser support.</em></p>
                 <button onclick="transcodeVideo(${videoId})" class="btn btn-warning">Convert to MP4</button>
             ` : ''}
+            ${troubleshootingTips}
             <button onclick="closeVideoModal()" class="btn btn-primary">Close</button>
         </div>
     `;
@@ -4351,15 +4435,21 @@ async function loadVideos(page = 1, size = 50, resetPage = false) {
             limit: pageSize,
             offset: (currentPage - 1) * pageSize,
             sort: 'title',
-            order: 'asc'
+            order: 'asc',
+            // Add cache-busting parameter to prevent stale data
+            _t: Date.now()
         });
-        
+
         // Make authenticated API request - credentials: 'same-origin' includes session cookies
+        // Cache: 'no-store' ensures we always get fresh data from the server
         const response = await fetch(`/api/videos?${params.toString()}`, {
             method: 'GET',
             credentials: 'same-origin',
+            cache: 'no-store',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
             }
         });
         
