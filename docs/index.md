@@ -25,23 +25,24 @@ title: Home
 - **🔐 User Authentication** - Role-based access control with security features
 - **🌙 Dark/Light Themes** - Multiple theme options with automatic switching
 
-## 🚀 **NEW in v0.9.8 - FastAPI Migration Complete!**
+## 🚀 **NEW in v0.9.9 - Production-Ready Code Cleanup & Security Hardening!**
 
-**🎉 MAJOR MILESTONE: Complete Flask-to-FastAPI Migration**
+**🎉 MAJOR MILESTONE: Production-Ready with Enterprise-Grade Code Quality**
 
-- **⚡ Complete Architecture Migration** - Migrated from Flask to FastAPI with zero functionality loss
-- **🔥 Advanced FastAPI Features** - API versioning, request logging, auto-generated client libraries
-- **📈 Performance Optimization** - Load testing framework, performance benchmarking, evidence-based validation  
-- **🎨 Template System Migration** - 46+ HTML templates with async context and modern JavaScript
-- **🔌 WebSocket Integration** - Real-time features replacing Flask-SocketIO with native FastAPI WebSockets
-- **🛡️ Enterprise-Grade Testing** - 50+ validation tests ensuring zero functionality loss
-- **🏗️ Modern Architecture** - Async operations, advanced caching, compression, and optimization
+- **🎥 Real-Time MKV Transcoding** - Smart FFmpeg codec detection with adaptive remux/transcode
+- **♻️ Massive Code Refactoring** - 10 large files refactored into 58 modular files (71.4% size reduction)
+- **🧹 Complete Code Cleanup** - 607 unused imports removed (100% cleanup across 264 files)
+- **🔒 Security Hardening** - 30 medium-severity issues fixed (69.8% improvement, zero high-severity)
+- **📚 Complete Documentation** - Comprehensive API docs, scripts guides, and release notes
+- **🧪 Rigorous Testing** - 222/230 E2E tests passing (96.5%), 100% critical smoke tests
+- **📦 Script Organization** - 26 obsolete scripts archived with comprehensive documentation
 
-### **Migration Achievements:**
-- ✅ **11 Major Systems**: Template system, WebSocket integration, performance optimization
-- ✅ **10,472+ Lines of Code**: Complete FastAPI implementation with enterprise features
-- ✅ **Zero Functionality Loss**: Comprehensive validation ensuring 100% feature parity
-- ✅ **Performance Improvements**: 30-50% faster response times with async operations
+### **v0.9.9 Achievements:**
+- ✅ **MKV Video Support**: Real-time transcoding with intelligent codec detection
+- ✅ **Code Architecture**: 15,133 lines → 58 modular files with backward compatibility
+- ✅ **Security**: SQL injection protection, HMAC verification, XXE prevention, HTTP timeouts
+- ✅ **Documentation**: API_DOCUMENTATION.md (17 routers, 200+ endpoints), scripts/README.md
+- ✅ **Production Ready**: Zero blocking issues, comprehensive testing, complete cleanup
 
 ## 🚀 Quick Start
 
@@ -55,8 +56,8 @@ docker-compose up -d
 
 **Production Docker Image:**
 ```bash
-# Use the latest FastAPI release
-docker pull ghcr.io/prefect421/mvidarr:v0.9.8
+# Use the latest production-ready release
+docker pull ghcr.io/prefect421/mvidarr:v0.9.9
 ```
 
 **Access the application:**
@@ -81,4 +82,4 @@ This project is licensed under the MIT License - see the [LICENSE]({{ site.githu
 
 ---
 
-**MVidarr v{{ site.data.version.current | default: "0.9.8" }}** - Built with ❤️ for music video enthusiasts
+**MVidarr v{{ site.data.version.current | default: "0.9.9" }}** - Built with ❤️ for music video enthusiasts

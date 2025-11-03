@@ -92,20 +92,17 @@ See `USER_TESTING_RESULTS_0.9.8.md` for complete testing results and `SERVICE_IN
 
 ---
 
-## 🔄 Development Version: v0.9.5-dev
+## 🔄 Development Version: v0.9.9-dev
 
 **Status**: In Active Development  
-**Focus**: Performance & User Experience Enhancements
+**Focus**: Enterprise Features & Multi-User Support
 
 ### Planned Improvements
-- Database performance analysis and targeted query optimization
-- API response time optimization for critical endpoints  
-- Frontend loading performance and user experience optimization
-- UI/UX enhancement package and workflow refinement
-- Documentation completion and developer experience enhancement
-
-### Strategic Focus
-Strategic mix of targeted performance improvements with measurable outcomes and user-facing enhancements that deliver tangible value through focused execution on 5-6 specific issues.
+- Advanced user management and role-based access control
+- Multi-tenant artist libraries and data isolation
+- Comprehensive audit logging and activity tracking
+- API rate limiting and resource quota management
+- Enhanced authentication integration (LDAP/SSO)
 
 ---
 
@@ -129,23 +126,23 @@ Strategic mix of targeted performance improvements with measurable outcomes and 
 - Import/export and backup management system
 - Custom video organization rules and automation
 
-### v0.9.8 - External Service Integrations
-**Planned Release**: May 2026
-
-- Enhanced Spotify integration and music discovery
-- Media server integration (Plex/Jellyfin/Emby)
-- Advanced notification system with Discord/Slack integration
-- Third-party metadata providers integration
-- Cloud storage integration and backup solutions
-
 ### v0.9.9 - Enterprise & Multi-User Features
-**Planned Release**: August 2026
+**Planned Release**: December 2025
 
 - Advanced user management and role-based access control
 - Multi-tenant artist libraries and data isolation
 - Comprehensive audit logging and activity tracking
 - API rate limiting and resource quota management
 - Enterprise authentication integration (LDAP/SSO/SAML)
+
+### v0.9.10 - External Service Integrations
+**Planned Release**: March 2026
+
+- Enhanced Spotify integration and music discovery
+- Media server integration (Plex/Jellyfin/Emby)
+- Advanced notification system with Discord/Slack integration
+- Third-party metadata providers integration
+- Cloud storage integration and backup solutions
 
 ### v1.0.0 - Production Readiness & Stability
 **Planned Release**: November 2026 - **Public Release**
@@ -159,6 +156,16 @@ Strategic mix of targeted performance improvements with measurable outcomes and 
 ---
 
 ## 📈 Previous Releases
+
+### v0.9.4
+**Released**: August 6, 2025  
+**Focus**: Docker Optimization and Build Reliability
+
+- Docker build optimization and reliability improvements
+- Container size reduction and performance enhancements
+- Build monitoring infrastructure and validation tools
+- Production-ready container configurations
+- Comprehensive Docker build automation
 
 ### v0.9.3
 **Released**: July 28, 2025  
