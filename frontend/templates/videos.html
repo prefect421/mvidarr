@@ -1173,8 +1173,10 @@ async function playVideo(videoId, title, localPath, videoUrl) {
     if (localPath && localPath !== 'null' && localPath !== 'undefined') {
         // Determine MIME type based on file extension
         let mimeType = 'video/mp4'; // default
+        let isMkvFile = false;
         if (localPath.toLowerCase().endsWith('.mkv')) {
-            mimeType = 'video/x-matroska';
+            isMkvFile = true;
+            mimeType = 'video/mp4'; // Use MP4 MIME type for transcoded output
         } else if (localPath.toLowerCase().endsWith('.webm')) {
             mimeType = 'video/webm';
         } else if (localPath.toLowerCase().endsWith('.avi')) {
@@ -1182,11 +1184,16 @@ async function playVideo(videoId, title, localPath, videoUrl) {
         } else if (localPath.toLowerCase().endsWith('.mov')) {
             mimeType = 'video/quicktime';
         }
-        
+
+        // Use transcode endpoint for MKV files, regular stream for others
+        const streamEndpoint = isMkvFile
+            ? `/api/videos/${videoId}/stream-transcode`
+            : `/api/videos/${videoId}/stream`;
+
         // Play local file via streaming endpoint with proper MIME type
         playerDiv.innerHTML = `
             <video id="modalVideoElement" width="800" height="450" controls autoplay preload="metadata">
-                <source src="/api/videos/${videoId}/stream" type="${mimeType}">
+                <source src="${streamEndpoint}" type="${mimeType}">
                 Your browser does not support the video tag or this video format.
             </video>
         `;
@@ -1427,11 +1434,13 @@ function checkTranscodingStatus(id) {
 function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     // Proceed with normal playback attempt
     const playerDiv = document.getElementById('videoPlayer');
-    
+
     // Determine MIME type based on file extension
     let mimeType = 'video/mp4'; // default
+    let isMkvFile = false;
     if (localPath.toLowerCase().endsWith('.mkv')) {
-        mimeType = 'video/x-matroska';
+        isMkvFile = true;
+        mimeType = 'video/mp4'; // Use MP4 MIME type for transcoded output
     } else if (localPath.toLowerCase().endsWith('.webm')) {
         mimeType = 'video/webm';
     } else if (localPath.toLowerCase().endsWith('.avi')) {
@@ -1439,11 +1448,16 @@ function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     } else if (localPath.toLowerCase().endsWith('.mov')) {
         mimeType = 'video/quicktime';
     }
-    
+
+    // Use transcode endpoint for MKV files, regular stream for others
+    const streamEndpoint = isMkvFile
+        ? `/api/videos/${videoId}/stream-transcode`
+        : `/api/videos/${videoId}/stream`;
+
     // Play local file via streaming endpoint with proper MIME type
     playerDiv.innerHTML = `
         <video id="modalVideoElement" width="800" height="450" controls preload="metadata">
-            <source src="/api/videos/${videoId}/stream" type="${mimeType}">
+            <source src="${streamEndpoint}" type="${mimeType}">
             Your browser does not support the video tag or this video format.
         </video>
     `;

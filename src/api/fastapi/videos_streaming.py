@@ -4,13 +4,17 @@ Extracted from videos.py for better code organization
 
 Handles:
 - Video streaming with HTTP range support
+- Real-time FFmpeg transcoding for MKV files
 - Subtitle discovery and serving
 - File relocation detection
 """
 
+import asyncio
+import json
 import mimetypes
+import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 from urllib.parse import quote, unquote
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -65,6 +69,74 @@ async def find_relocated_video(video: Video) -> Optional[Path]:
                     return file_path
 
     return None
+
+
+async def detect_codecs(video_path: Path) -> Dict[str, str]:
+    """
+    Detect video and audio codecs using ffprobe
+
+    Returns dict with 'video_codec' and 'audio_codec' keys
+    """
+    try:
+        cmd = [
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_streams",
+            str(video_path),
+        ]
+
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        stdout, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            logger.error(f"ffprobe failed: {stderr.decode()}")
+            return {"video_codec": "unknown", "audio_codec": "unknown"}
+
+        data = json.loads(stdout.decode())
+        streams = data.get("streams", [])
+
+        video_codec = "unknown"
+        audio_codec = "unknown"
+
+        for stream in streams:
+            codec_type = stream.get("codec_type")
+            codec_name = stream.get("codec_name", "unknown")
+
+            if codec_type == "video" and video_codec == "unknown":
+                video_codec = codec_name
+            elif codec_type == "audio" and audio_codec == "unknown":
+                audio_codec = codec_name
+
+        logger.info(
+            f"Detected codecs for {video_path.name}: video={video_codec}, audio={audio_codec}"
+        )
+        return {"video_codec": video_codec, "audio_codec": audio_codec}
+
+    except Exception as e:
+        logger.error(f"Error detecting codecs: {e}")
+        return {"video_codec": "unknown", "audio_codec": "unknown"}
+
+
+def is_browser_compatible(video_codec: str, audio_codec: str) -> bool:
+    """
+    Check if codecs are browser-compatible
+
+    Browser-compatible codecs:
+    - Video: h264, vp8, vp9, av1
+    - Audio: aac, mp3, opus, vorbis
+    """
+    compatible_video = ["h264", "vp8", "vp9", "av1"]
+    compatible_audio = ["aac", "mp3", "opus", "vorbis"]
+
+    return video_codec in compatible_video and audio_codec in compatible_audio
 
 
 # ========================================================================================
@@ -187,6 +259,176 @@ async def stream_video(
         raise
     except Exception as e:
         logger.error(f"Error streaming video {video_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{video_id}/stream-transcode")
+@router.head("/{video_id}/stream-transcode")
+async def stream_video_transcode(
+    request: Request,
+    video_id: int = FastAPIPath(..., ge=1),
+    session: Session = Depends(get_db_session),
+):
+    """
+    Stream video with real-time FFmpeg transcoding for MKV files
+
+    Automatically detects codecs and:
+    - Remuxes (fast, copy codecs) if H.264/AAC compatible
+    - Transcodes (slower) if incompatible codecs
+    - Supports HTTP range requests for seeking
+    """
+    try:
+        video = session.query(Video).filter(Video.id == video_id).first()
+
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+
+        # Find the video file
+        video_path = None
+        if video.local_path and Path(video.local_path).exists():
+            video_path = Path(video.local_path)
+        else:
+            # Try to find relocated file
+            video_path = await find_relocated_video(video)
+
+        if not video_path or not video_path.exists():
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        # Detect codecs
+        codecs = await detect_codecs(video_path)
+        video_codec = codecs["video_codec"]
+        audio_codec = codecs["audio_codec"]
+
+        # Determine if we need to transcode or just remux
+        needs_transcode = not is_browser_compatible(video_codec, audio_codec)
+
+        logger.info(
+            f"Transcoding video {video_id} ({video_path.name}): "
+            f"video_codec={video_codec}, audio_codec={audio_codec}, "
+            f"needs_transcode={needs_transcode}"
+        )
+
+        # Build FFmpeg command
+        if needs_transcode:
+            # Full transcode for incompatible codecs
+            ffmpeg_cmd = [
+                "ffmpeg",
+                "-i",
+                str(video_path),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "23",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-f",
+                "mp4",
+                "-movflags",
+                "frag_keyframe+empty_moov+default_base_moof",
+                "pipe:1",
+            ]
+        else:
+            # Fast remux for compatible codecs (just change container)
+            ffmpeg_cmd = [
+                "ffmpeg",
+                "-i",
+                str(video_path),
+                "-c",
+                "copy",  # Copy both video and audio streams
+                "-f",
+                "mp4",
+                "-movflags",
+                "frag_keyframe+empty_moov+default_base_moof",
+                "pipe:1",
+            ]
+
+        # Handle HEAD requests
+        if request.method == "HEAD":
+            headers = {
+                "Content-Type": "video/mp4",
+                "Accept-Ranges": "none",  # Seeking not supported during transcoding
+                "X-Transcode-Mode": "remux" if not needs_transcode else "transcode",
+            }
+            return StreamingResponse(
+                iter([]), status_code=200, headers=headers, media_type="video/mp4"
+            )
+
+        # Create async generator for streaming
+        async def transcode_and_stream():
+            """Generate transcoded video chunks"""
+            process = None
+            try:
+                logger.info(f"Starting FFmpeg process: {' '.join(ffmpeg_cmd)}")
+
+                process = await asyncio.create_subprocess_exec(
+                    *ffmpeg_cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    stdin=asyncio.subprocess.DEVNULL,
+                )
+
+                # Stream chunks from FFmpeg stdout
+                chunk_size = 8192
+                while True:
+                    chunk = await process.stdout.read(chunk_size)
+                    if not chunk:
+                        break
+                    yield chunk
+
+                # Wait for process completion
+                await process.wait()
+
+                if process.returncode != 0:
+                    stderr_output = await process.stderr.read()
+                    logger.error(
+                        f"FFmpeg process failed with code {process.returncode}: {stderr_output.decode()}"
+                    )
+
+            except asyncio.CancelledError:
+                # Client disconnected, terminate FFmpeg
+                if process and process.returncode is None:
+                    logger.info("Client disconnected, terminating FFmpeg process")
+                    process.terminate()
+                    try:
+                        await asyncio.wait_for(process.wait(), timeout=5.0)
+                    except asyncio.TimeoutError:
+                        process.kill()
+                        await process.wait()
+                raise
+            except Exception as e:
+                logger.error(f"Error during transcoding: {e}")
+                if process and process.returncode is None:
+                    process.terminate()
+                    try:
+                        await asyncio.wait_for(process.wait(), timeout=5.0)
+                    except asyncio.TimeoutError:
+                        process.kill()
+                        await process.wait()
+                raise
+
+        # Return streaming response
+        headers = {
+            "Content-Type": "video/mp4",
+            "Accept-Ranges": "none",  # Seeking not fully supported during transcoding
+            "X-Transcode-Mode": "remux" if not needs_transcode else "transcode",
+            "Cache-Control": "no-cache",
+        }
+
+        return StreamingResponse(
+            transcode_and_stream(),
+            status_code=200,
+            headers=headers,
+            media_type="video/mp4",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in transcode streaming for video {video_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

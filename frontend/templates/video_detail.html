@@ -974,18 +974,22 @@ function renderVideoDetails(video) {
         }
     }
 
+    // Determine which streaming endpoint to use
+    const streamEndpoint = needsTranscoding
+        ? `/api/videos/${video.id}/stream-transcode`
+        : `/api/videos/${video.id}/stream`;
+
     const playerHtml = `
         <div class="video-player">
             ${video.local_path ? `
                 ${needsTranscoding ? `
                     <div class="video-transcoding-notice">
-                        <p><iconify-icon icon="tabler:alert-circle"></iconify-icon> This MKV file may not play in all browsers.</p>
-                        <p>If playback fails, try downloading the file or use VLC player.</p>
-                        ${video.video_url ? `<p><a href="${video.video_url}" target="_blank" class="btn btn-primary">Watch on YouTube</a></p>` : ''}
+                        <p><iconify-icon icon="tabler:info-circle"></iconify-icon> MKV file detected - using real-time transcoding for browser compatibility.</p>
+                        <p>Video is being converted on-the-fly for optimal playback.</p>
                     </div>
                 ` : ''}
                 <video id="videoElement" controls class="video-element">
-                    <source src="/api/videos/${video.id}/stream" type="${mimeType}">
+                    <source src="${streamEndpoint}" type="video/mp4">
                     Your browser does not support the video tag or this video format.
                 </video>
             ` : `
