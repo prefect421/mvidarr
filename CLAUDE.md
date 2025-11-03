@@ -100,6 +100,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Respects user subtitle language preferences
 - Works with both standard and YouTube's custom language codes
 
+## MKV Video Transcoding System
+
+### Real-Time FFmpeg Transcoding ✅
+
+**Status**: MVidarr now supports MKV video playback through intelligent real-time transcoding.
+
+#### Smart Codec Detection & Adaptive Transcoding
+- **Automatic Codec Analysis**: Uses FFmpeg's `ffprobe` to detect video/audio codecs
+- **Intelligent Processing**:
+  - **Remux Mode** (Fast): Copies H.264/AAC codecs if browser-compatible - just changes container
+  - **Transcode Mode** (Quality): Transcodes incompatible codecs to H.264/AAC for universal playback
+- **Browser Compatibility**: Outputs fragmented MP4 with browser-compatible codecs
+
+#### API Endpoint
+- **Transcoding Stream**: `/api/videos/{video_id}/stream-transcode` - Real-time FFmpeg transcoding
+- **Standard Stream**: `/api/videos/{video_id}/stream` - Direct file streaming for MP4/WebM
+- **Response Headers**: `X-Transcode-Mode: remux|transcode` indicates processing method
+
+#### Frontend Integration
+- **Automatic Detection**: Frontend detects `.mkv` file extension
+- **Smart Routing**: MKV files automatically routed to transcode endpoint
+- **Seamless UX**: Users experience smooth playback regardless of source format
+- **Error Handling**: Graceful fallback and timeout detection
+
+#### Technical Implementation
+- **Async Streaming**: FastAPI async generators for efficient streaming
+- **Process Management**: Proper FFmpeg process lifecycle and cleanup
+- **Codec Detection**: JSON-based ffprobe output parsing
+- **Progressive Playback**: Fragmented MP4 with `frag_keyframe+empty_moov` flags
+- **Client Disconnect Handling**: FFmpeg processes terminated on client disconnect
+
+#### Supported Formats
+- **Input**: MKV containers with various codecs (H.264, H.265, VP9, etc.)
+- **Output**: MP4 container with H.264 video + AAC audio
+- **Performance**:
+  - Remux mode: Near-instant start (just container change)
+  - Transcode mode: Real-time encoding with `veryfast` preset
+
+#### User Experience
+- Play MKV files directly in browser without manual conversion
+- Automatic quality optimization based on source codecs
+- Transparent processing - users see standard video player
+- Works across all video interfaces (gallery, detail, modal)
+
 ## API Development & Testing
 
 ### Authentication Requirements
