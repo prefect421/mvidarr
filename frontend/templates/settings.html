@@ -1240,6 +1240,8 @@ input:checked + .slider:before {
                 <button onclick="indexAllVideos()" class="btn btn-primary">Index All Videos</button>
                 <button onclick="scanVideoFiles()" class="btn btn-info">Scan Video Files</button>
                 <button onclick="populateArtistThumbnails()" class="btn btn-warning">Populate Artist Thumbnails</button>
+                <button onclick="bulkAutomatchAllArtists()" class="btn btn-success">Bulk Artist Automatch</button>
+                <button onclick="bulkEnrichAllArtists()" class="btn btn-success">Bulk Artist Enrich</button>
                 <button onclick="fixMissingVideos()" class="btn btn-warning">Fix Missing Videos</button>
                 <button onclick="checkVideoQualities()" class="btn btn-success">Check Video Qualities</button>
                 <button onclick="refreshStats()" class="btn btn-light">Refresh Stats</button>
@@ -3035,6 +3037,168 @@ function proceedPopulateArtistThumbnails() {
         hideProgress();
         console.error('Error scanning thumbnails:', error);
         showResults('<span class="error">Thumbnail scan failed: ' + error.message + '</span>');
+    });
+}
+
+function bulkAutomatchAllArtists() {
+    const message = 'This will attempt to auto-match ALL artists in your database with external services (Spotify, Last.fm, IMVDb, MusicBrainz, etc.). This may take a while depending on the number of artists. Continue?';
+
+    if (typeof toastConfirm === 'function') {
+        toastConfirm(message, () => {
+            proceedBulkAutomatchAllArtists();
+        });
+    } else {
+        if (confirm(message)) {
+            proceedBulkAutomatchAllArtists();
+        }
+    }
+}
+
+function proceedBulkAutomatchAllArtists() {
+    showProgress('Auto-matching all artists with external services...');
+
+    fetch('/api/metadata-enrichment/auto-match/all', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress();
+
+        if (data.status === 'completed') {
+            const result = `
+                <div class="automatch-results">
+                    <h4>🎯 Bulk Artist Auto-Match Complete</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Total artists:</strong> ${data.total_artists}
+                        </div>
+                        <div class="result-item">
+                            <strong>Successful matches:</strong> ${data.successful_matches}
+                        </div>
+                        <div class="result-item">
+                            <strong>Failed matches:</strong> ${data.failed_matches}
+                        </div>
+                        <div class="result-item">
+                            <strong>Success rate:</strong> ${data.total_artists > 0 ? Math.round((data.successful_matches / data.total_artists) * 100) : 0}%
+                        </div>
+                    </div>
+                    <p>${data.message}</p>
+                </div>
+            `;
+            showResults(result);
+
+            // Show success message
+            if (typeof showSuccess === 'function') {
+                showSuccess(`Auto-match completed! ${data.successful_matches} of ${data.total_artists} artists successfully matched.`);
+            } else {
+                alert(`Auto-match completed! ${data.successful_matches} of ${data.total_artists} artists successfully matched.`);
+            }
+
+            // Refresh stats after completion
+            setTimeout(refreshStats, 2000);
+        } else {
+            showResults(`<span class="error">Auto-match failed: ${data.detail || 'Unknown error'}</span>`);
+            if (typeof showError === 'function') {
+                showError('Auto-match failed: ' + (data.detail || 'Unknown error'));
+            }
+        }
+    })
+    .catch(error => {
+        hideProgress();
+        console.error('Error during bulk artist auto-match:', error);
+        showResults('<span class="error">Auto-match failed. Check console for details.</span>');
+        if (typeof showError === 'function') {
+            showError('Auto-match failed. Please try again.');
+        } else {
+            alert('Auto-match failed. Please try again.');
+        }
+    });
+}
+
+function bulkEnrichAllArtists() {
+    const message = 'This will enrich metadata for ALL artists in your database from external services (Spotify, Last.fm, IMVDb, MusicBrainz, etc.). This will run as a background job and may take a considerable amount of time. Continue?';
+
+    if (typeof toastConfirm === 'function') {
+        toastConfirm(message, () => {
+            proceedBulkEnrichAllArtists();
+        });
+    } else {
+        if (confirm(message)) {
+            proceedBulkEnrichAllArtists();
+        }
+    }
+}
+
+function proceedBulkEnrichAllArtists() {
+    showProgress('Starting bulk metadata enrichment for all artists...');
+
+    fetch('/api/metadata-enrichment/enrich/all', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            force_refresh: false,
+            enrich_videos: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress();
+
+        if (data.job_id) {
+            const result = `
+                <div class="enrich-results">
+                    <h4>🚀 Bulk Artist Enrichment Job Started</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Job ID:</strong> ${data.job_id}
+                        </div>
+                        <div class="result-item">
+                            <strong>Total artists:</strong> ${data.total_artists}
+                        </div>
+                        <div class="result-item">
+                            <strong>Status:</strong> ${data.status}
+                        </div>
+                        <div class="result-item">
+                            <strong>Task:</strong> ${data.task_name}
+                        </div>
+                    </div>
+                    <p>${data.message}</p>
+                    <p class="note">${data.note}</p>
+                    <p><strong>Track progress:</strong> Open the <a href="/jobs" target="_blank">Job Dashboard</a> to monitor this background job.</p>
+                </div>
+            `;
+            showResults(result);
+
+            // Show success message
+            if (typeof showSuccess === 'function') {
+                showSuccess(`Bulk enrichment job started for ${data.total_artists} artists! Track progress in the Job Dashboard.`);
+            } else {
+                alert(`Bulk enrichment job started for ${data.total_artists} artists! Track progress in the Job Dashboard.`);
+            }
+
+            // Refresh stats after a delay
+            setTimeout(refreshStats, 5000);
+        } else {
+            showResults(`<span class="error">Enrichment failed: ${data.detail || data.message || 'Unknown error'}</span>`);
+            if (typeof showError === 'function') {
+                showError('Enrichment failed: ' + (data.detail || data.message || 'Unknown error'));
+            }
+        }
+    })
+    .catch(error => {
+        hideProgress();
+        console.error('Error during bulk artist enrichment:', error);
+        showResults('<span class="error">Enrichment failed. Check console for details.</span>');
+        if (typeof showError === 'function') {
+            showError('Enrichment failed. Please try again.');
+        } else {
+            alert('Enrichment failed. Please try again.');
+        }
     });
 }
 

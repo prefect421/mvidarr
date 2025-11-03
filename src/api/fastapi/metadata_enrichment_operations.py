@@ -671,3 +671,256 @@ async def batch_enrich_artists(
         raise HTTPException(
             status_code=500, detail=f"Batch metadata enrichment failed: {str(e)}"
         )
+
+
+@router.post("/enrich/all")
+async def enrich_all_artists(
+    data: Optional[Dict[str, Any]] = None,
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Enrich metadata for ALL artists in the database using Celery background jobs"""
+    try:
+        from src.database.models import Artist
+
+        # Get all artist IDs from database
+        all_artists = session.query(Artist.id).all()
+        artist_ids = [artist.id for artist in all_artists]
+
+        if not artist_ids:
+            return {
+                "message": "No artists found in database",
+                "total_artists": 0,
+                "status": "completed",
+            }
+
+        force_refresh = data.get("force_refresh", False) if data else False
+        enrich_videos = data.get("enrich_videos", True) if data else True
+
+        logger.info(
+            f"Starting bulk metadata enrichment for ALL {len(artist_ids)} artists"
+        )
+
+        # Import and use Celery tasks directly
+        from src.jobs.metadata_tasks import batch_enrich_artists_task
+
+        # Start the Celery batch task
+        task_result = batch_enrich_artists_task.delay(
+            artist_ids=artist_ids,
+            force_refresh=force_refresh,
+            enrich_videos=enrich_videos,
+        )
+
+        logger.info(
+            f"Started Celery bulk enrichment task {task_result.id} for ALL artists"
+        )
+
+        return {
+            "job_id": task_result.id,
+            "message": f"Bulk metadata enrichment job started for ALL {len(artist_ids)} artists",
+            "total_artists": len(artist_ids),
+            "status": "queued",
+            "force_refresh": force_refresh,
+            "enrich_videos": enrich_videos,
+            "note": "Background processing initiated with Celery + Redis",
+            "task_name": "metadata.batch_enrich_all_artists",
+        }
+
+    except Exception as e:
+        logger.error(f"Bulk enrichment error for all artists: {e}")
+        raise HTTPException(status_code=500, detail=f"Bulk enrichment failed: {str(e)}")
+
+
+@router.post("/auto-match/all")
+async def auto_match_all_artists(
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """Auto-match ALL artists with external services as background job"""
+    try:
+        from src.database.models import Artist
+
+        # Get all artists from database
+        all_artists = session.query(Artist).all()
+
+        if not all_artists:
+            return {
+                "message": "No artists found in database",
+                "total_artists": 0,
+                "status": "completed",
+            }
+
+        logger.info(f"Starting bulk auto-match for ALL {len(all_artists)} artists")
+
+        # Process each artist's auto-match
+        job_ids = []
+        success_count = 0
+        error_count = 0
+
+        for artist in all_artists:
+            try:
+                # Call the single artist auto-match logic inline
+                # (reusing the logic from auto_match_services endpoint)
+                matches_found = await _auto_match_artist(artist, session)
+
+                if any(matches_found.values()):
+                    success_count += 1
+                    logger.info(
+                        f"✅ Auto-matched artist {artist.name}: {matches_found}"
+                    )
+                else:
+                    logger.info(f"⚠️ No matches found for artist {artist.name}")
+
+            except Exception as e:
+                error_count += 1
+                logger.error(f"❌ Auto-match failed for artist {artist.name}: {e}")
+
+        # Commit all changes at once
+        try:
+            session.commit()
+            logger.info(
+                f"✅ Committed auto-match results for {len(all_artists)} artists"
+            )
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to commit auto-match results: {e}")
+            raise
+
+        return {
+            "message": f"Bulk auto-match completed for {len(all_artists)} artists",
+            "total_artists": len(all_artists),
+            "successful_matches": success_count,
+            "failed_matches": error_count,
+            "status": "completed",
+            "note": "Auto-match process completed synchronously",
+        }
+
+    except Exception as e:
+        logger.error(f"Bulk auto-match error for all artists: {e}")
+        raise HTTPException(status_code=500, detail=f"Bulk auto-match failed: {str(e)}")
+
+
+async def _auto_match_artist(artist, session):
+    """Helper function to auto-match a single artist with external services"""
+    matches_found = {
+        "spotify": False,
+        "lastfm": False,
+        "musicbrainz": False,
+        "imvdb": False,
+        "allmusic": False,
+        "wikipedia": False,
+    }
+
+    updated_fields = []
+
+    # Spotify auto-match
+    if get_async_spotify_service and not artist.spotify_id:
+        try:
+            from src.services.settings_service import settings
+            from src.utils.async_http_client import get_global_http_client
+
+            client_id = settings.get("spotify_client_id")
+            client_secret = settings.get("spotify_client_secret")
+
+            if client_id and client_secret:
+                credentials = f"{client_id}:{client_secret}"
+                encoded_credentials = base64.b64encode(credentials.encode()).decode()
+                http_client = await get_global_http_client()
+
+                token_response = await asyncio.wait_for(
+                    http_client.post(
+                        "https://accounts.spotify.com/api/token",
+                        headers={
+                            "Authorization": f"Basic {encoded_credentials}",
+                            "Content-Type": "application/x-www-form-urlencoded",
+                        },
+                        data={"grant_type": "client_credentials"},
+                    ),
+                    timeout=15.0,
+                )
+
+                if token_response and token_response.get("access_token"):
+                    access_token = token_response["access_token"]
+
+                    search_response = await asyncio.wait_for(
+                        http_client.get(
+                            "https://api.spotify.com/v1/search",
+                            headers={"Authorization": f"Bearer {access_token}"},
+                            params={"q": artist.name, "type": "artist", "limit": 1},
+                        ),
+                        timeout=15.0,
+                    )
+
+                    if search_response and search_response.get("artists", {}).get(
+                        "items"
+                    ):
+                        spotify_artist = search_response["artists"]["items"][0]
+                        artist.spotify_id = spotify_artist["id"]
+                        matches_found["spotify"] = True
+                        updated_fields.append("spotify_id")
+
+        except Exception as e:
+            logger.warning(f"Spotify auto-match failed for {artist.name}: {e}")
+
+    # Last.fm auto-match
+    if lastfm_service and not artist.lastfm_name:
+        try:
+            lastfm_result = await asyncio.to_thread(
+                lastfm_service.search_artist, artist.name
+            )
+            if lastfm_result:
+                lastfm_name = (
+                    lastfm_result.get("name")
+                    if isinstance(lastfm_result, dict)
+                    else None
+                )
+                if lastfm_name:
+                    artist.lastfm_name = lastfm_name
+                    matches_found["lastfm"] = True
+                    updated_fields.append("lastfm_name")
+        except Exception as e:
+            logger.warning(f"Last.fm auto-match failed for {artist.name}: {e}")
+
+    # MusicBrainz auto-match
+    if musicbrainz_service:
+        try:
+            mb_result = await asyncio.to_thread(
+                musicbrainz_service.search_artist, artist.name
+            )
+            existing_mbid = None
+            if artist.imvdb_metadata and isinstance(artist.imvdb_metadata, dict):
+                existing_mbid = artist.imvdb_metadata.get("musicbrainz_id")
+
+            if mb_result and not existing_mbid:
+                mb_id = (
+                    mb_result.get("mbid") or mb_result.get("id")
+                    if isinstance(mb_result, dict)
+                    else None
+                )
+                if mb_id:
+                    if not artist.imvdb_metadata:
+                        artist.imvdb_metadata = {}
+                    artist.imvdb_metadata["musicbrainz_id"] = mb_id
+                    matches_found["musicbrainz"] = True
+                    updated_fields.append("musicbrainz_id")
+        except Exception as e:
+            logger.warning(f"MusicBrainz auto-match failed for {artist.name}: {e}")
+
+    # IMVDb auto-match
+    if imvdb_service and not artist.imvdb_id:
+        try:
+            imvdb_result = await asyncio.to_thread(
+                imvdb_service.search_artist, artist.name
+            )
+            if imvdb_result:
+                imvdb_id = (
+                    imvdb_result.get("id") if isinstance(imvdb_result, dict) else None
+                )
+                if imvdb_id:
+                    artist.imvdb_id = imvdb_id
+                    matches_found["imvdb"] = True
+                    updated_fields.append("imvdb_id")
+        except Exception as e:
+            logger.warning(f"IMVDb auto-match failed for {artist.name}: {e}")
+
+    return matches_found
