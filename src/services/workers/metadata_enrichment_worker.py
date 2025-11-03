@@ -4,14 +4,13 @@ Processes artist metadata enrichment jobs using the existing MetadataEnrichmentS
 """
 
 import asyncio
-import logging
 from typing import Any, Dict, Optional
 
 from src.database.models import Artist, Video
 from src.utils.logger import get_logger
 
 from ..background_worker_base import HybridWorker
-from ..job_queue import BackgroundJob, JobQueue, JobType
+from ..job_queue import BackgroundJob, JobQueue
 from ..metadata_enrichment_service import MetadataEnrichmentService
 
 logger = get_logger(__name__)

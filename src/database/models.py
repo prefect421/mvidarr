@@ -2,7 +2,6 @@
 Database models for MVidarr
 """
 
-import hashlib
 import secrets
 from datetime import datetime, timedelta
 from enum import Enum
@@ -10,7 +9,7 @@ from enum import Enum
 from sqlalchemy import JSON, Boolean, Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Index, Integer, String, Text
-from sqlalchemy.orm import backref, relationship, validates
+from sqlalchemy.orm import relationship, validates
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from src.database.connection import Base

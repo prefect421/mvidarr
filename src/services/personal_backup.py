@@ -8,16 +8,10 @@ import hashlib
 import json
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
-import aiofiles
-import aiohttp
-
-from src.auth.jwt_handler import get_jwt_handler
-from src.jobs.base_task import BaseTask
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
 
@@ -255,7 +249,7 @@ class PersonalBackupService:
         """Create a new backup job"""
         try:
             # Generate job ID
-            job_id = f"backup_{int(time.time())}_{hashlib.md5(str(source_paths).encode()).hexdigest()[:8]}"
+            job_id = f"backup_{int(time.time())}_{hashlib.md5(str(source_paths).encode(), usedforsecurity=False).hexdigest()[:8]}"
 
             # Validate provider credentials
             if (
@@ -676,7 +670,7 @@ class PersonalBackupService:
         """Create folder in Google Drive and return folder ID"""
         # This would use Google Drive API to create folder
         # For now, return a placeholder folder ID
-        return f"folder_{hashlib.md5(folder_name.encode()).hexdigest()[:12]}"
+        return f"folder_{hashlib.md5(folder_name.encode(), usedforsecurity=False).hexdigest()[:12]}"
 
     async def _upload_file_to_google_drive(
         self, credentials: CloudCredentials, file_path: str, folder_id: str
@@ -685,7 +679,7 @@ class PersonalBackupService:
         # This would implement the actual Google Drive file upload
         # Return file ID on success, None on failure
         await asyncio.sleep(0.1)  # Simulate upload time
-        return f"file_{hashlib.md5(file_path.encode()).hexdigest()[:12]}"
+        return f"file_{hashlib.md5(file_path.encode(), usedforsecurity=False).hexdigest()[:12]}"
 
     async def _upload_file_to_dropbox(
         self, credentials: CloudCredentials, file_path: str, destination_path: str
@@ -701,7 +695,7 @@ class PersonalBackupService:
         """Upload file to OneDrive"""
         # This would implement the actual OneDrive file upload
         await asyncio.sleep(0.1)  # Simulate upload time
-        return f"file_{hashlib.md5(file_path.encode()).hexdigest()[:12]}"
+        return f"file_{hashlib.md5(file_path.encode(), usedforsecurity=False).hexdigest()[:12]}"
 
     async def _save_credentials(
         self, provider: CloudProvider, credentials: CloudCredentials

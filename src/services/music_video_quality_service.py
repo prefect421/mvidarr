@@ -5,20 +5,32 @@ Enhanced video quality analysis specifically designed for music video content
 
 import asyncio
 import json
-import logging
-import os
-import tempfile
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
 from src.services.performance_monitor import track_media_processing_time
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.music_video_quality")
+
+
+def _safe_parse_frame_rate(frame_rate_str: str) -> float:
+    """
+    Safely parse frame rate fraction string (e.g., "30000/1001") to float.
+    Replaces unsafe eval() with proper parsing.
+    """
+    try:
+        if "/" in frame_rate_str:
+            numerator, denominator = frame_rate_str.split("/", 1)
+            return float(numerator) / float(denominator)
+        else:
+            return float(frame_rate_str)
+    except (ValueError, ZeroDivisionError):
+        return 0.0
 
 
 class VideoType(Enum):
@@ -346,7 +358,7 @@ class MusicVideoQualityService:
                 "resolution": f"{width}x{height}",
                 "width": width,
                 "height": height,
-                "fps": eval(video_stream.get("r_frame_rate", "0/1")),
+                "fps": _safe_parse_frame_rate(video_stream.get("r_frame_rate", "0/1")),
                 "video_codec": video_stream.get("codec_name", "unknown"),
                 "pixel_format": video_stream.get("pix_fmt", "unknown"),
                 "color_depth": self._get_color_depth(video_stream.get("pix_fmt", "")),

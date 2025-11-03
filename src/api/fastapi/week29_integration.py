@@ -3,11 +3,10 @@ Phase 3 Week 29 Integration API - Personal Cloud Backup & Basic Integrations
 FastAPI routes for consumer-focused cloud backup and YouTube import functionality
 """
 
-import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
 from src.integrations.youtube_importer import (

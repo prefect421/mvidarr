@@ -5,10 +5,9 @@ Integration with Vimeo for independent artists and high-quality music video cont
 
 import asyncio
 import json
-import logging
 import re
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote, urljoin
 
 import httpx
@@ -16,7 +15,6 @@ from bs4 import BeautifulSoup
 
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
 from src.services.performance_monitor import track_media_processing_time
-from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.vimeo_service")

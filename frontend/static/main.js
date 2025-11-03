@@ -1771,10 +1771,11 @@ async function testMetadataServices() {
     showLoading('Testing metadata service connections...');
     try {
         const services = [
+            { name: 'IMVDb', endpoint: '/api/video-indexing/imvdb/test' },
+            { name: 'Discogs', endpoint: '/api/discogs/test' },
             { name: 'MusicBrainz', endpoint: '/api/musicbrainz/test' },
-            { name: 'Last.fm', endpoint: '/api/lastfm/test', method: 'POST' },
             { name: 'Spotify', endpoint: '/api/spotify/test', method: 'POST' },
-            { name: 'IMVDb', endpoint: '/api/video-indexing/imvdb/test' }
+            { name: 'Last.fm', endpoint: '/api/lastfm/test', method: 'POST' }
         ];
         
         const results = [];

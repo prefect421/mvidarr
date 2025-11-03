@@ -92,7 +92,7 @@ class APIResponseCacheMiddleware(BaseHTTPMiddleware):
             key_components.append(f"user:{user_id}")
 
         key_string = "|".join(key_components)
-        return f"api_cache:{hashlib.md5(key_string.encode()).hexdigest()}"
+        return f"api_cache:{hashlib.md5(key_string.encode(), usedforsecurity=False).hexdigest()}"
 
     async def _get_cached_response(self, cache_key: str) -> Optional[Dict[str, Any]]:
         """Retrieve cached response if available"""
@@ -285,7 +285,9 @@ def cache_response(ttl: int = 300, key_prefix: str = "func_cache"):
                     key_parts.append(f"{k}:{v}")
 
             cache_key = ":".join(key_parts)
-            cache_key_hash = hashlib.md5(cache_key.encode()).hexdigest()
+            cache_key_hash = hashlib.md5(
+                cache_key.encode(), usedforsecurity=False
+            ).hexdigest()
             final_key = f"func_cache:{cache_key_hash}"
 
             # Try to get from cache

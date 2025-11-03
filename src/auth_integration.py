@@ -3,7 +3,9 @@ Authentication Integration for MVidarr
 Integrates authentication middleware, routes, and endpoint protection.
 """
 
-from flask import Flask
+from datetime import datetime
+
+from flask import Flask, jsonify
 
 from src.api.auth import register_auth_routes
 from src.api.protected_endpoints import (
@@ -287,9 +289,3 @@ def register_auth_health_endpoint(app: Flask):
                 ),
                 500,
             )
-
-
-# Import for external usage
-from datetime import datetime
-
-from flask import jsonify

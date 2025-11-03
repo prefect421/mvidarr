@@ -31,7 +31,7 @@ RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requiremen
 #################################
 FROM python:3.12-slim AS runtime
 
-# Install runtime system dependencies (cached layer - rarely changes)
+# Install runtime system dependencies including supervisord (cached layer - rarely changes)
 RUN apt-get update && apt-get install -y \
     curl \
     ffmpeg \
@@ -40,6 +40,8 @@ RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     mariadb-client \
     netcat-openbsd \
+    supervisor \
+    procps \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get autoremove -y \
     && apt-get autoclean
@@ -60,8 +62,9 @@ RUN mkdir -p /app/data/downloads /app/data/musicvideos /app/data/music_videos /a
 # Copy static configuration files first (cached if config unchanged)
 COPY --chown=mvidarr:mvidarr docker-config.yml.sample /app/config/docker-config.yml
 COPY entrypoint.sh /app/entrypoint.sh
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Set up static files in single layer (cached if static files unchanged)
+# Set up static files permissions (cached if static files unchanged)
 RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && \
     touch /app/.env && chown mvidarr:mvidarr /app/.env && chmod 664 /app/.env
 
@@ -79,8 +82,13 @@ COPY --chown=mvidarr:mvidarr migrations/ /app/migrations/
 COPY --chown=mvidarr:mvidarr scripts/ /app/scripts/
 COPY --chown=mvidarr:mvidarr fastapi_app.py version.json /app/
 
+# Set proper permissions for all application files
+RUN find /app -type d -exec chmod 755 {} \; && \
+    find /app -type f -exec chmod 644 {} \; && \
+    chmod 755 /app/fastapi_app.py
+
 # Expose the application port
 EXPOSE 5000
 
-# Run the application
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Default command - run supervisord to manage FastAPI + Celery
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

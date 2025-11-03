@@ -4,7 +4,6 @@ FastAPI endpoints for bulk media operations with progress tracking and error rec
 """
 
 import asyncio
-import logging
 import time
 import uuid
 from pathlib import Path
@@ -15,20 +14,16 @@ from fastapi import (
     BackgroundTasks,
     Body,
     HTTPException,
-    Query,
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
 
 from src.jobs.bulk_media_tasks import (
     BulkMediaProcessor,
     BulkOperationStatus,
-    BulkOperationType,
     bulk_cleanup_media,
     bulk_enrich_metadata,
-    bulk_import_collection,
 )
 from src.services.media_collection_manager import (
     CollectionProcessingConfig,

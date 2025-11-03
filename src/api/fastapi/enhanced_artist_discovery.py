@@ -7,7 +7,7 @@ import logging
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication_legacy
@@ -16,7 +16,6 @@ from src.database.models import Artist
 from src.services.enhanced_artist_discovery_service import (
     enhanced_artist_discovery_service,
 )
-from src.utils.logger import get_logger
 
 logger = logging.getLogger("mvidarr.fastapi.enhanced_discovery")
 

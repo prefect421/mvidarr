@@ -5,18 +5,11 @@ Phase 3 Week 32: Pydantic Validation and Models
 Centralized models for all artist-related API operations.
 """
 
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, validator
+from pydantic import Field, HttpUrl, validator
 
-from .base import (
-    BaseRequest,
-    BaseResponse,
-    BulkOperationRequest,
-    BulkOperationResponse,
-    PaginationRequest,
-)
+from .base import BaseRequest, BaseResponse, BulkOperationRequest, PaginationRequest
 from .common import (
     MetadataMixin,
     ThumbnailSearchRequest,

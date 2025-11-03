@@ -108,13 +108,10 @@ async def lifespan(app: FastAPI):
         await start_job_scheduler()
         logger.info("✅ Advanced job scheduler started")
 
-        # Initialize ytdlp_service and resume pending downloads
-        logger.info("🔄 Initializing ytdlp_service and resuming pending downloads...")
-        try:
-            ytdlp_service._resume_pending_downloads()
-            logger.info("✅ ytdlp_service initialized and pending downloads resumed")
-        except Exception as e:
-            logger.error(f"Failed to initialize ytdlp_service: {e}")
+        # ytdlp_service is already initialized and pending downloads resumed during import
+        logger.info(
+            "✅ ytdlp_service initialized (pending downloads auto-resumed during init)"
+        )
 
         yield  # Application is running
 
@@ -487,6 +484,8 @@ from src.api.fastapi.playlists import router as fastapi_playlists_router
 from src.api.fastapi.production_monitoring import router as monitoring_router
 from src.api.fastapi.settings import router as fastapi_settings_router
 from src.api.fastapi.videos import router as fastapi_videos_router
+from src.api.fastapi.videos_search import router as fastapi_videos_search_router
+from src.api.fastapi.videos_streaming import router as fastapi_videos_streaming_router
 
 # from src.api.fastapi.music_recommendations import recommendations_router  # Temporarily disabled
 # from src.api.system_health import router as system_health_router
@@ -508,6 +507,8 @@ if bulk_operations_router:
     logger.info("✅ Bulk operations router included")
 # Re-enable real database routers after fixing database initialization
 app.include_router(fastapi_videos_router)
+app.include_router(fastapi_videos_streaming_router, prefix="/api/videos")
+app.include_router(fastapi_videos_search_router, prefix="/api/videos")
 app.include_router(fastapi_artists_router)
 app.include_router(fastapi_playlists_router)
 app.include_router(fastapi_genres_router)
@@ -518,6 +519,7 @@ app.include_router(fastapi_auth_legacy_router)
 app.include_router(frontend_router)
 
 from src.api.fastapi.advanced_search import router as advanced_search_router
+from src.api.fastapi.discogs import router as discogs_router
 from src.api.fastapi.lastfm import router as lastfm_router
 
 # Metadata enrichment routers
@@ -531,6 +533,7 @@ from src.api.fastapi.users import router as users_router
 app.include_router(metadata_enrichment_router)
 app.include_router(spotify_router)
 app.include_router(musicbrainz_router)
+app.include_router(discogs_router)
 app.include_router(themes_router)
 app.include_router(users_router)
 app.include_router(lastfm_router)

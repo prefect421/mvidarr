@@ -5,11 +5,11 @@ Phase 3 Week 32: Pydantic Validation and Models
 Centralized models for all authentication and authorization operations.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import EmailStr, Field, validator
 
 from .base import BaseRequest, BaseResponse, TimestampMixin
 

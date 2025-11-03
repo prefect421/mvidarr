@@ -3,11 +3,9 @@ Import/Export Data Models for MVidarr 0.9.7 - Issue #76
 Comprehensive data portability and backup management system.
 """
 
-import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
@@ -21,7 +19,6 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    Text,
 )
 from sqlalchemy.orm import relationship
 
@@ -448,8 +445,8 @@ class ExportedPlaylist:
 
     id: int
     name: str
-    description: Optional[str] = None
     user_id: int
+    description: Optional[str] = None
     is_public: bool = False
     is_featured: bool = False
     total_duration: Optional[int] = None

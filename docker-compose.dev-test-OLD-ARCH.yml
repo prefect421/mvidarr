@@ -1,0 +1,132 @@
+# MVidarr Dev Test Environment - OLD 6-Container Architecture (TEMPORARY)
+# Use this until the new dev image with supervisord is built and pushed
+# Deployment location: /home/mike/Docker_Drives/mvidarr-Test/
+# Access: http://localhost:5001
+
+services:
+  mvidarr-mariadb:
+    image: mariadb:11.4
+    container_name: mvidarr-mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=mvidarr
+      - MYSQL_USER=mvidarr
+      - MYSQL_PASSWORD=secure_password
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+      - TZ=America/New_York
+    volumes:
+      - /home/mike/Docker_Drives/mvidarr-Test/database/mariadb:/var/lib/mysql
+    ports:
+      - "0.0.0.0:3305:3306"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - mvidarr-network
+
+  mvidarr-redis:
+    image: redis:7-alpine
+    container_name: mvidarr-redis
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - /home/mike/Docker_Drives/mvidarr-Test/data/redis:/data
+    command: redis-server --appendonly yes --requirepass mvidarr_redis_password --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "mvidarr_redis_password", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mvidarr-network
+    environment:
+      - TZ=America/New_York
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mvidarr:
+    image: ghcr.io/prefect421/mvidarr:dev
+    container_name: mvidarr
+    ports:
+      - "0.0.0.0:5001:5000"
+    environment:
+      - DB_HOST=mvidarr-mariadb
+      - DB_PORT=3306
+      - DB_USER=mvidarr
+      - DB_PASSWORD=secure_password
+      - DB_NAME=mvidarr
+      - SECRET_KEY=mvidarr-dev-key-change-in-production
+      - DEBUG=true
+      - PYTHONUNBUFFERED=1
+      - MVIDARR_USE_ENHANCED_SCHEDULER=true
+      - MVIDARR_AUTO_DOWNLOAD_ENABLED=true
+      - MVIDARR_AUTO_DOWNLOAD_SCHEDULE=hourly
+      - MVIDARR_AUTO_DOWNLOAD_TIME=03:15
+      - MVIDARR_SCHEDULER_HEALTH_CHECK=true
+      - REDIS_HOST=mvidarr-redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=mvidarr_redis_password
+      - REDIS_URL=redis://:mvidarr_redis_password@mvidarr-redis:6379/0
+      - REDIS_DB=0
+      - CELERY_BROKER_URL=redis://:mvidarr_redis_password@mvidarr-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:mvidarr_redis_password@mvidarr-redis:6379/1
+    volumes:
+      - /home/mike/Docker_Drives/mvidarr-Test/data/downloads:/app/data/downloads
+      - /home/mike/Docker_Drives/mvidarr-Test/data/music_videos:/app/data/musicvideos
+      - /home/mike/Docker_Drives/mvidarr-Test/data/database:/app/data/database
+      - /home/mike/Docker_Drives/mvidarr-Test/data/thumbnails:/app/data/thumbnails
+      - /home/mike/Docker_Drives/mvidarr-Test/data/logs:/app/data/logs
+      - /home/mike/Docker_Drives/mvidarr-Test/data/cache:/app/data/cache
+    depends_on:
+      - mvidarr-mariadb
+      - mvidarr-redis
+    restart: unless-stopped
+    networks:
+      - mvidarr-network
+
+  celery-worker:
+    image: ghcr.io/prefect421/mvidarr:dev
+    container_name: mvidarr-celery-worker
+    entrypoint: []
+    environment:
+      - DB_HOST=mvidarr-mariadb
+      - DB_PORT=3306
+      - DB_USER=mvidarr
+      - DB_PASSWORD=secure_password
+      - DB_NAME=mvidarr
+      - REDIS_HOST=mvidarr-redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=mvidarr_redis_password
+      - REDIS_URL=redis://:mvidarr_redis_password@mvidarr-redis:6379/0
+      - CELERY_BROKER_URL=redis://:mvidarr_redis_password@mvidarr-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:mvidarr_redis_password@mvidarr-redis:6379/1
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /home/mike/Docker_Drives/mvidarr-Test/data/downloads:/app/data/downloads
+      - /home/mike/Docker_Drives/mvidarr-Test/data/music_videos:/app/data/musicvideos
+      - /home/mike/Docker_Drives/mvidarr-Test/data/database:/app/data/database
+      - /home/mike/Docker_Drives/mvidarr-Test/data/thumbnails:/app/data/thumbnails
+      - /home/mike/Docker_Drives/mvidarr-Test/data/logs:/app/data/logs
+      - /home/mike/Docker_Drives/mvidarr-Test/data/cache:/app/data/cache
+    depends_on:
+      - mvidarr-redis
+      - mvidarr-mariadb
+    command: celery -A src.jobs.celery_app worker --beat --loglevel=info --concurrency=3
+    restart: unless-stopped
+    networks:
+      - mvidarr-network
+
+networks:
+  mvidarr-network:
+    driver: bridge

@@ -2,15 +2,13 @@
 Video Recovery Service - Handles missing video detection and file recovery
 """
 
-import logging
 import os
-from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from sqlalchemy import and_
 
 from src.database.connection import get_db
-from src.database.models import Artist, Video, VideoStatus
+from src.database.models import Video, VideoStatus
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 

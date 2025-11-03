@@ -3,7 +3,6 @@ MVidarr Performance Middleware - Phase 2 Week 24
 FastAPI middleware for automatic API performance tracking and monitoring
 """
 
-import logging
 import time
 from typing import Callable, Optional
 

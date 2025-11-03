@@ -8,19 +8,17 @@ import hashlib
 import json
 import os
 import shutil
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-import aiofiles
-from sqlalchemy import and_, asc, delete, desc, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import selectinload
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
 
@@ -124,9 +122,9 @@ class CollectionMaintenanceService:
         self.config = config or {}
         self.redis_client = None
 
-        # Maintenance configuration
+        # Maintenance configuration - use secure temp directory
         self.data_directory = "/data"
-        self.temp_directory = "/tmp/mvidarr"
+        self.temp_directory = os.path.join(tempfile.gettempdir(), "mvidarr")
         self.backup_directory = "/data/backups"
         self.max_temp_age_days = 7
         self.min_free_space_gb = 5.0
@@ -812,7 +810,7 @@ class CollectionMaintenanceService:
             )
             potential_savings = total_size - keeper_size
 
-            group_id = f"dup_{hashlib.md5(''.join(str(v.id) for v in videos).encode()).hexdigest()[:8]}"
+            group_id = f"dup_{hashlib.md5(''.join(str(v.id) for v in videos).encode(), usedforsecurity=False).hexdigest()[:8]}"
 
             return DuplicateGroup(
                 group_id=group_id,

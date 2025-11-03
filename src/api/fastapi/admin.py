@@ -4,7 +4,6 @@ Complete system administration, user management, and monitoring endpoints.
 Migrated from Flask admin_interface.py and users.py for enhanced performance.
 """
 
-import asyncio
 import os
 import signal
 import subprocess
@@ -14,13 +13,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db_session
 from src.database.models import SessionStatus, User, UserRole, UserSession
-from src.services.audit_service import AuditEventType, AuditService
 from src.services.auth_service import AuthService
 from src.utils.logger import get_logger
 

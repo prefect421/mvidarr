@@ -3,22 +3,20 @@ Playlist Management Service - Phase 3 Week 30
 Consumer-focused playlist management with smart playlists and music video organization
 """
 
-import asyncio
 import hashlib
 import json
-import os
 import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, asc, desc, func, or_, select, text
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
 from src.services.music_video_detector import get_music_video_detector
 from src.services.redis_service import get_redis_client
@@ -225,7 +223,7 @@ class PlaylistManagementService:
         """Create a new playlist"""
         try:
             # Generate playlist ID
-            playlist_id = f"playlist_{int(datetime.now().timestamp())}_{hashlib.md5(name.encode()).hexdigest()[:8]}"
+            playlist_id = f"playlist_{int(datetime.now().timestamp())}_{hashlib.md5(name.encode(), usedforsecurity=False).hexdigest()[:8]}"
 
             # Create playlist
             now = datetime.now()

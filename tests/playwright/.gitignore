@@ -1,0 +1,38 @@
+# Playwright Test Artifacts
+test-results/
+playwright-report/
+playwright-results.json
+playwright/.cache/
+
+# Node modules
+node_modules/
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.test
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Screenshots and videos
+screenshots/
+videos/
+traces/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

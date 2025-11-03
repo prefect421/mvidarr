@@ -100,6 +100,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Respects user subtitle language preferences
 - Works with both standard and YouTube's custom language codes
 
+## MKV Video Transcoding System
+
+### Real-Time FFmpeg Transcoding ✅
+
+**Status**: MVidarr now supports MKV video playback through intelligent real-time transcoding.
+
+#### Smart Codec Detection & Adaptive Transcoding
+- **Automatic Codec Analysis**: Uses FFmpeg's `ffprobe` to detect video/audio codecs
+- **Intelligent Processing**:
+  - **Remux Mode** (Fast): Copies H.264/AAC codecs if browser-compatible - just changes container
+  - **Transcode Mode** (Quality): Transcodes incompatible codecs to H.264/AAC for universal playback
+- **Browser Compatibility**: Outputs fragmented MP4 with browser-compatible codecs
+
+#### API Endpoint
+- **Transcoding Stream**: `/api/videos/{video_id}/stream-transcode` - Real-time FFmpeg transcoding
+- **Standard Stream**: `/api/videos/{video_id}/stream` - Direct file streaming for MP4/WebM
+- **Response Headers**: `X-Transcode-Mode: remux|transcode` indicates processing method
+
+#### Frontend Integration
+- **Automatic Detection**: Frontend detects `.mkv` file extension
+- **Smart Routing**: MKV files automatically routed to transcode endpoint
+- **Seamless UX**: Users experience smooth playback regardless of source format
+- **Error Handling**: Graceful fallback and timeout detection
+
+#### Technical Implementation
+- **Async Streaming**: FastAPI async generators for efficient streaming
+- **Process Management**: Proper FFmpeg process lifecycle and cleanup
+- **Codec Detection**: JSON-based ffprobe output parsing
+- **Progressive Playback**: Fragmented MP4 with `frag_keyframe+empty_moov` flags
+- **Client Disconnect Handling**: FFmpeg processes terminated on client disconnect
+
+#### Supported Formats
+- **Input**: MKV containers with various codecs (H.264, H.265, VP9, etc.)
+- **Output**: MP4 container with H.264 video + AAC audio
+- **Performance**:
+  - Remux mode: Near-instant start (just container change)
+  - Transcode mode: Real-time encoding with `veryfast` preset
+
+#### User Experience
+- Play MKV files directly in browser without manual conversion
+- Automatic quality optimization based on source codecs
+- Transparent processing - users see standard video player
+- Works across all video interfaces (gallery, detail, modal)
+
 ## API Development & Testing
 
 ### Authentication Requirements
@@ -141,19 +185,24 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: User Testing & Pre-Release Optimization
+### Current Phase: Code Cleanup & Optimization
 
-#### 0.9.8 User Testing Phase
-- **Focus**: Comprehensive testing of subtitle system and FastAPI migration
-- **Testing Plan**: `TESTING_PLAN_0.9.8.md` - systematic validation of all features
-- **Priority**: Fix any critical issues found during testing
-- **Goal**: Stable foundation for code cleanup phase
+#### 0.9.8 User Testing Phase ✅ COMPLETED (2025-10-10)
+- **Status**: Testing completed successfully
+- **Key Achievements**:
+  - Subtitle system validated and working
+  - Video quality improvements confirmed
+  - FastAPI migration stable
+  - Critical issues resolved (Issue #139: Song Recommendations)
+  - Advanced Settings UI improvements implemented
+- **Testing Plan**: `TESTING_PLAN_0.9.8.md` - marked as completed
 
-#### 0.9.9 Code Cleanup & Optimization Phase  
+#### 0.9.9 Code Cleanup & Optimization Phase 🔄 ACTIVE
 - **Focus**: Prepare for first public release through comprehensive optimization
 - **Cleanup Plan**: `MILESTONE_0.9.9_CLEANUP.md` - systematic code cleanup and performance optimization
 - **Targets**: Remove dead code, optimize performance, enhance code quality
 - **Goal**: Production-ready codebase for 1.0.0 public release
+- **Status**: Ready to begin systematic cleanup based on 0.9.8 testing results
 
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch

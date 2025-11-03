@@ -6,11 +6,10 @@ Manages JWT token generation, validation, and refresh functionality
 import os
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from passlib.hash import bcrypt
 
 from src.services.async_base_service import AsyncBaseService
 from src.utils.logger import get_logger

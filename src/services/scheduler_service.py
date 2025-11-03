@@ -12,7 +12,6 @@ from typing import Any, Dict, Optional
 import schedule
 
 from src.database.connection import get_db
-from src.database.models import Setting
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 
@@ -397,7 +396,9 @@ class SchedulerService:
                     )
 
             # Import here to avoid circular imports
-            from src.api.videos import download_all_wanted_videos_internal
+            from src.services.video_batch_service import (
+                download_all_wanted_videos_internal,
+            )
 
             # Run the download function
             result = download_all_wanted_videos_internal(limit=max_videos)

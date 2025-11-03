@@ -2,14 +2,12 @@
 Last.fm Integration Service for listening history and artist discovery
 """
 
-import json
 import os
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
+from datetime import datetime
+from typing import Dict, List
 
 import requests
-from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
@@ -18,6 +16,9 @@ from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.lastfm")
+
+# Default timeout for HTTP requests (in seconds)
+DEFAULT_REQUEST_TIMEOUT = 30
 
 
 class LastFmService:
@@ -77,13 +78,15 @@ class LastFmService:
         # Create signature
         sig_params = sorted(params.items())
         sig_string = "".join([f"{k}{v}" for k, v in sig_params]) + self.api_secret
-        signature = hashlib.md5(sig_string.encode()).hexdigest()
+        signature = hashlib.md5(sig_string.encode(), usedforsecurity=False).hexdigest()
 
         params["api_sig"] = signature
         params["format"] = "json"
 
         try:
-            response = requests.get(self.base_url, params=params)
+            response = requests.get(
+                self.base_url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+            )
             response.raise_for_status()
 
             data = response.json()
@@ -118,7 +121,9 @@ class LastFmService:
             request_params.update(params)
 
         try:
-            response = requests.get(self.base_url, params=request_params)
+            response = requests.get(
+                self.base_url, params=request_params, timeout=DEFAULT_REQUEST_TIMEOUT
+            )
             response.raise_for_status()
 
             data = response.json()

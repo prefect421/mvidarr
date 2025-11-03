@@ -5,7 +5,7 @@ Migrated from Flask src/api/two_factor.py - Complete 2FA functionality
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -17,11 +17,10 @@ from src.api.fastapi.auth_dependencies import (
     require_authentication_legacy,
 )
 from src.database.connection import get_db_session
-from src.database.models import User, UserRole
+from src.database.models import User
 from src.services.audit_service import AuditService
 from src.services.auth_service import AuthService
 from src.services.two_factor_service import TwoFactorService
-from src.utils.logger import get_logger
 
 logger = logging.getLogger("mvidarr.fastapi.two_factor")
 

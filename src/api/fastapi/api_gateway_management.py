@@ -3,13 +3,10 @@ API Gateway Management API - Phase 3 Week 37
 RESTful API for managing API Gateway services, routes, and configurations
 """
 
-import asyncio
-import json
-import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from src.services.api_gateway import (

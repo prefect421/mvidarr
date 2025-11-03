@@ -5,21 +5,16 @@ Performance optimizations for large music video collections (10K+ videos)
 
 import asyncio
 import json
-import sqlite3
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 import psutil
-from sqlalchemy import Index, and_, asc, desc, event, func, or_, select, text
-from sqlalchemy.engine import Engine
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy import func, select
 
-from src.database.async_connection import get_async_session, get_engine
+from src.database.async_connection import get_async_session
 from src.database.models import Artist, Video
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger

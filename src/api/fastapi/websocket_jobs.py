@@ -6,11 +6,10 @@ Phase 2: Media Processing Optimization - Week 17
 
 import asyncio
 import json
-import logging
 from datetime import datetime
 from typing import Any, Dict, Optional, Set
 
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
 from src.jobs.redis_manager import redis_manager

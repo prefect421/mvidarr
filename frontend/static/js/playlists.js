@@ -754,34 +754,65 @@ class PlaylistManager {
         if (!templateId) return;
 
         try {
-            // Client-side templates (no API call needed)
+            // Client-side templates (matching backend templates)
             const templates = {
                 'recent_releases': {
                     name: 'Recent Releases',
-                    description: 'Videos released in the last 2 years',
+                    description: 'Videos from the last 2 years',
                     filter_criteria: {
-                        year_range: { min: new Date().getFullYear() - 2 }
+                        year_range: {
+                            min: new Date().getFullYear() - 2,
+                            max: new Date().getFullYear()
+                        },
+                        status: ['DOWNLOADED']
                     }
                 },
-                'high_quality': {
-                    name: 'High Quality Videos',
-                    description: '1080p and higher quality videos',
+                'the_80s': {
+                    name: 'The 80s',
+                    description: 'Music videos from the 1980s',
                     filter_criteria: {
-                        quality: ['1080p', '1440p', '2160p', '4320p']
+                        year_range: { min: 1980, max: 1989 },
+                        status: ['DOWNLOADED']
                     }
                 },
-                'completed': {
-                    name: 'Completed Downloads',
-                    description: 'All successfully downloaded videos',
+                'the_90s': {
+                    name: 'The 90s',
+                    description: 'Music videos from the 1990s',
                     filter_criteria: {
-                        status: ['DOWNLOADED', 'READY']
+                        year_range: { min: 1990, max: 1999 },
+                        status: ['DOWNLOADED']
                     }
                 },
-                'pending': {
-                    name: 'Pending Downloads',
-                    description: 'Videos queued or downloading',
+                'short_videos': {
+                    name: 'Short Videos',
+                    description: 'Videos under 4 minutes',
                     filter_criteria: {
-                        status: ['QUEUED', 'DOWNLOADING', 'PENDING']
+                        duration_range: { min: 0, max: 240 }, // 4 minutes in seconds
+                        status: ['DOWNLOADED']
+                    }
+                },
+                'hd_quality': {
+                    name: 'HD Quality',
+                    description: 'High definition videos (720p and above)',
+                    filter_criteria: {
+                        quality: ['720p', '1080p', '1440p', '2160p'],
+                        status: ['DOWNLOADED']
+                    }
+                },
+                'rock_music': {
+                    name: 'Rock Music',
+                    description: 'Rock and related genres',
+                    filter_criteria: {
+                        genres: ['rock', 'alternative rock', 'hard rock', 'indie rock'],
+                        status: ['DOWNLOADED']
+                    }
+                },
+                'pop_hits': {
+                    name: 'Pop Hits',
+                    description: 'Pop music videos',
+                    filter_criteria: {
+                        genres: ['pop', 'dance-pop', 'electropop', 'synth-pop'],
+                        status: ['DOWNLOADED']
                     }
                 }
             };

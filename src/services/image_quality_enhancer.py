@@ -3,17 +3,13 @@ MVidarr Image Quality Enhancement Service - Phase 2 Week 21
 Automated image quality improvement workflows with concurrent processing
 """
 
-import asyncio
-import json
-import logging
 import math
 import os
 import time
-from concurrent.futures import as_completed
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 try:
     from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageOps

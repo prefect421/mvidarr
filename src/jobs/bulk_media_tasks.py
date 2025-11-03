@@ -3,29 +3,18 @@ MVidarr Bulk Media Operations - Phase 2 Week 22
 Large-scale media processing tasks with concurrent processing and progress tracking
 """
 
-import asyncio
-import json
-import logging
 import os
 import time
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 from src.jobs.advanced_image_tasks import AdvancedImageAnalyzer, ImageMetadata
 from src.services.ffmpeg_stream_manager import ffmpeg_stream_manager
 from src.services.image_thread_pool import get_image_processing_pool
-from src.services.media_cache_manager import (
-    cache_media_metadata,
-    get_media_cache_manager,
-)
-from src.services.performance_monitor import (
-    get_performance_monitor,
-    track_media_processing_time,
-)
+from src.services.media_cache_manager import get_media_cache_manager
+from src.services.performance_monitor import track_media_processing_time
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.bulk_media")

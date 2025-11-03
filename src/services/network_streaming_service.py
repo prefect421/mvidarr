@@ -8,19 +8,16 @@ import hashlib
 import ipaddress
 import json
 import socket
-import struct
-import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 
 from src.database.async_connection import get_async_session
-from src.database.models import Artist, Video
+from src.database.models import Video
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
 
@@ -252,7 +249,7 @@ class NetworkStreamingService:
                     return {"success": False, "message": "Video not found"}
 
                 # Create streaming session
-                session_id = f"stream_{int(time.time())}_{hashlib.md5(f'{video_id}_{client_id}'.encode()).hexdigest()[:8]}"
+                session_id = f"stream_{int(time.time())}_{hashlib.md5(f'{video_id}_{client_id}'.encode(), usedforsecurity=False).hexdigest()[:8]}"
 
                 # Generate stream URL based on protocol
                 stream_url = await self._generate_stream_url(video, protocol, quality)

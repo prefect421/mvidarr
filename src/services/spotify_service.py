@@ -4,15 +4,13 @@ Spotify API integration service for importing playlists and discovering music vi
 
 import base64
 import difflib
-import json
-import os
 import re
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from urllib.parse import quote_plus, urlencode
+from typing import Dict, List, Tuple
+from urllib.parse import urlencode
 
 import requests
-from sqlalchemy import and_, func, or_
+from sqlalchemy import or_
 
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
@@ -21,6 +19,9 @@ from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.spotify")
+
+# Default timeout for HTTP requests (in seconds)
+DEFAULT_REQUEST_TIMEOUT = 30
 
 
 class SpotifyService:
@@ -159,7 +160,12 @@ class SpotifyService:
         }
 
         try:
-            response = requests.post(self.auth_url, headers=headers, data=data)
+            response = requests.post(
+                self.auth_url,
+                headers=headers,
+                data=data,
+                timeout=DEFAULT_REQUEST_TIMEOUT,
+            )
             response.raise_for_status()
 
             token_data = response.json()
@@ -193,7 +199,12 @@ class SpotifyService:
         data = {"grant_type": "refresh_token", "refresh_token": self.refresh_token}
 
         try:
-            response = requests.post(self.auth_url, headers=headers, data=data)
+            response = requests.post(
+                self.auth_url,
+                headers=headers,
+                data=data,
+                timeout=DEFAULT_REQUEST_TIMEOUT,
+            )
             response.raise_for_status()
 
             token_data = response.json()
@@ -230,7 +241,12 @@ class SpotifyService:
         data = {"grant_type": "client_credentials"}
 
         try:
-            response = requests.post(self.auth_url, headers=headers, data=data)
+            response = requests.post(
+                self.auth_url,
+                headers=headers,
+                data=data,
+                timeout=DEFAULT_REQUEST_TIMEOUT,
+            )
             response.raise_for_status()
 
             token_data = response.json()
@@ -261,7 +277,9 @@ class SpotifyService:
         url = f"{self.base_url}/{endpoint}"
 
         try:
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(
+                url, headers=headers, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+            )
             response.raise_for_status()
             return response.json()
 
@@ -401,7 +419,10 @@ class SpotifyService:
 
         try:
             response = requests.post(
-                f"{self.base_url}/{endpoint}", headers=headers, json=data
+                f"{self.base_url}/{endpoint}",
+                headers=headers,
+                json=data,
+                timeout=DEFAULT_REQUEST_TIMEOUT,
             )
             response.raise_for_status()
             return response.json()
@@ -427,7 +448,10 @@ class SpotifyService:
 
         try:
             response = requests.post(
-                f"{self.base_url}/{endpoint}", headers=headers, json=data
+                f"{self.base_url}/{endpoint}",
+                headers=headers,
+                json=data,
+                timeout=DEFAULT_REQUEST_TIMEOUT,
             )
             response.raise_for_status()
             return response.json()
@@ -446,7 +470,10 @@ class SpotifyService:
 
         try:
             response = requests.delete(
-                f"{self.base_url}/{endpoint}", headers=headers, json=data
+                f"{self.base_url}/{endpoint}",
+                headers=headers,
+                json=data,
+                timeout=DEFAULT_REQUEST_TIMEOUT,
             )
             response.raise_for_status()
             return response.json()
@@ -463,7 +490,10 @@ class SpotifyService:
 
         try:
             response = requests.put(
-                f"{self.base_url}/{endpoint}", headers=headers, json=data
+                f"{self.base_url}/{endpoint}",
+                headers=headers,
+                json=data,
+                timeout=DEFAULT_REQUEST_TIMEOUT,
             )
             response.raise_for_status()
             return True
@@ -478,7 +508,11 @@ class SpotifyService:
         headers = {"Authorization": f"Bearer {self.access_token}"}
 
         try:
-            response = requests.delete(f"{self.base_url}/{endpoint}", headers=headers)
+            response = requests.delete(
+                f"{self.base_url}/{endpoint}",
+                headers=headers,
+                timeout=DEFAULT_REQUEST_TIMEOUT,
+            )
             response.raise_for_status()
             return True
         except requests.RequestException as e:

@@ -3,19 +3,13 @@ MVidarr Advanced Image Operations - Phase 2 Week 21
 Complete image processing optimization with advanced features
 """
 
-import asyncio
-import hashlib
-import json
-import logging
-import mimetypes
 import os
 import time
-from collections import Counter, defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from PIL import ExifTags, Image, ImageEnhance, ImageFilter, ImageOps

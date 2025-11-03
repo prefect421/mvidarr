@@ -9,7 +9,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from sqlalchemy import and_, desc, func, or_, text
+from sqlalchemy import and_, desc, or_
 from sqlalchemy.orm import Session, joinedload
 
 from src.database.connection import get_db
@@ -17,9 +17,7 @@ from src.database.models import Artist, Video, VideoStatus
 from src.database.search_models import (
     SearchAnalytics,
     SearchAnalyticsEvent,
-    SearchPreset,
     SearchResultCache,
-    SearchSuggestion,
 )
 from src.services.search_optimization_service import SearchOptimizationService
 from src.utils.logger import get_logger
@@ -633,7 +631,6 @@ class AdvancedSearchService:
         self, search_criteria: Dict[str, Any], page: int, per_page: int
     ) -> str:
         """Generate cache key for search results"""
-        import json
 
         cache_data = {"criteria": search_criteria, "page": page, "per_page": per_page}
         return SearchResultCache.generate_cache_key(cache_data)

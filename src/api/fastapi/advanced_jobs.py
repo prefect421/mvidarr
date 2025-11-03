@@ -3,16 +3,13 @@ FastAPI Advanced Jobs API Router
 Enhanced background job management with scheduling, dependencies, and analytics
 """
 
-import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication_legacy
-from src.database.connection import get_db_session
 from src.services.job_queue import (
     BackgroundJob,
     JobPriority,

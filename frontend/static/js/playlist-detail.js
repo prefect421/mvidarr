@@ -1429,6 +1429,13 @@ async function showEditFiltersModal() {
         document.getElementById('filterQuality').value = '';
     }
 
+    // Status - convert array to single value (take first status if multiple)
+    if (filterCriteria.status && filterCriteria.status.length > 0) {
+        document.getElementById('filterStatus').value = filterCriteria.status[0];
+    } else {
+        document.getElementById('filterStatus').value = 'DOWNLOADED'; // Default to DOWNLOADED
+    }
+
     // Year range
     if (filterCriteria.year_range) {
         document.getElementById('filterYearFrom').value = filterCriteria.year_range.min || '';
@@ -1585,6 +1592,12 @@ function getFilterCriteriaFromForm() {
     const quality = document.getElementById('filterQuality').value;
     if (quality) {
         criteria.quality = [quality];
+    }
+
+    // Status - convert single selection to array for consistency with create form
+    const status = document.getElementById('filterStatus').value;
+    if (status) {
+        criteria.status = [status];
     }
 
     // Year range - use min/max structure

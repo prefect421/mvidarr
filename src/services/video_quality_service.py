@@ -3,15 +3,12 @@ Video Quality Management Service for Issue #110
 Implements user-configurable quality preferences and upgrade system.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union
-
-from sqlalchemy import and_, asc, desc, func
-from sqlalchemy.orm import Session
+from typing import Dict, List, Optional
 
 from src.database.connection import get_db
-from src.database.models import Artist, Setting, User, Video, VideoStatus
+from src.database.models import Artist, Video, VideoStatus
 from src.services.settings_service import settings
 from src.services.youtube_quality_check_service import youtube_quality_check_service
 from src.utils.logger import get_logger

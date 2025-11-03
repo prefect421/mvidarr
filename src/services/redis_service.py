@@ -3,10 +3,6 @@ Redis Service Wrapper - Phase 3 Week 29 Integration
 Provides a simple Redis client interface for Week 29 services
 """
 
-import asyncio
-import json
-from typing import Any, Optional
-
 from src.services.redis_manager import RedisManager
 from src.utils.logger import get_logger
 

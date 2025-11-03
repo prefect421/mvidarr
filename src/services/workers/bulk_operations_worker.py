@@ -4,10 +4,7 @@ Handles bulk video operations like batch downloads, deletions, and status update
 """
 
 import asyncio
-import logging
-from typing import Any, Dict, List, Optional
-
-from sqlalchemy.exc import SQLAlchemyError
+from typing import Any, Dict, List
 
 from ...database.connection import get_db
 from ...database.models import Video

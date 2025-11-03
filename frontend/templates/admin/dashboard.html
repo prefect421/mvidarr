@@ -853,7 +853,8 @@
                     if (result.error) {
                         alert('Error: ' + result.error);
                     } else {
-                        alert(`Artist "${result.name}" added successfully!`);
+                        const artistName = result.name || result.artist_name || 'Artist';
+                        alert(`Artist "${artistName}" added successfully!`);
                         hideAddArtistModal();
                         // Optionally redirect to artists page
                         // window.location.href = '/artists';

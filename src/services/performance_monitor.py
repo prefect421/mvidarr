@@ -5,7 +5,6 @@ System performance tracking with real-time metrics and alerting for media operat
 
 import asyncio
 import json
-import logging
 import threading
 import time
 from collections import defaultdict, deque

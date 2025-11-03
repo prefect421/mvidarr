@@ -8,10 +8,9 @@ import hashlib
 import json
 import os
 import re
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
 from src.services.genre_service import get_genre_service
@@ -166,9 +165,7 @@ class MusicVideoDetector:
                 await self.initialize()
 
             # Check cache first
-            cache_key = (
-                f"music_video_detection:{hashlib.md5(video_path.encode()).hexdigest()}"
-            )
+            cache_key = f"music_video_detection:{hashlib.md5(video_path.encode(), usedforsecurity=False).hexdigest()}"
             cached_result = await self.redis_client.get(cache_key)
             if cached_result:
                 logger.debug(f"Using cached detection result for {video_path}")

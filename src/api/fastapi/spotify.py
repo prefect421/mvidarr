@@ -4,10 +4,9 @@ Provides Spotify-specific API endpoints for artist search and metadata
 """
 
 import asyncio
-import logging
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 
 # from src.middleware.fastapi_auth_middleware import require_authentication  # Temporarily disabled
 from src.utils.logger import get_logger

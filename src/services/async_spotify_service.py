@@ -4,22 +4,12 @@ Async Spotify API integration service for importing playlists and discovering mu
 
 import asyncio
 import base64
-import difflib
-import json
-import os
-import re
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import quote_plus, urlencode
+from typing import Dict, List, Optional
+from urllib.parse import urlencode
 
-import aiohttp
-from sqlalchemy import and_, func, or_
-
-from src.database.connection import get_db
-from src.database.models import Artist, Video, VideoStatus
-from src.services.imvdb_service import imvdb_service
 from src.services.settings_service import settings
 from src.utils.async_http_client import CircuitBreakerOpenError, get_global_http_client
 from src.utils.logger import get_logger

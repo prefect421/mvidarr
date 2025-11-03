@@ -4,7 +4,6 @@ Core infrastructure for processing long-running tasks in the background with rea
 """
 
 import asyncio
-import json
 import logging
 import time
 import uuid
@@ -20,6 +19,7 @@ class JobType(Enum):
     """Types of background jobs that can be processed"""
 
     METADATA_ENRICHMENT = "metadata_enrichment"
+    BULK_VIDEO_METADATA = "bulk_video_metadata"
     VIDEO_DOWNLOAD = "video_download"
     BULK_ARTIST_IMPORT = "bulk_artist_import"
     THUMBNAIL_GENERATION = "thumbnail_generation"

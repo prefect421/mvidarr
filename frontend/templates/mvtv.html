@@ -902,9 +902,6 @@ class MvTVPlayer {
                     data = { videos: validVideos };
                     console.log(`Converted ${validVideos.length} playlist videos from ${playlistData.playlist.entries.length} entries:`, validVideos); // Debug logging
 
-                    // DEBUG: Force alert to see what's happening
-                    alert(`Loaded ${validVideos.length} videos from playlist. Titles: ${validVideos.map(v => v.title).join(', ')}`);
-
                     if (validVideos.length === 0) {
                         console.log('No valid videos found in playlist entries. Raw entries:', playlistData.playlist.entries);
                     }
@@ -2099,10 +2096,30 @@ document.addEventListener('click', (event) => {
 
 // Handle unhandled promise rejections (especially from video loading aborts)
 window.addEventListener('unhandledrejection', (event) => {
-    if (event.reason && event.reason.name === 'AbortError' || 
-        (event.reason && event.reason.message && event.reason.message.includes('aborted'))) {
-        // This is likely a video loading abort - prevent it from showing as an error
-        console.log('Video loading aborted (handled):', event.reason.message);
+    const reason = event.reason;
+
+    // Check for various types of abort/cancellation errors
+    const isAbortError = (
+        // AbortError from fetch API
+        (reason && reason.name === 'AbortError') ||
+        // DOMException with abort-related messages
+        (reason instanceof DOMException && (
+            reason.code === 20 || // ABORT_ERR
+            reason.message.includes('aborted') ||
+            reason.message.includes('fetching process') ||
+            reason.message.includes('user agent')
+        )) ||
+        // Generic abort messages
+        (reason && reason.message && (
+            reason.message.includes('aborted') ||
+            reason.message.includes('cancelled') ||
+            reason.message.includes('canceled')
+        ))
+    );
+
+    if (isAbortError) {
+        // This is a video loading abort - prevent it from showing as an error
+        console.log('Video loading aborted (handled):', reason?.message || reason);
         event.preventDefault();
     }
 });

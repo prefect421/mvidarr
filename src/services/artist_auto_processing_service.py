@@ -252,27 +252,30 @@ class ArtistAutoProcessingService:
 
     @staticmethod
     def _run_metadata_enrichment(artist_id: int) -> Dict[str, Any]:
-        """Run metadata enrichment for the artist"""
+        """Run metadata enrichment for the artist using Celery task"""
         try:
-            from src.services.metadata_enrichment_service import (
-                metadata_enrichment_service,
+            from src.jobs.metadata_tasks import enrich_artist_metadata_task
+
+            # Use Celery task to run enrichment in background
+            # This avoids event loop conflicts and allows proper async execution
+            logger.info(
+                f"Queueing metadata enrichment Celery task for artist {artist_id}"
+            )
+            task = enrich_artist_metadata_task.delay(
+                artist_id=artist_id, force_refresh=True
             )
 
-            # Run metadata enrichment with Flask context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                enrichment_result = loop.run_until_complete(
-                    metadata_enrichment_service.enrich_artist_metadata(
-                        artist_id, force_refresh=True, app_context=current_app
-                    )
-                )
-                return enrichment_result
-            finally:
-                loop.close()
+            return {
+                "success": True,
+                "message": "Enrichment task queued",
+                "task_id": task.id,
+                "queued": True,
+            }
 
         except Exception as e:
-            logger.error(f"Metadata enrichment failed for artist {artist_id}: {e}")
+            logger.error(
+                f"Failed to queue metadata enrichment for artist {artist_id}: {e}"
+            )
             return {"success": False, "error": str(e)}
 
     @staticmethod

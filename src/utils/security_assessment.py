@@ -2,18 +2,14 @@
 """
 Security Assessment and Vulnerability Scanner for MVidarr
 """
-
-import hashlib
 import json
 import os
 import re
-import socket
 import sqlite3
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
-from urllib.parse import urlparse
+from typing import Any, Dict
 
 
 class SecurityAssessment:

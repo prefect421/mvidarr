@@ -5,19 +5,15 @@ Comprehensive benchmarking system to measure and validate performance improvemen
 
 import asyncio
 import json
-import logging
 import os
 import statistics
-import subprocess
 import time
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import aiohttp
-import memory_profiler
 import psutil
 
 from src.services.database_service import DatabaseService

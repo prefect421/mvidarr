@@ -4,11 +4,10 @@ Handles bulk operations with background processing, progress tracking, and undo/
 """
 
 import threading
-import time
-from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from src.database.bulk_models import (
@@ -19,7 +18,7 @@ from src.database.bulk_models import (
     BulkOperationType,
 )
 from src.database.connection import get_db
-from src.database.models import Artist, Download, Video, VideoStatus
+from src.database.models import Artist, Video, VideoStatus
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.bulk_operations")

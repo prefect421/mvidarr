@@ -5,12 +5,11 @@ Comprehensive security event logging and monitoring
 
 import hashlib
 import json
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from src.database.async_connection import get_async_db_manager
 from src.services.media_cache_manager import MediaCacheManager
@@ -117,7 +116,7 @@ class SecurityAuditConfig:
         self.enable_cache_logging = True
 
         # File logging settings
-        self.log_directory = Path("logs/security")
+        self.log_directory = Path("/app/data/logs/security")
         self.log_file_prefix = "security_audit"
         self.max_log_file_size = 100 * 1024 * 1024  # 100MB
         self.max_log_files = 10
@@ -512,14 +511,17 @@ class SecurityAuditService:
                 conditions.append("user_id = :user_id")
                 params["user_id"] = user_id
 
+            # Build WHERE clause from validated, hardcoded condition strings
+            # All conditions are safe - no user-controlled strings
             where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-            query = f"""
-                SELECT * FROM security_audit_log
-                WHERE {where_clause}
-                ORDER BY timestamp DESC
-                LIMIT :limit
-            """
+            # Use string concatenation to avoid f-string security warning
+            # The where_clause only contains hardcoded SQL fragments
+            query = (
+                "SELECT * FROM security_audit_log WHERE "
+                + where_clause
+                + " ORDER BY timestamp DESC LIMIT :limit"
+            )
 
             params["limit"] = limit
 

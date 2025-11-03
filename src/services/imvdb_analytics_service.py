@@ -5,13 +5,10 @@ Implements historical data analysis for discovery patterns and performance insig
 
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-
-from sqlalchemy import and_, asc, desc, func
-from sqlalchemy.orm import Session
+from typing import Dict, List
 
 from src.database.connection import get_db
-from src.database.models import Artist, Setting, User, Video, VideoStatus
+from src.database.models import Artist, Video
 from src.services.imvdb_discovery_service import imvdb_discovery_service
 from src.services.imvdb_service import imvdb_service
 from src.utils.logger import get_logger

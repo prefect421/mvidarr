@@ -9,8 +9,6 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 
-from src.services.simple_auth_service import SimpleAuthService
-
 logger = logging.getLogger("mvidarr.fastapi.auth_deps")
 
 # Optional bearer token security (for API tokens if needed)

@@ -5,10 +5,7 @@ A simpler, more reliable approach to stream MKV files using FFmpeg
 """
 
 import os
-import signal
 import subprocess
-import threading
-import time
 
 from flask import Response
 

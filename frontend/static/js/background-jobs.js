@@ -41,13 +41,11 @@ class BackgroundJobManager {
     
     setupWebSocketListeners() {
         this.socket.onopen = () => {
-            console.log('📡 Connected to job progress WebSocket');
             this.reconnectAttempts = 0;
             this.showConnectionStatus('connected');
         };
-        
+
         this.socket.onclose = () => {
-            console.log('📡 Disconnected from job progress WebSocket');
             this.showConnectionStatus('disconnected');
             this.attemptReconnection();
         };
@@ -73,9 +71,7 @@ class BackgroundJobManager {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             const delay = this.reconnectDelay * this.reconnectAttempts;
-            
-            console.log(`📡 Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-            
+
             setTimeout(() => {
                 this.connectWebSocket();
             }, delay);
@@ -86,7 +82,6 @@ class BackgroundJobManager {
     }
     
     setupPollingFallback() {
-        console.log('📡 Using polling fallback for job updates');
         // Poll every 5 seconds for active jobs
         this.pollingInterval = setInterval(() => {
             this.activeJobs.forEach((jobData, jobId) => {
@@ -118,8 +113,6 @@ class BackgroundJobManager {
     
     async startJob(jobType, payload, options = {}) {
         try {
-            console.log(`🚀 Starting ${jobType} job:`, payload);
-            
             const jobData = {
                 type: jobType,
                 priority: options.priority || 'normal',
@@ -174,15 +167,11 @@ class BackgroundJobManager {
             }
             
             const result = await response.json();
-            console.log('🔍 API Response:', result);
             const jobId = result.job_id;
-            console.log('🔍 Extracted job ID:', jobId, typeof jobId);
-            
+
             // Handle fast-completing jobs like auto-match
             if (jobType === 'auto_match' && result.result) {
                 // Auto-match completes immediately, simulate job completion
-                console.log(`🚀 Auto-match job ${jobId} completed immediately`);
-                
                 // Track job locally with completed status
                 this.activeJobs.set(jobId, {
                     id: jobId,
@@ -210,9 +199,8 @@ class BackgroundJobManager {
                 
                 return jobId;
             }
-            
+
             // Standard job handling for other job types
-            console.log(`📡 Standard job handling for ${jobType} job ${jobId} - subscribing to WebSocket`);
             // Subscribe to job updates
             this.subscribeToJob(jobId);
             
@@ -233,8 +221,7 @@ class BackgroundJobManager {
             if (options.onComplete) {
                 this.jobCallbacks.set(jobId, options.onComplete);
             }
-            
-            console.log(`✅ Job ${jobId} started successfully`);
+
             return jobId;
             
         } catch (error) {
@@ -246,7 +233,6 @@ class BackgroundJobManager {
     
     subscribeToJob(jobId) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            console.log(`📡 Subscribing to job ${jobId} via WebSocket`);
             this.socket.send(JSON.stringify({
                 type: 'subscribe_job',
                 job_id: jobId
@@ -258,7 +244,6 @@ class BackgroundJobManager {
     
     unsubscribeFromJob(jobId) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            console.log(`📡 Unsubscribing from job ${jobId}`);
             this.socket.send(JSON.stringify({
                 type: 'unsubscribe_job',
                 job_id: jobId
@@ -270,40 +255,29 @@ class BackgroundJobManager {
         try {
             switch (data.type) {
                 case 'connected':
-                    console.log('📡 Welcome message:', data.message);
                     break;
                 case 'job_update':
-                    console.log('📊 Job update received:', data);
                     this.handleJobUpdate(data);
                     break;
                 case 'job_status':
-                    console.log('📊 Job status received:', data);
                     this.handleJobStatus(data);
                     break;
             case 'subscription_response':
-                console.log('📡 Subscription response:', data.message);
-                if (data.success) {
-                    console.log(`📡 Successfully subscribed to job ${data.job_id}`);
-                }
                 break;
             case 'unsubscription_response':
-                console.log('📡 Unsubscription response:', data.message);
                 break;
             case 'active_jobs':
-                console.log('📊 Active jobs:', data.data);
                 break;
             case 'status':
-                console.log('📡 Status message:', data.message);
                 break;
             case 'heartbeat':
-                console.log('💓 Heartbeat received, active jobs:', data.active_jobs);
                 break;
             case 'error':
                 console.error('📡 WebSocket error:', data.message);
                 this.showError('WebSocket error: ' + data.message);
                 break;
             default:
-                console.log('📡 Unknown message type:', data.type);
+                break;
         }
         } catch (e) {
             console.error('❌ Error in handleWebSocketMessage:', e.message);
@@ -321,7 +295,6 @@ class BackgroundJobManager {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log(`❌ Job ${jobId} cancelled`);
                     this.handleJobCancellation(jobId);
                 } else {
                     console.error('Failed to cancel job:', data.error);
@@ -342,10 +315,9 @@ class BackgroundJobManager {
     handleJobUpdate(data) {
         const jobId = data.job_id || data.data?.job_id;
         if (!jobId) return;
-        
+
         const jobData = data.data || data;
-        console.log(`🔄 handleJobUpdate: JobID=${jobId}, Status=${jobData.status}, Progress=${jobData.progress}`);
-        
+
         // Update local job tracking
         if (this.activeJobs.has(jobId)) {
             const existingData = this.activeJobs.get(jobId);
@@ -396,8 +368,6 @@ class BackgroundJobManager {
     }
     
     handleJobCompletion(jobId, data) {
-        console.log(`✅ Job ${jobId} completed:`, data);
-        
         // Update final progress
         this.updateJobProgressUI(jobId, {
             ...data,
@@ -458,8 +428,6 @@ class BackgroundJobManager {
     }
     
     handleJobCancellation(jobId) {
-        console.log(`❌ Job ${jobId} was cancelled`);
-        
         // Update UI
         this.updateJobProgressUI(jobId, {
             status: 'cancelled',
@@ -521,42 +489,33 @@ class BackgroundJobManager {
     }
     
     showJobProgress(jobId, options = {}) {
-        console.log(`📊 showJobProgress called for job ${jobId}`);
         const container = document.getElementById('job-progress-container');
         const list = document.getElementById('job-progress-list');
-        
-        console.log(`📊 Container found: ${!!container}, List found: ${!!list}`);
+
         if (!container || !list) {
             console.error(`📊 Missing job progress elements! Container: ${!!container}, List: ${!!list}`);
             return;
         }
-        
+
         // Show container
         container.style.display = 'block';
-        console.log(`📊 Container displayed, visibility: ${container.style.display}`);
-        
+
         // Create progress item
         const jobData = this.activeJobs.get(jobId) || {};
-        console.log(`📊 Job data for ${jobId}:`, jobData);
         
         const progressItem = document.createElement('div');
         progressItem.id = `job-${jobId}`;
         progressItem.className = 'job-progress-item';
         
         this.updateJobProgressItem(progressItem, jobId, jobData);
-        
+
         list.appendChild(progressItem);
-        console.log(`📊 Progress item added to list for job ${jobId}`);
     }
     
     updateJobProgressUI(jobId, data) {
-        console.log(`📈 updateJobProgressUI: JobID=${jobId}, Progress=${data.progress}%, Message=${data.message}`);
         const progressItem = document.getElementById(`job-${jobId}`);
         if (progressItem) {
-            console.log(`📈 Progress item found, updating UI`);
             this.updateJobProgressItem(progressItem, jobId, data);
-        } else {
-            console.log(`⚠️ Progress item not found for job ${jobId}`);
         }
         
         // Enhanced toast notifications for major status changes
@@ -751,7 +710,6 @@ class BackgroundJobManager {
     
     showConnectionStatus(status) {
         // Show connection status in UI (could be a small indicator)
-        console.log(`📡 Connection status: ${status}`);
     }
     
     showSuccess(message) {
@@ -764,8 +722,6 @@ class BackgroundJobManager {
             });
         } else if (typeof showSuccess === 'function') {
             showSuccess(message);
-        } else {
-            console.log('✅ ' + message);
         }
     }
     

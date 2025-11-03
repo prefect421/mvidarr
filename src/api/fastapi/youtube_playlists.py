@@ -7,13 +7,12 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication_legacy
 from src.database.connection import get_db_session
 from src.services.youtube_playlist_service import youtube_playlist_service
-from src.utils.logger import get_logger
 
 logger = logging.getLogger("mvidarr.fastapi.youtube_playlists")
 
@@ -38,7 +37,7 @@ class PlaylistMonitorRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=200)
     auto_download: bool = Field(default=True)
     quality: str = Field(
-        default="720p", pattern="^(144p|240p|360p|480p|720p|1080p|best)$"
+        default="720p", pattern="^(144p|240p|360p|480p|720p|1080p|1440p|2160p|best)$"
     )
     keywords: List[str] = Field(default_factory=list, max_items=20)
 
@@ -49,7 +48,7 @@ class PlaylistMonitorUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=200)
     auto_download: Optional[bool] = None
     quality: Optional[str] = Field(
-        None, pattern="^(144p|240p|360p|480p|720p|1080p|best)$"
+        None, pattern="^(144p|240p|360p|480p|720p|1080p|1440p|2160p|best)$"
     )
     keywords: Optional[List[str]] = Field(None, max_items=20)
 
@@ -70,7 +69,7 @@ class PlaylistPreviewRequest(BaseModel):
 class PlaylistInfoResponse(BaseModel):
     """Playlist information response"""
 
-    playlist_id: str
+    playlist_id: str = Field(..., alias="id")
     title: str
     description: Optional[str] = None
     channel_title: str
@@ -78,6 +77,9 @@ class PlaylistInfoResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     published_at: Optional[str] = None
     valid: bool = True
+
+    class Config:
+        populate_by_name = True  # Allow using both 'id' and 'playlist_id'
 
 
 class PlaylistMonitorResponse(BaseModel):
@@ -183,9 +185,13 @@ async def create_playlist_monitor(
         )
 
         if not result.get("success"):
+            error_detail = result.get(
+                "error", result.get("message", "Failed to create playlist monitor")
+            )
+            logger.error(f"Playlist creation failed: {error_detail}")
             raise HTTPException(
                 status_code=400,
-                detail=result.get("error", "Failed to create playlist monitor"),
+                detail=error_detail,
             )
 
         return result

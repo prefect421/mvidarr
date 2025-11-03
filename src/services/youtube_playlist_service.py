@@ -5,21 +5,21 @@ YouTube Playlist Monitoring Service for tracking and downloading playlist videos
 import json
 import os
 import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
-from urllib.parse import parse_qs, urlparse
+from datetime import datetime
+from typing import Dict, List, Optional
 
 import requests
-from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
-from src.database.models import Artist, Download, PlaylistMonitor, Video, VideoStatus
-from src.services.imvdb_service import imvdb_service
+from src.database.models import Artist, PlaylistMonitor, Video, VideoStatus
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.youtube_playlist")
+
+# Default timeout for HTTP requests (in seconds)
+DEFAULT_REQUEST_TIMEOUT = 30
 
 
 class YouTubePlaylistService:
@@ -75,7 +75,7 @@ class YouTubePlaylistService:
         }
 
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT)
             response.raise_for_status()
 
             data = response.json()
@@ -127,7 +127,9 @@ class YouTubePlaylistService:
                 params["pageToken"] = page_token
 
             try:
-                response = requests.get(url, params=params)
+                response = requests.get(
+                    url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+                )
                 response.raise_for_status()
 
                 data = response.json()
@@ -195,7 +197,9 @@ class YouTubePlaylistService:
             }
 
             try:
-                response = requests.get(url, params=params)
+                response = requests.get(
+                    url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+                )
                 response.raise_for_status()
 
                 data = response.json()
@@ -286,7 +290,11 @@ class YouTubePlaylistService:
 
         except Exception as e:
             logger.error(f"Failed to create playlist monitor: {e}")
-            raise
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Failed to create playlist monitor: {str(e)}",
+            }
 
     def sync_playlist_videos(self, playlist_id: str, session: Session = None) -> Dict:
         """Sync videos from a monitored playlist"""

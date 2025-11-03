@@ -4,12 +4,11 @@ Provides async HTTP operations with connection pooling, retry logic, and proper 
 """
 
 import asyncio
-import logging
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import httpx
 

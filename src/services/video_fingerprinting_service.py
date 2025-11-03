@@ -6,19 +6,33 @@ Advanced duplicate detection and video version management for music videos
 import asyncio
 import hashlib
 import json
-import logging
 import os
 import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
 from src.services.performance_monitor import track_media_processing_time
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.video_fingerprinting")
+
+
+def _safe_parse_frame_rate(frame_rate_str: str) -> float:
+    """
+    Safely parse frame rate fraction string (e.g., "30000/1001") to float.
+    Replaces unsafe eval() with proper parsing.
+    """
+    try:
+        if "/" in frame_rate_str:
+            numerator, denominator = frame_rate_str.split("/", 1)
+            return float(numerator) / float(denominator)
+        else:
+            return float(frame_rate_str)
+    except (ValueError, ZeroDivisionError):
+        return 0.0
 
 
 @dataclass
@@ -128,7 +142,9 @@ class VideoFingerprintingService:
 
             # Generate video ID if not provided
             if not video_id:
-                video_id = hashlib.md5(video_path.encode()).hexdigest()[:16]
+                video_id = hashlib.md5(
+                    video_path.encode(), usedforsecurity=False
+                ).hexdigest()[:16]
 
             # Check if fingerprint already exists in cache
             cache_manager = await get_media_cache_manager()
@@ -211,9 +227,9 @@ class VideoFingerprintingService:
             return None
 
     async def _generate_file_hash(self, video_path: str) -> str:
-        """Generate MD5 hash of video file"""
+        """Generate MD5 hash of video file (for fingerprinting, not security)"""
         try:
-            hash_md5 = hashlib.md5()
+            hash_md5 = hashlib.md5(usedforsecurity=False)
 
             # Read file in chunks to handle large videos
             with open(video_path, "rb") as f:
@@ -277,7 +293,7 @@ class VideoFingerprintingService:
                 "duration": float(probe_data.get("format", {}).get("duration", 0)),
                 "bitrate": int(probe_data.get("format", {}).get("bit_rate", 0)),
                 "resolution": f"{video_stream.get('width', 0)}x{video_stream.get('height', 0)}",
-                "fps": eval(
+                "fps": _safe_parse_frame_rate(
                     video_stream.get("r_frame_rate", "0/1")
                 ),  # Convert fraction to float
                 "codec": video_stream.get("codec_name", "unknown"),
@@ -313,7 +329,7 @@ class VideoFingerprintingService:
             }
 
             metadata_str = json.dumps(normalized, sort_keys=True)
-            return hashlib.md5(metadata_str.encode()).hexdigest()
+            return hashlib.md5(metadata_str.encode(), usedforsecurity=False).hexdigest()
 
         except Exception as e:
             logger.error(f"Failed to generate metadata hash: {e}")
@@ -359,7 +375,7 @@ class VideoFingerprintingService:
                 # Generate hash of audio data
                 with open(temp_audio_path, "rb") as f:
                     audio_data = f.read()
-                    return hashlib.md5(audio_data).hexdigest()
+                    return hashlib.md5(audio_data, usedforsecurity=False).hexdigest()
 
             finally:
                 # Clean up temp file
@@ -406,7 +422,7 @@ class VideoFingerprintingService:
                 # Generate hash of frame data
                 with open(temp_frame_path, "rb") as f:
                     frame_data = f.read()
-                    return hashlib.md5(frame_data).hexdigest()
+                    return hashlib.md5(frame_data, usedforsecurity=False).hexdigest()
 
             finally:
                 # Clean up temp file

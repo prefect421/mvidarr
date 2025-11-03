@@ -7,14 +7,10 @@ by using song titles and various matching algorithms.
 
 import difflib
 import re
-from typing import Dict, List, Optional, Tuple
-from urllib.parse import quote
-
-import requests
+from typing import Dict, List
 
 from src.database.models import Artist, Video
 from src.services.imvdb_service import imvdb_service
-from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.artist_identification")

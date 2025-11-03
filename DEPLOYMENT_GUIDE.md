@@ -1,22 +1,29 @@
 # MVidarr Deployment Guide
 
-This guide covers deployment of MVidarr with the new Celery + Redis background job system.
+**Version: 0.9.9 (Production-Ready)**
+
+This guide covers deployment of MVidarr with Celery + Redis background job system, complete security hardening, and optimized consumer-grade configuration.
 
 ## Overview
 
-MVidarr now includes a robust background job processing system using Celery + Redis for:
+MVidarr includes a robust background job processing system using Celery + Redis for:
 - Metadata enrichment (artist/video data from external sources)
 - Video download processing
 - Image processing tasks
 - FFmpeg operations
 - Bulk operations
 
+**Simplified Architecture**: MVidarr uses a streamlined 3-container architecture optimized for home users:
+- **mvidarr**: FastAPI application + Celery worker (managed by supervisord)
+- **mariadb**: Database
+- **redis**: Cache and job queue
+
 ## Deployment Options
 
 ### Option 1: Docker Compose (Recommended)
 
-#### Full Setup with Background Jobs
-The default `docker-compose.yml` now includes Redis, Celery worker, beat scheduler, and Flower monitoring:
+#### Simplified 3-Container Setup
+The default `docker-compose.yml` provides a streamlined deployment perfect for home users:
 
 ```bash
 # Clone repository
@@ -27,29 +34,19 @@ cd mvidarr
 docker-compose up -d
 
 # Services started:
-# - MVidarr web application (port 5000)
-# - MariaDB database (port 3306, localhost only)
-# - Redis cache/job queue (port 6379, localhost only)
-# - Celery worker (background job processing)
-# - Celery beat (task scheduler)
-# - Flower dashboard (port 5555, localhost only)
+# - MVidarr container (FastAPI + Celery worker via supervisord) - port 5000
+# - MariaDB database - port 3306 (localhost only)
+# - Redis cache/job queue - port 6379 (localhost only)
 ```
 
-**Monitoring:**
+**Key Features:**
+- **Single Application Container**: FastAPI and Celery worker run together using supervisord
+- **Automatic Job Processing**: Background jobs start automatically with the application
+- **Simple Management**: Only 3 containers to monitor and maintain
+- **Lower Resource Usage**: Optimized for single-user home deployments
+
+**Access:**
 - **Web Interface:** http://localhost:5000
-- **Flower Dashboard:** http://localhost:5555 (admin/mvidarr123)
-
-#### Minimal Setup (No Background Jobs)
-If you don't need background job processing:
-
-```bash
-# Use minimal configuration
-docker-compose -f docker-compose.minimal.yml up -d
-
-# Only starts:
-# - MVidarr web application
-# - MariaDB database
-```
 
 #### Environment Variables
 Create `.env` file in the project root:
@@ -79,9 +76,8 @@ THUMBNAILS_PATH=./thumbnails
 LOGS_PATH=./logs
 CACHE_PATH=./cache
 
-# Redis/Celery Ports (optional)
+# Redis Port (optional)
 REDIS_PORT=6379
-FLOWER_PORT=5555
 ```
 
 ### Option 2: Systemd Services (Linux Server)
@@ -157,10 +153,12 @@ Redis is configured with:
 - **Eviction Policy:** allkeys-lru
 - **Port:** 6379 (localhost only in Docker)
 
-### Celery Configuration  
-Celery workers are configured with:
-- **Concurrency:** 3 workers (adjustable)
+### Celery Configuration
+Celery worker runs inside the main mvidarr container and is configured with:
+- **Concurrency:** 3 workers (adjustable via JOB_WORKER_COUNT)
 - **Queues:** metadata, video_downloads, image_processing, default
+- **Beat Scheduler:** Embedded in worker for scheduled tasks
+- **Process Management:** Supervisord manages both FastAPI and Celery
 - **Time Limits:** 60min hard / 30min soft
 - **Max Tasks per Child:** 100 (prevents memory leaks)
 
@@ -205,34 +203,27 @@ curl http://localhost:5000/api/health
 # Should show real-time progress, not stuck in "queued"
 ```
 
-### 3. Flower Monitoring
+### 3. View Application Logs
 ```bash
-# Access Flower dashboard
-open http://localhost:5555
+# View combined logs (FastAPI + Celery)
+docker logs -f mvidarr
 
-# Login: admin / mvidarr123
-# Verify:
-# - Workers tab shows active worker
-# - Tasks tab shows completed jobs  
-# - Monitor shows real-time statistics
+# Or view specific supervisor logs
+docker exec -it mvidarr tail -f /app/data/logs/supervisord.log
+docker exec -it mvidarr tail -f /app/data/logs/fastapi.log
+docker exec -it mvidarr tail -f /app/data/logs/celery-worker.log
 ```
 
 ### 4. Command Line Testing
 ```bash
-# Test Celery worker directly (if using systemd)
-cd /home/mike/mvidarr
-source venv/bin/activate
+# Check Celery worker status inside container
+docker exec -it mvidarr celery -A src.jobs.celery_app inspect stats
 
-# Check worker status
-celery -A src.jobs.celery_app inspect stats
+# Check active tasks
+docker exec -it mvidarr celery -A src.jobs.celery_app inspect active
 
-# Test task execution
-python -c "
-from src.jobs.metadata_tasks import enrich_artist_metadata_task
-result = enrich_artist_metadata_task.delay(192, force_refresh=True)
-print(f'Task ID: {result.id}')
-print(f'Result: {result.get(timeout=60)}')
-"
+# Verify supervisord process status
+docker exec -it mvidarr supervisorctl status
 ```
 
 ## Troubleshooting
@@ -241,14 +232,19 @@ print(f'Result: {result.get(timeout=60)}')
 
 #### 1. Jobs Stuck in "Queued" Status
 ```bash
-# Check Celery worker logs
-docker logs mvidarr-celery-worker
-# OR
-sudo journalctl -f -u mvidarr-celery-worker.service
+# Check Celery worker logs inside mvidarr container
+docker exec -it mvidarr tail -f /app/data/logs/celery-worker.log
+# OR check all logs
+docker logs -f mvidarr
 
-# Common fixes:
-docker-compose restart celery-worker  # Docker
-sudo systemctl restart mvidarr-celery-worker.service  # Systemd
+# Verify Celery worker is running
+docker exec -it mvidarr supervisorctl status celery-worker
+
+# Restart Celery worker only (keeps FastAPI running)
+docker exec -it mvidarr supervisorctl restart celery-worker
+
+# Or restart entire container
+docker-compose restart mvidarr
 ```
 
 #### 2. Redis Connection Failed
@@ -264,35 +260,48 @@ sudo systemctl restart redis
 
 #### 3. Import/Path Errors
 ```bash
-# Verify Python path
-docker exec -it mvidarr-celery-worker python -c "import sys; print(sys.path)"
+# Verify Python path inside mvidarr container
+docker exec -it mvidarr python -c "import sys; print(sys.path)"
 
-# Should include /app (Docker) or project path
-# Set PYTHONPATH if needed
+# Should include /app
+# PYTHONPATH is set in Dockerfile and docker-compose.yml
 ```
 
 #### 4. Database Connection Issues
 ```bash
-# Test database connection from worker
-docker exec -it mvidarr-celery-worker python -c "
+# Test database connection from mvidarr container
+docker exec -it mvidarr python -c "
 from src.database.connection import get_db
 with get_db() as session:
     print('Database connection OK')
 "
 ```
 
+#### 5. Supervisord Process Issues
+```bash
+# Check all supervised processes
+docker exec -it mvidarr supervisorctl status
+
+# Restart a specific process
+docker exec -it mvidarr supervisorctl restart fastapi
+docker exec -it mvidarr supervisorctl restart celery-worker
+
+# Check supervisord logs
+docker exec -it mvidarr tail -f /app/data/logs/supervisord.log
+```
+
 ### Performance Tuning
 
-#### Scaling Workers
+#### Adjusting Worker Concurrency
 ```bash
-# Docker: Scale to 5 workers  
-docker-compose up -d --scale celery-worker=5
+# Set worker concurrency in .env file
+JOB_WORKER_COUNT=5
 
-# Systemd: Create additional worker services
-sudo cp mvidarr-celery-worker.service mvidarr-celery-worker-2.service
-# Edit and change hostname: --hostname=worker2@%h
-sudo systemctl enable mvidarr-celery-worker-2.service
-sudo systemctl start mvidarr-celery-worker-2.service
+# Or set in docker-compose.yml environment section
+# Then restart:
+docker-compose down && docker-compose up -d
+
+# The Celery worker will start with the specified concurrency level
 ```
 
 #### Memory Management
@@ -302,7 +311,7 @@ sudo systemctl start mvidarr-celery-worker-2.service
 command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
 
 # Monitor memory usage
-docker stats mvidarr-redis mvidarr-celery-worker
+docker stats mvidarr mvidarr-redis mvidarr-mariadb
 ```
 
 ## Migration from Old System
@@ -387,14 +396,26 @@ open http://localhost:5555
 # View all container statuses
 docker-compose ps
 
-# Follow all logs  
+# Follow all logs
 docker-compose logs -f
 
-# Restart background job system
-docker-compose restart redis celery-worker celery-beat flower
+# Follow specific container logs
+docker logs -f mvidarr
+docker logs -f mvidarr-redis
+docker logs -f mvidarr-mariadb
+
+# Restart application (FastAPI + Celery)
+docker-compose restart mvidarr
+
+# Restart individual services inside mvidarr container
+docker exec -it mvidarr supervisorctl restart fastapi
+docker exec -it mvidarr supervisorctl restart celery-worker
+
+# Check service status inside container
+docker exec -it mvidarr supervisorctl status
 
 # Purge all job queues (if needed)
-docker exec -it mvidarr-celery-worker celery -A src.jobs.celery_app purge
+docker exec -it mvidarr celery -A src.jobs.celery_app purge
 
 # Check Redis queue lengths
 docker exec -it mvidarr-redis redis-cli llen metadata
@@ -402,4 +423,4 @@ docker exec -it mvidarr-redis redis-cli llen metadata
 
 ---
 
-**Note:** This deployment replaces the previous Flask-based job system that had reliability issues. The new Celery + Redis system provides enterprise-grade background job processing with proper monitoring and error handling.
+**Note:** This simplified 3-container architecture provides all the functionality of enterprise-grade background job processing while being optimized for consumer-grade home deployments. The single application container approach reduces complexity and resource usage while maintaining full Celery + Redis capabilities.

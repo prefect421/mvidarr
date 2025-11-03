@@ -4,15 +4,11 @@ Provides WebP conversion and storage optimization
 """
 
 import hashlib
-import io
-import json
-import os
-import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
-from PIL import Image, ImageOps
+from PIL import Image
 
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
@@ -340,7 +336,9 @@ class ThumbnailOptimizationService:
                 # Calculate file hash
                 try:
                     with open(img_file, "rb") as f:
-                        file_hash = hashlib.md5(f.read()).hexdigest()
+                        file_hash = hashlib.md5(
+                            f.read(), usedforsecurity=False
+                        ).hexdigest()
 
                     if file_hash in file_hashes:
                         # Duplicate found

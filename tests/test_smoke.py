@@ -27,7 +27,9 @@ def test_core_imports():
     try:
         import config.config
         import database.connection
-        import services.auth_service
+
+        # Note: services.auth_service requires Flask (removed in 0.9.9)
+        # Skip auth_service import test as it's Flask-dependent
 
         assert True
     except ImportError as e:
@@ -37,7 +39,8 @@ def test_core_imports():
 @pytest.mark.unit
 def test_required_dependencies():
     """Test that required dependencies are available."""
-    required_modules = ["flask", "sqlite3", "pytest", "requests"]
+    # Note: Flask removed in 0.9.9 Phase 1 (migrated to FastAPI)
+    required_modules = ["sqlite3", "pytest", "requests"]
 
     for module in required_modules:
         try:

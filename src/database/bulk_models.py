@@ -3,10 +3,9 @@ Bulk Operations Models for MVidarr 0.9.7 - Issue #74
 Database models for bulk operations, progress tracking, audit trail, and undo/redo functionality.
 """
 
-import json
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from sqlalchemy import (
     JSON,

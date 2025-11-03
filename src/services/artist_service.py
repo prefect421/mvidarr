@@ -4,10 +4,18 @@ Handles tracked artists and their automatic video discovery
 """
 
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_sql_identifier(identifier: str) -> bool:
+    """
+    Validate that a string is a safe SQL identifier (column name).
+    Only allows alphanumeric characters and underscores.
+    """
+    return bool(re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", identifier))
 
 
 class ArtistService:
@@ -210,7 +218,7 @@ class ArtistService:
             ]
 
             for field, value in settings.items():
-                if field in allowed_fields:
+                if field in allowed_fields and _validate_sql_identifier(field):
                     update_fields.append(f"{field} = %s")
                     update_values.append(value)
 

@@ -4,7 +4,6 @@ YouTube Search Service for discovering music videos
 
 import re
 from typing import Dict, List, Optional
-from urllib.parse import quote_plus
 
 import requests
 

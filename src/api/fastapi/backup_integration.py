@@ -5,13 +5,13 @@ Consumer-focused API for cloud backup and YouTube integration
 
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from src.integrations.youtube_importer import ImportType, get_youtube_importer
+from src.integrations.youtube_importer import get_youtube_importer
 from src.services.local_network_share import get_local_network_share
 from src.services.personal_backup import (
     BackupType,

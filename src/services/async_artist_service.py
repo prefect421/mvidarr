@@ -3,21 +3,20 @@ Async Artist Management Service for FastAPI Migration
 Handles tracked artists and their automatic video discovery with async operations
 """
 
-import logging
-from datetime import datetime
+import re
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import delete, func, insert, select, text, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
-from src.services.async_base_service import (
-    AsyncBaseService,
-    AsyncNotFoundError,
-    AsyncServiceError,
-)
+from src.services.async_base_service import AsyncBaseService, AsyncServiceError
 
-# from src.database.models import Artist, Video, TrackedArtist  # TODO: Import when models are ready
-from src.utils.logger import get_logger
+
+def _validate_sql_identifier(identifier: str) -> bool:
+    """
+    Validate that a string is a safe SQL identifier (column name).
+    Only allows alphanumeric characters and underscores.
+    """
+    return bool(re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", identifier))
 
 
 class AsyncArtistService(AsyncBaseService):
@@ -258,7 +257,7 @@ class AsyncArtistService(AsyncBaseService):
             ]
 
             for field, value in updates.items():
-                if field in allowed_fields:
+                if field in allowed_fields and _validate_sql_identifier(field):
                     set_clauses.append(f"{field} = :{field}")
                     params[field] = value
 

@@ -5,18 +5,15 @@ Intelligent service to correlate, analyze, and manage music videos across multip
 
 import asyncio
 import hashlib
-import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from src.services.imvdb_service import imvdb_service
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
-from src.services.music_video_quality_service import get_music_video_quality_service
 from src.services.performance_monitor import track_media_processing_time
 from src.services.vevo_service import get_vevo_service
-from src.services.video_fingerprinting_service import get_video_fingerprinting_service
 from src.services.vimeo_service import get_vimeo_service
 from src.services.youtube_service import youtube_service
 from src.utils.logger import get_logger
@@ -165,7 +162,7 @@ class CrossPlatformVideoIntelligence:
 
             # Check cache first
             cache_manager = await get_media_cache_manager()
-            cache_key = f"cross_platform_{hashlib.md5(f'{artist}_{title}'.encode()).hexdigest()}"
+            cache_key = f"cross_platform_{hashlib.md5(f'{artist}_{title}'.encode(), usedforsecurity=False).hexdigest()}"
 
             cached_result = await cache_manager.get(
                 CacheType.BULK_OPERATION_RESULT, cache_key

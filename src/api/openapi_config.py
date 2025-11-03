@@ -8,7 +8,6 @@ from typing import Any, Dict
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-from fastapi.staticfiles import StaticFiles
 
 
 def custom_openapi_schema(app: FastAPI) -> Dict[str, Any]:

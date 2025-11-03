@@ -3,10 +3,6 @@
 {% block title %}Videos - MVidarr{% endblock %}
 
 {% block content %}
-<!-- Performance Enhancement CSS - DISABLED: Causing loading issues
-<link rel="stylesheet" href="/css/ui-enhancements.css ">
-<link rel="stylesheet" href="/css/virtualization.css ">
--->
 <div class="videos-container">
     
     <!-- Page Header with Improved Visual Hierarchy -->
@@ -564,7 +560,17 @@ function applyVideoFilters() {
     }
     
     // Make API call to search/filter videos
-    fetch(`/api/videos/search?${params.toString()}`)
+    // Add cache busting to ensure fresh data
+    params.append('_t', Date.now());
+
+    fetch(`/api/videos/search?${params.toString()}`, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+        }
+    })
         .then(response => response.json())
         .then(data => {
             displaySearchResults(data);
@@ -1110,7 +1116,7 @@ function viewVideo(id) {
 
 
 
-function playVideo(videoId, title, localPath, videoUrl) {
+async function playVideo(videoId, title, localPath, videoUrl) {
     // Debug logging to help diagnose the issue
     console.log('playVideo called with:', {
         videoId: videoId,
@@ -1118,7 +1124,41 @@ function playVideo(videoId, title, localPath, videoUrl) {
         localPath: localPath,
         videoUrl: videoUrl
     });
-    
+
+    // Check if video exists before attempting playback
+    try {
+        const checkResponse = await fetch(`/api/videos/${videoId}`, {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+
+        if (checkResponse.status === 404) {
+            console.error('Video not found in database:', videoId);
+            document.getElementById('videoModalTitle').textContent = 'Video Not Found';
+            const playerDiv = document.getElementById('videoPlayer');
+            playerDiv.innerHTML = `
+                <div class="video-error">
+                    <p>🔍 Video not found</p>
+                    <p class="error-detail">This video (ID: ${videoId}) no longer exists in the database.</p>
+                    <div class="troubleshooting-tips">
+                        <strong>Try these solutions:</strong>
+                        <ul>
+                            <li><button onclick="location.reload()" class="btn-link">Refresh the page</button> to update the video list</li>
+                            <li>The video may have been deleted or moved</li>
+                            <li>Clear your browser cache if the issue persists</li>
+                        </ul>
+                    </div>
+                    <button onclick="closeVideoModal()" class="btn btn-primary">Close</button>
+                </div>
+            `;
+            document.getElementById('videoModal').style.display = 'block';
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking video existence:', error);
+        // Continue with playback attempt even if check fails
+    }
+
     // Set modal title
     document.getElementById('videoModalTitle').textContent = title || 'Playing Video';
     
@@ -1129,8 +1169,10 @@ function playVideo(videoId, title, localPath, videoUrl) {
     if (localPath && localPath !== 'null' && localPath !== 'undefined') {
         // Determine MIME type based on file extension
         let mimeType = 'video/mp4'; // default
+        let isMkvFile = false;
         if (localPath.toLowerCase().endsWith('.mkv')) {
-            mimeType = 'video/x-matroska';
+            isMkvFile = true;
+            mimeType = 'video/mp4'; // Use MP4 MIME type for transcoded output
         } else if (localPath.toLowerCase().endsWith('.webm')) {
             mimeType = 'video/webm';
         } else if (localPath.toLowerCase().endsWith('.avi')) {
@@ -1138,11 +1180,16 @@ function playVideo(videoId, title, localPath, videoUrl) {
         } else if (localPath.toLowerCase().endsWith('.mov')) {
             mimeType = 'video/quicktime';
         }
-        
+
+        // Use transcode endpoint for MKV files, regular stream for others
+        const streamEndpoint = isMkvFile
+            ? `/api/videos/${videoId}/stream-transcode`
+            : `/api/videos/${videoId}/stream`;
+
         // Play local file via streaming endpoint with proper MIME type
         playerDiv.innerHTML = `
             <video id="modalVideoElement" width="800" height="450" controls autoplay preload="metadata">
-                <source src="/api/videos/${videoId}/stream" type="${mimeType}">
+                <source src="${streamEndpoint}" type="${mimeType}">
                 Your browser does not support the video tag or this video format.
             </video>
         `;
@@ -1166,14 +1213,15 @@ function playVideo(videoId, title, localPath, videoUrl) {
         video.addEventListener('loadstart', function() {
             console.log('Video load started for:', localPath, 'Type:', mimeType);
             hasLoaded = false;
-            
-            // Set timeout for loading - if video doesn't load within 10 seconds, show error
+
+            // Set timeout for loading - if video doesn't load within 30 seconds, show error
+            // Increased timeout to handle larger files and slower connections
             loadTimeout = setTimeout(() => {
                 if (!hasLoaded) {
                     console.warn('Video loading timeout for:', localPath);
-                    showVideoError(videoId, localPath, mimeType, 'Video loading timeout - format may not be supported');
+                    showVideoError(videoId, localPath, mimeType, 'Video loading timeout - format may not be supported', 'timeout');
                 }
-            }, 10000);
+            }, 30000);
         });
         
         video.addEventListener('loadeddata', function() {
@@ -1382,11 +1430,13 @@ function checkTranscodingStatus(id) {
 function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     // Proceed with normal playback attempt
     const playerDiv = document.getElementById('videoPlayer');
-    
+
     // Determine MIME type based on file extension
     let mimeType = 'video/mp4'; // default
+    let isMkvFile = false;
     if (localPath.toLowerCase().endsWith('.mkv')) {
-        mimeType = 'video/x-matroska';
+        isMkvFile = true;
+        mimeType = 'video/mp4'; // Use MP4 MIME type for transcoded output
     } else if (localPath.toLowerCase().endsWith('.webm')) {
         mimeType = 'video/webm';
     } else if (localPath.toLowerCase().endsWith('.avi')) {
@@ -1394,11 +1444,16 @@ function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     } else if (localPath.toLowerCase().endsWith('.mov')) {
         mimeType = 'video/quicktime';
     }
-    
+
+    // Use transcode endpoint for MKV files, regular stream for others
+    const streamEndpoint = isMkvFile
+        ? `/api/videos/${videoId}/stream-transcode`
+        : `/api/videos/${videoId}/stream`;
+
     // Play local file via streaming endpoint with proper MIME type
     playerDiv.innerHTML = `
         <video id="modalVideoElement" width="800" height="450" controls preload="metadata">
-            <source src="/api/videos/${videoId}/stream" type="${mimeType}">
+            <source src="${streamEndpoint}" type="${mimeType}">
             Your browser does not support the video tag or this video format.
         </video>
     `;
@@ -1420,13 +1475,14 @@ function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     video.addEventListener('loadstart', function() {
         console.log('Video load started for:', localPath, 'Type:', mimeType);
         hasLoaded = false;
-        
+
+        // Increased timeout to 30 seconds for larger files and slower connections
         loadTimeout = setTimeout(() => {
             if (!hasLoaded) {
                 console.warn('Video loading timeout for:', localPath);
-                showVideoError(videoId, localPath, mimeType, 'Video loading timeout - format may not be supported');
+                showVideoError(videoId, localPath, mimeType, 'Video loading timeout - format may not be supported', 'timeout');
             }
-        }, 10000);
+        }, 30000);
     });
     
     video.addEventListener('loadeddata', function() {
@@ -1441,20 +1497,58 @@ function tryPlayAnyway(videoId, title, localPath, videoUrl) {
     });
 }
 
-function showVideoError(videoId, localPath, mimeType, errorMessage) {
+function showVideoError(videoId, localPath, mimeType, errorMessage, errorType = 'unknown') {
     const playerDiv = document.getElementById('videoPlayer');
-    let unsupportedVideoFormat = localPath.toLowerCase().endsWith('.mkv') || 
+    let unsupportedVideoFormat = localPath.toLowerCase().endsWith('.mkv') ||
                                  localPath.toLowerCase().endsWith('.avi');
-    
+
+    // Customize error message and suggestions based on error type
+    let errorIcon = '⚠️';
+    let additionalInfo = '';
+    let troubleshootingTips = '';
+
+    if (errorType === 'not_found' || errorType === '404') {
+        errorIcon = '🔍';
+        additionalInfo = '<p class="error-detail">The video file could not be found in the database. It may have been deleted or moved.</p>';
+        troubleshootingTips = `
+            <div class="troubleshooting-tips">
+                <strong>Try these solutions:</strong>
+                <ul>
+                    <li>Refresh the page to update the video list</li>
+                    <li>Check if the video file still exists on disk</li>
+                    <li>Re-import the video if it was moved</li>
+                </ul>
+            </div>
+        `;
+    } else if (errorType === 'timeout') {
+        errorIcon = '⏱️';
+        additionalInfo = '<p class="error-detail">The video is taking longer than expected to load. This might be due to file size or network speed.</p>';
+        troubleshootingTips = `
+            <div class="troubleshooting-tips">
+                <strong>Try these solutions:</strong>
+                <ul>
+                    <li>Wait a few more seconds and try playing again</li>
+                    <li>Check your network connection</li>
+                    <li>Consider converting large files to smaller formats</li>
+                </ul>
+            </div>
+        `;
+    } else if (errorType === 'format') {
+        errorIcon = '📹';
+        additionalInfo = '<p class="error-detail">Your browser may not support this video format or codec.</p>';
+    }
+
     playerDiv.innerHTML = `
         <div class="video-error">
-            <p>⚠️ ${errorMessage}</p>
+            <p>${errorIcon} ${errorMessage}</p>
+            ${additionalInfo}
             <p><strong>File:</strong> ${localPath}</p>
             <p><strong>Type:</strong> ${mimeType}</p>
             ${unsupportedVideoFormat ? `
                 <p><em>Note: .mkv and .avi files have limited browser support.</em></p>
                 <button onclick="transcodeVideo(${videoId})" class="btn btn-warning">Convert to MP4</button>
             ` : ''}
+            ${troubleshootingTips}
             <button onclick="closeVideoModal()" class="btn btn-primary">Close</button>
         </div>
     `;
@@ -1651,58 +1745,95 @@ function updateSingleVideoCard(videoId) {
 }
 
 function refreshAllMetadata() {
+    // Open the configuration modal
+    openEnhancedMetadataConfigModal();
+}
+
+function openEnhancedMetadataConfigModal() {
+    const modal = document.getElementById('enhancedMetadataConfigModal');
+    if (modal) {
+        modal.style.display = 'block';
+
+        // Pre-fill with selected videos if any
+        const selectedVideoIds = getSelectedVideoIds();
+        if (selectedVideoIds.length > 0) {
+            document.getElementById('metadataVideoLimit').value = selectedVideoIds.length;
+            document.getElementById('metadataVideoLimit').readOnly = true;
+            document.getElementById('metadataVideoLimit').title = `Processing ${selectedVideoIds.length} selected videos`;
+        } else {
+            document.getElementById('metadataVideoLimit').value = '';
+            document.getElementById('metadataVideoLimit').readOnly = false;
+            document.getElementById('metadataVideoLimit').title = '';
+        }
+    }
+}
+
+function closeEnhancedMetadataConfigModal() {
+    const modal = document.getElementById('enhancedMetadataConfigModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function startEnhancedMetadataEnrichment() {
     const selectedVideoIds = getSelectedVideoIds();
     const isSelectedVideos = selectedVideoIds.length > 0;
-    const message = isSelectedVideos 
-        ? `Refresh enhanced metadata for ${selectedVideoIds.length} selected videos using comprehensive sources? This may take several minutes.`
-        : 'Refresh enhanced metadata for all videos using comprehensive sources? This may take several minutes.';
-        
-    toastConfirm(message, () => {
-        const button = event.target;
-        const originalText = button.textContent;
-        button.textContent = 'Enriching...';
-        button.disabled = true;
-        
-        const requestBody = {
-            force_refresh: false,
-            limit: isSelectedVideos ? selectedVideoIds.length : 100  // Process selected videos or first 100
-        };
-        
-        if (isSelectedVideos) {
-            requestBody.video_ids = selectedVideoIds;
+
+    // Get configuration values
+    const limitInput = document.getElementById('metadataVideoLimit').value;
+    const limit = limitInput ? parseInt(limitInput) : null;
+    const refreshCutoffDays = parseInt(document.getElementById('metadataRefreshCutoff').value);
+    const forceRefresh = document.getElementById('metadataForceRefresh').checked;
+
+    // Close the modal
+    closeEnhancedMetadataConfigModal();
+
+    // Build request body
+    const requestBody = {
+        force_refresh: forceRefresh,
+        days_since_enriched: refreshCutoffDays,
+        limit: limit
+    };
+
+    if (isSelectedVideos) {
+        requestBody.video_ids = selectedVideoIds;
+    }
+
+    // Show progress message
+    const videoCount = isSelectedVideos ? selectedVideoIds.length : (limit || 'all');
+    showInfo(`Starting enhanced metadata enrichment for ${videoCount} video(s)... This will take several minutes.`);
+
+    // Make API call
+    fetch('/api/videos/enhanced-refresh-all-metadata', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
-        fetch('/api/videos/enhanced-refresh-all-metadata', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(result => {
-            button.textContent = originalText;
-            button.disabled = false;
-            
-            if (result.error) {
-                showError('Error: ' + result.error);
-            } else {
-                const message = `Metadata refresh completed!\n\nProcessed: ${result.processed}\nUpdated: ${result.updated}\nErrors: ${result.errors}`;
-                showSuccess(message);
-                loadVideos(); // Refresh the video list
-            }
-        })
-        .catch(error => {
-            console.error('Error refreshing all enhanced metadata:', error);
-            showError(`Error refreshing enhanced metadata: ${error.message}`);
-            button.textContent = originalText;
-            button.disabled = false;
-        });
+        return response.json();
+    })
+    .then(result => {
+        if (result.error) {
+            showError('Error: ' + result.error);
+        } else if (result.job_id) {
+            // Background job queued - show notification
+            const videoText = result.video_count === 1 ? 'video' : 'videos';
+            showSuccess(`✅ Metadata enrichment job queued for ${result.video_count} ${videoText}!\n\nThe job is running in the background. You can monitor progress via the job status notifications.\n\nJob ID: ${result.job_id}`);
+            console.log(`Background job queued: ${result.job_id}`);
+            // Don't refresh immediately - will refresh when job completes via WebSocket
+        } else {
+            showSuccess('Metadata enrichment completed!');
+            loadVideos(); // Refresh the video list
+        }
+    })
+    .catch(error => {
+        console.error('Error refreshing enhanced metadata:', error);
+        showError(`Error enriching metadata: ${error.message}`);
     });
 }
 
@@ -2038,6 +2169,61 @@ function loadModalSubtitleTracks() {
 }
 
 </script>
+
+<!-- Enhanced Metadata Configuration Modal -->
+<div id="enhancedMetadataConfigModal" class="modal" style="z-index: 1900;">
+    <div class="modal-content" style="width: 90%; max-width: 600px;">
+        <div class="modal-header">
+            <h3>🔄 Enhanced Metadata Enrichment</h3>
+            <span class="modal-close" onclick="closeEnhancedMetadataConfigModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Configure metadata enrichment settings. This will enrich videos from multiple sources including MusicBrainz, Spotify, IMVDb, Last.fm, and more.</p>
+
+            <div class="form-group">
+                <label for="metadataVideoLimit">
+                    Number of videos to process:
+                    <span class="help-text">(Leave blank for all videos)</span>
+                </label>
+                <input type="number" id="metadataVideoLimit" min="1" max="10000" placeholder="All videos">
+                <small class="help-text">Processing many videos will take several minutes. ~5-10 seconds per video.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="metadataRefreshCutoff">
+                    Only enrich videos not refreshed in the last:
+                    <span class="help-text">(days)</span>
+                </label>
+                <input type="number" id="metadataRefreshCutoff" min="0" max="365" value="7">
+                <small class="help-text">Set to 0 to force refresh all videos regardless of when they were last enriched.</small>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="metadataForceRefresh" checked>
+                    Force refresh all fields (overwrite existing data)
+                </label>
+                <small class="help-text">If unchecked, only empty fields will be populated.</small>
+            </div>
+
+            <div class="metadata-sources-info">
+                <h4>Sources Used:</h4>
+                <ul>
+                    <li><strong>MusicBrainz</strong> - Authoritative release dates and recording info</li>
+                    <li><strong>Spotify</strong> - Album info, track durations, genres</li>
+                    <li><strong>IMVDb</strong> - Music video database</li>
+                    <li><strong>Last.fm</strong> - Additional track metadata</li>
+                    <li><strong>YouTube</strong> - Video discovery and metadata</li>
+                    <li><strong>FFmpeg</strong> - Local file analysis</li>
+                </ul>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="closeEnhancedMetadataConfigModal()" class="btn btn-secondary">Cancel</button>
+            <button onclick="startEnhancedMetadataEnrichment()" class="btn btn-primary">Start Enrichment</button>
+        </div>
+    </div>
+</div>
 
 <!-- Video Thumbnail Management Modal -->
 <div id="videoThumbnailModal" class="modal" style="z-index: 2000;">
@@ -3104,6 +3290,14 @@ window.addEventListener('click', function(event) {
     const thumbnailModal = document.getElementById('videoThumbnailModal');
     if (event.target === thumbnailModal) {
         closeVideoThumbnailModal();
+    }
+});
+
+// Close enhanced metadata config modal when clicking outside
+window.addEventListener('click', function(event) {
+    const metadataModal = document.getElementById('enhancedMetadataConfigModal');
+    if (event.target === metadataModal) {
+        closeEnhancedMetadataConfigModal();
     }
 });
 
@@ -4251,15 +4445,21 @@ async function loadVideos(page = 1, size = 50, resetPage = false) {
             limit: pageSize,
             offset: (currentPage - 1) * pageSize,
             sort: 'title',
-            order: 'asc'
+            order: 'asc',
+            // Add cache-busting parameter to prevent stale data
+            _t: Date.now()
         });
-        
+
         // Make authenticated API request - credentials: 'same-origin' includes session cookies
+        // Cache: 'no-store' ensures we always get fresh data from the server
         const response = await fetch(`/api/videos?${params.toString()}`, {
             method: 'GET',
             credentials: 'same-origin',
+            cache: 'no-store',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
             }
         });
         

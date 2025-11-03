@@ -5,14 +5,12 @@ Track and analyze user interactions, behavior patterns, and engagement metrics f
 
 import asyncio
 import hashlib
-import json
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional
 
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
 from src.services.performance_monitor import track_media_processing_time
@@ -254,7 +252,7 @@ class UserBehaviorAnalytics:
             )
 
             # Generate action ID
-            action_id = f"action_{hashlib.md5(f'{user_id}_{session_id}_{current_time}'.encode()).hexdigest()[:16]}"
+            action_id = f"action_{hashlib.md5(f'{user_id}_{session_id}_{current_time}'.encode(), usedforsecurity=False).hexdigest()[:16]}"
 
             # Create action event
             action = UserAction(
@@ -293,7 +291,7 @@ class UserBehaviorAnalytics:
     def _generate_session_id(self, user_id: str, timestamp: float) -> str:
         """Generate unique session ID"""
         session_data = f"{user_id}_{int(timestamp // 1800)}"  # 30-minute buckets
-        return f"session_{hashlib.md5(session_data.encode()).hexdigest()[:16]}"
+        return f"session_{hashlib.md5(session_data.encode(), usedforsecurity=False).hexdigest()[:16]}"
 
     async def _update_user_session(
         self,

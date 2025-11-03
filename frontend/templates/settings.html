@@ -159,61 +159,75 @@ input:checked + .slider:before {
             <div class="sidebar-header">
                 <h3>Settings</h3>
             </div>
+
             <ul class="sidebar-nav">
                 <li>
-                    <button class="settings-tab-btn active" onclick="switchTab(event, 'general-tab')" 
+                    <button class="settings-tab-btn active" onclick="switchTab(event, 'general-tab')"
                             role="tab" aria-selected="true" aria-controls="general-tab" id="tab-general">
-                        <iconify-icon icon="tabler:settings" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:settings" class="tab-icon" aria-hidden="true"></iconify-icon>
                         <span>General</span>
-                    </button>
-                </li>
-                <li>
-                    <button class="settings-tab-btn" onclick="switchTab(event, 'security-tab')"
-                            role="tab" aria-selected="false" aria-controls="security-tab" id="tab-security">
-                        <iconify-icon icon="tabler:shield-lock" class="tab-icon" aria-hidden="true"></iconify-icon> 
-                        <span>Security</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'services-tab')"
                             role="tab" aria-selected="false" aria-controls="services-tab" id="tab-services">
-                        <iconify-icon icon="tabler:link" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:link" class="tab-icon" aria-hidden="true"></iconify-icon>
                         <span>Services</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'downloads-tab')"
                             role="tab" aria-selected="false" aria-controls="downloads-tab" id="tab-downloads">
-                        <iconify-icon icon="tabler:download" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:download" class="tab-icon" aria-hidden="true"></iconify-icon>
                         <span>Downloads</span>
-                    </button>
-                </li>
-                <li>
-                    <button class="settings-tab-btn" onclick="switchTab(event, 'database-tab')"
-                            role="tab" aria-selected="false" aria-controls="database-tab" id="tab-database">
-                        <iconify-icon icon="tabler:database" class="tab-icon" aria-hidden="true"></iconify-icon> 
-                        <span>Database</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'system-tab')"
                             role="tab" aria-selected="false" aria-controls="system-tab" id="tab-system">
-                        <iconify-icon icon="tabler:tools" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:tools" class="tab-icon" aria-hidden="true"></iconify-icon>
                         <span>System</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'themes-tab')"
                             role="tab" aria-selected="false" aria-controls="themes-tab" id="tab-themes">
-                        <iconify-icon icon="tabler:palette" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:palette" class="tab-icon" aria-hidden="true"></iconify-icon>
                         <span>Themes</span>
                     </button>
                 </li>
                 <li>
                     <button class="settings-tab-btn" onclick="switchTab(event, 'blacklist-tab')"
                             role="tab" aria-selected="false" aria-controls="blacklist-tab" id="tab-blacklist">
-                        <iconify-icon icon="tabler:list-x" class="tab-icon" aria-hidden="true"></iconify-icon> 
+                        <iconify-icon icon="tabler:list-x" class="tab-icon" aria-hidden="true"></iconify-icon>
                         <span>Blacklist</span>
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Advanced Mode Toggle -->
+            <div class="advanced-mode-toggle">
+                <label class="switch">
+                    <input type="checkbox" id="advancedModeToggle" onchange="toggleAdvancedSettings()">
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Show Advanced Settings</span>
+            </div>
+
+            <!-- Advanced Settings Tabs (shown when toggle is enabled) -->
+            <ul class="sidebar-nav advanced-nav">
+                <li class="advanced-tab-item">
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'security-tab')"
+                            role="tab" aria-selected="false" aria-controls="security-tab" id="tab-security">
+                        <iconify-icon icon="tabler:shield-lock" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>Security</span>
+                    </button>
+                </li>
+                <li class="advanced-tab-item">
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'database-tab')"
+                            role="tab" aria-selected="false" aria-controls="database-tab" id="tab-database">
+                        <iconify-icon icon="tabler:database" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>Database</span>
                     </button>
                 </li>
             </ul>
@@ -664,7 +678,45 @@ input:checked + .slider:before {
                     </div>
                 </div>
 
-                <!-- Discogs integration removed -->
+                <!-- Discogs -->
+                <div class="metadata-provider">
+                    <div class="provider-header">
+                        <h3>💿 Discogs</h3>
+                        <div class="form-group inline">
+                            <label class="switch">
+                                <input type="checkbox" id="discogs_enabled" name="discogs_enabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="provider-config">
+                        <div class="form-group">
+                            <label for="discogs_token">API Token:</label>
+                            <input type="password" id="discogs_token" name="discogs_token"
+                                   placeholder="Enter your Discogs Personal Access Token">
+                            <div class="help-text">
+                                Get your token from <a href="https://www.discogs.com/settings/developers" target="_blank">Discogs Developer Settings</a>
+                                <br>Provides: Release dates, album titles, genres. <strong>Top priority for release dates!</strong>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="discogs_rate_limit">Rate Limit (requests/minute):</label>
+                            <input type="number" id="discogs_rate_limit" name="discogs_rate_limit"
+                                   min="25" max="60" value="60" step="5">
+                            <div class="help-text">Authenticated: 60/min, Unauthenticated: 25/min</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="discogs_priority">Priority:</label>
+                            <select id="discogs_priority" name="discogs_priority">
+                                <option value="1" selected>Highest</option>
+                                <option value="2">High</option>
+                                <option value="3">Medium</option>
+                                <option value="4">Low</option>
+                                <option value="5">Lowest</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- AllMusic -->
                 <div class="metadata-provider">
@@ -1188,6 +1240,8 @@ input:checked + .slider:before {
                 <button onclick="indexAllVideos()" class="btn btn-primary">Index All Videos</button>
                 <button onclick="scanVideoFiles()" class="btn btn-info">Scan Video Files</button>
                 <button onclick="populateArtistThumbnails()" class="btn btn-warning">Populate Artist Thumbnails</button>
+                <button onclick="bulkAutomatchAllArtists()" class="btn btn-success">Bulk Artist Automatch</button>
+                <button onclick="bulkEnrichAllArtists()" class="btn btn-success">Bulk Artist Enrich</button>
                 <button onclick="fixMissingVideos()" class="btn btn-warning">Fix Missing Videos</button>
                 <button onclick="checkVideoQualities()" class="btn btn-success">Check Video Qualities</button>
                 <button onclick="refreshStats()" class="btn btn-light">Refresh Stats</button>
@@ -2609,7 +2663,7 @@ function checkImvdbConnection() {
 function testImvdbConnection() {
     const statusElement = document.getElementById('imvdb-status');
     statusElement.innerHTML = '<span class="loading">🔄 Testing...</span>';
-    
+
     fetch('/api/video-indexing/imvdb/test')
         .then(response => response.json())
         .then(data => {
@@ -2638,6 +2692,125 @@ function testImvdbConnection() {
                 alert('IMVDb connection test failed: ' + error.message);
             }
         });
+}
+
+async function testMetadataServices() {
+    // VERSION: 2.0 - All 5 services including Discogs
+    // Test all metadata services and display results
+    const services = [
+        {
+            name: 'IMVDb',
+            endpoint: '/api/video-indexing/imvdb/test',
+            method: 'GET'
+        },
+        {
+            name: 'Discogs',
+            endpoint: '/api/discogs/test',
+            method: 'GET'
+        },
+        {
+            name: 'MusicBrainz',
+            endpoint: '/api/musicbrainz/test',
+            method: 'GET'
+        },
+        {
+            name: 'Spotify',
+            endpoint: '/api/spotify/test',
+            method: 'POST'
+        },
+        {
+            name: 'Last.fm',
+            endpoint: '/api/lastfm/test',
+            method: 'POST'
+        }
+    ];
+
+    // Debug: Confirm function version and service count
+    console.log('=== testMetadataServices VERSION 2.0 ===');
+    console.log('Total services to test:', services.length);
+    console.log('Services:', services.map(s => s.name));
+
+    if (typeof showProgress === 'function') {
+        showProgress('Testing all metadata services...');
+    }
+
+    // Test each service sequentially to maintain order and ensure all complete
+    const results = [];
+
+    for (const service of services) {
+        console.log(`Testing ${service.name}...`);
+
+        try {
+            const fetchOptions = {
+                method: service.method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            const response = await fetch(service.endpoint, fetchOptions);
+            const data = await response.json();
+
+            console.log(`${service.name} response:`, data);
+
+            // Check for success - handle different response formats
+            const success = data.success === true || data.status === 'success' || data.status === 'connected';
+            const statusText = data.status || (data.success ? 'connected' : 'disconnected');
+
+            results.push({
+                service: service.name,
+                success: success,
+                status: statusText,
+                message: success
+                    ? `✅ Connected (${statusText})`
+                    : `❌ ${data.error || data.message || 'Connection failed'} (${statusText})`,
+                rawData: data
+            });
+        } catch (error) {
+            console.error(`Error testing ${service.name}:`, error);
+            results.push({
+                service: service.name,
+                success: false,
+                status: 'error',
+                message: `❌ Error: ${error.message}`,
+                rawData: null
+            });
+        }
+    }
+
+    console.log('All tests complete:', results);
+    displayMetadataTestResults(results);
+}
+
+function displayMetadataTestResults(results) {
+    if (typeof hideProgress === 'function') {
+        hideProgress();
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.length - successCount;
+
+    let message = `<h4>Metadata Services Test Results</h4>`;
+    message += `<p><strong>Total:</strong> ${results.length} services | `;
+    message += `<span style="color: #4CAF50;">✅ ${successCount} passed</span> | `;
+    message += `<span style="color: #f44336;">❌ ${failCount} failed</span></p>`;
+    message += `<ul style="list-style: none; padding: 0;">`;
+
+    results.forEach(result => {
+        message += `<li style="margin: 8px 0;"><strong>${result.service}:</strong> ${result.message}</li>`;
+    });
+
+    message += `</ul>`;
+
+    if (typeof showResults === 'function') {
+        showResults(message);
+    } else if (typeof showSuccess === 'function' && failCount === 0) {
+        showSuccess(`All ${results.length} metadata services passed connection tests!`);
+    } else if (typeof showError === 'function' && failCount > 0) {
+        showError(`${failCount} of ${results.length} metadata services failed connection tests.`);
+    } else {
+        alert(message.replace(/<[^>]*>/g, ''));
+    }
 }
 
 function scanVideoFiles() {
@@ -2864,6 +3037,168 @@ function proceedPopulateArtistThumbnails() {
         hideProgress();
         console.error('Error scanning thumbnails:', error);
         showResults('<span class="error">Thumbnail scan failed: ' + error.message + '</span>');
+    });
+}
+
+function bulkAutomatchAllArtists() {
+    const message = 'This will attempt to auto-match ALL artists in your database with external services (Spotify, Last.fm, IMVDb, MusicBrainz, etc.). This may take a while depending on the number of artists. Continue?';
+
+    if (typeof toastConfirm === 'function') {
+        toastConfirm(message, () => {
+            proceedBulkAutomatchAllArtists();
+        });
+    } else {
+        if (confirm(message)) {
+            proceedBulkAutomatchAllArtists();
+        }
+    }
+}
+
+function proceedBulkAutomatchAllArtists() {
+    showProgress('Auto-matching all artists with external services...');
+
+    fetch('/api/metadata-enrichment/auto-match/all', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress();
+
+        if (data.status === 'completed') {
+            const result = `
+                <div class="automatch-results">
+                    <h4>🎯 Bulk Artist Auto-Match Complete</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Total artists:</strong> ${data.total_artists}
+                        </div>
+                        <div class="result-item">
+                            <strong>Successful matches:</strong> ${data.successful_matches}
+                        </div>
+                        <div class="result-item">
+                            <strong>Failed matches:</strong> ${data.failed_matches}
+                        </div>
+                        <div class="result-item">
+                            <strong>Success rate:</strong> ${data.total_artists > 0 ? Math.round((data.successful_matches / data.total_artists) * 100) : 0}%
+                        </div>
+                    </div>
+                    <p>${data.message}</p>
+                </div>
+            `;
+            showResults(result);
+
+            // Show success message
+            if (typeof showSuccess === 'function') {
+                showSuccess(`Auto-match completed! ${data.successful_matches} of ${data.total_artists} artists successfully matched.`);
+            } else {
+                alert(`Auto-match completed! ${data.successful_matches} of ${data.total_artists} artists successfully matched.`);
+            }
+
+            // Refresh stats after completion
+            setTimeout(refreshStats, 2000);
+        } else {
+            showResults(`<span class="error">Auto-match failed: ${data.detail || 'Unknown error'}</span>`);
+            if (typeof showError === 'function') {
+                showError('Auto-match failed: ' + (data.detail || 'Unknown error'));
+            }
+        }
+    })
+    .catch(error => {
+        hideProgress();
+        console.error('Error during bulk artist auto-match:', error);
+        showResults('<span class="error">Auto-match failed. Check console for details.</span>');
+        if (typeof showError === 'function') {
+            showError('Auto-match failed. Please try again.');
+        } else {
+            alert('Auto-match failed. Please try again.');
+        }
+    });
+}
+
+function bulkEnrichAllArtists() {
+    const message = 'This will enrich metadata for ALL artists in your database from external services (Spotify, Last.fm, IMVDb, MusicBrainz, etc.). This will run as a background job and may take a considerable amount of time. Continue?';
+
+    if (typeof toastConfirm === 'function') {
+        toastConfirm(message, () => {
+            proceedBulkEnrichAllArtists();
+        });
+    } else {
+        if (confirm(message)) {
+            proceedBulkEnrichAllArtists();
+        }
+    }
+}
+
+function proceedBulkEnrichAllArtists() {
+    showProgress('Starting bulk metadata enrichment for all artists...');
+
+    fetch('/api/metadata-enrichment/enrich/all', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            force_refresh: false,
+            enrich_videos: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress();
+
+        if (data.job_id) {
+            const result = `
+                <div class="enrich-results">
+                    <h4>🚀 Bulk Artist Enrichment Job Started</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Job ID:</strong> ${data.job_id}
+                        </div>
+                        <div class="result-item">
+                            <strong>Total artists:</strong> ${data.total_artists}
+                        </div>
+                        <div class="result-item">
+                            <strong>Status:</strong> ${data.status}
+                        </div>
+                        <div class="result-item">
+                            <strong>Task:</strong> ${data.task_name}
+                        </div>
+                    </div>
+                    <p>${data.message}</p>
+                    <p class="note">${data.note}</p>
+                    <p><strong>Track progress:</strong> Open the <a href="/jobs" target="_blank">Job Dashboard</a> to monitor this background job.</p>
+                </div>
+            `;
+            showResults(result);
+
+            // Show success message
+            if (typeof showSuccess === 'function') {
+                showSuccess(`Bulk enrichment job started for ${data.total_artists} artists! Track progress in the Job Dashboard.`);
+            } else {
+                alert(`Bulk enrichment job started for ${data.total_artists} artists! Track progress in the Job Dashboard.`);
+            }
+
+            // Refresh stats after a delay
+            setTimeout(refreshStats, 5000);
+        } else {
+            showResults(`<span class="error">Enrichment failed: ${data.detail || data.message || 'Unknown error'}</span>`);
+            if (typeof showError === 'function') {
+                showError('Enrichment failed: ' + (data.detail || data.message || 'Unknown error'));
+            }
+        }
+    })
+    .catch(error => {
+        hideProgress();
+        console.error('Error during bulk artist enrichment:', error);
+        showResults('<span class="error">Enrichment failed. Check console for details.</span>');
+        if (typeof showError === 'function') {
+            showError('Enrichment failed. Please try again.');
+        } else {
+            alert('Enrichment failed. Please try again.');
+        }
     });
 }
 
@@ -3425,25 +3760,34 @@ function testScheduledDownload() {
 
 // Enhanced Scheduler Functions
 function triggerEnhancedDownload() {
+    // VERSION: 2.0 - Fixed undefined result bug
     const statusDiv = document.getElementById('scheduler-status');
     if (statusDiv) {
         statusDiv.innerHTML = '<span class="status-loading">🔽 Triggering enhanced download...</span>';
     }
-    
+
+    console.log('triggerEnhancedDownload VERSION 2.0 - with null checks');
+
     fetch('/api/enhanced-scheduler/trigger/download', {
         method: 'POST'
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Enhanced download response:', data);
+
         if (data.success) {
-            const result = data.result;
+            const result = data.result || {};
+            const downloaded = result.downloaded || 0;
+            const totalFound = result.total_found || 0;
+            const duration = result.duration_seconds ? result.duration_seconds.toFixed(1) + 's' : 'Unknown';
+
             const message = `Download triggered successfully!<br>
-                           Downloaded: ${result.downloaded || 0} videos<br>
-                           Total Found: ${result.total_found || 0} videos<br>
-                           Duration: ${result.duration_seconds ? result.duration_seconds.toFixed(1) + 's' : 'Unknown'}`;
+                           Downloaded: ${downloaded} videos<br>
+                           Total Found: ${totalFound} videos<br>
+                           Duration: ${duration}`;
             showSuccess(message);
         } else {
-            showError('Enhanced download trigger failed: ' + data.message);
+            showError('Enhanced download trigger failed: ' + (data.message || 'Unknown error'));
         }
         refreshSchedulerStatus();
     })
@@ -4813,20 +5157,73 @@ async function checkCookieStatusSettings() {
     try {
         const response = await fetch('/api/metube/cookies/status');
         const data = await response.json();
-        
+
         const statusDiv = document.getElementById('cookieStatusSettings');
         const deleteBtn = document.getElementById('deleteCookieBtnSettings');
-        
+
         if (data.cookies_available) {
-            statusDiv.innerHTML = '<span class="status-text success">✅ Cookies uploaded - Age-restricted videos supported</span>';
+            // Visual indicators based on freshness status
+            let indicator = '';
+            let statusClass = '';
+            let icon = '';
+
+            switch (data.status) {
+                case 'fresh':
+                    indicator = '🟢';
+                    statusClass = 'fresh';
+                    icon = '✅';
+                    break;
+                case 'expiring_soon':
+                    indicator = '🟡';
+                    statusClass = 'expiring';
+                    icon = '⚠️';
+                    break;
+                case 'expired':
+                    indicator = '🔴';
+                    statusClass = 'expired';
+                    icon = '❌';
+                    break;
+                default:
+                    indicator = '🟢';
+                    statusClass = 'fresh';
+                    icon = '✅';
+            }
+
+            const ageDays = data.age_days ? Math.round(data.age_days) : 0;
+            const ageText = ageDays === 0 ? 'today' : ageDays === 1 ? '1 day ago' : `${ageDays} days ago`;
+
+            statusDiv.innerHTML = `
+                <div class="cookie-status-widget ${statusClass}">
+                    <span class="status-indicator">${indicator}</span>
+                    <div class="status-details">
+                        <div class="status-primary">${icon} ${data.message || 'Cookies uploaded'}</div>
+                        <div class="status-meta">Uploaded ${ageText}</div>
+                    </div>
+                </div>
+            `;
             deleteBtn.style.display = 'inline-block';
         } else {
-            statusDiv.innerHTML = '<span class="status-text error">❌ No cookies uploaded - Age-restricted videos will fail</span>';
+            statusDiv.innerHTML = `
+                <div class="cookie-status-widget missing">
+                    <span class="status-indicator">🔴</span>
+                    <div class="status-details">
+                        <div class="status-primary">❌ ${data.message || 'No cookies uploaded'}</div>
+                        <div class="status-meta">Age-restricted videos will fail</div>
+                    </div>
+                </div>
+            `;
             deleteBtn.style.display = 'none';
         }
     } catch (error) {
         console.error('Failed to check cookie status:', error);
-        document.getElementById('cookieStatusSettings').innerHTML = '<span class="status-text">❓ Status unknown</span>';
+        document.getElementById('cookieStatusSettings').innerHTML = `
+            <div class="cookie-status-widget error">
+                <span class="status-indicator">❓</span>
+                <div class="status-details">
+                    <div class="status-primary">Status unknown</div>
+                </div>
+            </div>
+        `;
     }
 }
 
@@ -5246,6 +5643,42 @@ async function loadCertificateStatus() {
     margin: 0;
 }
 
+/* Advanced Mode Toggle Styles */
+.advanced-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-secondary, #444);
+    border-bottom: 1px solid var(--border-secondary, #444);
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.advanced-mode-toggle .toggle-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #b0b0b0);
+    user-select: none;
+}
+
+/* Advanced navigation container */
+.advanced-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: none;
+}
+
+/* Show advanced nav when toggle is enabled */
+.advanced-nav.show-advanced {
+    display: block;
+}
+
+/* Advanced tab items are always visible within the advanced-nav container */
+.advanced-tab-item {
+    display: block;
+}
+
 .settings-tab-btn {
     width: 100%;
     background: none;
@@ -5442,6 +5875,64 @@ async function loadCertificateStatus() {
 .cookie-upload-actions button {
     font-size: 0.9rem;
     padding: 6px 12px;
+}
+
+/* Cookie Status Widget Styles */
+.cookie-status-widget {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    border-radius: 6px;
+    background: var(--surface-color, #2c2c2e);
+    border: 2px solid;
+    transition: all 0.3s ease;
+}
+
+.cookie-status-widget.fresh {
+    border-color: var(--success, #28a745);
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.cookie-status-widget.expiring {
+    border-color: var(--warning, #ffc107);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.cookie-status-widget.expired,
+.cookie-status-widget.missing {
+    border-color: var(--danger, #dc3545);
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.cookie-status-widget.error {
+    border-color: var(--secondary, #6c757d);
+    background: rgba(108, 117, 125, 0.1);
+}
+
+.cookie-status-widget .status-indicator {
+    font-size: 1.5em;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.cookie-status-widget .status-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cookie-status-widget .status-primary {
+    font-weight: 600;
+    font-size: 0.95em;
+    color: var(--text-primary, #fff);
+}
+
+.cookie-status-widget .status-meta {
+    font-size: 0.8em;
+    color: var(--text-muted, #999);
+    font-style: italic;
 }
 
 .help-text {
@@ -8495,7 +8986,54 @@ document.addEventListener('DOMContentLoaded', function() {
     if (systemTabPanel && systemTabPanel.classList.contains('active')) {
         refreshJobSystemStatus();
     }
+
+    // Initialize advanced mode from localStorage
+    initializeAdvancedMode();
 });
+
+/**
+ * Toggle Advanced Settings visibility
+ * Saves preference to localStorage for persistence
+ */
+function toggleAdvancedSettings() {
+    const toggle = document.getElementById('advancedModeToggle');
+    const advancedNav = document.querySelector('.advanced-nav');
+
+    if (toggle.checked) {
+        advancedNav.classList.add('show-advanced');
+        localStorage.setItem('mvidarr_settings_advanced_mode', 'true');
+    } else {
+        advancedNav.classList.remove('show-advanced');
+        localStorage.setItem('mvidarr_settings_advanced_mode', 'false');
+
+        // If user is currently on an advanced tab, switch to General tab
+        const activeTab = document.querySelector('.settings-tab-panel.active');
+        if (activeTab && (activeTab.id === 'security-tab' || activeTab.id === 'database-tab')) {
+            const generalTabBtn = document.getElementById('tab-general');
+            if (generalTabBtn) {
+                generalTabBtn.click();
+            }
+        }
+    }
+}
+
+/**
+ * Initialize advanced mode state from localStorage on page load
+ */
+function initializeAdvancedMode() {
+    const advancedMode = localStorage.getItem('mvidarr_settings_advanced_mode');
+    const toggle = document.getElementById('advancedModeToggle');
+    const advancedNav = document.querySelector('.advanced-nav');
+
+    // Default to hidden (advanced mode OFF)
+    if (advancedMode === 'true') {
+        toggle.checked = true;
+        advancedNav.classList.add('show-advanced');
+    } else {
+        toggle.checked = false;
+        advancedNav.classList.remove('show-advanced');
+    }
+}
 
 </script>
 

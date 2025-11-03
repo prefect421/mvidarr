@@ -1430,10 +1430,11 @@ function proceedAddArtistFromImvdb(imvdbId, artistName) {
                 alert('Error: ' + result.error);
             }
         } else {
+            const artistName = result.name || result.artist_name || 'Artist';
             if (typeof showSuccess === 'function') {
-                showSuccess(`Artist "${result.name}" added successfully!`);
+                showSuccess(`Artist "${artistName}" added successfully!`);
             } else {
-                alert(`Artist "${result.name}" added successfully!`);
+                alert(`Artist "${artistName}" added successfully!`);
             }
             // Search for thumbnail and run full enrichment for the newly imported artist
             if (result.id) {

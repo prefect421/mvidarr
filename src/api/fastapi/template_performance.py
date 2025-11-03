@@ -7,17 +7,13 @@ import asyncio
 import gzip
 import hashlib
 import json
-import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-import aiofiles
 from fastapi import Request, Response
 from fastapi.responses import HTMLResponse
-from jinja2 import Environment, Template
 
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger

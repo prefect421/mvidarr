@@ -3,7 +3,6 @@ Wikipedia API service for artist thumbnail retrieval
 """
 
 import re
-from urllib.parse import quote
 
 import requests
 

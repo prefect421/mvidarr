@@ -3,20 +3,13 @@ MVidarr Image Processing FastAPI Endpoints - Phase 2 Week 20
 REST API for concurrent image processing operations
 """
 
-import asyncio
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from src.jobs.image_processing_tasks import (
-    BulkThumbnailGenerationTask,
-    ConcurrentImageOptimizationTask,
-    ImageAnalysisTask,
     ThumbnailSpec,
     submit_bulk_thumbnail_generation,
     submit_concurrent_image_optimization,
@@ -24,10 +17,7 @@ from src.jobs.image_processing_tasks import (
 )
 from src.services.image_thread_pool import get_image_processing_pool
 from src.services.performance_monitor import track_api_response_time
-from src.services.thumbnail_generator import (
-    ConcurrentThumbnailGenerator,
-    ThumbnailConfig,
-)
+from src.services.thumbnail_generator import ConcurrentThumbnailGenerator
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.image_processing")

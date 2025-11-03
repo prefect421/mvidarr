@@ -3,7 +3,6 @@ Performance testing utilities for MVidarr
 """
 
 import json
-import random
 import statistics
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed

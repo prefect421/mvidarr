@@ -3,25 +3,16 @@ MVidarr Media Collection Manager - Phase 2 Week 22
 Advanced collection processing management with concurrent operations and resource optimization
 """
 
-import asyncio
 import hashlib
 import json
-import logging
 import mimetypes
-import os
 import time
-from collections import defaultdict
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
-from src.jobs.bulk_media_tasks import (
-    BulkMediaProcessor,
-    BulkOperationStatus,
-    BulkOperationType,
-)
+from src.jobs.bulk_media_tasks import BulkMediaProcessor
 from src.services.redis_manager import RedisManager
 from src.utils.logger import get_logger
 
@@ -567,7 +558,7 @@ async def process_directory_as_collection(
 ) -> Dict[str, Any]:
     """Process an entire directory as a media collection"""
 
-    collection_id = f"dir_{hashlib.md5(source_directory.encode()).hexdigest()[:8]}"
+    collection_id = f"dir_{hashlib.md5(source_directory.encode(), usedforsecurity=False).hexdigest()[:8]}"
 
     manager = MediaCollectionManager(config)
 

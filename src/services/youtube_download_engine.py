@@ -9,11 +9,9 @@ import shutil
 import subprocess
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.youtube_engine")
@@ -406,8 +404,8 @@ class YouTubeDownloadEngine:
             return []
 
     def _get_tv_client_args(self) -> List[str]:
-        """TV client strategy - bypasses most signature extraction"""
-        return [
+        """TV client strategy - with cookies for age-restricted content"""
+        args = [
             "--extractor-args",
             "youtube:player_client=tv",
             "--socket-timeout",
@@ -417,6 +415,11 @@ class YouTubeDownloadEngine:
             "--fragment-retries",
             "3",
         ]
+
+        # Add cookies for age-restricted videos - TV client still needs them!
+        args.extend(self._get_cookie_args(DownloadStrategy.TV_CLIENT))
+
+        return args
 
     def _get_android_client_args(self) -> List[str]:
         """Android client strategy"""
@@ -432,7 +435,7 @@ class YouTubeDownloadEngine:
         ]
 
     def _get_web_cookies_args(self) -> List[str]:
-        """Web client with browser cookies"""
+        """Web client with cookie file or firefox browser cookies"""
         args = [
             "--extractor-args",
             "youtube:player_client=web",
@@ -442,19 +445,14 @@ class YouTubeDownloadEngine:
             "3",
         ]
 
-        # Add cookies if available
-        cookie_path = "data/cookies/youtube_cookies.txt"
-        if os.path.exists(cookie_path):
-            args.extend(["--cookies", cookie_path])
-        else:
-            # Try to extract from browser
-            args.extend(["--cookies-from-browser", "firefox,chrome,chromium,edge"])
+        # Add cookies using helper method - tries file first, then firefox
+        args.extend(self._get_cookie_args(DownloadStrategy.WEB_CLIENT_COOKIES))
 
         return args
 
     def _get_web_fallback_args(self) -> List[str]:
-        """Last resort web client strategy"""
-        return [
+        """Last resort web client strategy with edge/firefox cookies"""
+        args = [
             "--extractor-args",
             "youtube:player_client=web,tv,android",
             "--socket-timeout",
@@ -467,6 +465,34 @@ class YouTubeDownloadEngine:
             "2",
             "--no-check-certificate",
         ]
+
+        # Add cookies for age-restricted videos - tries edge/firefox
+        args.extend(self._get_cookie_args(DownloadStrategy.WEB_CLIENT_FALLBACK))
+
+        return args
+
+    def _get_cookie_args(
+        self, strategy: Optional[DownloadStrategy] = None
+    ) -> List[str]:
+        """
+        Get cookie arguments for yt-dlp
+        Uses cookie file exclusively for server environment
+
+        Server environment: browsers not available, must use cookie file
+        """
+        cookie_path = "data/cookies/youtube_cookies.txt"
+
+        # All strategies use the cookie file since this is a server environment
+        # Browsers with GUI aren't available for --cookies-from-browser
+        if os.path.exists(cookie_path):
+            logger.debug(f"Using cookie file: {cookie_path}")
+            return ["--cookies", cookie_path]
+        else:
+            logger.warning(
+                f"Cookie file not found at {cookie_path}. Age-restricted videos will fail. "
+                "Please export cookies from your browser using a cookie extension."
+            )
+            return []
 
     def _get_quality_format(self, quality: str) -> str:
         """Get optimized format string - TV client compatible"""
@@ -539,7 +565,6 @@ class YouTubeDownloadEngine:
             # Strategy 3: Last resort - get most recent video file (including .temp files)
             # Prioritize by: 1) Most recent, 2) Largest file size (higher quality)
             if not found_files:
-                import time
 
                 video_files = []
                 for file in os.listdir(base_dir):

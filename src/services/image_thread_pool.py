@@ -3,8 +3,6 @@ MVidarr Image Thread Pool Service - Phase 2 Week 20
 Advanced thread pool management for concurrent image processing operations
 """
 
-import asyncio
-import logging
 import os
 import threading
 import time
@@ -12,7 +10,7 @@ from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 import psutil
 

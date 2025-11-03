@@ -6,17 +6,14 @@ Comprehensive API performance testing and benchmarking framework
 import asyncio
 import csv
 import json
-import logging
 import statistics
 import time
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import aiohttp
-import memory_profiler
 import psutil
 
 from src.utils.logger import get_logger

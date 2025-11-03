@@ -5,7 +5,7 @@ Advanced JWT-based authentication with security features
 
 import secrets
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 import bcrypt
@@ -15,7 +15,6 @@ from pydantic import BaseModel, EmailStr, Field, validator
 from src.middleware.jwt_auth_middleware import (
     JWTManager,
     TokenConfig,
-    TokenType,
     UserClaims,
     UserRole,
 )

@@ -3,6 +3,7 @@ FastAPI Health Check API Endpoints
 Enhanced for self-hosted production monitoring
 """
 
+import asyncio
 import json
 import os
 import time
@@ -278,10 +279,6 @@ async def get_performance_stats():
     except Exception as e:
         logger.error(f"Performance stats retrieval failed: {e}")
         raise HTTPException(status_code=500, detail={"error": str(e)})
-
-
-# Add missing import
-import asyncio
 
 
 @health_router.get("/system", response_model=SystemMetricsResponse)

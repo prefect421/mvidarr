@@ -2,9 +2,8 @@
 Genre management service for MVidarr
 """
 
-import json
 from collections import Counter
-from typing import Dict, List, Optional, Set
+from typing import Dict, List
 
 from src.database.connection import get_db
 from src.database.models import Artist, Video

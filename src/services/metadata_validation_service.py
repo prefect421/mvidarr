@@ -4,13 +4,11 @@ Automated validation and quality control for artist metadata enrichment.
 """
 
 import asyncio
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List
 
-from sqlalchemy import and_, desc, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import desc, or_
 
 from src.database.connection import get_db
 from src.database.models import Artist, Video

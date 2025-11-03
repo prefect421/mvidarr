@@ -1016,6 +1016,16 @@ body {
     overflow: hidden;
 }
 
+/* Hide entire logo when sidebar is collapsed */
+.sidebar.collapsed .sidebar-logo {
+    display: none;
+}
+
+/* Center toggle button when sidebar is collapsed */
+.sidebar.collapsed .sidebar-header {
+    justify-content: center;
+}
+
 .sidebar-toggle {
     background: none;
     border: none;

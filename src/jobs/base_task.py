@@ -4,12 +4,10 @@ Phase 2: Media Processing Optimization - Common Task Patterns
 """
 
 import time
-import traceback
 from datetime import datetime
 from typing import Any, Dict, Optional
 
 from celery import Task
-from celery.exceptions import Retry, WorkerLostError
 
 from src.jobs.redis_manager import redis_manager
 from src.utils.logger import get_logger

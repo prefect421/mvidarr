@@ -6,7 +6,7 @@ Provides automatic video inclusion based on metadata criteria.
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
@@ -178,6 +178,16 @@ class DynamicPlaylistService:
         finally:
             if not use_existing_session:
                 session.__exit__(None, None, None)
+
+    def apply_filters(
+        self, session: Session, filter_criteria: Dict[str, Any]
+    ) -> List[int]:
+        """
+        Apply filter criteria and return list of matching video IDs.
+        This is a convenience method for the API endpoints.
+        """
+        videos = self.execute_filter_criteria(filter_criteria, session)
+        return [video.id for video in videos]
 
     @monitor_performance("dynamic_playlist.execute_filter")
     def execute_filter_criteria(

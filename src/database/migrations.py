@@ -3,9 +3,8 @@ Database migration system for MVidarr
 Handles schema changes and database upgrades safely.
 """
 
-import os
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError

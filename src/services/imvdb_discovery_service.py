@@ -4,13 +4,13 @@ Implements automated video discovery based on artist preferences and patterns.
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 
-from sqlalchemy import and_, desc, func
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
-from src.database.models import Artist, Setting, User, Video, VideoStatus
+from src.database.models import Artist, Video, VideoStatus
 from src.services.imvdb_service import imvdb_service
 from src.services.settings_service import settings
 from src.utils.logger import get_logger

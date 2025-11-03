@@ -9,9 +9,6 @@ import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from celery import Celery
-from celery.exceptions import Retry
-
 from src.jobs.base_task import BaseTask
 from src.services.collection_organizer import (
     OrganizationRule,
