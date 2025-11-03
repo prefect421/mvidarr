@@ -1,8 +1,0 @@
-.link {
-  composes: link from '~Components/Link/Link.css';
-
-  &:hover {
-    color: var(--linkHoverColor);
-    text-decoration: underline;
-  }
-}
