@@ -1,10 +1,11 @@
 {
   "version": "0.9.9",
-  "build_date": "2025-11-03T22:31:47.603973",
-  "git_commit": "724fa27",
+  "build_date": "2025-11-04T17:27:13.978238",
+  "git_commit": "2093afd",
   "git_branch": "dev",
   "release_name": "Production-Ready Code Cleanup & Security Hardening",
   "features": [
+    "🔧 Database Connection Pool Fix - Prevents FastAPI crash-loops",
     "♻️ 10 Large Files Refactored into 58 Modular Files",
     "📉 71.4% Average File Size Reduction",
     "🧹 607 Unused Imports Removed (100% Cleanup)",
