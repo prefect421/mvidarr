@@ -1,12 +1,13 @@
 {
   "version": "0.9.9",
-  "build_date": "2025-11-04T19:32:48.148658",
-  "git_commit": "c363f60",
+  "build_date": "2025-11-04T20:30:30.200808",
+  "git_commit": "c543535",
   "git_branch": "dev",
-  "release_name": "FastAPI Crash-Loop Fix",
+  "release_name": "Production Crash-Loop Fix - Logging Permissions",
   "features": [
-    "Fixed FastAPI crash-loop by running database init in thread executor",
-    "Prevents event loop blocking during database initialization",
-    "Improved connection pool stability in production"
+    "Fixed production crash-loop caused by logging permission errors",
+    "Graceful fallback to console-only logging when file permissions fail",
+    "Enhanced docker-compose.production.yml with proper permission handling",
+    "Ensures compatibility with any Docker host permission configuration"
   ]
 }
