@@ -14,10 +14,12 @@ services:
         echo 'MariaDB is ready, starting application...';
         echo 'Creating required directories...';
         mkdir -p /app/data/database /app/data/thumbnails/artists /app/data/cache /app/data/downloads /app/data/logs /app/data/musicvideos /app/data/music_videos;
+        echo 'Fixing permissions for mounted volumes...';
         chown -R mvidarr:mvidarr /app/data;
+        chmod -R 755 /app/data;
         touch /app/data/database/.initialized || true;
-        echo 'Starting MVidarr application...';
-        cd /app && su mvidarr -c 'python3 fastapi_app.py';
+        echo 'Starting MVidarr application with supervisord...';
+        exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf;
       "
     container_name: mvidarr
     ports:

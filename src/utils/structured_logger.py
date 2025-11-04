@@ -218,11 +218,20 @@ class StructuredLogger:
 
 
 def setup_structured_logging():
-    """Setup enhanced structured logging system"""
+    """
+    Setup enhanced structured logging system
+
+    Gracefully handles permission errors by falling back to console-only logging
+    if file handlers can't be created (common in Docker environments with permission issues).
+    """
     config = Config()
 
-    # Create logs directory
-    config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    # Create logs directory with proper error handling
+    try:
+        config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError) as e:
+        print(f"Warning: Cannot create logs directory {config.LOGS_DIR}: {e}")
+        print("Falling back to console-only logging")
 
     # Configure logging level
     log_level = getattr(logging, config.LOG_LEVEL.upper(), logging.INFO)
@@ -233,32 +242,48 @@ def setup_structured_logging():
     # Create security audit formatter
     security_formatter = SecurityAuditFormatter()
 
-    # Main application log file with structured JSON
-    app_handler = logging.handlers.RotatingFileHandler(
-        config.LOGS_DIR / "mvidarr_structured.log",
-        maxBytes=config.LOG_MAX_SIZE,
-        backupCount=config.LOG_BACKUP_COUNT,
-    )
-    app_handler.setFormatter(structured_formatter)
-    app_handler.setLevel(log_level)
+    # File handlers list (will add handlers if permissions allow)
+    file_handlers = []
 
-    # Security audit log file
-    security_handler = logging.handlers.RotatingFileHandler(
-        config.LOGS_DIR / "security_audit.log",
-        maxBytes=10 * 1024 * 1024,  # 10MB
-        backupCount=10,
-    )
-    security_handler.setFormatter(security_formatter)
-    security_handler.setLevel(logging.INFO)
+    # Try to create file handlers - gracefully handle permission errors
+    try:
+        # Main application log file with structured JSON
+        app_handler = logging.handlers.RotatingFileHandler(
+            config.LOGS_DIR / "mvidarr_structured.log",
+            maxBytes=config.LOG_MAX_SIZE,
+            backupCount=config.LOG_BACKUP_COUNT,
+        )
+        app_handler.setFormatter(structured_formatter)
+        app_handler.setLevel(log_level)
+        file_handlers.append(("app", app_handler))
+    except (PermissionError, OSError) as e:
+        print(f"Warning: Cannot create app log file: {e}. Using console-only logging.")
 
-    # Performance log file
-    performance_handler = logging.handlers.RotatingFileHandler(
-        config.LOGS_DIR / "performance.log",
-        maxBytes=10 * 1024 * 1024,  # 10MB
-        backupCount=5,
-    )
-    performance_handler.setFormatter(structured_formatter)
-    performance_handler.setLevel(logging.INFO)
+    try:
+        # Security audit log file
+        security_handler = logging.handlers.RotatingFileHandler(
+            config.LOGS_DIR / "security_audit.log",
+            maxBytes=10 * 1024 * 1024,  # 10MB
+            backupCount=10,
+        )
+        security_handler.setFormatter(security_formatter)
+        security_handler.setLevel(logging.INFO)
+        file_handlers.append(("security", security_handler))
+    except (PermissionError, OSError) as e:
+        print(f"Warning: Cannot create security audit log file: {e}")
+
+    try:
+        # Performance log file
+        performance_handler = logging.handlers.RotatingFileHandler(
+            config.LOGS_DIR / "performance.log",
+            maxBytes=10 * 1024 * 1024,  # 10MB
+            backupCount=5,
+        )
+        performance_handler.setFormatter(structured_formatter)
+        performance_handler.setLevel(logging.INFO)
+        file_handlers.append(("performance", performance_handler))
+    except (PermissionError, OSError) as e:
+        print(f"Warning: Cannot create performance log file: {e}")
 
     # Console handler for development (human-readable)
     console_formatter = logging.Formatter(
@@ -285,7 +310,10 @@ def setup_structured_logging():
     for logger_name in app_loggers:
         logger = logging.getLogger(logger_name)
         logger.setLevel(log_level)
-        logger.addHandler(app_handler)
+        # Only add app_handler if it was successfully created
+        for handler_name, handler in file_handlers:
+            if handler_name == "app":
+                logger.addHandler(handler)
         logger.addHandler(console_handler)
         logger.propagate = False
 
@@ -295,7 +323,10 @@ def setup_structured_logging():
     for logger_name in security_loggers:
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
-        logger.addHandler(security_handler)
+        # Only add security_handler if it was successfully created
+        for handler_name, handler in file_handlers:
+            if handler_name == "security":
+                logger.addHandler(handler)
         logger.addHandler(console_handler)
         logger.propagate = False
 
@@ -305,7 +336,10 @@ def setup_structured_logging():
     for logger_name in performance_loggers:
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
-        logger.addHandler(performance_handler)
+        # Only add performance_handler if it was successfully created
+        for handler_name, handler in file_handlers:
+            if handler_name == "performance":
+                logger.addHandler(handler)
         logger.propagate = False
 
     # Suppress noisy third-party loggers
@@ -313,12 +347,17 @@ def setup_structured_logging():
     logging.getLogger("requests").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
-    return {
-        "structured_handler": app_handler,
-        "security_handler": security_handler,
-        "performance_handler": performance_handler,
-        "console_handler": console_handler,
-    }
+    # Return handlers that were successfully created (may be None if permission errors occurred)
+    handlers_dict = {"console_handler": console_handler}
+    for handler_name, handler in file_handlers:
+        if handler_name == "app":
+            handlers_dict["structured_handler"] = handler
+        elif handler_name == "security":
+            handlers_dict["security_handler"] = handler
+        elif handler_name == "performance":
+            handlers_dict["performance_handler"] = handler
+
+    return handlers_dict
 
 
 def get_structured_logger(name: str) -> StructuredLogger:
