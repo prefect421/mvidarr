@@ -46,33 +46,50 @@ structured_logger = get_structured_logger("mvidarr.fastapi")
 
 # FastAPI-specific database initialization
 async def init_database_for_fastapi():
-    """Initialize database for FastAPI application"""
+    """
+    Initialize database for FastAPI application
+
+    IMPORTANT: Runs synchronous database operations in thread executor to prevent
+    event loop blocking and connection pool issues.
+    """
     import src.database.connection as db_conn
 
-    # Initialize database manager
-    config = Config()
-    db_conn.db_manager = DatabaseManager(config)
+    def _sync_db_init():
+        """Synchronous database initialization to run in thread executor"""
+        # Initialize database manager
+        config = Config()
+        db_conn.db_manager = DatabaseManager(config)
 
-    # Create database if it doesn't exist
-    if not db_conn.db_manager.create_database_if_not_exists():
-        logger.error("Failed to create database")
-        raise RuntimeError("Database creation failed")
+        # Create database if it doesn't exist
+        if not db_conn.db_manager.create_database_if_not_exists():
+            logger.error("Failed to create database")
+            raise RuntimeError("Database creation failed")
 
-    # Test connection
-    if not db_conn.db_manager.test_connection():
-        logger.error("Database connection test failed")
-        raise RuntimeError("Database connection failed")
+        # Test connection
+        if not db_conn.db_manager.test_connection():
+            logger.error("Database connection test failed")
+            raise RuntimeError("Database connection failed")
 
-    # Create engine and session factory
-    db_conn.engine = db_conn.db_manager.create_engine()
-    db_conn.SessionLocal = db_conn.db_manager.create_session_factory()
+        # Create engine and session factory
+        db_conn.engine = db_conn.db_manager.create_engine()
+        db_conn.SessionLocal = db_conn.db_manager.create_session_factory()
 
-    # Initialize database tables and data
-    if not initialize_database():
-        logger.error("Failed to initialize database tables")
-        raise RuntimeError("Database initialization failed")
+        # Initialize database tables and data
+        if not initialize_database():
+            logger.error("Failed to initialize database tables")
+            raise RuntimeError("Database initialization failed")
 
-    logger.info("Database initialization completed successfully")
+        logger.info("Database initialization completed successfully")
+        return True
+
+    # Run synchronous database initialization in thread executor to prevent event loop blocking
+    logger.info("Starting database initialization in thread executor...")
+    try:
+        await asyncio.to_thread(_sync_db_init)
+        logger.info("✅ Database initialization completed successfully")
+    except Exception as e:
+        logger.error(f"❌ Database initialization failed: {e}")
+        raise
 
 
 # Global references for cleanup
