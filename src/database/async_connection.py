@@ -71,19 +71,19 @@ class AsyncDatabaseManager:
                 async_database_url,
                 # Enhanced connection pool settings for high performance
                 poolclass=QueuePool,
-                pool_size=25,  # Increased for FastAPI concurrency
-                max_overflow=35,  # Higher burst capacity
+                pool_size=20,  # Optimized for FastAPI concurrency
+                max_overflow=30,  # Controlled burst capacity
                 pool_pre_ping=True,  # Verify connections before use
-                pool_recycle=7200,  # Recycle connections after 2 hours
-                pool_timeout=20,  # Reduced timeout for faster failover
+                pool_recycle=3600,  # Recycle connections after 1 hour (prevent stale connections)
+                pool_timeout=30,  # Reasonable timeout for production
                 # Performance optimizations
                 echo=False,  # Disable for production performance
                 future=True,  # Use SQLAlchemy 2.0 style
-                # Additional async optimizations
+                # Production-safe async optimizations
                 connect_args={
-                    "server_side_cursors": True,  # Reduce memory usage for large result sets
                     "autocommit": False,  # Explicit transaction control
                     "charset": "utf8mb4",
+                    "connect_timeout": 10,  # Connection timeout in seconds
                 },
             )
 
@@ -132,10 +132,14 @@ class AsyncDatabaseManager:
             await session.commit()
         except Exception as e:
             await session.rollback()
-            logger.error(f"Database session error: {e}")
+            self.connection_stats["connection_errors"] += 1
+            logger.error(f"Database session error: {e}", exc_info=True)
             raise
         finally:
-            await session.close()
+            try:
+                await session.close()
+            except Exception as e:
+                logger.error(f"Error closing session: {e}")
 
     async def execute_query(
         self, query: str, params: Optional[Dict] = None
@@ -390,8 +394,20 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     if not async_db_manager._initialized:
         await initialize_async_database()
 
-    async with async_db_manager.session_scope() as session:
+    session = await async_db_manager.get_session()
+    try:
         yield session
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        async_db_manager.connection_stats["connection_errors"] += 1
+        logger.error(f"Async DB session error: {e}", exc_info=True)
+        raise
+    finally:
+        try:
+            await session.close()
+        except Exception as e:
+            logger.error(f"Error closing async session: {e}")
 
 
 # Utility function for manual session management

@@ -59,9 +59,13 @@ class DatabaseManager:
                         pool_size=self.config.DB_POOL_SIZE,
                         max_overflow=self.config.DB_MAX_OVERFLOW,
                         pool_timeout=self.config.DB_POOL_TIMEOUT,
-                        pool_pre_ping=True,
-                        pool_recycle=3600,
+                        pool_pre_ping=True,  # Test connections before use
+                        pool_recycle=3600,  # Recycle connections after 1 hour
                         echo=self.config.DEBUG,
+                        connect_args={
+                            "connect_timeout": 10,  # Connection timeout
+                            "charset": "utf8mb4",
+                        },
                     )
 
                     logger.info(
@@ -151,7 +155,10 @@ class DatabaseManager:
             logger.error(f"Database session error: {e}", exc_info=True)
             raise
         finally:
-            session.close()
+            try:
+                session.close()
+            except Exception as e:
+                logger.error(f"Error closing session: {e}")
 
     def close_connections(self):
         """Close all database connections"""
@@ -256,7 +263,10 @@ def get_db_session():
         logger.error(f"Database session error: {e}", exc_info=True)
         raise
     finally:
-        session.close()
+        try:
+            session.close()
+        except Exception as e:
+            logger.error(f"Error closing session: {e}")
 
 
 def get_engine():
