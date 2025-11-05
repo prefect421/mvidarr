@@ -31,7 +31,11 @@ from src.database.connection import DatabaseManager, get_db
 # Database initialization
 from src.database.init_db import initialize_database
 
-# Old Flask job system imports removed - using Celery now
+# Background job system imports
+from src.services.background_workers import (
+    start_background_workers,
+    stop_background_workers,
+)
 from src.services.settings_service import SettingsService
 from src.services.ytdlp_service import ytdlp_service
 from src.utils.logger import get_logger
@@ -112,8 +116,14 @@ async def lifespan(app: FastAPI):
 
         # Initialize background job system with minimal configuration
         logger.info("🔄 Initializing background job system...")
-        # Background jobs are now handled by Celery + Redis system
-        logger.info("✅ Background jobs handled by Celery + Redis system")
+        # Start background workers for video indexing, organization, and quality checks
+        await start_background_workers(num_workers=3)
+        logger.info(
+            "✅ Background workers started (3 workers for video indexing/organization)"
+        )
+
+        # Note: Celery + Redis system handles metadata enrichment separately
+        logger.info("✅ Celery + Redis system handles metadata enrichment")
 
         # Initialize WebSocket system for real-time job progress
         logger.info("🔄 Initializing WebSocket job progress system...")
@@ -150,6 +160,11 @@ async def lifespan(app: FastAPI):
             logger.info("🔄 Stopping WebSocket job progress system...")
             await cleanup_websocket_system()
             logger.info("✅ WebSocket system stopped")
+
+            # Stop background workers
+            logger.info("🔄 Stopping background workers...")
+            await stop_background_workers()
+            logger.info("✅ Background workers stopped")
 
             # Celery workers are managed independently
             logger.info("✅ Background job system (Celery) managed independently")
