@@ -66,6 +66,8 @@ class VideoIndexingWorker(BaseWorker):
         self, payload: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Index a specific video file"""
+        from pathlib import Path
+
         file_path = payload.get("file_path")
         fetch_metadata = payload.get("fetch_metadata", True)
 
@@ -78,9 +80,10 @@ class VideoIndexingWorker(BaseWorker):
         from src.services.video_indexing_service import video_indexing_service
 
         # Run single video indexing through thread pool
+        # Note: index_single_file expects a Path object
         result = await self.run_async_service(
-            lambda: video_indexing_service.index_single_video(
-                file_path=file_path, fetch_metadata=fetch_metadata
+            lambda: video_indexing_service.index_single_file(
+                file_path=Path(file_path), fetch_metadata=fetch_metadata
             )
         )
 
