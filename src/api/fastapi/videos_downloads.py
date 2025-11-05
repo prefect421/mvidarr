@@ -517,6 +517,16 @@ async def bulk_download_wanted_videos(
             "limit", 100
         )  # Default limit to prevent overwhelming the system
 
+        # Debug: Log total video count and status distribution
+        total_videos = session.query(Video).count()
+        logger.info(f"Total videos in database: {total_videos}")
+
+        # Debug: Check all unique status values
+        all_statuses = session.query(Video.status).distinct().all()
+        logger.info(
+            f"Unique status values in database: {[str(s[0]) for s in all_statuses]}"
+        )
+
         # Get all videos with 'wanted' status
         wanted_videos = (
             session.query(Video)
@@ -524,6 +534,8 @@ async def bulk_download_wanted_videos(
             .limit(limit)
             .all()
         )
+
+        logger.info(f"Found {len(wanted_videos)} videos with WANTED status")
 
         if not wanted_videos:
             return {
