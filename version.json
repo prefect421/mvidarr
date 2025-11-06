@@ -1,7 +1,7 @@
 {
   "version": "0.9.9",
   "build_date": "2025-11-06T21:27:00.320389",
-  "git_commit": "bae2bb4",
+  "git_commit": "ed6d8b4",
   "git_branch": "main",
   "release_name": "Critical Fix - Video Indexing Stats",
   "features": [
