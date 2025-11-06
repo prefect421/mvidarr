@@ -1,7 +1,7 @@
 {
   "version": "0.9.9",
-  "build_date": "2025-11-06T14:45:00.000000",
-  "git_commit": "pending",
+  "build_date": "2025-11-06T14:11:44.101653",
+  "git_commit": "f151c2e",
   "git_branch": "dev",
   "release_name": "Critical Fix - Background Worker Job Completion",
   "features": [
