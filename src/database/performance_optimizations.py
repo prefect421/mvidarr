@@ -726,44 +726,52 @@ class DatabasePerformanceOptimizer:
                 )
 
     def optimize_video_indexing_stats(self, session):
-        """Optimized query for video indexing statistics"""
+        """Optimized query for video indexing statistics - FIXED"""
         from sqlalchemy import case, func
 
         from src.database.models import VideoStatus
 
-        # Single query to get all statistics at once
-        stats_query = (
-            session.query(
-                func.count(Artist.id).label("total_artists"),
-                func.count(Video.id).label("total_videos"),
-                func.count(Download.id).label("total_downloads"),
-                func.sum(case((Video.imvdb_id.isnot(None), 1), else_=0)).label(
-                    "videos_with_imvdb"
-                ),
-                func.sum(
-                    case((Video.status == VideoStatus.DOWNLOADED, 1), else_=0)
-                ).label("downloaded_videos"),
-                func.sum(case((Download.file_path.isnot(None), 1), else_=0)).label(
-                    "videos_with_files"
-                ),
-            )
-            .select_from(Artist)
-            .outerjoin(Video)
-            .outerjoin(Download)
+        # Use separate targeted queries to avoid outer join counting issues
+        # Count artists
+        total_artists = session.query(func.count(Artist.id)).scalar() or 0
+
+        # Count total videos
+        total_videos = session.query(func.count(Video.id)).scalar() or 0
+
+        # Count downloads
+        total_downloads = session.query(func.count(Download.id)).scalar() or 0
+
+        # Count videos with IMVDb metadata
+        videos_with_imvdb = (
+            session.query(func.count(Video.id))
+            .filter(Video.imvdb_id.isnot(None))
+            .scalar()
+            or 0
         )
 
-        result = stats_query.first()
+        # Count downloaded videos (status = DOWNLOADED)
+        downloaded_videos = (
+            session.query(func.count(Video.id))
+            .filter(Video.status == VideoStatus.DOWNLOADED)
+            .scalar()
+            or 0
+        )
 
-        total_videos = result.total_videos or 0
-        videos_with_imvdb = result.videos_with_imvdb or 0
+        # Count downloads with files
+        videos_with_files = (
+            session.query(func.count(Download.id))
+            .filter(Download.file_path.isnot(None))
+            .scalar()
+            or 0
+        )
 
         return {
-            "total_artists": result.total_artists or 0,
+            "total_artists": total_artists,
             "total_videos": total_videos,
-            "total_downloads": result.total_downloads or 0,
+            "total_downloads": total_downloads,
             "videos_with_imvdb": videos_with_imvdb,
-            "downloaded_videos": result.downloaded_videos or 0,
-            "videos_with_files": result.videos_with_files or 0,
+            "downloaded_videos": downloaded_videos,
+            "videos_with_files": videos_with_files,
             "imvdb_coverage": (
                 round((videos_with_imvdb / total_videos * 100), 2)
                 if total_videos > 0

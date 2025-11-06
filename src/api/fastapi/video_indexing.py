@@ -249,10 +249,15 @@ async def get_indexing_stats(
         # Add thumbnail stats
         thumbnail_stats = thumbnail_service.get_storage_stats()
 
+        # Calculate indexed/unindexed from the actual stats keys
+        total_videos = stats.get("total_videos", 0)
+        downloaded_videos = stats.get("downloaded_videos", 0)
+        unindexed_videos = total_videos - downloaded_videos
+
         return IndexingStats(
-            total_videos=stats.get("total_videos", 0),
-            indexed_videos=stats.get("indexed_videos", 0),
-            unindexed_videos=stats.get("unindexed_videos", 0),
+            total_videos=total_videos,
+            indexed_videos=downloaded_videos,
+            unindexed_videos=unindexed_videos,
             thumbnail_stats=thumbnail_stats,
         )
 
