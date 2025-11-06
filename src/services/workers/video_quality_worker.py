@@ -22,18 +22,23 @@ class VideoQualityWorker(BaseWorker):
 
         try:
             if job_type == "video_quality_analyze":
-                return await self._handle_analyze_video(payload)
+                result = await self._handle_analyze_video(payload)
+                await self.complete(result)
             elif job_type == "video_quality_upgrade":
-                return await self._handle_upgrade_video(payload)
+                result = await self._handle_upgrade_video(payload)
+                await self.complete(result)
             elif job_type == "video_quality_bulk_upgrade":
-                return await self._handle_bulk_upgrade_videos(payload)
+                result = await self._handle_bulk_upgrade_videos(payload)
+                await self.complete(result)
             elif job_type == "video_quality_check_all":
-                return await self._handle_check_all_qualities(payload)
+                result = await self._handle_check_all_qualities(payload)
+                await self.complete(result)
             else:
                 raise ValueError(f"Unknown video quality job type: {job_type}")
 
         except Exception as e:
             logger.error(f"Video quality job {self.job.id} failed: {e}")
+            await self.fail(f"Video quality operation failed: {str(e)}")
             raise
 
     async def _handle_analyze_video(self, payload: Dict[str, Any]) -> Dict[str, Any]:
