@@ -21,14 +21,17 @@ class SchedulerWorker(BaseWorker):
 
         try:
             if job_type == "scheduled_download":
-                return await self._handle_scheduled_download(payload)
+                result = await self._handle_scheduled_download(payload)
+                await self.complete(result)
             elif job_type == "scheduled_discovery":
-                return await self._handle_scheduled_discovery(payload)
+                result = await self._handle_scheduled_discovery(payload)
+                await self.complete(result)
             else:
                 raise ValueError(f"Unknown scheduler job type: {job_type}")
 
         except Exception as e:
             logger.error(f"Scheduler job {self.job.id} failed: {e}")
+            await self.fail(f"Scheduled operation failed: {str(e)}")
             raise
 
     async def _handle_scheduled_download(

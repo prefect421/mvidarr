@@ -1,13 +1,16 @@
 {
   "version": "0.9.9",
-  "build_date": "2025-11-04T20:30:30.200808",
-  "git_commit": "c543535",
+  "build_date": "2025-11-06T14:45:00.000000",
+  "git_commit": "pending",
   "git_branch": "dev",
-  "release_name": "Production Crash-Loop Fix - Logging Permissions",
+  "release_name": "Critical Fix - Background Worker Job Completion",
   "features": [
-    "Fixed production crash-loop caused by logging permission errors",
-    "Graceful fallback to console-only logging when file permissions fail",
-    "Enhanced docker-compose.production.yml with proper permission handling",
-    "Ensures compatibility with any Docker host permission configuration"
+    "Fixed critical bug where background workers never marked jobs as complete",
+    "Fixed VideoIndexingWorker - jobs now properly complete after indexing all videos",
+    "Fixed VideoOrganizationWorker - jobs now properly complete after organizing videos",
+    "Fixed VideoQualityWorker - jobs now properly complete after quality operations",
+    "Fixed SchedulerWorker - jobs now properly complete after scheduled operations",
+    "Added proper error handling with self.fail() calls in all workers",
+    "Resolves issue where 'index all videos' would stop prematurely"
   ]
 }

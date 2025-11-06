@@ -21,14 +21,17 @@ class VideoIndexingWorker(BaseWorker):
 
         try:
             if job_type == "video_index_all":
-                return await self._handle_index_all_videos(payload)
+                result = await self._handle_index_all_videos(payload)
+                await self.complete(result)
             elif job_type == "video_index_single":
-                return await self._handle_index_single_video(payload)
+                result = await self._handle_index_single_video(payload)
+                await self.complete(result)
             else:
                 raise ValueError(f"Unknown video indexing job type: {job_type}")
 
         except Exception as e:
             logger.error(f"Video indexing job {self.job.id} failed: {e}")
+            await self.fail(f"Video indexing failed: {str(e)}")
             raise
 
     async def _handle_index_all_videos(self, payload: Dict[str, Any]) -> Dict[str, Any]:

@@ -21,16 +21,20 @@ class VideoOrganizationWorker(BaseWorker):
 
         try:
             if job_type == "video_organize_all":
-                return await self._handle_organize_all_videos(payload)
+                result = await self._handle_organize_all_videos(payload)
+                await self.complete(result)
             elif job_type == "video_organize_single":
-                return await self._handle_organize_single_video(payload)
+                result = await self._handle_organize_single_video(payload)
+                await self.complete(result)
             elif job_type == "video_reorganize_existing":
-                return await self._handle_reorganize_existing_videos(payload)
+                result = await self._handle_reorganize_existing_videos(payload)
+                await self.complete(result)
             else:
                 raise ValueError(f"Unknown video organization job type: {job_type}")
 
         except Exception as e:
             logger.error(f"Video organization job {self.job.id} failed: {e}")
+            await self.fail(f"Video organization failed: {str(e)}")
             raise
 
     async def _handle_organize_all_videos(
