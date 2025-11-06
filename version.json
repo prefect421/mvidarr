@@ -1,10 +1,11 @@
 {
   "version": "0.9.9",
-  "build_date": "2025-11-06T14:11:44.101653",
-  "git_commit": "f151c2e",
-  "git_branch": "dev",
-  "release_name": "Critical Fix - Background Worker Job Completion",
+  "build_date": "2025-11-06T21:27:00.320389",
+  "git_commit": "bae2bb4",
+  "git_branch": "main",
+  "release_name": "Critical Fix - Video Indexing Stats",
   "features": [
+    "Fixed video indexing stats showing zero counts",
     "Fixed critical bug where background workers never marked jobs as complete",
     "Fixed VideoIndexingWorker - jobs now properly complete after indexing all videos",
     "Fixed VideoOrganizationWorker - jobs now properly complete after organizing videos",
