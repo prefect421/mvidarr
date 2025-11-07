@@ -524,14 +524,26 @@ class VideoIndexingService:
                     result["artist_created"] = True
 
                 # Check if video already exists
+                # First try to match by file path (most accurate)
                 existing_video = (
                     session.query(Video)
                     .filter(
                         Video.artist_id == artist.id,
-                        Video.title.ilike(f"%{result['video_title']}%"),
+                        Video.local_path == str(file_path),
                     )
                     .first()
                 )
+
+                # If no match by path, try exact title match
+                if not existing_video:
+                    existing_video = (
+                        session.query(Video)
+                        .filter(
+                            Video.artist_id == artist.id,
+                            Video.title == result["video_title"],
+                        )
+                        .first()
+                    )
 
                 if existing_video:
                     # Check if this file is already tracked
