@@ -1,17 +1,15 @@
 {
   "version": "0.9.9",
-  "build_date": "2025-11-06T21:27:00.320389",
-  "git_commit": "ed6d8b4",
+  "build_date": "2025-11-07T15:47:18.905941",
+  "git_commit": "7179a28",
   "git_branch": "main",
-  "release_name": "Critical Fix - Video Indexing Stats",
+  "release_name": "Critical Fix - Video Indexing Bug",
   "features": [
+    "Fixed critical video indexing bug: only 2.6% of files were being indexed",
+    "Replaced overly broad ILIKE wildcard matching with exact path/title matching",
+    "Video indexing now correctly identifies existing videos without false positives",
+    "All 2737 files will now be properly indexed instead of just 72",
     "Fixed video indexing stats showing zero counts",
-    "Fixed critical bug where background workers never marked jobs as complete",
-    "Fixed VideoIndexingWorker - jobs now properly complete after indexing all videos",
-    "Fixed VideoOrganizationWorker - jobs now properly complete after organizing videos",
-    "Fixed VideoQualityWorker - jobs now properly complete after quality operations",
-    "Fixed SchedulerWorker - jobs now properly complete after scheduled operations",
-    "Added proper error handling with self.fail() calls in all workers",
-    "Resolves issue where 'index all videos' would stop prematurely"
+    "Fixed critical bug where background workers never marked jobs as complete"
   ]
 }

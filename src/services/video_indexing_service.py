@@ -523,44 +523,25 @@ class VideoIndexingService:
                 if artist.id is None:  # New artist
                     result["artist_created"] = True
 
-                # Check if video already exists
-                # First try to match by file path (most accurate)
-                existing_video = (
-                    session.query(Video)
+                # Check if this exact file is already indexed
+                # Only check for existing download record by file path
+                existing_download = (
+                    session.query(Download)
                     .filter(
-                        Video.artist_id == artist.id,
-                        Video.local_path == str(file_path),
+                        Download.file_path == str(file_path),
                     )
                     .first()
                 )
 
-                # If no match by path, try exact title match
-                if not existing_video:
-                    existing_video = (
-                        session.query(Video)
-                        .filter(
-                            Video.artist_id == artist.id,
-                            Video.title == result["video_title"],
-                        )
-                        .first()
-                    )
+                if existing_download:
+                    result["already_indexed"] = True
+                    result["success"] = True
+                    logger.debug(f"File already indexed: {file_path}")
+                    return result
 
-                if existing_video:
-                    # Check if this file is already tracked
-                    existing_download = (
-                        session.query(Download)
-                        .filter(
-                            Download.video_id == existing_video.id,
-                            Download.file_path == str(file_path),
-                        )
-                        .first()
-                    )
-
-                    if existing_download:
-                        result["already_indexed"] = True
-                        result["success"] = True
-                        logger.debug(f"File already indexed: {file_path}")
-                        return result
+                # No duplicate detection - always create new video
+                # User can run duplicate cleanup later
+                existing_video = None
 
                 # Fetch IMVDb metadata if requested
                 imvdb_metadata = None
