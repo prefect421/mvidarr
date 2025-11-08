@@ -13,7 +13,7 @@ services:
         done;
         echo 'MariaDB is ready, starting application...';
         echo 'Creating required directories...';
-        mkdir -p /app/data/database /app/data/thumbnails/artists /app/data/cache /app/data/downloads /app/data/logs /app/data/musicvideos /app/data/music_videos;
+        mkdir -p /app/data/database /app/data/thumbnails/artists /app/data/cache /app/data/downloads /app/data/logs /app/data/musicvideos;
         echo 'Fixing permissions for mounted volumes...';
         chown -R mvidarr:mvidarr /app/data;
         chmod -R 755 /app/data;

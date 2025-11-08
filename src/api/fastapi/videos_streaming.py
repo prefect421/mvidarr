@@ -23,6 +23,7 @@ from fastapi import Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
+from src.config.config import Config
 from src.database.connection import get_db_session
 from src.database.models import Video
 from src.utils.logger import get_logger
@@ -52,14 +53,24 @@ async def find_relocated_video(video: Video) -> Optional[Path]:
     if original_path.exists():
         return original_path
 
-    # Search for relocated file
+    # Search for relocated file in configured music videos directory
     filename = original_path.name
-    search_dirs = [
-        Path("/data/musicvideos"),
-        Path("/data/music_videos"),
-        Path("data/musicvideos"),
-        Path("data/music_videos"),
-    ]
+
+    # Use configured music videos directory from settings
+    search_dirs = [Config.MUSIC_VIDEOS_DIR]
+
+    # Add fallback paths for legacy/relocated files
+    if not Config.MUSIC_VIDEOS_DIR.exists():
+        search_dirs.extend(
+            [
+                Path("/app/data/musicvideos"),
+                Path("/app/data/music_videos"),
+                Path("/data/musicvideos"),
+                Path("/data/music_videos"),
+                Path("data/musicvideos"),
+                Path("data/music_videos"),
+            ]
+        )
 
     for search_dir in search_dirs:
         if search_dir.exists():
