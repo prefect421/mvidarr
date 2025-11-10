@@ -58,6 +58,11 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          GIT_COMMIT=${{ github.sha }}
+          GIT_BRANCH=${{ github.ref_name }}
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
 
     - name: Build development image
       if: github.ref == 'refs/heads/dev'
@@ -70,6 +75,11 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          GIT_COMMIT=${{ github.sha }}
+          GIT_BRANCH=${{ github.ref_name }}
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
 
     - name: Monitor Docker Image Size
       if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'

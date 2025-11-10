@@ -1,10 +1,17 @@
 # Multi-stage build for MVidarr production deployment
 # Fixed build timeout issues and optimized for reliability
+# v1.0.0: Dynamic version.json generation at build time (Issue #161)
 
 #################################
 # Stage 1: Build Environment
 #################################
 FROM python:3.12-slim AS builder
+
+# Build arguments for version information (passed from CI/CD)
+ARG GIT_COMMIT=unknown
+ARG GIT_BRANCH=unknown
+ARG BUILD_DATE
+ARG VERSION
 
 # Install build dependencies in optimal order (avoid full build-essential)
 RUN apt-get update && apt-get install -y \
@@ -30,6 +37,18 @@ RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requiremen
 # Stage 2: Runtime Environment
 #################################
 FROM python:3.12-slim AS runtime
+
+# Re-declare build arguments for runtime stage
+ARG GIT_COMMIT=unknown
+ARG GIT_BRANCH=unknown
+ARG BUILD_DATE
+ARG VERSION
+
+# Convert build args to environment variables for version generation
+ENV GIT_COMMIT=${GIT_COMMIT} \
+    GIT_BRANCH=${GIT_BRANCH} \
+    BUILD_DATE=${BUILD_DATE} \
+    VERSION=${VERSION}
 
 # Install runtime system dependencies including supervisord (cached layer - rarely changes)
 RUN apt-get update && apt-get install -y \
@@ -80,7 +99,12 @@ COPY --chown=mvidarr:mvidarr src/ /app/src/
 COPY --chown=mvidarr:mvidarr frontend/ /app/frontend/
 COPY --chown=mvidarr:mvidarr migrations/ /app/migrations/
 COPY --chown=mvidarr:mvidarr scripts/ /app/scripts/
-COPY --chown=mvidarr:mvidarr fastapi_app.py version.json /app/
+COPY --chown=mvidarr:mvidarr fastapi_app.py /app/
+
+# Generate version.json at build time with correct git information
+RUN python3 /app/scripts/generate_version.py --output /app/version.json && \
+    chown mvidarr:mvidarr /app/version.json && \
+    chmod 644 /app/version.json
 
 # Set proper permissions for all application files
 RUN find /app -type d -exec chmod 755 {} \; && \
