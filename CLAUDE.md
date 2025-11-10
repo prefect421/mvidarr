@@ -185,31 +185,34 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: Code Cleanup & Optimization
+### Current Phase: v1.0.0 Development - First Production Release
 
-#### 0.9.8 User Testing Phase ✅ COMPLETED (2025-10-10)
-- **Status**: Testing completed successfully
+#### 0.9.9 Code Cleanup & Optimization Phase ✅ COMPLETED (2025-11-10)
+- **Status**: Cleanup phase completed
 - **Key Achievements**:
-  - Subtitle system validated and working
-  - Video quality improvements confirmed
-  - FastAPI migration stable
-  - Critical issues resolved (Issue #139: Song Recommendations)
-  - Advanced Settings UI improvements implemented
-- **Testing Plan**: `TESTING_PLAN_0.9.8.md` - marked as completed
+  - Code optimization and dead code removal
+  - Performance improvements
+  - Enhanced code quality
+  - Ready for v1.0.0 feature development
 
-#### 0.9.9 Code Cleanup & Optimization Phase 🔄 ACTIVE
-- **Focus**: Prepare for first public release through comprehensive optimization
-- **Cleanup Plan**: `MILESTONE_0.9.9_CLEANUP.md` - systematic code cleanup and performance optimization
-- **Targets**: Remove dead code, optimize performance, enhance code quality
-- **Goal**: Production-ready codebase for 1.0.0 public release
-- **Status**: Ready to begin systematic cleanup based on 0.9.8 testing results
+#### 1.0.0 Development Phase 🚀 ACTIVE
+- **Focus**: Build production-ready features for first public release
+- **Major Feature**: Installation Wizard (Issue #163)
+- **Key Goals**:
+  - First-run setup wizard with guided configuration
+  - Reliable video import system (no duplicates)
+  - API validation and testing
+  - Directory configuration and validation
+  - Production-ready onboarding experience
+- **Status**: Active development on dev branch
+- **Target Release**: Production-ready v1.0.0
 
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Testing**: Use 0.9.8 for user testing, prioritize critical fixes
-- **Optimization**: Use 0.9.9 for code cleanup and performance improvements
+- **Current Version**: v1.0.0-dev (First Production Release)
+- **Development Focus**: Installation wizard and production-ready features
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -239,13 +242,16 @@ CURRENT_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.%6N")
 # Keep version number the same unless explicitly incrementing
 cat > version.json << EOF
 {
-  "version": "0.9.2",
+  "version": "1.0.0-dev",
   "build_date": "$CURRENT_TIMESTAMP",
   "git_commit": "$CURRENT_COMMIT",
   "git_branch": "dev",
-  "release_name": "Current Development",
+  "release_name": "v1.0.0 Development - First Production Release",
   "features": [
-    ...existing features...
+    "🎉 First production-ready release milestone",
+    "🔧 Installation Wizard for first-run setup",
+    "🎬 Reliable video import system (no duplicates)",
+    "✅ API validation before configuration"
   ]
 }
 EOF

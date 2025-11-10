@@ -1,15 +1,17 @@
 {
-  "version": "0.9.9",
-  "build_date": "2025-11-07T15:47:18.905941",
-  "git_commit": "7179a28",
-  "git_branch": "main",
-  "release_name": "Critical Fix - Video Indexing Bug",
+  "version": "1.0.0-dev",
+  "build_date": "2025-11-10T15:24:53.947130",
+  "git_commit": "d3f1fdd",
+  "git_branch": "dev",
+  "release_name": "v1.0.0 Development - First Production Release",
   "features": [
-    "Fixed critical video indexing bug: only 2.6% of files were being indexed",
-    "Replaced overly broad ILIKE wildcard matching with exact path/title matching",
-    "Video indexing now correctly identifies existing videos without false positives",
-    "All 2737 files will now be properly indexed instead of just 72",
-    "Fixed video indexing stats showing zero counts",
-    "Fixed critical bug where background workers never marked jobs as complete"
+    "🎉 First production-ready release milestone",
+    "🔧 Installation Wizard for first-run setup (Issue #163)",
+    "🎬 Reliable video import system (no duplicates)",
+    "✅ API validation before configuration",
+    "📁 Directory validation and auto-configuration",
+    "🔌 IMVDb and YouTube cookie setup",
+    "📊 Real-time import progress tracking",
+    "🚀 Production-ready onboarding experience"
   ]
 }
