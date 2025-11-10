@@ -518,6 +518,7 @@ from src.api.fastapi.settings import router as fastapi_settings_router
 from src.api.fastapi.videos import router as fastapi_videos_router
 from src.api.fastapi.videos_search import router as fastapi_videos_search_router
 from src.api.fastapi.videos_streaming import router as fastapi_videos_streaming_router
+from src.api.fastapi.wizard import router as wizard_router
 
 # from src.api.fastapi.music_recommendations import recommendations_router  # Temporarily disabled
 # from src.api.system_health import router as system_health_router
@@ -546,6 +547,7 @@ app.include_router(fastapi_playlists_router)
 app.include_router(fastapi_genres_router)
 app.include_router(fastapi_admin_router)
 app.include_router(fastapi_settings_router)
+app.include_router(wizard_router)  # v1.0.0 Installation Wizard (Issue #163)
 app.include_router(fastapi_auth_router)
 app.include_router(fastapi_auth_legacy_router)
 app.include_router(frontend_router)

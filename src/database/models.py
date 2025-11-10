@@ -50,6 +50,26 @@ class PlaylistType(Enum):
     DYNAMIC = "DYNAMIC"  # Auto-updating playlists based on filter criteria
 
 
+class WizardStep(Enum):
+    """Installation wizard step enumeration"""
+
+    WELCOME = "welcome"  # Welcome screen
+    ADMIN_ACCOUNT = "admin_account"  # Admin account creation
+    DIRECTORIES = "directories"  # Directory configuration
+    API_CONFIG = "api_config"  # API keys configuration
+    VIDEO_IMPORT = "video_import"  # Initial video import
+    COMPLETE = "complete"  # Wizard completion
+
+
+class WizardStatus(Enum):
+    """Installation wizard status enumeration"""
+
+    NOT_STARTED = "not_started"  # Wizard has not been started
+    IN_PROGRESS = "in_progress"  # Wizard is in progress
+    COMPLETED = "completed"  # Wizard has been completed
+    SKIPPED = "skipped"  # User skipped the wizard
+
+
 class Setting(Base):
     """Application settings"""
 
@@ -912,3 +932,139 @@ class VideoBlacklist(Base):
 
     def __repr__(self):
         return f"<VideoBlacklist(youtube_url='{self.youtube_url}', blacklisted_at='{self.blacklisted_at}')>"
+
+
+class WizardState(Base):
+    """Installation wizard state tracking for first-run setup"""
+
+    __tablename__ = "wizard_state"
+
+    id = Column(Integer, primary_key=True)
+    status = Column(
+        SQLEnum(WizardStatus), default=WizardStatus.NOT_STARTED, nullable=False
+    )
+    current_step = Column(
+        SQLEnum(WizardStep), default=WizardStep.WELCOME, nullable=False
+    )
+
+    # Step completion tracking
+    welcome_completed = Column(Boolean, default=False, nullable=False)
+    admin_account_completed = Column(Boolean, default=False, nullable=False)
+    directories_completed = Column(Boolean, default=False, nullable=False)
+    api_config_completed = Column(Boolean, default=False, nullable=False)
+    video_import_completed = Column(Boolean, default=False, nullable=False)
+
+    # Configuration data collected during wizard (stored as JSON)
+    config_data = Column(
+        JSON, nullable=True
+    )  # Stores directory paths, API validation results, etc.
+
+    # Import job tracking
+    import_job_id = Column(String(255), nullable=True)  # Background job ID for import
+    videos_imported = Column(Integer, default=0, nullable=False)
+    import_errors = Column(
+        JSON, nullable=True
+    )  # List of errors encountered during import
+
+    # Timestamps
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    last_step_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_wizard_status", "status"),
+        Index("idx_wizard_current_step", "current_step"),
+        {"extend_existing": True},
+    )
+
+    def is_completed(self):
+        """Check if wizard is fully completed"""
+        return self.status == WizardStatus.COMPLETED
+
+    def is_in_progress(self):
+        """Check if wizard is currently in progress"""
+        return self.status == WizardStatus.IN_PROGRESS
+
+    def get_completion_percentage(self):
+        """Calculate wizard completion percentage based on completed steps"""
+        total_steps = 5  # Excluding welcome step
+        completed_steps = sum(
+            [
+                self.admin_account_completed,
+                self.directories_completed,
+                self.api_config_completed,
+                self.video_import_completed,
+                self.status == WizardStatus.COMPLETED,
+            ]
+        )
+        return int((completed_steps / total_steps) * 100)
+
+    def mark_step_complete(self, step: WizardStep):
+        """Mark a specific step as completed"""
+        step_mapping = {
+            WizardStep.WELCOME: "welcome_completed",
+            WizardStep.ADMIN_ACCOUNT: "admin_account_completed",
+            WizardStep.DIRECTORIES: "directories_completed",
+            WizardStep.API_CONFIG: "api_config_completed",
+            WizardStep.VIDEO_IMPORT: "video_import_completed",
+        }
+
+        if step in step_mapping:
+            setattr(self, step_mapping[step], True)
+            self.last_step_at = datetime.utcnow()
+
+        # If all steps are complete, mark wizard as completed
+        if step == WizardStep.COMPLETE or (
+            self.admin_account_completed
+            and self.directories_completed
+            and self.api_config_completed
+            and self.video_import_completed
+        ):
+            self.status = WizardStatus.COMPLETED
+            self.completed_at = datetime.utcnow()
+            self.current_step = WizardStep.COMPLETE
+
+    def advance_to_step(self, step: WizardStep):
+        """Advance wizard to the next step"""
+        self.current_step = step
+        self.last_step_at = datetime.utcnow()
+
+        # Mark wizard as in progress if not already
+        if self.status == WizardStatus.NOT_STARTED:
+            self.status = WizardStatus.IN_PROGRESS
+            self.started_at = datetime.utcnow()
+
+    def to_dict(self):
+        """Convert wizard state to dictionary"""
+        return {
+            "id": self.id,
+            "status": self.status.value,
+            "current_step": self.current_step.value,
+            "completion_percentage": self.get_completion_percentage(),
+            "steps": {
+                "welcome": self.welcome_completed,
+                "admin_account": self.admin_account_completed,
+                "directories": self.directories_completed,
+                "api_config": self.api_config_completed,
+                "video_import": self.video_import_completed,
+            },
+            "config_data": self.config_data or {},
+            "import_job_id": self.import_job_id,
+            "videos_imported": self.videos_imported,
+            "import_errors": self.import_errors or [],
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
+            "last_step_at": (
+                self.last_step_at.isoformat() if self.last_step_at else None
+            ),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f"<WizardState(id={self.id}, status='{self.status.value}', current_step='{self.current_step.value}', completion={self.get_completion_percentage()}%)>"

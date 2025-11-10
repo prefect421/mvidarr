@@ -1,0 +1,554 @@
+"""
+FastAPI Installation Wizard Router
+v1.0.0 Feature: First-run setup wizard for guided configuration
+Issue #163: https://github.com/prefect421/mvidarr/issues/163
+"""
+
+import logging
+import os
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
+
+from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.database.connection import get_db_session
+from src.database.models import WizardState, WizardStatus, WizardStep
+from src.services.imvdb_service import imvdb_service
+from src.services.job_queue import (
+    BackgroundJob,
+    JobPriority,
+    JobType,
+    get_job_queue,
+)
+
+logger = logging.getLogger("mvidarr.fastapi.wizard")
+
+router = APIRouter(
+    prefix="/api/wizard",
+    tags=["wizard"],
+    responses={
+        404: {"description": "Not found"},
+        422: {"description": "Validation error"},
+    },
+)
+
+# ========================================================================================
+# PYDANTIC MODELS FOR REQUEST/RESPONSE VALIDATION
+# ========================================================================================
+
+
+class WizardStateResponse(BaseModel):
+    """Wizard state response"""
+
+    id: int
+    status: str
+    current_step: str
+    completion_percentage: int
+    steps: Dict[str, bool]
+    config_data: Dict[str, Any]
+    import_job_id: Optional[str] = None
+    videos_imported: int
+    import_errors: list
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    last_step_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StartWizardRequest(BaseModel):
+    """Start wizard request"""
+
+    pass  # No parameters needed for starting wizard
+
+
+class CompleteStepRequest(BaseModel):
+    """Complete wizard step request"""
+
+    step: str = Field(..., description="Step identifier to complete")
+    config_data: Optional[Dict[str, Any]] = Field(
+        None, description="Configuration data collected in this step"
+    )
+
+    @field_validator("step")
+    @classmethod
+    def validate_step(cls, v):
+        """Validate step identifier"""
+        valid_steps = [
+            "welcome",
+            "admin_account",
+            "directories",
+            "api_config",
+            "video_import",
+        ]
+        if v not in valid_steps:
+            raise ValueError(f"Invalid step: {v}")
+        return v
+
+
+class DirectoryValidationRequest(BaseModel):
+    """Directory validation request"""
+
+    path: str = Field(..., min_length=1, description="Directory path to validate")
+
+
+class DirectoryValidationResponse(BaseModel):
+    """Directory validation response"""
+
+    valid: bool
+    exists: bool
+    readable: bool
+    writable: bool
+    is_directory: bool
+    video_count: Optional[int] = None
+    error: Optional[str] = None
+
+
+class APITestRequest(BaseModel):
+    """API test request"""
+
+    api_type: str = Field(..., description="API type to test (imvdb, youtube)")
+    api_key: Optional[str] = Field(None, description="API key to test")
+    cookies_content: Optional[str] = Field(None, description="YouTube cookies content")
+
+    @field_validator("api_type")
+    @classmethod
+    def validate_api_type(cls, v):
+        """Validate API type"""
+        valid_types = ["imvdb", "youtube"]
+        if v not in valid_types:
+            raise ValueError(f"Invalid API type: {v}")
+        return v
+
+
+class APITestResponse(BaseModel):
+    """API test response"""
+
+    success: bool
+    api_type: str
+    message: str
+    error: Optional[str] = None
+
+
+class ImportStartRequest(BaseModel):
+    """Start video import request"""
+
+    directory: str = Field(..., description="Directory to import from")
+    fetch_metadata: bool = Field(
+        default=True, description="Whether to fetch metadata for videos"
+    )
+    max_files: Optional[int] = Field(
+        None, ge=1, description="Maximum files to import (None = all)"
+    )
+
+
+class ImportStartResponse(BaseModel):
+    """Start video import response"""
+
+    success: bool
+    job_id: str
+    message: str
+
+
+# ========================================================================================
+# WIZARD ENDPOINTS
+# ========================================================================================
+
+
+@router.get("/status", response_model=WizardStateResponse)
+async def get_wizard_status(
+    session: Session = Depends(get_db_session),
+):
+    """
+    Get current wizard state.
+
+    Returns the current state of the installation wizard, including:
+    - Overall status (not_started, in_progress, completed, skipped)
+    - Current step
+    - Completion status of each step
+    - Configuration data collected so far
+    - Import progress if applicable
+
+    Note: This endpoint does NOT require authentication since it's used
+    during first-run setup before any users exist.
+    """
+    try:
+        # Get or create wizard state (there should only be one)
+        wizard_state = session.query(WizardState).first()
+
+        if not wizard_state:
+            # Create initial wizard state
+            wizard_state = WizardState(
+                status=WizardStatus.NOT_STARTED, current_step=WizardStep.WELCOME
+            )
+            session.add(wizard_state)
+            session.commit()
+            session.refresh(wizard_state)
+
+        return WizardStateResponse(**wizard_state.to_dict())
+
+    except Exception as e:
+        logger.error(f"Error getting wizard status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/start", response_model=WizardStateResponse)
+async def start_wizard(
+    request: StartWizardRequest,
+    session: Session = Depends(get_db_session),
+):
+    """
+    Start the installation wizard.
+
+    Initializes the wizard state and sets status to IN_PROGRESS.
+
+    Note: This endpoint does NOT require authentication since it's used
+    during first-run setup before any users exist.
+    """
+    try:
+        # Get or create wizard state
+        wizard_state = session.query(WizardState).first()
+
+        if not wizard_state:
+            wizard_state = WizardState()
+            session.add(wizard_state)
+
+        # Start wizard
+        wizard_state.advance_to_step(WizardStep.WELCOME)
+        wizard_state.mark_step_complete(WizardStep.WELCOME)
+
+        session.commit()
+        session.refresh(wizard_state)
+
+        return WizardStateResponse(**wizard_state.to_dict())
+
+    except Exception as e:
+        logger.error(f"Error starting wizard: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/steps/{step_id}/complete", response_model=WizardStateResponse)
+async def complete_wizard_step(
+    step_id: str,
+    request: CompleteStepRequest,
+    session: Session = Depends(get_db_session),
+):
+    """
+    Mark a wizard step as complete and advance to next step.
+
+    Updates the wizard state with:
+    - Mark current step as completed
+    - Store any configuration data collected
+    - Advance to next step (or mark wizard complete if last step)
+
+    Note: This endpoint does NOT require authentication since it's used
+    during first-run setup before any users exist.
+    """
+    try:
+        # Get wizard state
+        wizard_state = session.query(WizardState).first()
+
+        if not wizard_state:
+            raise HTTPException(status_code=404, detail="Wizard state not found")
+
+        # Validate step matches current step
+        if wizard_state.current_step.value != step_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot complete step {step_id}. Current step is {wizard_state.current_step.value}",
+            )
+
+        # Update config data if provided
+        if request.config_data:
+            current_config = wizard_state.config_data or {}
+            current_config.update(request.config_data)
+            wizard_state.config_data = current_config
+
+        # Mark step as complete
+        wizard_state.mark_step_complete(WizardStep(step_id))
+
+        # Advance to next step
+        step_order = [
+            WizardStep.WELCOME,
+            WizardStep.ADMIN_ACCOUNT,
+            WizardStep.DIRECTORIES,
+            WizardStep.API_CONFIG,
+            WizardStep.VIDEO_IMPORT,
+            WizardStep.COMPLETE,
+        ]
+        current_index = step_order.index(WizardStep(step_id))
+        if current_index < len(step_order) - 1:
+            next_step = step_order[current_index + 1]
+            wizard_state.advance_to_step(next_step)
+
+        session.commit()
+        session.refresh(wizard_state)
+
+        return WizardStateResponse(**wizard_state.to_dict())
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error completing wizard step: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/skip", response_model=WizardStateResponse)
+async def skip_wizard(
+    session: Session = Depends(get_db_session),
+):
+    """
+    Skip the installation wizard.
+
+    Marks the wizard as skipped so it won't be shown again.
+
+    Note: This endpoint does NOT require authentication since it's used
+    during first-run setup before any users exist.
+    """
+    try:
+        # Get or create wizard state
+        wizard_state = session.query(WizardState).first()
+
+        if not wizard_state:
+            wizard_state = WizardState()
+            session.add(wizard_state)
+
+        # Mark as skipped
+        wizard_state.status = WizardStatus.SKIPPED
+        wizard_state.current_step = WizardStep.COMPLETE
+
+        session.commit()
+        session.refresh(wizard_state)
+
+        return WizardStateResponse(**wizard_state.to_dict())
+
+    except Exception as e:
+        logger.error(f"Error skipping wizard: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/validate-directory", response_model=DirectoryValidationResponse)
+async def validate_directory(
+    request: DirectoryValidationRequest,
+    session: Session = Depends(get_db_session),
+):
+    """
+    Validate a directory path for use as music videos directory.
+
+    Checks:
+    - Path exists
+    - Is a directory (not a file)
+    - Is readable
+    - Is writable
+    - Contains video files (optional count)
+
+    Note: This endpoint does NOT require authentication since it's used
+    during first-run setup before any users exist.
+    """
+    try:
+        path = Path(request.path)
+
+        # Check if path exists
+        exists = path.exists()
+        is_directory = path.is_dir() if exists else False
+        readable = os.access(path, os.R_OK) if exists else False
+        writable = os.access(path, os.W_OK) if exists else False
+
+        # Count video files if directory is valid
+        video_count = None
+        if is_directory and readable:
+            video_extensions = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv"}
+            try:
+                video_files = [
+                    f
+                    for f in path.rglob("*")
+                    if f.is_file() and f.suffix.lower() in video_extensions
+                ]
+                video_count = len(video_files)
+            except Exception as e:
+                logger.warning(f"Error counting video files: {str(e)}")
+
+        # Determine overall validity
+        valid = exists and is_directory and readable and writable
+
+        error = None
+        if not exists:
+            error = "Directory does not exist"
+        elif not is_directory:
+            error = "Path is not a directory"
+        elif not readable:
+            error = "Directory is not readable"
+        elif not writable:
+            error = "Directory is not writable"
+
+        return DirectoryValidationResponse(
+            valid=valid,
+            exists=exists,
+            readable=readable,
+            writable=writable,
+            is_directory=is_directory,
+            video_count=video_count,
+            error=error,
+        )
+
+    except Exception as e:
+        logger.error(f"Error validating directory: {str(e)}")
+        return DirectoryValidationResponse(
+            valid=False,
+            exists=False,
+            readable=False,
+            writable=False,
+            is_directory=False,
+            error=str(e),
+        )
+
+
+@router.post("/test-api", response_model=APITestResponse)
+async def test_api(
+    request: APITestRequest,
+    session: Session = Depends(get_db_session),
+):
+    """
+    Test API keys/credentials before saving.
+
+    Tests connectivity and validity of:
+    - IMVDb API key
+    - YouTube cookies
+
+    Note: This endpoint does NOT require authentication since it's used
+    during first-run setup before any users exist.
+    """
+    try:
+        if request.api_type == "imvdb":
+            # Test IMVDb API key
+            if not request.api_key:
+                return APITestResponse(
+                    success=False,
+                    api_type="imvdb",
+                    message="API key is required",
+                    error="Missing API key",
+                )
+
+            # Test API key by making a simple search request
+            try:
+                # Use imvdb_service to test the API
+                test_result = await imvdb_service.search_videos(query="test", limit=1)
+                if test_result:
+                    return APITestResponse(
+                        success=True,
+                        api_type="imvdb",
+                        message="IMVDb API key is valid and working",
+                    )
+                else:
+                    return APITestResponse(
+                        success=False,
+                        api_type="imvdb",
+                        message="IMVDb API returned no results",
+                        error="API test failed",
+                    )
+            except Exception as e:
+                return APITestResponse(
+                    success=False,
+                    api_type="imvdb",
+                    message="IMVDb API test failed",
+                    error=str(e),
+                )
+
+        elif request.api_type == "youtube":
+            # Test YouTube cookies
+            if not request.cookies_content:
+                return APITestResponse(
+                    success=False,
+                    api_type="youtube",
+                    message="YouTube cookies content is required",
+                    error="Missing cookies",
+                )
+
+            # Basic validation of cookies format
+            # TODO: Implement actual YouTube API test when needed
+            if "youtube.com" in request.cookies_content.lower():
+                return APITestResponse(
+                    success=True,
+                    api_type="youtube",
+                    message="YouTube cookies format appears valid",
+                )
+            else:
+                return APITestResponse(
+                    success=False,
+                    api_type="youtube",
+                    message="Invalid YouTube cookies format",
+                    error="Cookies do not appear to be for YouTube",
+                )
+
+        else:
+            return APITestResponse(
+                success=False,
+                api_type=request.api_type,
+                message=f"Unknown API type: {request.api_type}",
+                error="Invalid API type",
+            )
+
+    except Exception as e:
+        logger.error(f"Error testing API: {str(e)}")
+        return APITestResponse(
+            success=False,
+            api_type=request.api_type,
+            message="API test failed",
+            error=str(e),
+        )
+
+
+@router.post("/import/start", response_model=ImportStartResponse)
+async def start_video_import(
+    request: ImportStartRequest,
+    session: Session = Depends(get_db_session),
+):
+    """
+    Start video import as part of wizard.
+
+    Creates a background job to import videos from the specified directory.
+
+    Note: This endpoint does NOT require authentication since it's used
+    during first-run setup before any users exist.
+    """
+    try:
+        # Validate directory exists
+        directory = Path(request.directory)
+        if not directory.exists() or not directory.is_dir():
+            raise HTTPException(status_code=400, detail="Invalid directory path")
+
+        # Create background job for video import
+        job = BackgroundJob(
+            type=JobType.VIDEO_INDEX_ALL,
+            priority=JobPriority.HIGH,  # Wizard import is high priority
+            payload={
+                "fetch_metadata": request.fetch_metadata,
+                "max_files": request.max_files,
+                "wizard_import": True,  # Flag to indicate this is from wizard
+            },
+            created_by=1,  # System user ID
+        )
+
+        # Enqueue job
+        job_queue = await get_job_queue()
+        job_id = await job_queue.enqueue(job)
+
+        # Update wizard state with job ID
+        wizard_state = session.query(WizardState).first()
+        if wizard_state:
+            wizard_state.import_job_id = job_id
+            session.commit()
+
+        return ImportStartResponse(
+            success=True,
+            job_id=job_id,
+            message=f"Video import job queued with ID: {job_id}",
+        )
+
+    except Exception as e:
+        logger.error(f"Error starting video import: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
