@@ -476,3 +476,430 @@ async def liveness_check():
                 "timestamp": datetime.utcnow().isoformat(),
             },
         )
+
+
+class WizardHealthResponse(BaseModel):
+    status: str
+    wizard_completed: bool
+    current_step: Optional[str] = None
+    completed_at: Optional[str] = None
+    error: Optional[str] = None
+
+
+class BackupHealthResponse(BaseModel):
+    status: str
+    total_backups: int
+    latest_backup: Optional[str] = None
+    total_size_mb: float
+    backups_by_type: Dict[str, int]
+    error: Optional[str] = None
+
+
+class MigrationHealthResponse(BaseModel):
+    status: str
+    current_revision: str
+    pending_migrations: int
+    error: Optional[str] = None
+
+
+class V1ComponentsHealthResponse(BaseModel):
+    status: str
+    timestamp: str
+    wizard: WizardHealthResponse
+    backups: BackupHealthResponse
+    migrations: MigrationHealthResponse
+    alerts: list
+
+
+@health_router.get("/v1-components", response_model=V1ComponentsHealthResponse)
+async def get_v1_components_health(session=Depends(get_db_session)):
+    """
+    Monitor v1.0.0 infrastructure components
+    - Installation Wizard state
+    - Backup & Recovery system status
+    - Database Migration version tracking
+    """
+    try:
+        overall_status = "healthy"
+        alerts = []
+
+        # Check Installation Wizard state
+        wizard_health = WizardHealthResponse(
+            status="healthy",
+            wizard_completed=False,
+            current_step=None,
+            completed_at=None,
+        )
+        try:
+            from src.database.models import WizardState
+
+            wizard_state = session.query(WizardState).first()
+            if wizard_state:
+                wizard_health.wizard_completed = (
+                    wizard_state.status.value == "COMPLETED"
+                )
+                wizard_health.current_step = wizard_state.current_step.value
+                if wizard_state.completed_at:
+                    wizard_health.completed_at = wizard_state.completed_at.isoformat()
+
+                if wizard_state.status.value in ["IN_PROGRESS", "NOT_STARTED"]:
+                    alerts.append(
+                        f"Installation wizard not completed (step: {wizard_state.current_step.value})"
+                    )
+                    overall_status = (
+                        "warning" if overall_status == "healthy" else overall_status
+                    )
+        except Exception as e:
+            wizard_health.status = "error"
+            wizard_health.error = str(e)
+            logger.warning(f"Could not check wizard state: {e}")
+
+        # Check Backup & Recovery system
+        backup_health = BackupHealthResponse(
+            status="healthy",
+            total_backups=0,
+            latest_backup=None,
+            total_size_mb=0.0,
+            backups_by_type={},
+        )
+        try:
+            from src.services.backup_service import BackupService
+
+            backup_service = BackupService()
+            all_backups = backup_service.list_backups()
+
+            if all_backups:
+                # Sort by timestamp to get latest
+                sorted_backups = sorted(
+                    all_backups, key=lambda b: b.timestamp, reverse=True
+                )
+                latest = sorted_backups[0]
+
+                backup_health.total_backups = len(all_backups)
+                backup_health.latest_backup = latest.timestamp.isoformat()
+
+                # Calculate total size and count by type
+                total_size = 0
+                type_counts = {}
+                for backup in all_backups:
+                    total_size += backup.file_size
+                    backup_type = backup.backup_type.value
+                    type_counts[backup_type] = type_counts.get(backup_type, 0) + 1
+
+                backup_health.total_size_mb = round(total_size / (1024 * 1024), 2)
+                backup_health.backups_by_type = type_counts
+
+                # Check backup freshness (warn if no recent backup)
+                import datetime as dt
+
+                time_since_last = dt.datetime.now(dt.timezone.utc) - latest.timestamp
+                if time_since_last.days > 7:
+                    alerts.append(
+                        f"Latest backup is {time_since_last.days} days old (consider creating a new backup)"
+                    )
+                    overall_status = (
+                        "warning" if overall_status == "healthy" else overall_status
+                    )
+            else:
+                alerts.append("No backups found (consider creating a backup)")
+                overall_status = (
+                    "warning" if overall_status == "healthy" else overall_status
+                )
+
+        except Exception as e:
+            backup_health.status = "error"
+            backup_health.error = str(e)
+            logger.error(f"Could not check backup status: {e}")
+            alerts.append(f"Backup system error: {str(e)}")
+            overall_status = "unhealthy"
+
+        # Check Database Migration status
+        migration_health = MigrationHealthResponse(
+            status="healthy", current_revision="unknown", pending_migrations=0
+        )
+        try:
+            import subprocess
+            from pathlib import Path
+
+            # Find alembic executable
+            project_root = Path(__file__).parent.parent.parent.parent
+            venv_alembic = project_root / "venv" / "bin" / "alembic"
+
+            if venv_alembic.exists():
+                alembic_cmd = str(venv_alembic)
+            else:
+                alembic_cmd = "alembic"
+
+            # Get current revision
+            result = subprocess.run(
+                [alembic_cmd, "current"],
+                cwd=str(project_root),
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+
+            if result.returncode == 0:
+                # Parse output: "79107aab2257 (head)" or "No revision"
+                output = result.stdout.strip()
+                if "No revision" in output or not output:
+                    migration_health.current_revision = "none"
+                    migration_health.status = "warning"
+                    alerts.append("Database migrations not initialized")
+                    overall_status = (
+                        "warning" if overall_status == "healthy" else overall_status
+                    )
+                else:
+                    # Extract revision hash
+                    parts = output.split()
+                    if parts:
+                        migration_health.current_revision = parts[0]
+
+            # Check for pending migrations
+            heads_result = subprocess.run(
+                [alembic_cmd, "heads"],
+                cwd=str(project_root),
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+
+            if heads_result.returncode == 0:
+                heads_output = heads_result.stdout.strip()
+                current_rev = migration_health.current_revision
+                if current_rev != "none" and current_rev not in heads_output:
+                    migration_health.pending_migrations = 1
+                    migration_health.status = "warning"
+                    alerts.append(
+                        "Database migrations pending (run alembic upgrade head)"
+                    )
+                    overall_status = (
+                        "warning" if overall_status == "healthy" else overall_status
+                    )
+
+        except subprocess.TimeoutExpired:
+            migration_health.status = "error"
+            migration_health.error = "Migration check timed out"
+            logger.error("Migration check timed out")
+        except Exception as e:
+            migration_health.status = "error"
+            migration_health.error = str(e)
+            logger.warning(f"Could not check migration status: {e}")
+
+        return V1ComponentsHealthResponse(
+            status=overall_status,
+            timestamp=datetime.utcnow().isoformat(),
+            wizard=wizard_health,
+            backups=backup_health,
+            migrations=migration_health,
+            alerts=alerts,
+        )
+
+    except Exception as e:
+        logger.error(f"v1.0.0 components health check failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+
+
+class BackgroundJobHealthResponse(BaseModel):
+    status: str
+    active_jobs: int
+    pending_jobs: int
+    completed_jobs: int
+    failed_jobs: int
+    error: Optional[str] = None
+
+
+class MonitoringDashboardResponse(BaseModel):
+    status: str
+    timestamp: str
+    application: Dict[str, Any]
+    database: Dict[str, Any]
+    system: SystemMetricsResponse
+    v1_components: V1ComponentsHealthResponse
+    background_jobs: BackgroundJobHealthResponse
+    alerts: list
+    summary: Dict[str, Any]
+
+
+@health_router.get("/background-jobs", response_model=BackgroundJobHealthResponse)
+async def get_background_jobs_health(session=Depends(get_db_session)):
+    """Monitor background job system status"""
+    try:
+        from src.database.job_models import BackgroundJobModel
+
+        # Count jobs by status (stored as strings)
+        active_count = (
+            session.query(BackgroundJobModel)
+            .filter(BackgroundJobModel.status == "running")
+            .count()
+        )
+        pending_count = (
+            session.query(BackgroundJobModel)
+            .filter(BackgroundJobModel.status.in_(["pending", "queued"]))
+            .count()
+        )
+        completed_count = (
+            session.query(BackgroundJobModel)
+            .filter(BackgroundJobModel.status == "completed")
+            .count()
+        )
+        failed_count = (
+            session.query(BackgroundJobModel)
+            .filter(BackgroundJobModel.status == "failed")
+            .count()
+        )
+
+        return BackgroundJobHealthResponse(
+            status="healthy",
+            active_jobs=active_count,
+            pending_jobs=pending_count,
+            completed_jobs=completed_count,
+            failed_jobs=failed_count,
+        )
+
+    except Exception as e:
+        logger.error(f"Background jobs health check failed: {e}")
+        return BackgroundJobHealthResponse(
+            status="error",
+            active_jobs=0,
+            pending_jobs=0,
+            completed_jobs=0,
+            failed_jobs=0,
+            error=str(e),
+        )
+
+
+@health_router.get("/dashboard", response_model=MonitoringDashboardResponse)
+async def get_monitoring_dashboard(session=Depends(get_db_session)):
+    """
+    Comprehensive monitoring dashboard for MVidarr v1.0.0
+    Aggregates all health checks, metrics, and status information in a single view
+    """
+    try:
+        overall_status = "healthy"
+        all_alerts = []
+
+        # Application health
+        app_health = {
+            "status": "healthy",
+            "version": "unknown",
+            "uptime": int(time.time() - psutil.Process().create_time()),
+            "workers": os.getenv("WORKERS", "unknown"),
+        }
+
+        try:
+            from src import __version__
+
+            app_health["version"] = __version__
+        except:
+            pass
+
+        # Database health
+        db_health = {"status": "unhealthy", "error": "Not checked"}
+        try:
+            from sqlalchemy import text
+
+            result = session.execute(
+                text("SELECT COUNT(*) FROM information_schema.tables")
+            )
+            table_count = result.scalar()
+
+            # Count videos
+            video_count = session.execute(text("SELECT COUNT(*) FROM videos")).scalar()
+
+            db_health = {
+                "status": "healthy",
+                "table_count": table_count,
+                "video_count": video_count,
+                "connection": "active",
+            }
+        except Exception as e:
+            db_health = {"status": "unhealthy", "error": str(e)}
+            overall_status = "unhealthy"
+            all_alerts.append(f"Database connection failed: {str(e)}")
+
+        # System metrics
+        system_metrics = await get_system_metrics()
+
+        # Check for system alerts
+        if system_metrics.cpu_percent > 90:
+            all_alerts.append(f"High CPU usage: {system_metrics.cpu_percent}%")
+            overall_status = (
+                "warning" if overall_status == "healthy" else overall_status
+            )
+
+        if system_metrics.memory_percent > 90:
+            all_alerts.append(f"High memory usage: {system_metrics.memory_percent}%")
+            overall_status = (
+                "warning" if overall_status == "healthy" else overall_status
+            )
+
+        if system_metrics.disk_percent > 90:
+            all_alerts.append(
+                f"Low disk space: {system_metrics.disk_free_gb:.1f}GB remaining"
+            )
+            overall_status = (
+                "warning" if overall_status == "healthy" else overall_status
+            )
+
+        # v1.0.0 Components health
+        v1_components = await get_v1_components_health(session)
+        if v1_components.status != "healthy":
+            overall_status = (
+                v1_components.status
+                if overall_status != "unhealthy"
+                else overall_status
+            )
+        all_alerts.extend(v1_components.alerts)
+
+        # Background jobs health
+        background_jobs = await get_background_jobs_health(session)
+        if background_jobs.status != "healthy":
+            all_alerts.append(f"Background jobs system error: {background_jobs.error}")
+            overall_status = (
+                "warning" if overall_status == "healthy" else overall_status
+            )
+
+        # Check for stuck or failed jobs
+        if background_jobs.failed_jobs > 0:
+            all_alerts.append(
+                f"{background_jobs.failed_jobs} background jobs have failed"
+            )
+            overall_status = (
+                "warning" if overall_status == "healthy" else overall_status
+            )
+
+        # Create summary
+        summary = {
+            "overall_status": overall_status,
+            "total_alerts": len(all_alerts),
+            "components_checked": 6,  # app, db, system, v1, jobs, services
+            "healthy_components": sum(
+                [
+                    app_health["status"] == "healthy",
+                    db_health["status"] == "healthy",
+                    system_metrics.cpu_percent < 90
+                    and system_metrics.memory_percent < 90
+                    and system_metrics.disk_percent < 90,
+                    v1_components.status == "healthy",
+                    background_jobs.status == "healthy",
+                    True,  # API itself is healthy if we got here
+                ]
+            ),
+        }
+
+        return MonitoringDashboardResponse(
+            status=overall_status,
+            timestamp=datetime.utcnow().isoformat(),
+            application=app_health,
+            database=db_health,
+            system=system_metrics,
+            v1_components=v1_components,
+            background_jobs=background_jobs,
+            alerts=all_alerts,
+            summary=summary,
+        )
+
+    except Exception as e:
+        logger.error(f"Monitoring dashboard failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
