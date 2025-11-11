@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from src.api.fastapi.logging_middleware import setup_logging_middleware
+from src.api.fastapi.wizard_middleware import setup_wizard_middleware
 
 # OpenAPI documentation configuration
 from src.api.openapi_config import (
@@ -455,6 +456,10 @@ setup_logging_middleware(app)
 structured_logger.info(
     "Structured logging middleware enabled for production monitoring"
 )
+
+# Setup first-run wizard middleware for v1.0.0 (Issue #163)
+setup_wizard_middleware(app, wizard_redirect_url="/wizard")
+logger.info("✅ First-run wizard middleware enabled")
 
 # TODO: Re-enable other middleware after fixing MediaCacheManager and Redis issues
 # app.add_middleware(CircuitBreakerMiddleware, config=CircuitBreakerConfig())

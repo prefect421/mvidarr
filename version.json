@@ -1,12 +1,13 @@
 {
   "version": "1.0.0-dev",
-  "build_date": "2025-11-11T14:21:00.546649",
-  "git_commit": "395defa",
+  "build_date": "2025-11-11T15:20:38.786283",
+  "git_commit": "feb9222",
   "git_branch": "dev",
   "release_name": "v1.0.0 Development - First Production Release",
   "features": [
     "🎉 First production-ready release milestone",
-    "🔧 Installation Wizard for first-run setup (Issue #163)",
+    "🔧 Installation Wizard backend infrastructure complete (Issue #163)",
+    "🛡️ First-run detection middleware enabled",
     "🎬 Reliable video import system (no duplicates)",
     "✅ API validation before configuration",
     "📁 Directory validation and auto-configuration",
