@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation Wizard - MVidarr</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/buttons.css">
+    <link rel="stylesheet" href="/css/typography.css">
+    <link rel="stylesheet" href="/css/layout.css">
+
+    <!-- Iconify for icons -->
+    <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js"></script>
+
+    <style>
+        /* Wizard-specific styles */
+        :root {
+            --wizard-primary: #3b82f6;
+            --wizard-success: #10b981;
+            --wizard-warning: #f59e0b;
+            --wizard-error: #ef4444;
+            --wizard-bg: #ffffff;
+            --wizard-card-bg: #f9fafb;
+            --wizard-border: #e5e7eb;
+            --wizard-text: #111827;
+            --wizard-text-secondary: #6b7280;
+        }
+
+        [data-theme="dark"] {
+            --wizard-bg: #1e293b;
+            --wizard-card-bg: #0f172a;
+            --wizard-border: #334155;
+            --wizard-text: #f1f5f9;
+            --wizard-text-secondary: #94a3b8;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--wizard-bg);
+            color: var(--wizard-text);
+        }
+
+        .wizard-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+            min-height: 100vh;
+        }
+
+        .wizard-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .wizard-logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1rem;
+        }
+
+        .wizard-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--wizard-text);
+        }
+
+        .wizard-subtitle {
+            font-size: 1rem;
+            color: var(--wizard-text-secondary);
+        }
+
+        /* Progress Indicator */
+        .wizard-progress {
+            margin-bottom: 3rem;
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .progress-line {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--wizard-border);
+            z-index: 0;
+        }
+
+        .progress-line-fill {
+            height: 100%;
+            background: var(--wizard-primary);
+            transition: width 0.3s ease;
+        }
+
+        .progress-step {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .progress-step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--wizard-card-bg);
+            border: 2px solid var(--wizard-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--wizard-text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .progress-step.active .progress-step-circle {
+            background: var(--wizard-primary);
+            border-color: var(--wizard-primary);
+            color: white;
+        }
+
+        .progress-step.completed .progress-step-circle {
+            background: var(--wizard-success);
+            border-color: var(--wizard-success);
+            color: white;
+        }
+
+        .progress-step-label {
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--wizard-text-secondary);
+            text-align: center;
+            max-width: 80px;
+        }
+
+        .progress-step.active .progress-step-label {
+            color: var(--wizard-primary);
+            font-weight: 600;
+        }
+
+        /* Wizard Card */
+        .wizard-card {
+            background: var(--wizard-card-bg);
+            border: 1px solid var(--wizard-border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .wizard-step {
+            display: none;
+        }
+
+        .wizard-step.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .step-header {
+            margin-bottom: 2rem;
+        }
+
+        .step-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .step-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--wizard-text);
+        }
+
+        .step-description {
+            font-size: 1rem;
+            color: var(--wizard-text-secondary);
+            line-height: 1.6;
+        }
+
+        .step-content {
+            margin-bottom: 2rem;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--wizard-text);
+        }
+
+        .form-label .required {
+            color: var(--wizard-error);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--wizard-border);
+            border-radius: 6px;
+            font-size: 1rem;
+            background: var(--wizard-bg);
+            color: var(--wizard-text);
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--wizard-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-input.error {
+            border-color: var(--wizard-error);
+        }
+
+        .form-help {
+            font-size: 0.875rem;
+            color: var(--wizard-text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .form-error {
+            font-size: 0.875rem;
+            color: var(--wizard-error);
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .form-error.show {
+            display: block;
+        }
+
+        .form-success {
+            font-size: 0.875rem;
+            color: var(--wizard-success);
+            margin-top: 0.25rem;
+        }
+
+        /* Buttons */
+        .wizard-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--wizard-border);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--wizard-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-primary:disabled {
+            background: var(--wizard-border);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--wizard-text);
+            border: 1px solid var(--wizard-border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--wizard-card-bg);
+        }
+
+        .btn-link {
+            background: transparent;
+            color: var(--wizard-primary);
+            border: none;
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Validation Badge */
+        .validation-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .validation-badge.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .validation-badge.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .validation-badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Info Box */
+        .info-box {
+            padding: 1rem;
+            border-radius: 6px;
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            color: #1e40af;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-box iconify-icon {
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+
+        /* Warning Box */
+        .warning-box {
+            padding: 1rem;
+            border-radius: 6px;
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Success Box */
+        .success-box {
+            padding: 1rem;
+            border-radius: 6px;
+            background: #d1fae5;
+            border: 1px solid #6ee7b7;
+            color: #065f46;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Import Progress */
+        .import-progress {
+            margin: 2rem 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 40px;
+            background: var(--wizard-border);
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--wizard-primary), var(--wizard-success));
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .import-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .import-stat {
+            text-align: center;
+            padding: 1rem;
+            background: var(--wizard-bg);
+            border-radius: 6px;
+            border: 1px solid var(--wizard-border);
+        }
+
+        .import-stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--wizard-primary);
+        }
+
+        .import-stat-label {
+            font-size: 0.875rem;
+            color: var(--wizard-text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .wizard-container {
+                padding: 1rem 0.5rem;
+            }
+
+            .wizard-card {
+                padding: 1.5rem 1rem;
+            }
+
+            .progress-step-label {
+                font-size: 0.625rem;
+                max-width: 60px;
+            }
+
+            .wizard-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="wizard-container">
+        <!-- Header -->
+        <div class="wizard-header">
+            <img src="/static/MVidarr.png" alt="MVidarr Logo" class="wizard-logo">
+            <h1 class="wizard-title">Welcome to MVidarr</h1>
+            <p class="wizard-subtitle">Let's set up your music video collection in just a few steps</p>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div class="wizard-progress">
+            <div class="progress-steps">
+                <div class="progress-line">
+                    <div class="progress-line-fill" id="progressLineFill" style="width: 0%;"></div>
+                </div>
+                <div class="progress-step active" data-step="0">
+                    <div class="progress-step-circle">1</div>
+                    <div class="progress-step-label">Welcome</div>
+                </div>
+                <div class="progress-step" data-step="1">
+                    <div class="progress-step-circle">2</div>
+                    <div class="progress-step-label">Admin</div>
+                </div>
+                <div class="progress-step" data-step="2">
+                    <div class="progress-step-circle">3</div>
+                    <div class="progress-step-label">Directories</div>
+                </div>
+                <div class="progress-step" data-step="3">
+                    <div class="progress-step-circle">4</div>
+                    <div class="progress-step-label">APIs</div>
+                </div>
+                <div class="progress-step" data-step="4">
+                    <div class="progress-step-circle">5</div>
+                    <div class="progress-step-label">Import</div>
+                </div>
+                <div class="progress-step" data-step="5">
+                    <div class="progress-step-circle">✓</div>
+                    <div class="progress-step-label">Done</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wizard Card -->
+        <div class="wizard-card">
+            <!-- Step 1: Welcome -->
+            <div class="wizard-step active" id="step-welcome">
+                <div class="step-header">
+                    <div class="step-icon">👋</div>
+                    <h2 class="step-title">Welcome to MVidarr</h2>
+                    <p class="step-description">
+                        MVidarr is your personal music video collection manager. This wizard will help you set up everything you need to get started.
+                    </p>
+                </div>
+                <div class="step-content">
+                    <div class="info-box">
+                        <iconify-icon icon="mdi:information"></iconify-icon>
+                        <strong>Estimated time:</strong> 5-15 minutes depending on your collection size
+                    </div>
+
+                    <h3 style="margin-bottom: 1rem;">What we'll configure:</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--wizard-border);">
+                            <iconify-icon icon="mdi:account-key" style="color: var(--wizard-primary);"></iconify-icon>
+                            <strong>Admin Account</strong> - Create your first user account
+                        </li>
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--wizard-border);">
+                            <iconify-icon icon="mdi:folder-open" style="color: var(--wizard-primary);"></iconify-icon>
+                            <strong>Directories</strong> - Point to your music video folder
+                        </li>
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--wizard-border);">
+                            <iconify-icon icon="mdi:api" style="color: var(--wizard-primary);"></iconify-icon>
+                            <strong>API Keys</strong> - Configure metadata sources (optional)
+                        </li>
+                        <li style="padding: 0.75rem 0;">
+                            <iconify-icon icon="mdi:video-box" style="color: var(--wizard-primary);"></iconify-icon>
+                            <strong>Video Import</strong> - Import your existing collection
+                        </li>
+                    </ul>
+                </div>
+                <div class="wizard-actions">
+                    <button type="button" class="btn btn-link" onclick="skipWizard()">
+                        Skip Setup (Advanced Users)
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="nextStep()">
+                        Get Started
+                        <iconify-icon icon="mdi:arrow-right"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Admin Account -->
+            <div class="wizard-step" id="step-admin">
+                <div class="step-header">
+                    <div class="step-icon">👤</div>
+                    <h2 class="step-title">Create Admin Account</h2>
+                    <p class="step-description">
+                        Create your administrator account to manage MVidarr.
+                    </p>
+                </div>
+                <div class="step-content">
+                    <form id="adminForm">
+                        <div class="form-group">
+                            <label class="form-label" for="username">
+                                Username <span class="required">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="username"
+                                name="username"
+                                class="form-input"
+                                required
+                                autocomplete="username"
+                                placeholder="Enter your username"
+                            >
+                            <div class="form-help">Choose a unique username for your account</div>
+                            <div class="form-error" id="usernameError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="email">
+                                Email <span class="required">*</span>
+                            </label>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                class="form-input"
+                                required
+                                autocomplete="email"
+                                placeholder="your@email.com"
+                            >
+                            <div class="form-help">Used for password recovery and notifications</div>
+                            <div class="form-error" id="emailError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="password">
+                                Password <span class="required">*</span>
+                            </label>
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                class="form-input"
+                                required
+                                autocomplete="new-password"
+                                placeholder="Enter a strong password"
+                            >
+                            <div class="form-help">Minimum 8 characters, include uppercase, lowercase, and numbers</div>
+                            <div class="form-error" id="passwordError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="confirmPassword">
+                                Confirm Password <span class="required">*</span>
+                            </label>
+                            <input
+                                type="password"
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                class="form-input"
+                                required
+                                autocomplete="new-password"
+                                placeholder="Re-enter your password"
+                            >
+                            <div class="form-error" id="confirmPasswordError"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="wizard-actions">
+                    <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                        <iconify-icon icon="mdi:arrow-left"></iconify-icon>
+                        Back
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="submitAdminForm()" id="adminSubmitBtn">
+                        Continue
+                        <iconify-icon icon="mdi:arrow-right"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Directories -->
+            <div class="wizard-step" id="step-directories">
+                <div class="step-header">
+                    <div class="step-icon">📁</div>
+                    <h2 class="step-title">Configure Directories</h2>
+                    <p class="step-description">
+                        Tell MVidarr where your music videos are stored.
+                    </p>
+                </div>
+                <div class="step-content">
+                    <div class="form-group">
+                        <label class="form-label" for="musicVideosPath">
+                            Music Videos Directory <span class="required">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="musicVideosPath"
+                            name="musicVideosPath"
+                            class="form-input"
+                            required
+                            placeholder="/path/to/your/music/videos"
+                            value="/app/data/musicvideos"
+                        >
+                        <div class="form-help">The folder containing your music video files</div>
+                        <div class="form-error" id="directoryError"></div>
+                        <div id="directoryValidation"></div>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary" onclick="validateDirectory()" id="validateDirBtn">
+                        <iconify-icon icon="mdi:check-circle"></iconify-icon>
+                        Validate Directory
+                    </button>
+
+                    <div id="directoryResults" class="hidden" style="margin-top: 1.5rem;">
+                        <div class="success-box">
+                            <iconify-icon icon="mdi:check-circle"></iconify-icon>
+                            <strong>Directory validated successfully!</strong>
+                            <div style="margin-top: 0.5rem;">
+                                Found <strong id="videoCount">0</strong> video files ready to import.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-actions">
+                    <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                        <iconify-icon icon="mdi:arrow-left"></iconify-icon>
+                        Back
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="submitDirectories()" id="directoriesSubmitBtn" disabled>
+                        Continue
+                        <iconify-icon icon="mdi:arrow-right"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: API Configuration -->
+            <div class="wizard-step" id="step-apis">
+                <div class="step-header">
+                    <div class="step-icon">🔌</div>
+                    <h2 class="step-title">API Configuration</h2>
+                    <p class="step-description">
+                        Connect to metadata sources for rich video information (optional but recommended).
+                    </p>
+                </div>
+                <div class="step-content">
+                    <div class="info-box">
+                        <iconify-icon icon="mdi:information"></iconify-icon>
+                        These configurations are optional. You can skip and add them later in settings.
+                    </div>
+
+                    <!-- IMVDb API -->
+                    <h3 style="margin-top: 2rem; margin-bottom: 1rem;">IMVDb API</h3>
+                    <p class="step-description" style="margin-bottom: 1rem;">
+                        Get rich metadata (year, director, genres) for your videos.
+                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label" for="imvdbApiKey">
+                            IMVDb API Key
+                        </label>
+                        <input
+                            type="text"
+                            id="imvdbApiKey"
+                            name="imvdbApiKey"
+                            class="form-input"
+                            placeholder="Enter your IMVDb API key"
+                        >
+                        <div class="form-help">
+                            Get your free API key from <a href="https://imvdb.com/developers" target="_blank" style="color: var(--wizard-primary);">imvdb.com/developers</a>
+                        </div>
+                        <div class="form-error" id="imvdbError"></div>
+                        <div id="imvdbValidation"></div>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary" onclick="testIMVDb()" id="testIMVDbBtn">
+                        <iconify-icon icon="mdi:test-tube"></iconify-icon>
+                        Test Connection
+                    </button>
+
+                    <!-- YouTube Cookies -->
+                    <h3 style="margin-top: 2rem; margin-bottom: 1rem;">YouTube Cookies (Optional)</h3>
+                    <p class="step-description" style="margin-bottom: 1rem;">
+                        Enable downloading age-restricted and member-only videos.
+                    </p>
+
+                    <div class="form-group">
+                        <label class="form-label" for="youtubeCookies">
+                            YouTube Cookies
+                        </label>
+                        <textarea
+                            id="youtubeCookies"
+                            name="youtubeCookies"
+                            class="form-input"
+                            rows="4"
+                            placeholder="Paste your YouTube cookies content here"
+                        ></textarea>
+                        <div class="form-help">
+                            Export cookies from your browser using a cookies.txt extension
+                        </div>
+                        <div class="form-error" id="youtubeError"></div>
+                        <div id="youtubeValidation"></div>
+                    </div>
+                </div>
+                <div class="wizard-actions">
+                    <button type="button" class="btn btn-secondary" onclick="previousStep()">
+                        <iconify-icon icon="mdi:arrow-left"></iconify-icon>
+                        Back
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="submitAPIs()">
+                        Continue
+                        <iconify-icon icon="mdi:arrow-right"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 5: Video Import -->
+            <div class="wizard-step" id="step-import">
+                <div class="step-header">
+                    <div class="step-icon">🎬</div>
+                    <h2 class="step-title">Import Videos</h2>
+                    <p class="step-description">
+                        Import your music video collection into MVidarr.
+                    </p>
+                </div>
+                <div class="step-content">
+                    <div id="importOptions">
+                        <div class="info-box">
+                            <iconify-icon icon="mdi:information"></iconify-icon>
+                            Found <strong id="importVideoCount">0</strong> videos ready to import.
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Import Options</label>
+                            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" name="importType" value="quick" checked>
+                                    <div>
+                                        <strong>⚡ Quick Import</strong> - Import files without metadata (~1 min)
+                                    </div>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" name="importType" value="full">
+                                    <div>
+                                        <strong>📋 Full Import</strong> - Import with metadata enrichment (~5-10 min)
+                                    </div>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" name="importType" value="skip">
+                                    <div>
+                                        <strong>⏭️ Skip Import</strong> - Import videos later from settings
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-primary" onclick="startImport()" id="startImportBtn">
+                            <iconify-icon icon="mdi:play"></iconify-icon>
+                            Start Import
+                        </button>
+                    </div>
+
+                    <div id="importProgress" class="hidden">
+                        <div class="import-progress">
+                            <div class="progress-bar">
+                                <div class="progress-bar-fill" id="importProgressBar" style="width: 0%;">
+                                    <span id="importProgressText">0%</span>
+                                </div>
+                            </div>
+
+                            <div class="import-stats">
+                                <div class="import-stat">
+                                    <div class="import-stat-value" id="importProcessed">0</div>
+                                    <div class="import-stat-label">Processed</div>
+                                </div>
+                                <div class="import-stat">
+                                    <div class="import-stat-value" id="importSuccess">0</div>
+                                    <div class="import-stat-label">Success</div>
+                                </div>
+                                <div class="import-stat">
+                                    <div class="import-stat-value" id="importFailed">0</div>
+                                    <div class="import-stat-label">Failed</div>
+                                </div>
+                            </div>
+
+                            <div style="text-align: center; margin-top: 1rem; color: var(--wizard-text-secondary);">
+                                <div id="importCurrentFile">Preparing import...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="importComplete" class="hidden">
+                        <div class="success-box">
+                            <iconify-icon icon="mdi:check-circle"></iconify-icon>
+                            <strong>Import completed successfully!</strong>
+                            <div style="margin-top: 0.5rem;">
+                                Imported <strong id="importFinalCount">0</strong> videos into your collection.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-actions">
+                    <button type="button" class="btn btn-secondary" onclick="previousStep()" id="importBackBtn">
+                        <iconify-icon icon="mdi:arrow-left"></iconify-icon>
+                        Back
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="completeImport()" id="importCompleteBtn" disabled>
+                        Continue
+                        <iconify-icon icon="mdi:arrow-right"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 6: Complete -->
+            <div class="wizard-step" id="step-complete">
+                <div class="step-header">
+                    <div class="step-icon">🎉</div>
+                    <h2 class="step-title">Setup Complete!</h2>
+                    <p class="step-description">
+                        Congratulations! MVidarr is now ready to use.
+                    </p>
+                </div>
+                <div class="step-content">
+                    <div class="success-box" style="margin-bottom: 2rem;">
+                        <iconify-icon icon="mdi:check-circle"></iconify-icon>
+                        <strong>Your MVidarr setup is complete!</strong>
+                    </div>
+
+                    <h3 style="margin-bottom: 1rem;">Configuration Summary:</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--wizard-border);">
+                            <iconify-icon icon="mdi:check" style="color: var(--wizard-success);"></iconify-icon>
+                            Admin account created
+                        </li>
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--wizard-border);">
+                            <iconify-icon icon="mdi:check" style="color: var(--wizard-success);"></iconify-icon>
+                            Directories configured
+                        </li>
+                        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--wizard-border);" id="summaryAPIs">
+                            <iconify-icon icon="mdi:check" style="color: var(--wizard-success);"></iconify-icon>
+                            API keys configured
+                        </li>
+                        <li style="padding: 0.75rem 0;" id="summaryImport">
+                            <iconify-icon icon="mdi:check" style="color: var(--wizard-success);"></iconify-icon>
+                            <span id="summaryImportText">Videos imported</span>
+                        </li>
+                    </ul>
+
+                    <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Next Steps:</h3>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <a href="/videos" class="btn btn-primary" style="text-decoration: none;">
+                            <iconify-icon icon="mdi:video-box"></iconify-icon>
+                            View Your Videos
+                        </a>
+                        <a href="/settings" class="btn btn-secondary" style="text-decoration: none;">
+                            <iconify-icon icon="mdi:cog"></iconify-icon>
+                            Configure Settings
+                        </a>
+                    </div>
+                </div>
+                <div class="wizard-actions">
+                    <div></div>
+                    <a href="/dashboard" class="btn btn-primary" style="text-decoration: none;">
+                        <iconify-icon icon="mdi:home"></iconify-icon>
+                        Go to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/wizard.js"></script>
+</body>
+</html>
