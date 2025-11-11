@@ -31,6 +31,7 @@ class FirstRunDetectionMiddleware(BaseHTTPMiddleware):
 
     # Paths that are always allowed (bypass wizard check)
     ALLOWED_PATHS = [
+        "/wizard",  # Wizard UI page (MUST be first to prevent redirect loop!)
         "/api/wizard",  # All wizard endpoints
         "/static",  # Static assets
         "/health",  # Health check

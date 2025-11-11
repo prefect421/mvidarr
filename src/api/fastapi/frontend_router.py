@@ -248,6 +248,23 @@ async def lidarr_manager(request: Request, user=Depends(require_authentication))
 # =====================================
 
 
+@frontend_router.get("/wizard", response_class=HTMLResponse, name="wizard_page")
+async def wizard_page(request: Request):
+    """Installation Wizard - First-run setup (no authentication required)"""
+    try:
+        # Read wizard.html directly
+        import os
+        wizard_path = os.path.join(os.path.dirname(__file__), "../../../frontend/templates/wizard.html")
+        with open(wizard_path, 'r') as f:
+            wizard_html = f.read()
+        return HTMLResponse(content=wizard_html)
+    except Exception as e:
+        logger.error(f"Error rendering wizard page: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to load installation wizard: {str(e)}")
+
+
 @frontend_router.get("/auth/login", response_class=HTMLResponse, name="auth_login")
 async def login_page(request: Request):
     """Login page"""
