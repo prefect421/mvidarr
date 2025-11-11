@@ -1,7 +1,7 @@
 {
   "version": "1.0.0-dev",
-  "build_date": "2025-11-10T15:27:06.018483",
-  "git_commit": "83a6a4f",
+  "build_date": "2025-11-11T14:21:00.546649",
+  "git_commit": "395defa",
   "git_branch": "dev",
   "release_name": "v1.0.0 Development - First Production Release",
   "features": [
@@ -12,6 +12,8 @@
     "📁 Directory validation and auto-configuration",
     "🔌 IMVDb and YouTube cookie setup",
     "📊 Real-time import progress tracking",
-    "🚀 Production-ready onboarding experience"
+    "🚀 Production-ready onboarding experience",
+    "📦 Simple deployment guide with docker-compose",
+    "🔄 Automated deployment and rollback scripts"
   ]
 }
