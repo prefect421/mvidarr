@@ -299,7 +299,10 @@ async def create_admin_user(
         )
 
         if success:
-            # Query the created user in our session to avoid detached instance issues
+            # Refresh our session to see the committed user
+            session.expire_all()
+
+            # Query the created user in our refreshed session
             created_user = (
                 session.query(User)
                 .filter(User.username == request.username)
