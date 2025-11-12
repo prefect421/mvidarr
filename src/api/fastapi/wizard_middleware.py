@@ -33,6 +33,7 @@ class FirstRunDetectionMiddleware(BaseHTTPMiddleware):
         "/wizard",  # Wizard UI page (MUST be first to prevent redirect loop!)
         "/api/wizard",  # All wizard endpoints
         "/api/admin",  # Admin endpoints (needed for wizard user creation)
+        "/api/jobs",  # Job status endpoints (needed for wizard import progress)
         "/static",  # Static assets
         "/health",  # Health check
         "/api/health",  # Health check API

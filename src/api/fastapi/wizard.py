@@ -94,25 +94,9 @@ class CreateAdminResponse(BaseModel):
 class CompleteStepRequest(BaseModel):
     """Complete wizard step request"""
 
-    step: str = Field(..., description="Step identifier to complete")
     config_data: Optional[Dict[str, Any]] = Field(
         None, description="Configuration data collected in this step"
     )
-
-    @field_validator("step")
-    @classmethod
-    def validate_step(cls, v):
-        """Validate step identifier"""
-        valid_steps = [
-            "welcome",
-            "admin_account",
-            "directories",
-            "api_config",
-            "video_import",
-        ]
-        if v not in valid_steps:
-            raise ValueError(f"Invalid step: {v}")
-        return v
 
 
 class DirectoryValidationRequest(BaseModel):
@@ -282,13 +266,9 @@ async def create_admin_user(
             )
 
         # Check if admin user already exists
-        existing_admin = (
-            session.query(User).filter(User.role == UserRole.ADMIN).first()
-        )
+        existing_admin = session.query(User).filter(User.role == UserRole.ADMIN).first()
         if existing_admin:
-            raise HTTPException(
-                status_code=400, detail="Admin user already exists"
-            )
+            raise HTTPException(status_code=400, detail="Admin user already exists")
 
         # Create admin user using AuthService
         success, message, user = AuthService.create_user(
