@@ -206,6 +206,83 @@ class IMVDbClient:
 
         return status
 
+    def test_api_key(self, api_key: str) -> Dict:
+        """
+        Test a specific API key without saving it to settings.
+        Useful for wizard/setup validation before committing the key.
+
+        Args:
+            api_key: The API key to test
+
+        Returns:
+            Dictionary with test results including success status and message
+        """
+        if not api_key or not api_key.strip():
+            return {
+                "success": False,
+                "message": "API key is required",
+                "error": "Missing API key",
+            }
+
+        self._rate_limit()
+
+        url = f"{self.base_url}/search/videos"
+        headers = {"User-Agent": "MVidarr/1.0", "Authorization": f"Bearer {api_key}"}
+        params = {"q": "test", "limit": 1}
+
+        try:
+            logger.debug(f"Testing IMVDb API key (wizard validation)")
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+
+            if response.status_code == 200:
+                data = response.json()
+                # IMVDb's search endpoint is public and doesn't require authentication
+                # We can verify connectivity but not key validity until using protected endpoints
+                return {
+                    "success": True,
+                    "message": "IMVDb API connection successful. Key will be validated during use.",
+                    "results_count": len(data.get("results", [])),
+                    "note": "Search endpoint is public - key validity confirmed on first use",
+                }
+            elif response.status_code == 401:
+                return {
+                    "success": False,
+                    "message": "Invalid API key - authentication failed",
+                    "error": "Authentication failed (401)",
+                }
+            elif response.status_code == 403:
+                return {
+                    "success": False,
+                    "message": "API key lacks required permissions",
+                    "error": "Access forbidden (403)",
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"API test failed with status {response.status_code}",
+                    "error": f"HTTP {response.status_code}",
+                }
+
+        except requests.exceptions.Timeout:
+            return {
+                "success": False,
+                "message": "Request timed out - check internet connection",
+                "error": "Timeout",
+            }
+        except requests.exceptions.ConnectionError:
+            return {
+                "success": False,
+                "message": "Failed to connect to IMVDb API",
+                "error": "Connection error",
+            }
+        except Exception as e:
+            logger.error(f"IMVDb API key test failed: {e}")
+            return {
+                "success": False,
+                "message": "API test failed",
+                "error": str(e),
+            }
+
     def get_service_status(self) -> Dict:
         """Get comprehensive service status information"""
         return {

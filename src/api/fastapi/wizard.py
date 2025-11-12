@@ -532,30 +532,15 @@ async def test_api(
                     error="Missing API key",
                 )
 
-            # Test API key by making a simple search request
-            try:
-                # Use imvdb_service to test the API
-                test_result = await imvdb_service.search_videos(query="test", limit=1)
-                if test_result:
-                    return APITestResponse(
-                        success=True,
-                        api_type="imvdb",
-                        message="IMVDb API key is valid and working",
-                    )
-                else:
-                    return APITestResponse(
-                        success=False,
-                        api_type="imvdb",
-                        message="IMVDb API returned no results",
-                        error="API test failed",
-                    )
-            except Exception as e:
-                return APITestResponse(
-                    success=False,
-                    api_type="imvdb",
-                    message="IMVDb API test failed",
-                    error=str(e),
-                )
+            # Test API key using the new test_api_key method
+            # This tests the key directly without saving to settings first
+            test_result = imvdb_service.test_api_key(request.api_key)
+            return APITestResponse(
+                success=test_result.get("success", False),
+                api_type="imvdb",
+                message=test_result.get("message", "API test completed"),
+                error=test_result.get("error"),
+            )
 
         elif request.api_type == "youtube":
             # Test YouTube cookies
