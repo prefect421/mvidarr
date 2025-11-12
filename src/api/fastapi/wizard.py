@@ -299,34 +299,41 @@ async def create_admin_user(
         )
 
         if success:
-            # Refresh our session to see the committed user
-            session.expire_all()
+            # Create a fresh session to verify the user was created
+            from src.database.connection import SessionLocal
 
-            # Query the created user in our refreshed session
-            created_user = (
-                session.query(User)
-                .filter(User.username == request.username)
-                .first()
-            )
+            verification_session = SessionLocal()
+            try:
+                # Query the created user in a fresh session
+                created_user = (
+                    verification_session.query(User)
+                    .filter(User.username == request.username)
+                    .first()
+                )
 
-            if created_user:
-                logger.info(
-                    f"✅ First admin user created during wizard: {created_user.username}"
-                )
-                return CreateAdminResponse(
-                    success=True,
-                    message=message,
-                    user_id=created_user.id,
-                    username=created_user.username,
-                )
-            else:
-                logger.error(
-                    f"User created but not found in database: {request.username}"
-                )
-                return CreateAdminResponse(
-                    success=False,
-                    message="User created but verification failed",
-                )
+                if created_user:
+                    user_id = created_user.id
+                    username = created_user.username
+
+                    logger.info(
+                        f"✅ First admin user created during wizard: {username}"
+                    )
+                    return CreateAdminResponse(
+                        success=True,
+                        message=message,
+                        user_id=user_id,
+                        username=username,
+                    )
+                else:
+                    logger.error(
+                        f"User created but not found in database: {request.username}"
+                    )
+                    return CreateAdminResponse(
+                        success=False,
+                        message="User created but verification failed",
+                    )
+            finally:
+                verification_session.close()
         else:
             logger.error(f"Failed to create admin user: {message}")
             return CreateAdminResponse(success=False, message=message)
