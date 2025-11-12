@@ -66,6 +66,31 @@ class StartWizardRequest(BaseModel):
     pass  # No parameters needed for starting wizard
 
 
+class CreateAdminRequest(BaseModel):
+    """Create first admin user request"""
+
+    username: str = Field(..., min_length=3, max_length=50, description="Username")
+    email: str = Field(..., description="Email address")
+    password: str = Field(..., min_length=8, description="Password")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        """Basic email validation"""
+        if "@" not in v or "." not in v:
+            raise ValueError("Invalid email address")
+        return v
+
+
+class CreateAdminResponse(BaseModel):
+    """Create admin user response"""
+
+    success: bool
+    message: str
+    user_id: Optional[int] = None
+    username: Optional[str] = None
+
+
 class CompleteStepRequest(BaseModel):
     """Complete wizard step request"""
 
@@ -229,6 +254,90 @@ async def start_wizard(
     except Exception as e:
         logger.error(f"Error starting wizard: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/create-admin", response_model=CreateAdminResponse)
+async def create_admin_user(
+    request: CreateAdminRequest,
+    session: Session = Depends(get_db_session),
+):
+    """
+    Create the first admin user during wizard setup.
+
+    This endpoint does NOT require authentication since it's used during
+    first-run setup before any users exist. It should only be accessible
+    when the wizard is in progress.
+    """
+    try:
+        # Import here to avoid circular dependencies
+        from src.database.models import User, UserRole
+        from src.services.auth_service import AuthService
+
+        # Check if wizard is in progress
+        wizard_state = session.query(WizardState).first()
+        if not wizard_state or wizard_state.status == WizardStatus.COMPLETED:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot create admin user: wizard already completed",
+            )
+
+        # Check if admin user already exists
+        existing_admin = (
+            session.query(User).filter(User.role == UserRole.ADMIN).first()
+        )
+        if existing_admin:
+            raise HTTPException(
+                status_code=400, detail="Admin user already exists"
+            )
+
+        # Create admin user using AuthService
+        success, message, user = AuthService.create_user(
+            username=request.username,
+            email=request.email,
+            password=request.password,
+            role=UserRole.ADMIN,
+        )
+
+        if success:
+            # Query the created user in our session to avoid detached instance issues
+            created_user = (
+                session.query(User)
+                .filter(User.username == request.username)
+                .first()
+            )
+
+            if created_user:
+                logger.info(
+                    f"✅ First admin user created during wizard: {created_user.username}"
+                )
+                return CreateAdminResponse(
+                    success=True,
+                    message=message,
+                    user_id=created_user.id,
+                    username=created_user.username,
+                )
+            else:
+                logger.error(
+                    f"User created but not found in database: {request.username}"
+                )
+                return CreateAdminResponse(
+                    success=False,
+                    message="User created but verification failed",
+                )
+        else:
+            logger.error(f"Failed to create admin user: {message}")
+            return CreateAdminResponse(success=False, message=message)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating admin user: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create admin user: {str(e)}"
+        )
 
 
 @router.post("/steps/{step_id}/complete", response_model=WizardStateResponse)

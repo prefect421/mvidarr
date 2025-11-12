@@ -11,7 +11,6 @@ from fastapi import Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.database.connection import get_db
 from src.database.models import WizardState, WizardStatus
 
 logger = logging.getLogger("mvidarr.wizard_middleware")
@@ -33,6 +32,7 @@ class FirstRunDetectionMiddleware(BaseHTTPMiddleware):
     ALLOWED_PATHS = [
         "/wizard",  # Wizard UI page (MUST be first to prevent redirect loop!)
         "/api/wizard",  # All wizard endpoints
+        "/api/admin",  # Admin endpoints (needed for wizard user creation)
         "/static",  # Static assets
         "/health",  # Health check
         "/api/health",  # Health check API
@@ -121,8 +121,11 @@ class FirstRunDetectionMiddleware(BaseHTTPMiddleware):
             True if wizard completed or skipped, False otherwise
         """
         try:
-            # Get database session
-            db = next(get_db())
+            # Import SessionLocal from connection module
+            from src.database.connection import SessionLocal
+
+            # Create database session directly (not using dependency injection)
+            db = SessionLocal()
 
             try:
                 # Query wizard state

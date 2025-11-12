@@ -195,21 +195,22 @@ async function submitAdminForm() {
     submitBtn.innerHTML = '<span class="spinner"></span> Creating account...';
 
     try {
-        // Create user account via API
-        const response = await fetch('/api/admin/users', {
+        // Create user account via wizard API (no authentication required)
+        const response = await fetch('/api/wizard/create-admin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: username,
                 email: email,
-                password: password,
-                role: 'ADMIN'
+                password: password
             })
         });
 
-        if (response.ok) {
+        const data = await response.json();
+
+        if (response.ok && data.success) {
             // Save to wizard state
-            wizardState.config.admin = { username, email };
+            wizardState.config.admin = { username, email, user_id: data.user_id };
 
             // Complete this step
             await completeStep('admin_account', { username, email });
@@ -217,8 +218,8 @@ async function submitAdminForm() {
             // Move to next step
             nextStep();
         } else {
-            const error = await response.json();
-            showError('usernameError', error.detail || 'Failed to create admin account');
+            // Handle error response
+            showError('usernameError', data.message || 'Failed to create admin account');
         }
     } catch (error) {
         console.error('Error creating admin account:', error);
