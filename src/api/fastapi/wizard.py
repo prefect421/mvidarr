@@ -616,6 +616,7 @@ async def start_video_import(
         # Create Celery task for video import
         task = index_videos_task.apply_async(
             kwargs={
+                "directory": str(directory),  # Pass wizard-configured directory
                 "fetch_metadata": request.fetch_metadata,
                 "max_files": request.max_files,
             },

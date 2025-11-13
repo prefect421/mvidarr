@@ -93,12 +93,16 @@ class WizardCallbackTask(Task):
     soft_time_limit=3300,  # 55 minute soft limit
 )
 def index_videos_task(
-    self, fetch_metadata: bool = True, max_files: Optional[int] = None
+    self,
+    directory: Optional[str] = None,
+    fetch_metadata: bool = True,
+    max_files: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Celery task for wizard video indexing with progress tracking
 
     Args:
+        directory: Directory to scan for videos (uses default if not specified)
         fetch_metadata: Whether to fetch IMVDb metadata for each video
         max_files: Optional limit on number of files to process
 
@@ -107,7 +111,7 @@ def index_videos_task(
     """
     task_id = self.request.id
     logger.info(
-        f"Starting wizard video indexing task {task_id} (fetch_metadata={fetch_metadata}, max_files={max_files})"
+        f"Starting wizard video indexing task {task_id} (directory={directory}, fetch_metadata={fetch_metadata}, max_files={max_files})"
     )
 
     try:
@@ -118,9 +122,14 @@ def index_videos_task(
         # Initial progress update
         self.update_progress(task_id, 5, "Starting video indexing process...")
 
+        # Prepare directory parameter
+        scan_directory = Path(directory) if directory else None
+        if scan_directory:
+            logger.info(f"Using wizard-configured directory: {scan_directory}")
+
         # Scan for video files
         self.update_progress(task_id, 10, "Scanning directory for video files...")
-        video_files = video_indexing_service.scan_video_files()
+        video_files = video_indexing_service.scan_video_files(directory=scan_directory)
 
         if not video_files:
             logger.warning("No video files found in music videos directory")
