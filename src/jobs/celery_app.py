@@ -28,6 +28,7 @@ celery_app = Celery(
         "src.jobs.image_processing_tasks",
         "src.jobs.ffmpeg_processing_tasks",
         "src.jobs.download_processor_task",
+        "src.jobs.wizard_tasks",  # Wizard video indexing tasks
     ],
 )
 

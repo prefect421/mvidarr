@@ -17,12 +17,9 @@ from src.api.fastapi.auth_dependencies import require_authentication_legacy
 from src.database.connection import get_db_session
 from src.database.models import WizardState, WizardStatus, WizardStep
 from src.services.imvdb_service import imvdb_service
-from src.services.job_queue import (
-    BackgroundJob,
-    JobPriority,
-    JobType,
-    get_job_queue,
-)
+
+# Note: Wizard now uses Celery for video indexing instead of custom JobQueue
+# No need to import job_queue here anymore
 
 logger = logging.getLogger("mvidarr.fastapi.wizard")
 
@@ -161,6 +158,10 @@ class ImportStartResponse(BaseModel):
     success: bool
     job_id: str
     message: str
+
+
+# Note: JobStatusResponse removed - wizard now uses standard Celery job status
+# via /api/jobs/{job_id} endpoint
 
 
 # ========================================================================================
@@ -389,6 +390,9 @@ async def complete_wizard_step(
 
         return WizardStateResponse(**wizard_state.to_dict())
 
+    except HTTPException:
+        # Re-raise HTTP exceptions unchanged (validation errors, 404s, etc.)
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -592,9 +596,10 @@ async def start_video_import(
     session: Session = Depends(get_db_session),
 ):
     """
-    Start video import as part of wizard.
+    Start video import as part of wizard using Celery.
 
-    Creates a background job to import videos from the specified directory.
+    Creates a Celery task to import videos from the specified directory.
+    Progress can be tracked via the standard /api/jobs/{job_id} endpoint.
 
     Note: This endpoint does NOT require authentication since it's used
     during first-run setup before any users exist.
@@ -605,21 +610,20 @@ async def start_video_import(
         if not directory.exists() or not directory.is_dir():
             raise HTTPException(status_code=400, detail="Invalid directory path")
 
-        # Create background job for video import
-        job = BackgroundJob(
-            type=JobType.VIDEO_INDEX_ALL,
-            priority=JobPriority.HIGH,  # Wizard import is high priority
-            payload={
+        # Import Celery task
+        from src.jobs.wizard_tasks import index_videos_task
+
+        # Create Celery task for video import
+        task = index_videos_task.apply_async(
+            kwargs={
                 "fetch_metadata": request.fetch_metadata,
                 "max_files": request.max_files,
-                "wizard_import": True,  # Flag to indicate this is from wizard
             },
-            created_by=1,  # System user ID
+            priority=9,  # High priority for wizard imports
         )
 
-        # Enqueue job
-        job_queue = await get_job_queue()
-        job_id = await job_queue.enqueue(job)
+        job_id = task.id
+        logger.info(f"Created Celery task for wizard video import: {job_id}")
 
         # Update wizard state with job ID
         wizard_state = session.query(WizardState).first()
@@ -636,3 +640,8 @@ async def start_video_import(
     except Exception as e:
         logger.error(f"Error starting video import: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Note: Job status for wizard imports is now handled by the standard
+# /api/jobs/{job_id} endpoint which queries Celery backend.
+# This eliminates the dual job system issue.

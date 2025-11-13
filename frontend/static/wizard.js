@@ -32,7 +32,26 @@ document.addEventListener('DOMContentLoaded', function() {
 // NAVIGATION
 // ============================================================================
 
-function nextStep() {
+async function nextStep() {
+    // Map frontend step indices to backend step names
+    const stepNames = ['welcome', 'admin_account', 'directories', 'api_config', 'video_import', 'complete'];
+    const currentStepName = stepNames[wizardState.currentStep];
+
+    // Complete current step on backend before advancing (except complete step)
+    if (currentStepName && currentStepName !== 'complete') {
+        try {
+            console.log(`Completing step: ${currentStepName}`);
+            await completeStep(currentStepName, {});
+            console.log(`✅ Step ${currentStepName} completed successfully`);
+        } catch (error) {
+            console.error(`❌ Failed to complete step ${currentStepName}:`, error);
+            // Show error to user
+            alert(`Failed to complete step. Please ensure all required fields are filled correctly.`);
+            return; // Don't advance if step completion fails
+        }
+    }
+
+    // Now advance to next step in UI
     if (wizardState.currentStep < wizardState.totalSteps - 1) {
         wizardState.currentStep++;
         showStep(wizardState.currentStep);
@@ -106,18 +125,10 @@ async function loadWizardState() {
 }
 
 async function saveWizardState() {
-    try {
-        const response = await fetch('/api/wizard/status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(wizardState)
-        });
-        if (response.ok) {
-            console.log('✅ Wizard state saved');
-        }
-    } catch (error) {
-        console.error('Error saving wizard state:', error);
-    }
+    // NOTE: Wizard state is automatically saved on the server side
+    // when steps are completed via the /api/wizard/steps/{step}/complete endpoint.
+    // This function is kept for backwards compatibility but does nothing.
+    console.log('Wizard state saved on server via step completion endpoints');
 }
 
 async function completeStep(stepName, configData = {}) {
@@ -126,7 +137,6 @@ async function completeStep(stepName, configData = {}) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                step: stepName,
                 config_data: configData
             })
         });
@@ -453,7 +463,7 @@ async function pollImportProgress() {
     }
 
     try {
-        // Poll job status
+        // Poll job status from standard Celery endpoint
         const response = await fetch(`/api/jobs/${wizardState.importJobId}`);
         const job = await response.json();
 
