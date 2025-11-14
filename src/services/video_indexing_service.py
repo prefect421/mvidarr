@@ -346,7 +346,8 @@ class VideoIndexingService:
 
     def create_video_record(
         self,
-        artist: Artist,
+        artist_id: int,
+        artist_name: str,
         file_metadata: Dict,
         imvdb_metadata: Dict = None,
         ffmpeg_metadata: Dict = None,
@@ -356,7 +357,8 @@ class VideoIndexingService:
         Create a video record in the database
 
         Args:
-            artist: Artist object
+            artist_id: Artist ID
+            artist_name: Artist name
             file_metadata: File metadata dictionary
             imvdb_metadata: Optional IMVDb metadata
             ffmpeg_metadata: Optional FFmpeg technical metadata
@@ -368,7 +370,7 @@ class VideoIndexingService:
         title = file_metadata["extracted_title"] or file_metadata["filename"]
 
         video = Video(
-            artist_id=artist.id,
+            artist_id=artist_id,
             title=title,
             status=VideoStatus.DOWNLOADED,  # File exists so it's downloaded
             local_path=file_metadata["file_path"],
@@ -429,16 +431,16 @@ class VideoIndexingService:
         if imvdb_metadata and imvdb_metadata.get("thumbnail_url"):
             try:
                 thumbnail_path = thumbnail_service.download_video_thumbnail(
-                    artist.name, video.title, imvdb_metadata["thumbnail_url"]
+                    artist_name, video.title, imvdb_metadata["thumbnail_url"]
                 )
                 if thumbnail_path:
                     video.thumbnail_path = thumbnail_path
                     logger.info(
-                        f"Downloaded thumbnail for: {artist.name} - {video.title}"
+                        f"Downloaded thumbnail for: {artist_name} - {video.title}"
                     )
             except Exception as e:
                 logger.warning(
-                    f"Failed to download thumbnail for {artist.name} - {video.title}: {e}"
+                    f"Failed to download thumbnail for {artist_name} - {video.title}: {e}"
                 )
 
         session.add(video)
@@ -447,13 +449,13 @@ class VideoIndexingService:
         return video
 
     def create_download_record(
-        self, artist: Artist, video: Video, file_metadata: Dict, session=None
+        self, artist_id: int, video: Video, file_metadata: Dict, session=None
     ) -> Download:
         """
         Create a download record for the existing file
 
         Args:
-            artist: Artist object
+            artist_id: Artist ID
             video: Video object
             file_metadata: File metadata dictionary
             session: Database session
@@ -462,7 +464,7 @@ class VideoIndexingService:
             Download object
         """
         download = Download(
-            artist_id=artist.id,
+            artist_id=artist_id,
             video_id=video.id,
             title=video.title,
             original_url="local_file",  # Mark as local file
@@ -538,7 +540,12 @@ class VideoIndexingService:
                     session,
                     skip_auto_processing=skip_auto_processing,
                 )
-                if artist.id is None:  # New artist
+
+                # Extract artist data immediately while in session to avoid detachment
+                artist_id = artist.id
+                artist_name = artist.name
+
+                if artist_id is None:  # New artist
                     result["artist_created"] = True
 
                 # Check if this exact file is already indexed
@@ -620,7 +627,7 @@ class VideoIndexingService:
                             try:
                                 thumbnail_path = (
                                     thumbnail_service.download_video_thumbnail(
-                                        artist.name,
+                                        artist_name,
                                         video.title,
                                         imvdb_metadata["thumbnail_url"],
                                     )
@@ -629,15 +636,20 @@ class VideoIndexingService:
                                     video.thumbnail_path = thumbnail_path
                                     result["thumbnail_downloaded"] = True
                                     logger.info(
-                                        f"Downloaded thumbnail for existing video: {artist.name} - {video.title}"
+                                        f"Downloaded thumbnail for existing video: {artist_name} - {video.title}"
                                     )
                             except Exception as e:
                                 logger.warning(
-                                    f"Failed to download thumbnail for {artist.name} - {video.title}: {e}"
+                                    f"Failed to download thumbnail for {artist_name} - {video.title}: {e}"
                                 )
                 else:
                     video = self.create_video_record(
-                        artist, file_metadata, imvdb_metadata, ffmpeg_metadata, session
+                        artist_id,
+                        artist_name,
+                        file_metadata,
+                        imvdb_metadata,
+                        ffmpeg_metadata,
+                        session,
                     )
                     result["video_created"] = True
                     if imvdb_metadata and imvdb_metadata.get("thumbnail_url"):
@@ -645,7 +657,7 @@ class VideoIndexingService:
 
                 # Create download record
                 download = self.create_download_record(
-                    artist, video, file_metadata, session
+                    artist_id, video, file_metadata, session
                 )
                 result["download_created"] = True
 
