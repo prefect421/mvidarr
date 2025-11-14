@@ -22,7 +22,13 @@ logger = get_logger("mvidarr.jobs.wizard_tasks")
 class WizardCallbackTask(Task):
     """Base task for wizard operations with progress callbacks"""
 
-    def update_progress(self, task_id: str, progress: int, message: str = ""):
+    def update_progress(
+        self,
+        task_id: str,
+        progress: int,
+        message: str = "",
+        extra_data: Optional[Dict[str, Any]] = None,
+    ):
         """Update task progress with WebSocket broadcasting via Redis"""
         try:
             progress_data = {
@@ -32,6 +38,10 @@ class WizardCallbackTask(Task):
                 "timestamp": datetime.utcnow().isoformat(),
                 "status": "PROGRESS" if progress < 100 else "SUCCESS",
             }
+
+            # Include any extra data (e.g., error details, file counts)
+            if extra_data:
+                progress_data.update(extra_data)
 
             # Update task metadata
             self.update_state(
@@ -161,15 +171,27 @@ def index_videos_task(
         successful = 0
         failed = 0
         already_indexed = 0
+        error_details = []  # Track detailed error information for frontend
 
         for i, file_path in enumerate(video_files, 1):
             try:
                 # Calculate progress (15% -> 95%, saving 5% for completion)
                 progress = 15 + int((i / total_files) * 80)
+
+                # Update progress with detailed stats
                 self.update_progress(
                     task_id,
                     progress,
                     f"Processing file {i}/{total_files}: {file_path.name}",
+                    extra_data={
+                        "videos_processed": i - 1,  # Previous count
+                        "videos_success": successful,
+                        "videos_failed": failed,
+                        "current_file": file_path.name,
+                        "errors": (
+                            error_details[-5:] if error_details else []
+                        ),  # Last 5 errors
+                    },
                 )
 
                 # Index the video file (skip auto-processing to avoid session conflicts)
@@ -185,8 +207,12 @@ def index_videos_task(
                         successful += 1
                 else:
                     failed += 1
-                    logger.warning(
-                        f"Failed to index {file_path.name}: {result.get('error')}"
+                    error_msg = result.get("error", "Unknown error")
+                    logger.warning(f"Failed to index {file_path.name}: {error_msg}")
+
+                    # Track error details for frontend
+                    error_details.append(
+                        {"file": file_path.name, "error": error_msg, "timestamp": i}
                     )
 
                 # Log progress milestones
@@ -197,20 +223,36 @@ def index_videos_task(
 
             except Exception as e:
                 failed += 1
-                logger.error(f"Error indexing file {file_path}: {e}")
+                error_msg = str(e)
+                logger.error(f"Error indexing file {file_path}: {error_msg}")
+
+                # Track error details for frontend
+                error_details.append(
+                    {"file": file_path.name, "error": error_msg, "timestamp": i}
+                )
+
                 results.append(
                     {
                         "file_path": str(file_path),
                         "success": False,
-                        "error": str(e),
+                        "error": error_msg,
                     }
                 )
 
-        # Final progress update
+        # Final progress update with complete stats
         self.update_progress(
             task_id,
             100,
             f"Indexing complete: {successful} successful, {failed} failed, {already_indexed} already indexed",
+            extra_data={
+                "videos_processed": total_files,
+                "videos_success": successful,
+                "videos_failed": failed,
+                "current_file": "",
+                "errors": (
+                    error_details[-10:] if error_details else []
+                ),  # Last 10 errors for final display
+            },
         )
 
         # Return summary

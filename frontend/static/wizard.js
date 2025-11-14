@@ -439,6 +439,10 @@ async function startImport() {
     document.getElementById('importProgress').classList.remove('hidden');
     document.getElementById('importBackBtn').disabled = true;
 
+    // Reset error section
+    document.getElementById('importErrorSection').classList.add('hidden');
+    document.getElementById('importErrorList').innerHTML = '';
+
     const fetchMetadata = importType === 'full';
     const directory = wizardState.config.directories.path;
 
@@ -490,24 +494,55 @@ async function pollImportProgress() {
             throw new Error('Job not found');
         }
 
-        // Update progress UI
-        const progress = job.progress || 0;
-        const processed = job.videos_processed || 0;
-        const success = job.videos_success || 0;
-        const failed = job.videos_failed || 0;
+        // Extract progress data (can be in job.progress while running, or job.result when complete)
+        const progressData = job.progress || job.result || {};
+        const progressPercent = progressData.progress || progressData.percent || 0;
+        const processed = progressData.videos_processed || 0;
+        const success = progressData.videos_success || 0;
+        const failed = progressData.videos_failed || 0;
+        const currentFile = progressData.current_file || '';
+        const errors = progressData.errors || [];
 
-        document.getElementById('importProgressBar').style.width = `${progress}%`;
-        document.getElementById('importProgressText').textContent = `${Math.round(progress)}%`;
+        // Debug logging
+        console.log(`📊 Job status: ${job.status}, progress: ${progressPercent}%, processed: ${processed}, success: ${success}, failed: ${failed}`);
+        if (currentFile) {
+            console.log(`   📄 Current file: ${currentFile}`);
+        }
+        if (errors.length > 0) {
+            console.log(`   ❌ Errors: ${errors.length} files failed`, errors);
+        }
+
+        // Update progress UI
+        document.getElementById('importProgressBar').style.width = `${progressPercent}%`;
+        document.getElementById('importProgressText').textContent = `${Math.round(progressPercent)}%`;
         document.getElementById('importProcessed').textContent = processed;
         document.getElementById('importSuccess').textContent = success;
         document.getElementById('importFailed').textContent = failed;
 
-        if (job.current_file) {
-            document.getElementById('importCurrentFile').textContent = `Processing: ${job.current_file}`;
+        // Update current file display
+        if (currentFile) {
+            document.getElementById('importCurrentFile').textContent = `Processing: ${currentFile}`;
+        } else if (progressPercent === 100) {
+            document.getElementById('importCurrentFile').textContent = 'Import complete';
+        } else if (progressData.message) {
+            document.getElementById('importCurrentFile').textContent = progressData.message;
         }
 
-        // Check if complete
-        if (job.status === 'completed' || job.status === 'failed') {
+        // Display error details if any errors occurred
+        if (errors && errors.length > 0) {
+            displayImportErrors(errors);
+        } else if (failed > 0) {
+            // Show error section if no detailed errors but had failures
+            document.getElementById('importErrorSection').classList.remove('hidden');
+            document.getElementById('importErrorList').innerHTML = `
+                <div style="padding: 0.5rem; color: var(--wizard-text-secondary);">
+                    ${failed} file(s) failed to import. Check logs for details.
+                </div>
+            `;
+        }
+
+        // Check if complete (Celery statuses: success, failure, progress, pending)
+        if (job.status === 'success' || job.status === 'failure' || job.status === 'completed' || job.status === 'failed') {
             finishImport(success);
         } else {
             // Continue polling
@@ -518,6 +553,34 @@ async function pollImportProgress() {
         // Retry polling
         setTimeout(pollImportProgress, 5000);
     }
+}
+
+function displayImportErrors(errors) {
+    const errorSection = document.getElementById('importErrorSection');
+    const errorList = document.getElementById('importErrorList');
+
+    if (!errors || errors.length === 0) {
+        errorSection.classList.add('hidden');
+        return;
+    }
+
+    // Show error section
+    errorSection.classList.remove('hidden');
+
+    // Build error list HTML
+    const errorItems = errors.map(err => `
+        <div style="padding: 0.5rem; border-bottom: 1px solid var(--wizard-border, #ddd); background: white; margin-bottom: 0.25rem; border-radius: 4px;">
+            <div style="font-weight: 500; color: var(--wizard-error, #d32f2f); margin-bottom: 0.25rem;">
+                <iconify-icon icon="mdi:file-alert" style="font-size: 1rem;"></iconify-icon>
+                ${err.file || 'Unknown file'}
+            </div>
+            <div style="color: var(--wizard-text-secondary, #666); font-size: 0.85rem; padding-left: 1.25rem;">
+                ${err.error || 'Unknown error'}
+            </div>
+        </div>
+    `).join('');
+
+    errorList.innerHTML = errorItems;
 }
 
 function finishImport(videoCount) {

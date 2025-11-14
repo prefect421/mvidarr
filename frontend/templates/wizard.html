@@ -874,6 +874,19 @@
                             <div style="text-align: center; margin-top: 1rem; color: var(--wizard-text-secondary);">
                                 <div id="importCurrentFile">Preparing import...</div>
                             </div>
+
+                            <!-- Error Details Section -->
+                            <div id="importErrorSection" class="hidden" style="margin-top: 1.5rem;">
+                                <div style="background: var(--wizard-error-bg, #fee); border: 1px solid var(--wizard-error-border, #fcc); border-radius: 8px; padding: 1rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                        <iconify-icon icon="mdi:alert-circle" style="color: var(--wizard-error, #d32f2f); font-size: 1.25rem;"></iconify-icon>
+                                        <strong style="color: var(--wizard-error, #d32f2f);">Import Errors</strong>
+                                    </div>
+                                    <div id="importErrorList" style="max-height: 200px; overflow-y: auto; font-size: 0.9rem;">
+                                        <!-- Error items will be inserted here -->
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
