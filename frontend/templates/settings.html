@@ -1221,6 +1221,109 @@ input:checked + .slider:before {
         <div id="system-tab" class="settings-tab-panel">
             <div class="settings-sections">
 
+        <!-- Video Import Section -->
+        <div class="settings-section">
+            <h2>
+                <iconify-icon icon="mdi:video-plus" style="margin-right: 0.5rem;"></iconify-icon>
+                Video Import
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Import videos from your configured music videos directory.
+            </p>
+
+            <!-- Import Options -->
+            <div id="import-options" style="margin-bottom: 1rem;">
+                <div class="form-group">
+                    <label for="import-type">Import Type:</label>
+                    <select id="import-type" style="max-width: 300px;">
+                        <option value="quick">Quick Import (no metadata fetch)</option>
+                        <option value="full">Full Import (with IMVDb metadata)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="import-process-artists" checked>
+                        Process artists after import (auto-matching & enrichment)
+                    </label>
+                </div>
+                <button onclick="startVideoImport()" class="btn btn-primary">
+                    <iconify-icon icon="mdi:play" style="margin-right: 0.5rem;"></iconify-icon>
+                    Start Import
+                </button>
+            </div>
+
+            <!-- Import Progress -->
+            <div id="import-progress-container" style="display: none;">
+                <div style="background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem;">
+                        <iconify-icon icon="mdi:progress-clock"></iconify-icon>
+                        Import in Progress
+                    </h3>
+
+                    <!-- Progress Bar -->
+                    <div style="background: var(--bg-quaternary, #2a2a2a); border-radius: 8px; height: 30px; margin-bottom: 1rem; overflow: hidden;">
+                        <div id="import-progress-bar" style="background: linear-gradient(90deg, var(--accent-color, #00d4ff) 0%, var(--accent-color-secondary, #0099ff) 100%); height: 100%; width: 0%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center;">
+                            <span id="import-progress-text" style="color: white; font-weight: 600; font-size: 0.9rem;">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 600;" id="import-processed">0</div>
+                            <div style="color: var(--text-secondary); font-size: 0.85rem;">Processed</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--success-color, #10b981);" id="import-success">0</div>
+                            <div style="color: var(--text-secondary); font-size: 0.85rem;">Success</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--danger-color, #ef4444);" id="import-failed">0</div>
+                            <div style="color: var(--text-secondary); font-size: 0.85rem;">Failed</div>
+                        </div>
+                    </div>
+
+                    <!-- Current File -->
+                    <div style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                        <iconify-icon icon="mdi:file-video"></iconify-icon>
+                        <span id="import-current-file">Preparing import...</span>
+                    </div>
+
+                    <!-- Error Details -->
+                    <div id="import-error-section" style="display: none; margin-top: 1.5rem;">
+                        <div style="background: #fee; border: 1px solid #fcc; border-radius: 8px; padding: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                <iconify-icon icon="mdi:alert-circle" style="color: #d32f2f; font-size: 1.25rem;"></iconify-icon>
+                                <strong style="color: #d32f2f;">Import Errors</strong>
+                            </div>
+                            <div id="import-error-list" style="max-height: 200px; overflow-y: auto; font-size: 0.9rem;">
+                                <!-- Error items will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Complete -->
+            <div id="import-complete-container" style="display: none;">
+                <div style="background: var(--success-bg, #d1fae5); border: 1px solid var(--success-border, #10b981); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <iconify-icon icon="mdi:check-circle" style="color: var(--success-color, #10b981); font-size: 2rem;"></iconify-icon>
+                        <div>
+                            <h3 style="margin: 0; color: var(--success-color, #10b981);">Import Complete!</h3>
+                            <p style="margin: 0.25rem 0 0 0; color: var(--text-primary);">
+                                Imported <strong id="import-final-count">0</strong> video(s) into your collection.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="resetImportUI()" class="btn btn-secondary">
+                    <iconify-icon icon="mdi:refresh"></iconify-icon>
+                    Import More Videos
+                </button>
+            </div>
+        </div>
+
         <div class="settings-section">
             <h2>Video Indexing</h2>
             <div class="form-group">
@@ -9033,6 +9136,220 @@ function initializeAdvancedMode() {
         toggle.checked = false;
         advancedNav.classList.remove('show-advanced');
     }
+}
+
+// ============================================================================
+// Video Import Functions (System > Video Import)
+// ============================================================================
+
+let importJobId = null;
+let importPollInterval = null;
+
+async function startVideoImport() {
+    const importType = document.getElementById('import-type').value;
+    const processArtists = document.getElementById('import-process-artists').checked;
+    const fetchMetadata = importType === 'full';
+
+    console.log(`🎬 Starting video import: type=${importType}, fetchMetadata=${fetchMetadata}, processArtists=${processArtists}`);
+
+    // Hide options, show progress
+    document.getElementById('import-options').style.display = 'none';
+    document.getElementById('import-progress-container').style.display = 'block';
+    document.getElementById('import-complete-container').style.display = 'none';
+
+    // Reset progress UI
+    document.getElementById('import-progress-bar').style.width = '0%';
+    document.getElementById('import-progress-text').textContent = '0%';
+    document.getElementById('import-processed').textContent = '0';
+    document.getElementById('import-success').textContent = '0';
+    document.getElementById('import-failed').textContent = '0';
+    document.getElementById('import-current-file').textContent = 'Preparing import...';
+    document.getElementById('import-error-section').style.display = 'none';
+    document.getElementById('import-error-list').innerHTML = '';
+
+    try {
+        // Get configured directory from settings
+        const settingsResponse = await fetch('/api/settings');
+        const settings = await settingsResponse.json();
+        const directory = settings.music_videos_path || null;
+
+        if (!directory) {
+            showError('No music videos directory configured. Please configure in Settings > Directories first.');
+            resetImportUI();
+            return;
+        }
+
+        // Start import job
+        const response = await fetch('/api/wizard/import/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                directory: directory,
+                fetch_metadata: fetchMetadata,
+                process_artists: processArtists,
+                max_files: null  // Import all files
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            importJobId = data.job_id;
+            console.log(`✅ Import job started: ${importJobId}`);
+
+            // Start polling for progress
+            pollVideoImportProgress();
+        } else {
+            throw new Error(data.message || 'Failed to start import job');
+        }
+    } catch (error) {
+        console.error('Error starting import:', error);
+        showError('Failed to start video import: ' + error.message);
+        resetImportUI();
+    }
+}
+
+async function pollVideoImportProgress() {
+    if (!importJobId) {
+        return;
+    }
+
+    try {
+        // Poll job status from Celery endpoint
+        const response = await fetch(`/api/jobs/${importJobId}`);
+        const job = await response.json();
+
+        if (!job) {
+            throw new Error('Job not found');
+        }
+
+        // Extract progress data (can be in job.progress while running, or job.result when complete)
+        const progressData = job.progress || job.result || {};
+        const progressPercent = progressData.progress || progressData.percent || 0;
+        const processed = progressData.videos_processed || 0;
+        const success = progressData.videos_success || 0;
+        const failed = progressData.videos_failed || 0;
+        const currentFile = progressData.current_file || '';
+        const errors = progressData.errors || [];
+
+        // Debug logging
+        console.log(`📊 Import: ${job.status}, ${progressPercent}%, processed: ${processed}, success: ${success}, failed: ${failed}`);
+        if (currentFile) {
+            console.log(`   📄 Current: ${currentFile}`);
+        }
+        if (errors.length > 0) {
+            console.log(`   ❌ Errors: ${errors.length} files failed`);
+        }
+
+        // Update progress UI
+        document.getElementById('import-progress-bar').style.width = `${progressPercent}%`;
+        document.getElementById('import-progress-text').textContent = `${Math.round(progressPercent)}%`;
+        document.getElementById('import-processed').textContent = processed;
+        document.getElementById('import-success').textContent = success;
+        document.getElementById('import-failed').textContent = failed;
+
+        // Update current file display
+        if (currentFile) {
+            document.getElementById('import-current-file').textContent = `Processing: ${currentFile}`;
+        } else if (progressPercent === 100) {
+            document.getElementById('import-current-file').textContent = 'Import complete';
+        } else if (progressData.message) {
+            document.getElementById('import-current-file').textContent = progressData.message;
+        }
+
+        // Display error details if any errors occurred
+        if (errors && errors.length > 0) {
+            displayVideoImportErrors(errors);
+        } else if (failed > 0) {
+            // Show error section if no detailed errors but had failures
+            document.getElementById('import-error-section').style.display = 'block';
+            document.getElementById('import-error-list').innerHTML = `
+                <div style="padding: 0.5rem; color: #666;">
+                    ${failed} file(s) failed to import. Check logs for details.
+                </div>
+            `;
+        }
+
+        // Check if complete (Celery statuses: success, failure, progress, pending)
+        if (job.status === 'success' || job.status === 'failure' || job.status === 'completed' || job.status === 'failed') {
+            finishVideoImport(success);
+        } else {
+            // Continue polling
+            importPollInterval = setTimeout(pollVideoImportProgress, 2000);  // Poll every 2 seconds
+        }
+    } catch (error) {
+        console.error('Error polling import progress:', error);
+        // Retry polling
+        importPollInterval = setTimeout(pollVideoImportProgress, 5000);
+    }
+}
+
+function displayVideoImportErrors(errors) {
+    const errorSection = document.getElementById('import-error-section');
+    const errorList = document.getElementById('import-error-list');
+
+    if (!errors || errors.length === 0) {
+        errorSection.style.display = 'none';
+        return;
+    }
+
+    // Show error section
+    errorSection.style.display = 'block';
+
+    // Build error list HTML
+    const errorItems = errors.map(err => `
+        <div style="padding: 0.5rem; border-bottom: 1px solid #ddd; background: white; margin-bottom: 0.25rem; border-radius: 4px;">
+            <div style="font-weight: 500; color: #d32f2f; margin-bottom: 0.25rem;">
+                <iconify-icon icon="mdi:file-alert" style="font-size: 1rem;"></iconify-icon>
+                ${err.file || 'Unknown file'}
+            </div>
+            <div style="color: #666; font-size: 0.85rem; padding-left: 1.25rem;">
+                ${err.error || 'Unknown error'}
+            </div>
+        </div>
+    `).join('');
+
+    errorList.innerHTML = errorItems;
+}
+
+function finishVideoImport(videoCount) {
+    // Stop polling
+    if (importPollInterval) {
+        clearTimeout(importPollInterval);
+        importPollInterval = null;
+    }
+
+    // Hide progress, show complete
+    document.getElementById('import-progress-container').style.display = 'none';
+    document.getElementById('import-complete-container').style.display = 'block';
+    document.getElementById('import-final-count').textContent = videoCount;
+
+    console.log(`✅ Import completed: ${videoCount} videos imported`);
+
+    // Show success message
+    showSuccess(`Video import completed! Imported ${videoCount} video(s).`);
+
+    // Refresh stats if the function exists
+    if (typeof refreshStats === 'function') {
+        setTimeout(refreshStats, 1000);
+    }
+}
+
+function resetImportUI() {
+    // Stop any ongoing polling
+    if (importPollInterval) {
+        clearTimeout(importPollInterval);
+        importPollInterval = null;
+    }
+
+    importJobId = null;
+
+    // Reset UI to initial state
+    document.getElementById('import-options').style.display = 'block';
+    document.getElementById('import-progress-container').style.display = 'none';
+    document.getElementById('import-complete-container').style.display = 'none';
+
+    console.log('🔄 Import UI reset');
 }
 
 </script>
