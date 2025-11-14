@@ -172,9 +172,9 @@ def index_videos_task(
                     f"Processing file {i}/{total_files}: {file_path.name}",
                 )
 
-                # Index the video file
+                # Index the video file (skip auto-processing to avoid session conflicts)
                 result = video_indexing_service.index_single_file(
-                    file_path, fetch_metadata
+                    file_path, fetch_metadata, skip_auto_processing=True
                 )
                 results.append(result)
 
@@ -233,6 +233,193 @@ def index_videos_task(
 
     except Exception as e:
         error_msg = f"Video indexing task failed: {str(e)}"
+        logger.error(f"{error_msg}\n{traceback.format_exc()}")
+
+        # Update task state to FAILURE
+        self.update_state(
+            task_id=task_id,
+            state="FAILURE",
+            meta={
+                "error": error_msg,
+                "traceback": traceback.format_exc(),
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+
+        # Re-raise to mark task as failed in Celery
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=WizardCallbackTask,
+    name="wizard.process_artists_batch",
+    time_limit=7200,  # 2 hour timeout for large libraries
+    soft_time_limit=6900,  # 115 minute soft limit
+)
+def process_artists_batch_task(
+    self,
+    artist_ids: Optional[list[int]] = None,
+    force_refresh: bool = False,
+) -> Dict[str, Any]:
+    """
+    Celery task for batch artist auto-processing after wizard import
+
+    This runs AFTER video indexing to avoid session conflicts.
+    Processes artists for auto-matching and metadata enrichment.
+
+    Args:
+        artist_ids: Optional list of specific artist IDs to process (None = all unprocessed)
+        force_refresh: Force reprocessing even if already processed
+
+    Returns:
+        Dictionary with processing results
+    """
+    task_id = self.request.id
+    logger.info(
+        f"Starting batch artist processing task {task_id} (artist_ids={artist_ids}, force_refresh={force_refresh})"
+    )
+
+    try:
+        # Initialize database for Celery worker context
+        logger.info("Initializing database for batch artist processing...")
+        init_db_standalone()
+
+        # Initial progress update
+        self.update_progress(task_id, 5, "Starting batch artist processing...")
+
+        from src.database.models import Artist
+        from src.services.artist_auto_processing_service import (
+            artist_auto_processing_service,
+        )
+
+        with get_db() as session:
+            # Determine which artists to process
+            if artist_ids:
+                # Process specific artists
+                artists = session.query(Artist).filter(Artist.id.in_(artist_ids)).all()
+                logger.info(f"Processing {len(artists)} specified artists")
+            else:
+                # Process all artists without external IDs (newly created)
+                artists = (
+                    session.query(Artist)
+                    .filter(
+                        (Artist.imvdb_id.is_(None))
+                        | (Artist.spotify_id.is_(None))
+                        | (Artist.lastfm_name.is_(None))
+                    )
+                    .all()
+                )
+                logger.info(f"Found {len(artists)} unprocessed artists")
+
+            if not artists:
+                logger.info("No artists to process")
+                self.update_progress(task_id, 100, "No artists to process")
+                return {
+                    "success": True,
+                    "total_artists": 0,
+                    "processed": 0,
+                    "successful": 0,
+                    "failed": 0,
+                    "message": "No artists to process",
+                }
+
+            total_artists = len(artists)
+            self.update_progress(
+                task_id, 10, f"Found {total_artists} artists to process..."
+            )
+
+            # Process each artist
+            results = []
+            successful = 0
+            failed = 0
+
+            for i, artist in enumerate(artists, 1):
+                try:
+                    # Calculate progress (10% -> 95%, saving 5% for completion)
+                    progress = 10 + int((i / total_artists) * 85)
+                    self.update_progress(
+                        task_id,
+                        progress,
+                        f"Processing artist {i}/{total_artists}: {artist.name}",
+                    )
+
+                    # Process the artist with auto-matching and metadata enrichment
+                    result = artist_auto_processing_service.process_new_artist(
+                        artist, session
+                    )
+
+                    # Commit after each artist to persist changes
+                    session.commit()
+
+                    # Track success/failure
+                    if result.get("errors"):
+                        failed += 1
+                        logger.warning(
+                            f"Artist processing had errors for {artist.name}: {result['errors']}"
+                        )
+                    else:
+                        successful += 1
+
+                    match_count = result.get("auto_match", {}).get("match_count", 0)
+                    logger.info(
+                        f"Processed {artist.name} - {match_count} services matched"
+                    )
+
+                    results.append(
+                        {
+                            "artist_id": artist.id,
+                            "artist_name": artist.name,
+                            "success": not result.get("errors"),
+                            "match_count": match_count,
+                            "errors": result.get("errors", []),
+                        }
+                    )
+
+                    # Log progress milestones
+                    if i % 10 == 0:
+                        logger.info(
+                            f"Progress: {i}/{total_artists} artists processed ({successful} successful, {failed} failed)"
+                        )
+
+                except Exception as e:
+                    failed += 1
+                    logger.error(f"Error processing artist {artist.name}: {e}")
+                    results.append(
+                        {
+                            "artist_id": artist.id,
+                            "artist_name": artist.name,
+                            "success": False,
+                            "error": str(e),
+                        }
+                    )
+
+            # Final progress update
+            self.update_progress(
+                task_id,
+                100,
+                f"Batch processing complete: {successful} successful, {failed} failed",
+            )
+
+            # Return summary
+            summary = {
+                "success": True,
+                "total_artists": total_artists,
+                "processed": len(results),
+                "successful": successful,
+                "failed": failed,
+                "message": f"Batch artist processing completed: {successful}/{total_artists} artists processed successfully",
+                "results": results,
+            }
+
+            logger.info(
+                f"Batch artist processing task {task_id} completed: {successful}/{total_artists} successful"
+            )
+
+            return summary
+
+    except Exception as e:
+        error_msg = f"Batch artist processing task failed: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
 
         # Update task state to FAILURE

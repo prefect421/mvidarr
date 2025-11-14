@@ -245,13 +245,16 @@ class VideoIndexingService:
 
         return metadata
 
-    def find_or_create_artist(self, artist_name: str, session) -> Artist:
+    def find_or_create_artist(
+        self, artist_name: str, session, skip_auto_processing: bool = False
+    ) -> Artist:
         """
         Find existing artist or create new one
 
         Args:
             artist_name: Name of the artist
             session: Database session
+            skip_auto_processing: If True, skip auto-processing (useful for wizard imports)
 
         Returns:
             Artist object
@@ -280,30 +283,37 @@ class VideoIndexingService:
 
         logger.info(f"Created new artist: {clean_name}")
 
-        # Run auto-processing for newly created artist
-        try:
-            from src.services.artist_auto_processing_service import (
-                artist_auto_processing_service,
-            )
+        # Run auto-processing for newly created artist (unless explicitly skipped)
+        if not skip_auto_processing:
+            try:
+                from src.services.artist_auto_processing_service import (
+                    artist_auto_processing_service,
+                )
 
-            # Only attempt auto-processing if artist is properly bound to session
-            if artist in session:
-                auto_processing_results = (
-                    artist_auto_processing_service.process_new_artist(artist, session)
-                )
-                match_count = auto_processing_results.get("auto_match", {}).get(
-                    "match_count", 0
-                )
-                logger.info(
-                    f"Auto-processing completed for {clean_name} - {match_count} services matched"
-                )
-            else:
+                # Only attempt auto-processing if artist is properly bound to session
+                if artist in session:
+                    auto_processing_results = (
+                        artist_auto_processing_service.process_new_artist(
+                            artist, session
+                        )
+                    )
+                    match_count = auto_processing_results.get("auto_match", {}).get(
+                        "match_count", 0
+                    )
+                    logger.info(
+                        f"Auto-processing completed for {clean_name} - {match_count} services matched"
+                    )
+                else:
+                    logger.warning(
+                        f"Skipping auto-processing for {clean_name} - artist not bound to session"
+                    )
+            except Exception as e:
                 logger.warning(
-                    f"Skipping auto-processing for {clean_name} - artist not bound to session"
+                    f"Auto-processing failed for newly created artist {clean_name}: {e}"
                 )
-        except Exception as e:
-            logger.warning(
-                f"Auto-processing failed for newly created artist {clean_name}: {e}"
+        else:
+            logger.debug(
+                f"Skipping auto-processing for {clean_name} (skip_auto_processing=True)"
             )
 
         return artist
@@ -469,13 +479,19 @@ class VideoIndexingService:
 
         return download
 
-    def index_single_file(self, file_path: Path, fetch_metadata: bool = True) -> Dict:
+    def index_single_file(
+        self,
+        file_path: Path,
+        fetch_metadata: bool = True,
+        skip_auto_processing: bool = False,
+    ) -> Dict:
         """
         Index a single video file
 
         Args:
             file_path: Path to video file
             fetch_metadata: Whether to fetch IMVDb metadata
+            skip_auto_processing: If True, skip artist auto-processing (useful for wizard imports)
 
         Returns:
             Dictionary with indexing results
@@ -518,7 +534,9 @@ class VideoIndexingService:
             with get_db() as session:
                 # Find or create artist
                 artist = self.find_or_create_artist(
-                    file_metadata["extracted_artist"], session
+                    file_metadata["extracted_artist"],
+                    session,
+                    skip_auto_processing=skip_auto_processing,
                 )
                 if artist.id is None:  # New artist
                     result["artist_created"] = True

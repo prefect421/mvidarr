@@ -52,10 +52,10 @@ class ArtistAutoProcessingService:
         }
 
         try:
-            # Run auto-match - pass only the ID and name to avoid session issues
+            # Run auto-match - pass the artist object directly to avoid re-querying
             logger.debug(f"Starting auto-match for {artist_name} (ID: {artist_id})")
             auto_match_results = ArtistAutoProcessingService._run_auto_match(
-                artist_id, artist_name, session
+                artist, session
             )
             results["auto_match"] = auto_match_results
             logger.debug(f"Auto-match completed for {artist_name}")
@@ -116,13 +116,23 @@ class ArtistAutoProcessingService:
         return results
 
     @staticmethod
-    def _run_auto_match(artist_id: int, artist_name: str, session) -> Dict[str, Any]:
-        """Run auto-matching against external services"""
-        # Get a fresh copy of the artist from the database to avoid session issues
-        artist = session.query(Artist).filter_by(id=artist_id).first()
+    def _run_auto_match(artist: Artist, session) -> Dict[str, Any]:
+        """Run auto-matching against external services
+
+        Args:
+            artist: The Artist object to process (already in session)
+            session: Database session
+
+        Returns:
+            Dict containing match results
+        """
         if not artist:
-            logger.error(f"Artist with ID {artist_id} not found in database")
+            logger.error("No artist provided for auto-match")
             return {"matches": {}, "match_count": 0}
+
+        # Extract name for logging
+        artist_name = artist.name
+        artist_id = artist.id
 
         matches = {}
 
@@ -228,9 +238,7 @@ class ArtistAutoProcessingService:
 
             # Now apply all pending updates at once
             if pending_updates:
-                # Merge the artist instance to handle any session conflicts
-                artist = session.merge(artist)
-
+                # Artist is already in session, no need to merge
                 for field, value in pending_updates.items():
                     setattr(artist, field, value)
 

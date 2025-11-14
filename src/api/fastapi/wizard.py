@@ -147,6 +147,10 @@ class ImportStartRequest(BaseModel):
     fetch_metadata: bool = Field(
         default=True, description="Whether to fetch metadata for videos"
     )
+    process_artists: bool = Field(
+        default=True,
+        description="Whether to process artists after import (auto-matching, metadata enrichment)",
+    )
     max_files: Optional[int] = Field(
         None, ge=1, description="Maximum files to import (None = all)"
     )
@@ -157,6 +161,7 @@ class ImportStartResponse(BaseModel):
 
     success: bool
     job_id: str
+    artist_processing_job_id: Optional[str] = None
     message: str
 
 
@@ -598,7 +603,10 @@ async def start_video_import(
     """
     Start video import as part of wizard using Celery.
 
-    Creates a Celery task to import videos from the specified directory.
+    Creates a Celery task chain to:
+    1. Import videos from the specified directory (with skip_auto_processing=True)
+    2. Run batch artist auto-processing after import completes (if enabled)
+
     Progress can be tracked via the standard /api/jobs/{job_id} endpoint.
 
     Note: This endpoint does NOT require authentication since it's used
@@ -610,21 +618,46 @@ async def start_video_import(
         if not directory.exists() or not directory.is_dir():
             raise HTTPException(status_code=400, detail="Invalid directory path")
 
-        # Import Celery task
-        from src.jobs.wizard_tasks import index_videos_task
+        # Import Celery tasks
+        from src.jobs.wizard_tasks import index_videos_task, process_artists_batch_task
 
-        # Create Celery task for video import
-        task = index_videos_task.apply_async(
-            kwargs={
-                "directory": str(directory),  # Pass wizard-configured directory
-                "fetch_metadata": request.fetch_metadata,
-                "max_files": request.max_files,
-            },
-            priority=9,  # High priority for wizard imports
-        )
+        artist_processing_job_id = None
 
-        job_id = task.id
-        logger.info(f"Created Celery task for wizard video import: {job_id}")
+        # If artist processing is enabled, use Celery's link to chain tasks
+        if request.process_artists:
+            logger.info("Chaining batch artist processing after video import")
+
+            # Use Celery's link mechanism to run artist processing AFTER import succeeds
+            # .si() creates an immutable signature (ignores parent result)
+            import_task = index_videos_task.apply_async(
+                kwargs={
+                    "directory": str(directory),
+                    "fetch_metadata": request.fetch_metadata,
+                    "max_files": request.max_files,
+                },
+                priority=9,
+                link=process_artists_batch_task.si(
+                    artist_ids=None, force_refresh=False
+                ),
+            )
+
+            job_id = import_task.id
+            logger.info(
+                f"Created chained tasks: video import ({job_id}) -> artist processing (will be created after import)"
+            )
+        else:
+            # Just run video import without artist processing
+            import_task = index_videos_task.apply_async(
+                kwargs={
+                    "directory": str(directory),
+                    "fetch_metadata": request.fetch_metadata,
+                    "max_files": request.max_files,
+                },
+                priority=9,
+            )
+
+            job_id = import_task.id
+            logger.info(f"Created Celery task for wizard video import: {job_id}")
 
         # Update wizard state with job ID
         wizard_state = session.query(WizardState).first()
@@ -632,10 +665,15 @@ async def start_video_import(
             wizard_state.import_job_id = job_id
             session.commit()
 
+        message = f"Video import job queued with ID: {job_id}"
+        if request.process_artists:
+            message += " (artist processing will run after import completes)"
+
         return ImportStartResponse(
             success=True,
             job_id=job_id,
-            message=f"Video import job queued with ID: {job_id}",
+            artist_processing_job_id=artist_processing_job_id,
+            message=message,
         )
 
     except Exception as e:
