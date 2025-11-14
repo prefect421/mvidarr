@@ -41,12 +41,24 @@ async function nextStep() {
     if (currentStepName && currentStepName !== 'complete') {
         try {
             console.log(`Completing step: ${currentStepName}`);
-            await completeStep(currentStepName, {});
+
+            // Get config data for current step from wizardState
+            let stepConfig = {};
+            if (currentStepName === 'admin_account' && wizardState.config.admin) {
+                stepConfig = wizardState.config.admin;
+            } else if (currentStepName === 'directories' && wizardState.config.directories) {
+                stepConfig = wizardState.config.directories;
+            } else if (currentStepName === 'api_config' && wizardState.config.apis) {
+                stepConfig = wizardState.config.apis;
+            }
+
+            await completeStep(currentStepName, stepConfig);
             console.log(`✅ Step ${currentStepName} completed successfully`);
         } catch (error) {
             console.error(`❌ Failed to complete step ${currentStepName}:`, error);
-            // Show error to user
-            alert(`Failed to complete step. Please ensure all required fields are filled correctly.`);
+            // Show detailed error to user
+            const errorMsg = error.message || 'Unknown error occurred';
+            alert(`Failed to complete "${currentStepName}" step:\n\n${errorMsg}\n\nCheck browser console for details.`);
             return; // Don't advance if step completion fails
         }
     }
@@ -132,27 +144,22 @@ async function saveWizardState() {
 }
 
 async function completeStep(stepName, configData = {}) {
-    try {
-        const response = await fetch(`/api/wizard/steps/${stepName}/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                config_data: configData
-            })
-        });
+    const response = await fetch(`/api/wizard/steps/${stepName}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            config_data: configData
+        })
+    });
 
-        if (response.ok) {
-            const data = await response.json();
-            console.log(`✅ Step ${stepName} completed:`, data);
-            return true;
-        } else {
-            const error = await response.json();
-            console.error(`❌ Failed to complete step ${stepName}:`, error);
-            return false;
-        }
-    } catch (error) {
-        console.error(`Error completing step ${stepName}:`, error);
-        return false;
+    if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Step ${stepName} completed:`, data);
+        return true;
+    } else {
+        const error = await response.json();
+        console.error(`❌ Failed to complete step ${stepName}:`, error);
+        throw new Error(error.detail || `Failed to complete step ${stepName}`);
     }
 }
 
@@ -221,11 +228,9 @@ async function submitAdminForm() {
         if (response.ok && data.success) {
             // Save to wizard state
             wizardState.config.admin = { username, email, user_id: data.user_id };
+            saveWizardState();
 
-            // Complete this step
-            await completeStep('admin_account', { username, email });
-
-            // Move to next step
+            // Move to next step (nextStep will handle completing the step on backend)
             nextStep();
         } else {
             // Handle error response
@@ -308,10 +313,9 @@ async function submitDirectories() {
         return;
     }
 
-    // Complete this step
-    await completeStep('directories', wizardState.config.directories);
-
-    // Move to next step
+    // Config already saved in wizardState.config.directories (line 291)
+    // nextStep() will handle completing the step on backend
+    saveWizardState();
     nextStep();
 }
 
@@ -393,10 +397,8 @@ async function submitAPIs() {
         youtube: youtubeCookies || null
     };
 
-    // Complete this step
-    await completeStep('api_config', wizardState.config.apis);
-
-    // Move to next step
+    // Save config and advance (nextStep will handle completing the step)
+    saveWizardState();
     nextStep();
 }
 
@@ -410,7 +412,7 @@ async function startImport() {
     if (importType === 'skip') {
         // Skip import
         wizardState.config.import.skipped = true;
-        await completeStep('video_import', { skipped: true });
+        saveWizardState();
         nextStep();
         return;
     }
@@ -520,10 +522,9 @@ function finishImport(videoCount) {
 }
 
 async function completeImport() {
-    // Complete this step
-    await completeStep('video_import', wizardState.config.import);
-
-    // Move to final step
+    // Config already saved during import process
+    // nextStep() will handle completing the step
+    saveWizardState();
     nextStep();
 
     // Update completion summary
