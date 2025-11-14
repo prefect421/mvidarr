@@ -126,9 +126,26 @@ async function loadWizardState() {
             const data = await response.json();
             console.log('📊 Loaded wizard state:', data);
 
+            // Map backend step names to frontend step indices
+            const stepNames = ['welcome', 'admin_account', 'directories', 'api_config', 'video_import', 'complete'];
+            const currentStepIndex = stepNames.indexOf(data.current_step);
+
+            // Sync UI with server state
+            if (currentStepIndex !== -1) {
+                wizardState.currentStep = currentStepIndex;
+                showStep(currentStepIndex);
+                updateProgress();
+                console.log(`🎯 Synced UI to step: ${data.current_step} (index ${currentStepIndex})`);
+            }
+
             // Update local state from server
             if (data.config_data) {
                 wizardState.config = { ...wizardState.config, ...data.config_data };
+            }
+
+            // Store import job ID if present
+            if (data.import_job_id) {
+                wizardState.importJobId = data.import_job_id;
             }
         }
     } catch (error) {
