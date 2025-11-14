@@ -1,21 +1,15 @@
 {
   "version": "1.0.0-dev",
-  "build_date": "2025-11-11T15:28:24.662481",
-  "git_commit": "7898eca",
+  "build_date": "2025-11-14T15:30:43.751078",
+  "git_commit": "2868328",
   "git_branch": "dev",
   "release_name": "v1.0.0 Development - First Production Release",
   "features": [
     "🎉 First production-ready release milestone",
-    "🧙 Complete Installation Wizard - Phase 1 & 2 done (Issue #163)",
-    "🛡️ First-run detection middleware enabled",
-    "🎨 6-step wizard UI with progress tracking",
-    "👤 Admin account creation with validation",
-    "📁 Directory validation and auto-configuration",
-    "🔌 IMVDb and YouTube API testing",
-    "🎬 Real-time video import progress",
-    "✅ Complete wizard frontend and backend",
-    "🚀 Production-ready onboarding experience",
-    "📦 Simple deployment guide with docker-compose",
-    "🔄 Automated deployment and rollback scripts"
+    "🔧 Installation Wizard for first-run setup",
+    "🎬 Reliable video import system (no duplicates)",
+    "✅ Post-import batch artist processing",
+    "🎨 Auto-matching: IMVDb, Spotify, Last.fm, MusicBrainz",
+    "⚡ Celery task chaining for wizard workflow"
   ]
 }
