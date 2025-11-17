@@ -9171,7 +9171,7 @@ async function startVideoImport() {
         // Get configured directory from settings
         const settingsResponse = await fetch('/api/settings');
         const settings = await settingsResponse.json();
-        const directory = settings.music_videos_path || null;
+        const directory = settings.settings?.music_videos_path?.value || null;
 
         if (!directory) {
             showError('No music videos directory configured. Please configure in Settings > Directories first.');
