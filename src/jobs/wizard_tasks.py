@@ -187,6 +187,7 @@ def index_videos_task(
                         "videos_processed": i - 1,  # Previous count
                         "videos_success": successful,
                         "videos_failed": failed,
+                        "videos_skipped": already_indexed,  # Duplicates skipped
                         "current_file": file_path.name,
                         "errors": (
                             error_details[-5:] if error_details else []
@@ -248,6 +249,7 @@ def index_videos_task(
                 "videos_processed": total_files,
                 "videos_success": successful,
                 "videos_failed": failed,
+                "videos_skipped": already_indexed,  # Duplicates skipped
                 "current_file": "",
                 "errors": (
                     error_details[-10:] if error_details else []
