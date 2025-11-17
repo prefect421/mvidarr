@@ -379,13 +379,17 @@ def process_artists_batch_task(
             failed = 0
 
             for i, artist in enumerate(artists, 1):
+                # Capture artist info before try block to avoid DetachedInstanceError
+                artist_id = artist.id
+                artist_name = artist.name
+
                 try:
                     # Calculate progress (10% -> 95%, saving 5% for completion)
                     progress = 10 + int((i / total_artists) * 85)
                     self.update_progress(
                         task_id,
                         progress,
-                        f"Processing artist {i}/{total_artists}: {artist.name}",
+                        f"Processing artist {i}/{total_artists}: {artist_name}",
                     )
 
                     # Process the artist with auto-matching and metadata enrichment
@@ -400,20 +404,20 @@ def process_artists_batch_task(
                     if result.get("errors"):
                         failed += 1
                         logger.warning(
-                            f"Artist processing had errors for {artist.name}: {result['errors']}"
+                            f"Artist processing had errors for {artist_name}: {result['errors']}"
                         )
                     else:
                         successful += 1
 
                     match_count = result.get("auto_match", {}).get("match_count", 0)
                     logger.info(
-                        f"Processed {artist.name} - {match_count} services matched"
+                        f"Processed {artist_name} - {match_count} services matched"
                     )
 
                     results.append(
                         {
-                            "artist_id": artist.id,
-                            "artist_name": artist.name,
+                            "artist_id": artist_id,
+                            "artist_name": artist_name,
                             "success": not result.get("errors"),
                             "match_count": match_count,
                             "errors": result.get("errors", []),
@@ -428,11 +432,11 @@ def process_artists_batch_task(
 
                 except Exception as e:
                     failed += 1
-                    logger.error(f"Error processing artist {artist.name}: {e}")
+                    logger.error(f"Error processing artist {artist_name}: {e}")
                     results.append(
                         {
-                            "artist_id": artist.id,
-                            "artist_name": artist.name,
+                            "artist_id": artist_id,
+                            "artist_name": artist_name,
                             "success": False,
                             "error": str(e),
                         }
@@ -561,3 +565,312 @@ def validate_directory_task(self, directory_path: str) -> Dict[str, Any]:
             "directory": directory_path,
             "video_count": 0,
         }
+
+
+@celery_app.task(
+    bind=True,
+    base=WizardCallbackTask,
+    name="wizard.import_from_custom_directory",
+    time_limit=7200,  # 2 hour timeout for large imports
+    soft_time_limit=6900,  # 115 minute soft limit
+)
+def import_from_custom_directory_task(
+    self,
+    source_directory: str,
+    fetch_metadata: bool = True,
+    max_files: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Celery task for importing videos from a custom directory
+
+    This task:
+    1. Scans source directory for video files
+    2. Copies files to music_videos_path (organizing by artist/title)
+    3. Indexes the copied files
+    4. Provides progress tracking
+
+    Args:
+        source_directory: Custom directory to import videos from
+        fetch_metadata: Whether to fetch IMVDb metadata for each video
+        max_files: Optional limit on number of files to process
+
+    Returns:
+        Dictionary with import results
+    """
+    import os
+    import shutil
+    from pathlib import Path
+
+    task_id = self.request.id
+    logger.info(
+        f"Starting custom directory import task {task_id} (source={source_directory}, "
+        f"fetch_metadata={fetch_metadata}, max_files={max_files})"
+    )
+
+    try:
+        # Initialize database for Celery worker context
+        logger.info("Initializing database for custom directory import...")
+        init_db_standalone()
+
+        # Initial progress update
+        self.update_progress(task_id, 5, "Starting custom directory import...")
+
+        # Get music videos path from settings
+        from src.services.settings_service import settings
+
+        music_videos_path = Path(settings.get("music_videos_path", "data/musicvideos"))
+
+        # Validate source directory
+        source_dir = Path(source_directory)
+        if not source_dir.exists() or not source_dir.is_dir():
+            raise ValueError(f"Source directory does not exist: {source_directory}")
+
+        logger.info(f"Source directory: {source_dir}")
+        logger.info(f"Destination directory: {music_videos_path}")
+
+        # Scan source directory for video files
+        self.update_progress(
+            task_id, 10, "Scanning source directory for video files..."
+        )
+
+        video_extensions = {
+            ".mp4",
+            ".mkv",
+            ".avi",
+            ".mov",
+            ".wmv",
+            ".flv",
+            ".webm",
+            ".m4v",
+        }
+        video_files = [
+            file_path
+            for file_path in source_dir.rglob("*")
+            if file_path.is_file() and file_path.suffix.lower() in video_extensions
+        ]
+
+        if not video_files:
+            logger.warning(f"No video files found in {source_directory}")
+            self.update_progress(
+                task_id, 100, "No video files found in source directory"
+            )
+            return {
+                "success": True,
+                "total_files": 0,
+                "processed": 0,
+                "successful": 0,
+                "failed": 0,
+                "copied": 0,
+                "already_indexed": 0,
+                "message": "No video files found in source directory",
+            }
+
+        # Apply max_files limit if specified
+        if max_files:
+            video_files = video_files[:max_files]
+            logger.info(f"Limited processing to {max_files} files")
+
+        total_files = len(video_files)
+        logger.info(f"Found {total_files} video files to import")
+
+        self.update_progress(
+            task_id, 15, f"Found {total_files} video files. Starting import..."
+        )
+
+        # Process files with progress updates
+        results = []
+        successful = 0
+        failed = 0
+        copied = 0
+        already_indexed = 0
+        error_details = []
+
+        for i, source_file in enumerate(video_files, 1):
+            try:
+                # Calculate progress (15% -> 95%, saving 5% for completion)
+                progress = 15 + int((i / total_files) * 80)
+
+                # Update progress with detailed stats
+                self.update_progress(
+                    task_id,
+                    progress,
+                    f"Processing file {i}/{total_files}: {source_file.name}",
+                    extra_data={
+                        "videos_processed": i - 1,
+                        "videos_success": successful,
+                        "videos_failed": failed,
+                        "videos_copied": copied,
+                        "videos_skipped": already_indexed,
+                        "current_file": source_file.name,
+                        "errors": error_details[-5:] if error_details else [],
+                    },
+                )
+
+                # Parse filename to extract artist and title
+                # Expected format: "Artist - Title.ext" or "Artist-Title.ext"
+                filename_no_ext = source_file.stem
+
+                # Try to parse artist and title from filename
+                if " - " in filename_no_ext:
+                    parts = filename_no_ext.split(" - ", 1)
+                    artist_name = parts[0].strip()
+                    title = parts[1].strip()
+                elif "-" in filename_no_ext:
+                    parts = filename_no_ext.split("-", 1)
+                    artist_name = parts[0].strip()
+                    title = parts[1].strip()
+                else:
+                    # No artist separator found, use "Unknown Artist"
+                    artist_name = "Unknown Artist"
+                    title = filename_no_ext.strip()
+
+                # Create artist directory in destination
+                artist_dir = music_videos_path / artist_name
+                artist_dir.mkdir(parents=True, exist_ok=True)
+
+                # Destination file path
+                dest_file = artist_dir / source_file.name
+
+                # Check if file already exists
+                if dest_file.exists():
+                    logger.info(f"File already exists, skipping copy: {dest_file}")
+                    # Still try to index it in case it's not in the database
+                    result = video_indexing_service.index_single_file(
+                        dest_file, fetch_metadata, skip_auto_processing=True
+                    )
+
+                    if result.get("already_indexed"):
+                        already_indexed += 1
+                    else:
+                        successful += 1
+
+                    results.append(result)
+                    continue
+
+                # Copy file to destination
+                logger.info(f"Copying {source_file} -> {dest_file}")
+                shutil.copy2(source_file, dest_file)
+                copied += 1
+
+                # Index the copied file
+                result = video_indexing_service.index_single_file(
+                    dest_file, fetch_metadata, skip_auto_processing=True
+                )
+                results.append(result)
+
+                if result["success"]:
+                    if result["already_indexed"]:
+                        already_indexed += 1
+                    else:
+                        successful += 1
+                else:
+                    failed += 1
+                    error_msg = result.get("error", "Unknown error")
+                    logger.warning(f"Failed to index {source_file.name}: {error_msg}")
+
+                    # Track error details for frontend
+                    error_details.append(
+                        {"file": source_file.name, "error": error_msg, "timestamp": i}
+                    )
+
+                # Log progress milestones
+                if i % 10 == 0:
+                    logger.info(
+                        f"Progress: {i}/{total_files} files processed "
+                        f"({copied} copied, {successful} successful, {failed} failed, "
+                        f"{already_indexed} already indexed)"
+                    )
+
+            except Exception as e:
+                failed += 1
+                error_msg = str(e)
+                logger.error(
+                    f"Error importing file {source_file}: {error_msg}\n{traceback.format_exc()}"
+                )
+
+                # Track error details for frontend
+                error_details.append(
+                    {"file": source_file.name, "error": error_msg, "timestamp": i}
+                )
+
+                results.append(
+                    {
+                        "file_path": str(source_file),
+                        "success": False,
+                        "error": error_msg,
+                    }
+                )
+
+        # Final progress update with complete stats
+        self.update_progress(
+            task_id,
+            100,
+            f"Import complete: {copied} copied, {successful} indexed, "
+            f"{failed} failed, {already_indexed} already indexed",
+            extra_data={
+                "videos_processed": total_files,
+                "videos_success": successful,
+                "videos_failed": failed,
+                "videos_copied": copied,
+                "videos_skipped": already_indexed,
+                "current_file": "",
+                "errors": error_details[-10:] if error_details else [],
+            },
+        )
+
+        # Return summary
+        summary = {
+            "success": True,
+            "total_files": total_files,
+            "processed": len(results),
+            "successful": successful,
+            "failed": failed,
+            "copied": copied,
+            "already_indexed": already_indexed,
+            "fetch_metadata": fetch_metadata,
+            "message": (
+                f"Custom directory import completed: {copied} files copied, "
+                f"{successful}/{total_files} files indexed successfully"
+            ),
+        }
+
+        logger.info(
+            f"Custom directory import task {task_id} completed: "
+            f"{copied} copied, {successful}/{total_files} indexed successfully"
+        )
+
+        # Clean up temporary upload directory if this was an upload import
+        if "mvidarr_upload_" in source_directory:
+            try:
+                logger.info(
+                    f"Cleaning up temporary upload directory: {source_directory}"
+                )
+                import shutil
+
+                shutil.rmtree(source_directory, ignore_errors=True)
+                logger.info("✅ Temporary upload directory cleaned up")
+            except Exception as cleanup_error:
+                logger.warning(
+                    f"Failed to clean up temp directory {source_directory}: {cleanup_error}"
+                )
+                # Don't fail the task if cleanup fails
+
+        return summary
+
+    except Exception as e:
+        error_msg = f"Custom directory import task failed: {str(e)}"
+        logger.error(f"{error_msg}\n{traceback.format_exc()}")
+
+        # Update task state to FAILURE
+        self.update_state(
+            task_id=task_id,
+            state="FAILURE",
+            meta={
+                "error": error_msg,
+                "traceback": traceback.format_exc(),
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+
+        # Re-raise to mark task as failed in Celery
+        raise

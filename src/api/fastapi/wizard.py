@@ -6,10 +6,12 @@ Issue #163: https://github.com/prefect421/mvidarr/issues/163
 
 import logging
 import os
+import shutil
+import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
@@ -684,3 +686,218 @@ async def start_video_import(
 # Note: Job status for wizard imports is now handled by the standard
 # /api/jobs/{job_id} endpoint which queries Celery backend.
 # This eliminates the dual job system issue.
+
+
+@router.post("/import/custom-directory/start", response_model=ImportStartResponse)
+async def start_custom_directory_import(
+    request: ImportStartRequest,
+    session: Session = Depends(get_db_session),
+):
+    """
+    Start custom directory import (Settings > System feature).
+
+    This endpoint imports videos from any custom directory by:
+    1. Copying video files to the music_videos_path (organized by artist/title)
+    2. Indexing the copied files
+    3. Optionally running batch artist auto-processing after import completes
+
+    Progress can be tracked via the standard /api/jobs/{job_id} endpoint.
+
+    Note: Unlike wizard import, this copies files from a custom source directory
+    to the configured music videos directory.
+    """
+    try:
+        # Validate directory exists
+        directory = Path(request.directory)
+        if not directory.exists() or not directory.is_dir():
+            raise HTTPException(status_code=400, detail="Invalid directory path")
+
+        # Import Celery tasks
+        from src.jobs.wizard_tasks import (
+            import_from_custom_directory_task,
+            process_artists_batch_task,
+        )
+
+        artist_processing_job_id = None
+
+        # If artist processing is enabled, use Celery's link to chain tasks
+        if request.process_artists:
+            logger.info(
+                "Chaining batch artist processing after custom directory import"
+            )
+
+            # Use Celery's link mechanism to run artist processing AFTER import succeeds
+            import_task = import_from_custom_directory_task.apply_async(
+                kwargs={
+                    "source_directory": str(directory),
+                    "fetch_metadata": request.fetch_metadata,
+                    "max_files": request.max_files,
+                },
+                priority=9,
+                link=process_artists_batch_task.si(
+                    artist_ids=None, force_refresh=False
+                ),
+            )
+
+            job_id = import_task.id
+            logger.info(
+                f"Created chained tasks: custom directory import ({job_id}) -> artist processing"
+            )
+        else:
+            # Just run import without artist processing
+            import_task = import_from_custom_directory_task.apply_async(
+                kwargs={
+                    "source_directory": str(directory),
+                    "fetch_metadata": request.fetch_metadata,
+                    "max_files": request.max_files,
+                },
+                priority=9,
+            )
+
+            job_id = import_task.id
+            logger.info(f"Created Celery task for custom directory import: {job_id}")
+
+        message = f"Custom directory import job queued with ID: {job_id}"
+        if request.process_artists:
+            message += " (artist processing will run after import completes)"
+
+        return ImportStartResponse(
+            success=True,
+            job_id=job_id,
+            artist_processing_job_id=artist_processing_job_id,
+            message=message,
+        )
+
+    except Exception as e:
+        logger.error(f"Error starting custom directory import: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class UploadResponse(BaseModel):
+    """Upload response"""
+
+    success: bool
+    upload_directory: str
+    files_uploaded: int
+    total_size_mb: float
+    message: str
+
+
+@router.post("/upload-videos", response_model=UploadResponse)
+async def upload_videos(
+    files: List[UploadFile] = File(...),
+    session: Session = Depends(get_db_session),
+):
+    """
+    Upload video files from user's PC to a temporary directory on the server.
+
+    This endpoint:
+    1. Creates a temporary directory
+    2. Saves uploaded files to the temp directory
+    3. Returns the temp directory path for import
+
+    After import is complete, the temp directory should be cleaned up.
+    """
+    try:
+        logger.info(f"Upload request received with {len(files) if files else 0} files")
+
+        if not files:
+            raise HTTPException(status_code=400, detail="No files provided")
+
+        # Filter for video files only
+        video_extensions = {
+            ".mp4",
+            ".mkv",
+            ".avi",
+            ".mov",
+            ".wmv",
+            ".flv",
+            ".webm",
+            ".m4v",
+        }
+
+        # Log all filenames
+        for f in files:
+            logger.info(f"Received file: {f.filename}, type: {f.content_type}")
+
+        video_files = [
+            f for f in files if Path(f.filename).suffix.lower() in video_extensions
+        ]
+
+        if not video_files:
+            logger.warning(
+                f"No video files found. Received {len(files)} files but none matched video extensions"
+            )
+            raise HTTPException(
+                status_code=400, detail="No video files found in upload"
+            )
+
+        logger.info(f"Filtered to {len(video_files)} video files for upload")
+
+        # Create temporary directory for uploads
+        temp_dir = Path(tempfile.mkdtemp(prefix="mvidarr_upload_"))
+        logger.info(f"Created temporary upload directory: {temp_dir}")
+
+        total_size = 0
+        files_uploaded = 0
+
+        # Save each file to temp directory
+        for upload_file in video_files:
+            try:
+                logger.info(f"Processing file: {upload_file.filename}")
+                file_path = temp_dir / upload_file.filename
+                logger.info(f"Target path: {file_path}")
+
+                # Create parent directories if filename contains subdirectories
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Read and save file
+                contents = await upload_file.read()
+                logger.info(f"Read {len(contents)} bytes from {upload_file.filename}")
+
+                file_path.write_bytes(contents)
+                logger.info(f"Wrote bytes to {file_path}")
+
+                total_size += len(contents)
+                files_uploaded += 1
+
+                logger.info(
+                    f"✅ Saved {upload_file.filename} ({len(contents) / (1024*1024):.2f} MB)"
+                )
+
+            except Exception as e:
+                logger.error(
+                    f"❌ Error saving file {upload_file.filename}: {e}", exc_info=True
+                )
+                # Continue with other files even if one fails
+                continue
+
+        logger.info(f"Upload loop complete. files_uploaded={files_uploaded}")
+
+        if files_uploaded == 0:
+            # Clean up temp directory if no files were saved
+            logger.error(
+                "No files were uploaded successfully. Cleaning up temp directory."
+            )
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise HTTPException(status_code=500, detail="Failed to save any files")
+
+        total_size_mb = total_size / (1024 * 1024)
+
+        logger.info(
+            f"Upload complete: {files_uploaded} files, {total_size_mb:.2f} MB total"
+        )
+
+        return UploadResponse(
+            success=True,
+            upload_directory=str(temp_dir),
+            files_uploaded=files_uploaded,
+            total_size_mb=round(total_size_mb, 2),
+            message=f"Successfully uploaded {files_uploaded} video file(s)",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error during video upload: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

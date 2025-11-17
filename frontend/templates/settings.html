@@ -1221,35 +1221,157 @@ input:checked + .slider:before {
         <div id="system-tab" class="settings-tab-panel">
             <div class="settings-sections">
 
-        <!-- Video Import Section -->
+        <!-- Video Import Section (Merged with tabs) -->
         <div class="settings-section">
             <h2>
                 <iconify-icon icon="mdi:video-plus" style="margin-right: 0.5rem;"></iconify-icon>
                 Video Import
             </h2>
             <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-                Import videos from your configured music videos directory.
+                Import videos from your PC or from a directory on the server.
             </p>
 
-            <!-- Import Options -->
-            <div id="import-options" style="margin-bottom: 1rem;">
-                <div class="form-group">
-                    <label for="import-type">Import Type:</label>
-                    <select id="import-type" style="max-width: 300px;">
-                        <option value="quick">Quick Import (no metadata fetch)</option>
-                        <option value="full">Full Import (with IMVDb metadata)</option>
-                    </select>
+            <!-- Import Method Tabs -->
+            <div style="margin-bottom: 1.5rem;">
+                <div style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--border-secondary, #444); margin-bottom: 1rem;">
+                    <button
+                        id="tab-upload-pc"
+                        onclick="switchImportTab('upload-pc')"
+                        style="padding: 0.75rem 1.5rem; background: var(--accent-color, #00d4ff); color: white; border: none; border-bottom: 3px solid var(--accent-color, #00d4ff); cursor: pointer; font-weight: 600;"
+                    >
+                        <iconify-icon icon="mdi:upload" style="margin-right: 0.5rem;"></iconify-icon>
+                        Upload from PC
+                    </button>
+                    <button
+                        id="tab-server-directory"
+                        onclick="switchImportTab('server-directory')"
+                        style="padding: 0.75rem 1.5rem; background: transparent; color: var(--text-secondary); border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600;"
+                    >
+                        <iconify-icon icon="mdi:server" style="margin-right: 0.5rem;"></iconify-icon>
+                        Import from Server Directory
+                    </button>
                 </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="import-process-artists" checked>
-                        Process artists after import (auto-matching & enrichment)
-                    </label>
+
+                <!-- Tab: Upload from PC -->
+                <div id="import-tab-upload-pc" style="display: block;">
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                        Select a folder from your computer to upload and import videos.
+                    </p>
+
+                    <div class="form-group">
+                        <label for="upload-folder-input" style="font-weight: 600;">
+                            <iconify-icon icon="mdi:folder-open" style="margin-right: 0.5rem;"></iconify-icon>
+                            Select Folder:
+                        </label>
+                        <input
+                            type="file"
+                            id="upload-folder-input"
+                            webkitdirectory
+                            directory
+                            multiple
+                            style="display: block; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-secondary, #444); border-radius: 4px; background: var(--bg-tertiary, #333); color: var(--text-primary);"
+                            onchange="handleFolderSelection()"
+                        />
+                        <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem;">
+                            Video files will be uploaded to the server and imported into your library.
+                        </small>
+                    </div>
+
+                    <div id="upload-file-list" style="display: none; margin: 1rem 0; padding: 1rem; background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px;">
+                        <h4 style="margin-top: 0;">
+                            <iconify-icon icon="mdi:file-video"></iconify-icon>
+                            Selected Files: <span id="upload-file-count">0</span>
+                        </h4>
+                        <div id="upload-file-details" style="max-height: 200px; overflow-y: auto; font-size: 0.9rem; color: var(--text-secondary);"></div>
+                    </div>
+
+                    <div id="upload-import-options" style="display: none; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label for="upload-import-type">Import Type:</label>
+                            <select id="upload-import-type" style="max-width: 300px;">
+                                <option value="quick">Quick Import (no metadata fetch)</option>
+                                <option value="full">Full Import (with IMVDb metadata)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="upload-import-process-artists" checked>
+                                Process artists after import (auto-matching & enrichment)
+                            </label>
+                        </div>
+                        <button onclick="startUploadAndImport()" class="btn btn-primary">
+                            <iconify-icon icon="mdi:upload" style="margin-right: 0.5rem;"></iconify-icon>
+                            Upload & Import Videos
+                        </button>
+                    </div>
                 </div>
-                <button onclick="startVideoImport()" class="btn btn-primary">
-                    <iconify-icon icon="mdi:play" style="margin-right: 0.5rem;"></iconify-icon>
-                    Start Import
-                </button>
+
+                <!-- Tab: Import from Server Directory -->
+                <div id="import-tab-server-directory" style="display: none;">
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                        Browse and import videos from directories on the server.
+                    </p>
+
+                    <!-- Directory Browser -->
+                    <div style="background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                        <!-- Current Path and Navigation -->
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-secondary, #444);">
+                            <button id="server-import-parent-btn" onclick="navigateToParent()" class="btn btn-sm btn-secondary" style="padding: 0.25rem 0.5rem; min-width: auto;" disabled>
+                                <iconify-icon icon="mdi:arrow-up"></iconify-icon>
+                            </button>
+                            <div style="flex: 1; font-family: monospace; font-size: 0.9rem; overflow-x: auto; white-space: nowrap;">
+                                <iconify-icon icon="mdi:folder-open" style="margin-right: 0.5rem;"></iconify-icon>
+                                <span id="server-import-current-path">/</span>
+                            </div>
+                        </div>
+
+                        <!-- Directory List -->
+                        <div id="server-import-directory-list" style="max-height: 400px; overflow-y: auto;">
+                            <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                                <iconify-icon icon="mdi:folder-search" style="font-size: 3rem; opacity: 0.5;"></iconify-icon>
+                                <p>Click "Browse Server" below to start browsing</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Browse Server Button -->
+                    <button onclick="browseServerRootDirectory()" class="btn btn-secondary" style="margin-bottom: 1rem;">
+                        <iconify-icon icon="mdi:folder-search" style="margin-right: 0.5rem;"></iconify-icon>
+                        Browse Server Directories
+                    </button>
+
+                    <!-- Selected Directory Info -->
+                    <div id="server-import-selected-info" style="display: none; background: var(--bg-quaternary, #2a2a2a); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <iconify-icon icon="mdi:folder-check" style="color: var(--success-color, #10b981); font-size: 1.5rem;"></iconify-icon>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; margin-bottom: 0.25rem;">Selected Directory</div>
+                                <div style="font-family: monospace; font-size: 0.9rem; color: var(--text-secondary);" id="server-import-selected-path"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Server Import Options -->
+                    <div id="server-import-options" style="display: none; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label for="server-import-type">Import Type:</label>
+                            <select id="server-import-type" style="max-width: 300px;">
+                                <option value="quick">Quick Import (no metadata fetch)</option>
+                                <option value="full">Full Import (with IMVDb metadata)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="server-import-process-artists" checked>
+                                Process artists after import (auto-matching & enrichment)
+                            </label>
+                        </div>
+                        <button onclick="startServerDirectoryImport()" class="btn btn-primary">
+                            <iconify-icon icon="mdi:import" style="margin-right: 0.5rem;"></iconify-icon>
+                            Import from Selected Directory
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Import Progress -->
@@ -9381,12 +9503,409 @@ function resetImportUI() {
 
     importJobId = null;
 
-    // Reset UI to initial state
-    document.getElementById('import-options').style.display = 'block';
+    // Reset UI to initial state - show appropriate options based on active tab
+    const uploadTab = document.getElementById('import-tab-upload-pc');
+    const serverTab = document.getElementById('import-tab-server-directory');
+
+    if (uploadTab && uploadTab.style.display !== 'none') {
+        // Upload tab is active - show upload options
+        const uploadOptions = document.getElementById('upload-import-options');
+        if (uploadOptions) uploadOptions.style.display = 'block';
+    } else if (serverTab && serverTab.style.display !== 'none') {
+        // Server tab is active - show server options
+        const serverOptions = document.getElementById('server-import-options');
+        if (serverOptions) serverOptions.style.display = 'block';
+    }
+
     document.getElementById('import-progress-container').style.display = 'none';
     document.getElementById('import-complete-container').style.display = 'none';
 
     console.log('🔄 Import UI reset');
+}
+
+// ============================================
+// Video Import Functions (Tabbed Interface)
+// ============================================
+
+let serverImportCurrentPath = null;
+let serverImportSelectedPath = null;
+let serverImportParentPath = null;
+let selectedUploadFiles = [];
+
+// Switch between import tabs
+function switchImportTab(tabName) {
+    // Update tab buttons
+    const uploadTab = document.getElementById('tab-upload-pc');
+    const serverTab = document.getElementById('tab-server-directory');
+
+    if (tabName === 'upload-pc') {
+        uploadTab.style.background = 'var(--accent-color, #00d4ff)';
+        uploadTab.style.color = 'white';
+        uploadTab.style.borderBottom = '3px solid var(--accent-color, #00d4ff)';
+
+        serverTab.style.background = 'transparent';
+        serverTab.style.color = 'var(--text-secondary)';
+        serverTab.style.borderBottom = '3px solid transparent';
+
+        document.getElementById('import-tab-upload-pc').style.display = 'block';
+        document.getElementById('import-tab-server-directory').style.display = 'none';
+    } else {
+        serverTab.style.background = 'var(--accent-color, #00d4ff)';
+        serverTab.style.color = 'white';
+        serverTab.style.borderBottom = '3px solid var(--accent-color, #00d4ff)';
+
+        uploadTab.style.background = 'transparent';
+        uploadTab.style.color = 'var(--text-secondary)';
+        uploadTab.style.borderBottom = '3px solid transparent';
+
+        document.getElementById('import-tab-upload-pc').style.display = 'none';
+        document.getElementById('import-tab-server-directory').style.display = 'block';
+    }
+}
+
+// Handle folder selection from PC
+function handleFolderSelection() {
+    const fileInput = document.getElementById('upload-folder-input');
+    const files = fileInput.files;
+
+    if (!files || files.length === 0) {
+        return;
+    }
+
+    // Filter for video files only
+    const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v'];
+    selectedUploadFiles = Array.from(files).filter(file => {
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        return videoExtensions.includes(ext);
+    });
+
+    if (selectedUploadFiles.length === 0) {
+        showError('No video files found in selected folder');
+        return;
+    }
+
+    // Display file list
+    document.getElementById('upload-file-count').textContent = selectedUploadFiles.length;
+
+    const fileDetails = selectedUploadFiles.map(file => {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        return `<div style="padding: 0.25rem 0; border-bottom: 1px solid var(--border-secondary, #444);">
+            <iconify-icon icon="mdi:file-video" style="margin-right: 0.5rem;"></iconify-icon>
+            ${file.name} <span style="color: var(--text-secondary);">(${sizeMB} MB)</span>
+        </div>`;
+    }).join('');
+
+    document.getElementById('upload-file-details').innerHTML = fileDetails;
+    document.getElementById('upload-file-list').style.display = 'block';
+    document.getElementById('upload-import-options').style.display = 'block';
+
+    console.log(`✅ Selected ${selectedUploadFiles.length} video files for upload`);
+}
+
+// Start upload and import from PC
+async function startUploadAndImport() {
+    if (selectedUploadFiles.length === 0) {
+        showError('Please select a folder with video files');
+        return;
+    }
+
+    const importType = document.getElementById('upload-import-type').value;
+    const processArtists = document.getElementById('upload-import-process-artists').checked;
+    const fetchMetadata = importType === 'full';
+
+    console.log(`🎬 Starting upload and import: ${selectedUploadFiles.length} files`);
+
+    try {
+        // Hide upload options, show progress
+        document.getElementById('upload-import-options').style.display = 'none';
+        document.getElementById('import-progress-container').style.display = 'block';
+        document.getElementById('import-complete-container').style.display = 'none';
+
+        // Reset progress UI
+        document.getElementById('import-progress-bar').style.width = '0%';
+        document.getElementById('import-progress-text').textContent = '0%';
+        document.getElementById('import-processed').textContent = '0';
+        document.getElementById('import-success').textContent = '0';
+        document.getElementById('import-skipped').textContent = '0';
+        document.getElementById('import-failed').textContent = '0';
+        document.getElementById('import-current-file').textContent = 'Uploading files...';
+        document.getElementById('import-skipped-section').style.display = 'none';
+        document.getElementById('import-error-section').style.display = 'none';
+
+        // Step 1: Upload files to server
+        console.log('📤 Uploading files to server...');
+
+        const formData = new FormData();
+        selectedUploadFiles.forEach(file => {
+            formData.append('files', file);
+        });
+
+        const uploadResponse = await fetch('/api/wizard/upload-videos', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
+            throw new Error(errorData.detail || 'Failed to upload files');
+        }
+
+        const uploadData = await uploadResponse.json();
+        console.log(`✅ Upload complete: ${uploadData.files_uploaded} files, ${uploadData.total_size_mb} MB`);
+
+        // Update progress to show upload complete
+        document.getElementById('import-current-file').textContent = `Upload complete! Starting import of ${uploadData.files_uploaded} files...`;
+        document.getElementById('import-progress-bar').style.width = '10%';
+        document.getElementById('import-progress-text').textContent = '10%';
+
+        // Step 2: Start import from uploaded directory
+        const importResponse = await fetch('/api/wizard/import/custom-directory/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                directory: uploadData.upload_directory,
+                fetch_metadata: fetchMetadata,
+                process_artists: processArtists,
+                max_files: null
+            })
+        });
+
+        if (!importResponse.ok) {
+            throw new Error('Failed to start import after upload');
+        }
+
+        const importData = await importResponse.json();
+
+        if (importData.success) {
+            importJobId = importData.job_id;
+            console.log(`✅ Import job started: ${importJobId}`);
+
+            // Start polling for progress
+            pollVideoImportProgress();
+        } else {
+            throw new Error(importData.message || 'Failed to start import job');
+        }
+
+    } catch (error) {
+        console.error('Error during upload and import:', error);
+        showError('Failed to upload and import videos: ' + error.message);
+        resetImportUI();
+    }
+}
+
+// Browse server directory (start from root/home)
+async function browseServerRootDirectory() {
+    try {
+        const response = await fetch('/api/filesystem/common-paths');
+        if (!response.ok) {
+            throw new Error('Failed to load starting paths');
+        }
+
+        const paths = await response.json();
+        if (paths.length > 0) {
+            // Start from home directory
+            const homePath = paths.find(p => p.name.includes('Home'));
+            if (homePath) {
+                await browseServerDirectory(homePath.path);
+            } else {
+                await browseServerDirectory(paths[0].path);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading starting directory:', error);
+        showError('Failed to load server directories');
+    }
+}
+
+// Browse a specific server directory
+async function browseServerDirectory(path) {
+    try {
+        console.log(`📂 Browsing directory: ${path}`);
+
+        const response = await fetch(`/api/filesystem/browse?path=${encodeURIComponent(path)}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to browse directory');
+        }
+
+        const data = await response.json();
+
+        // Update current path
+        serverImportCurrentPath = data.current_path;
+        serverImportParentPath = data.parent_path;
+
+        // Update UI
+        document.getElementById('server-import-current-path').textContent = data.current_path;
+
+        // Enable/disable parent button
+        const parentBtn = document.getElementById('server-import-parent-btn');
+        if (data.parent_path) {
+            parentBtn.disabled = false;
+        } else {
+            parentBtn.disabled = true;
+        }
+
+        // Display directory list
+        const directoryList = document.getElementById('server-import-directory-list');
+
+        if (data.entries.length === 0) {
+            directoryList.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <iconify-icon icon="mdi:folder-off" style="font-size: 2rem; opacity: 0.5;"></iconify-icon>
+                    <p>No subdirectories found</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Build directory entries
+        const entriesHtml = data.entries.map(entry => {
+            const videoBadge = entry.video_count > 0
+                ? `<span style="background: var(--accent-color, #00d4ff); color: white; padding: 0.125rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">${entry.video_count} video${entry.video_count > 1 ? 's' : ''}</span>`
+                : '';
+
+            const isReadable = entry.is_readable;
+
+            return `
+                <div
+                    onclick="${isReadable ? `selectServerImportDirectory('${entry.path.replace(/'/g, "\\'")}', '${entry.name.replace(/'/g, "\\'")}')` : ''}"
+                    ondblclick="${isReadable ? `browseServerDirectory('${entry.path.replace(/'/g, "\\'")}')` : ''}"
+                    style="
+                        display: flex;
+                        align-items: center;
+                        padding: 0.75rem;
+                        border: 1px solid var(--border-secondary, #444);
+                        border-radius: 6px;
+                        margin-bottom: 0.5rem;
+                        cursor: ${isReadable ? 'pointer' : 'not-allowed'};
+                        opacity: ${isReadable ? '1' : '0.5'};
+                        transition: all 0.2s;
+                    "
+                    onmouseover="if(${isReadable}) this.style.background='var(--bg-quaternary, #2a2a2a)'"
+                    onmouseout="this.style.background='transparent'"
+                    class="server-import-directory-entry"
+                    data-path="${entry.path}"
+                >
+                    <iconify-icon icon="mdi:folder" style="font-size: 1.5rem; margin-right: 0.75rem; color: var(--accent-color, #00d4ff);"></iconify-icon>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; color: var(--text-primary);">
+                            ${entry.name}
+                            ${videoBadge}
+                        </div>
+                        ${!isReadable ? '<div style="font-size: 0.85rem; color: var(--danger-color);">No read permission</div>' : ''}
+                    </div>
+                    <iconify-icon icon="mdi:chevron-right" style="font-size: 1.25rem; color: var(--text-secondary);"></iconify-icon>
+                </div>
+            `;
+        }).join('');
+
+        directoryList.innerHTML = entriesHtml;
+
+        console.log(`✅ Loaded ${data.entries.length} directories`);
+    } catch (error) {
+        console.error('Error browsing directory:', error);
+        showError('Failed to browse directory: ' + error.message);
+    }
+}
+
+// Navigate to parent directory
+function navigateToParent() {
+    if (serverImportParentPath) {
+        browseServerDirectory(serverImportParentPath);
+    }
+}
+
+// Select a directory for server import
+function selectServerImportDirectory(path, name) {
+    serverImportSelectedPath = path;
+
+    // Update selected directory info
+    document.getElementById('server-import-selected-path').textContent = path;
+    document.getElementById('server-import-selected-info').style.display = 'block';
+    document.getElementById('server-import-options').style.display = 'block';
+
+    // Highlight selected directory
+    document.querySelectorAll('.server-import-directory-entry').forEach(entry => {
+        if (entry.dataset.path === path) {
+            entry.style.background = 'var(--accent-color-alpha, rgba(0, 212, 255, 0.1))';
+            entry.style.borderColor = 'var(--accent-color, #00d4ff)';
+        } else {
+            entry.style.background = 'transparent';
+            entry.style.borderColor = 'var(--border-secondary, #444)';
+        }
+    });
+
+    console.log(`✅ Selected directory: ${path}`);
+}
+
+// Start server directory import
+async function startServerDirectoryImport() {
+    if (!serverImportSelectedPath) {
+        showError('Please select a directory to import from');
+        return;
+    }
+
+    const importType = document.getElementById('server-import-type').value;
+    const processArtists = document.getElementById('server-import-process-artists').checked;
+    const fetchMetadata = importType === 'full';
+
+    console.log(`🎬 Starting server directory import from: ${serverImportSelectedPath}`);
+    console.log(`   Import type: ${importType}, fetchMetadata: ${fetchMetadata}, processArtists: ${processArtists}`);
+
+    try {
+        // Hide import options, show progress
+        document.getElementById('server-import-options').style.display = 'none';
+        document.getElementById('import-progress-container').style.display = 'block';
+        document.getElementById('import-complete-container').style.display = 'none';
+
+        // Reset progress UI
+        document.getElementById('import-progress-bar').style.width = '0%';
+        document.getElementById('import-progress-text').textContent = '0%';
+        document.getElementById('import-processed').textContent = '0';
+        document.getElementById('import-success').textContent = '0';
+        document.getElementById('import-skipped').textContent = '0';
+        document.getElementById('import-failed').textContent = '0';
+        document.getElementById('import-current-file').textContent = 'Preparing import...';
+        document.getElementById('import-skipped-section').style.display = 'none';
+        document.getElementById('import-error-section').style.display = 'none';
+        document.getElementById('import-error-list').innerHTML = '';
+
+        // Start import job
+        const response = await fetch('/api/wizard/import/custom-directory/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                directory: serverImportSelectedPath,
+                fetch_metadata: fetchMetadata,
+                process_artists: processArtists,
+                max_files: null  // Import all files
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to start server directory import');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            importJobId = data.job_id;
+            console.log(`✅ Server directory import job started: ${importJobId}`);
+
+            // Start polling for progress
+            pollVideoImportProgress();
+        } else {
+            throw new Error(data.message || 'Failed to start server directory import job');
+        }
+    } catch (error) {
+        console.error('Error starting server directory import:', error);
+        showError('Failed to start server directory import: ' + error.message);
+        resetImportUI();
+    }
 }
 
 </script>
