@@ -45,7 +45,7 @@ while [ $count -lt $timeout ]; do
     redis_ready=false
 
     nc -z "${DB_HOST:-mariadb}" "${DB_PORT:-3306}" 2>/dev/null && mariadb_ready=true
-    nc -z redis 6379 2>/dev/null && redis_ready=true
+    nc -z "${REDIS_HOST:-redis}" "${REDIS_PORT:-6379}" 2>/dev/null && redis_ready=true
 
     if [ "$mariadb_ready" = true ] && [ "$redis_ready" = true ]; then
         echo "✅ MariaDB and Redis are ready"
