@@ -484,6 +484,117 @@
         .hidden {
             display: none !important;
         }
+
+        /* Directory Browser Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: 8px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .directory-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .directory-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .directory-item:last-child {
+            border-bottom: none;
+        }
+
+        .directory-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .directory-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .directory-meta {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
     </style>
 </head>
 <body>
@@ -681,15 +792,22 @@
                         <label class="form-label" for="musicVideosPath">
                             Music Videos Directory <span class="required">*</span>
                         </label>
-                        <input
-                            type="text"
-                            id="musicVideosPath"
-                            name="musicVideosPath"
-                            class="form-input"
-                            required
-                            placeholder="/path/to/your/music/videos"
-                            value="/app/data/musicvideos"
-                        >
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input
+                                type="text"
+                                id="musicVideosPath"
+                                name="musicVideosPath"
+                                class="form-input"
+                                required
+                                placeholder="/path/to/your/music/videos"
+                                value="/app/data/musicvideos"
+                                style="flex: 1;"
+                            >
+                            <button type="button" class="btn btn-secondary" onclick="openDirectoryBrowser()" style="white-space: nowrap;">
+                                <iconify-icon icon="mdi:folder-open"></iconify-icon>
+                                Browse...
+                            </button>
+                        </div>
                         <div class="form-help">The folder containing your music video files</div>
                         <div class="form-error" id="directoryError"></div>
                         <div id="directoryValidation"></div>
@@ -966,6 +1084,36 @@
                         Go to Dashboard
                     </a>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Directory Browser Modal -->
+    <div id="directoryBrowserModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>Browse Directories</h3>
+                <button type="button" class="modal-close" onclick="closeDirectoryBrowser()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px;">
+                        <iconify-icon icon="mdi:folder" style="font-size: 1.2rem;"></iconify-icon>
+                        <input type="text" id="currentPath" class="form-input" readonly style="flex: 1; background: transparent; border: none; padding: 0;">
+                    </div>
+                </div>
+                <div id="directoryList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
+                    <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                        Loading directories...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDirectoryBrowser()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="selectCurrentDirectory()">
+                    <iconify-icon icon="mdi:check"></iconify-icon>
+                    Select Directory
+                </button>
             </div>
         </div>
     </div>

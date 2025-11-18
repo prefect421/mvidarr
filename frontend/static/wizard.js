@@ -250,8 +250,21 @@ async function submitAdminForm() {
             // Move to next step (nextStep will handle completing the step on backend)
             nextStep();
         } else {
-            // Handle error response
-            showError('usernameError', data.message || 'Failed to create admin account');
+            // Handle error response - route to correct field based on error message
+            const errorMessage = data.message || 'Failed to create admin account';
+
+            // Check if error is password-related
+            if (errorMessage.toLowerCase().includes('password')) {
+                showError('passwordError', errorMessage);
+            }
+            // Check if error is email-related
+            else if (errorMessage.toLowerCase().includes('email')) {
+                showError('emailError', errorMessage);
+            }
+            // Check if error is username-related or default
+            else {
+                showError('usernameError', errorMessage);
+            }
         }
     } catch (error) {
         console.error('Error creating admin account:', error);
@@ -701,6 +714,108 @@ function clearFormErrors() {
     document.querySelectorAll('.form-input').forEach(input => {
         input.classList.remove('error');
     });
+}
+
+// ============================================================================
+// Directory Browser Functions
+// ============================================================================
+
+let currentBrowsePath = '/';
+
+async function openDirectoryBrowser() {
+    const modal = document.getElementById('directoryBrowserModal');
+    modal.style.display = 'flex';
+
+    // Start from the current value or root
+    const currentValue = document.getElementById('musicVideosPath').value;
+    currentBrowsePath = currentValue || '/';
+
+    await loadDirectory(currentBrowsePath);
+}
+
+function closeDirectoryBrowser() {
+    const modal = document.getElementById('directoryBrowserModal');
+    modal.style.display = 'none';
+}
+
+function selectCurrentDirectory() {
+    document.getElementById('musicVideosPath').value = currentBrowsePath;
+    closeDirectoryBrowser();
+
+    // Clear validation so user can re-validate with new path
+    document.getElementById('directoriesSubmitBtn').disabled = true;
+    document.getElementById('directoryResults').classList.add('hidden');
+}
+
+async function loadDirectory(path) {
+    const directoryList = document.getElementById('directoryList');
+    const currentPathInput = document.getElementById('currentPath');
+
+    currentPathInput.value = path;
+    currentBrowsePath = path;
+
+    directoryList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);"><span class="spinner"></span> Loading...</div>';
+
+    try {
+        const response = await fetch(`/api/filesystem/browse?path=${encodeURIComponent(path)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'Failed to load directory');
+        }
+
+        let html = '';
+
+        // Add parent directory link if not at root
+        if (data.parent_path) {
+            html += `
+                <div class="directory-item" onclick="loadDirectory('${escapeHtml(data.parent_path)}')">
+                    <iconify-icon icon="mdi:arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></iconify-icon>
+                    <div class="directory-info">
+                        <div class="directory-name">..</div>
+                        <div class="directory-meta">Parent Directory</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Add directories
+        if (data.entries.length === 0) {
+            html += '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">No subdirectories found</div>';
+        } else {
+            data.entries.forEach(entry => {
+                const videoCountText = entry.video_count !== null ? `${entry.video_count} videos` : '';
+                html += `
+                    <div class="directory-item" onclick="loadDirectory('${escapeHtml(entry.path)}')">
+                        <iconify-icon icon="mdi:folder" style="font-size: 1.5rem; color: var(--warning-color);"></iconify-icon>
+                        <div class="directory-info">
+                            <div class="directory-name">${escapeHtml(entry.name)}</div>
+                            ${videoCountText ? `<div class="directory-meta">${videoCountText}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        directoryList.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error loading directory:', error);
+        directoryList.innerHTML = `
+            <div style="padding: 2rem; text-align: center;">
+                <div style="color: var(--danger-color); margin-bottom: 0.5rem;">
+                    <iconify-icon icon="mdi:alert-circle" style="font-size: 2rem;"></iconify-icon>
+                </div>
+                <div style="color: var(--text-secondary);">${escapeHtml(error.message)}</div>
+            </div>
+        `;
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 console.log('🧙 Wizard controller loaded successfully');
