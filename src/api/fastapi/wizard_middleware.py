@@ -35,6 +35,7 @@ class FirstRunDetectionMiddleware(BaseHTTPMiddleware):
         "/api/admin",  # Admin endpoints (needed for wizard user creation)
         "/api/jobs",  # Job status endpoints (needed for wizard import progress)
         "/api/metadata-enrichment",  # Metadata enrichment jobs (jobs API redirects here)
+        "/api/filesystem",  # Filesystem browser (needed for wizard directory selection)
         "/static",  # Static assets
         "/health",  # Health check
         "/api/health",  # Health check API
