@@ -17,20 +17,36 @@ echo "🔧 Configuring user permissions (PUID=$PUID, PGID=$PGID)..."
 usermod -u "$PUID" mvidarr 2>/dev/null || true
 groupmod -g "$PGID" mvidarr 2>/dev/null || true
 
-# Create required directories
+# Create required directories with proper permissions
 echo "📁 Creating required directories..."
 mkdir -p /app/data/database \
          /app/data/thumbnails/artists \
+         /app/data/thumbnails/videos \
          /app/data/cache \
          /app/data/downloads \
          /app/data/logs \
          /app/data/musicvideos \
-         /app/data/music_videos
+         /app/data/music_videos \
+         /app/data/certificates \
+         /app/data/processing \
+         /app/data/cookies \
+         /app/logs
 
-# Set proper permissions
-echo "🔒 Setting directory permissions..."
+# Set proper ownership recursively on all app directories
+# This handles both newly created directories and existing mounted volumes
+echo "🔒 Setting directory ownership (PUID=$PUID, PGID=$PGID)..."
 chown -R "$PUID:$PGID" /app/data /app/logs
-touch /app/data/database/.initialized || true
+
+# Set proper permissions (755 for directories, 644 for files)
+echo "🔒 Setting directory permissions..."
+find /app/data -type d -exec chmod 755 {} \;
+find /app/data -type f -exec chmod 644 {} \;
+find /app/logs -type d -exec chmod 755 {} \;
+find /app/logs -type f -exec chmod 644 {} \;
+
+# Create initialization marker
+touch /app/data/database/.initialized 2>/dev/null || true
+chown "$PUID:$PGID" /app/data/database/.initialized 2>/dev/null || true
 
 # Set umask
 UMASK_SET=${UMASK_SET:-022}
