@@ -32,6 +32,10 @@ COPY . .
 # Copy supervisord configuration
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Copy and setup entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Create mvidarr user for running processes
 RUN useradd -m -u 1000 -s /bin/bash mvidarr
 
@@ -50,5 +54,5 @@ ENV PYTHONUNBUFFERED=1
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/api/health || exit 1
 
-# Default command - run supervisord to manage FastAPI + Celery
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Use entrypoint script to handle setup and start supervisord
+ENTRYPOINT ["/entrypoint.sh"]

@@ -1,7 +1,8 @@
 #!/bin/bash
+set -e
 
 echo "=============================================="
-echo "🚀 MVIDARR PRODUCTION ENTRYPOINT v4.0 🚀"
+echo "🚀 MVIDARR ENTRYPOINT 🚀"
 echo "=============================================="
 echo "📅 Start time: $(date)"
 echo "👤 User: $(whoami)"
@@ -9,35 +10,55 @@ echo "📁 Directory: $(pwd)"
 echo "🐧 Hostname: $(hostname)"
 echo "=============================================="
 
-# Wait for database to be ready
-echo "⏳ Waiting for MariaDB to be ready..."
-echo "Connection details - Host: ${DB_HOST:-mariadb}, Port: ${DB_PORT:-3306}, User: ${DB_USER:-mvidarr}"
+# Configure user permissions (PUID/PGID)
+PUID=${PUID:-1000}
+PGID=${PGID:-1000}
+echo "🔧 Configuring user permissions (PUID=$PUID, PGID=$PGID)..."
+usermod -u "$PUID" mvidarr 2>/dev/null || true
+groupmod -g "$PGID" mvidarr 2>/dev/null || true
 
-# Simple wait for port availability with timeout
+# Create required directories
+echo "📁 Creating required directories..."
+mkdir -p /app/data/database \
+         /app/data/thumbnails/artists \
+         /app/data/cache \
+         /app/data/downloads \
+         /app/data/logs \
+         /app/data/musicvideos \
+         /app/data/music_videos
+
+# Set proper permissions
+echo "🔒 Setting directory permissions..."
+chown -R "$PUID:$PGID" /app/data /app/logs
+touch /app/data/database/.initialized || true
+
+# Set umask
+UMASK_SET=${UMASK_SET:-022}
+umask "$UMASK_SET"
+
+# Wait for MariaDB and Redis to be ready
+echo "⏳ Waiting for MariaDB and Redis to be ready..."
 timeout=180
 count=0
 while [ $count -lt $timeout ]; do
-    if nc -z "${DB_HOST:-mariadb}" "${DB_PORT:-3306}" 2>/dev/null; then
-        echo "MariaDB port is reachable, waiting for database to be fully ready..."
-        sleep 5
-        echo "MariaDB is ready - starting application"
+    mariadb_ready=false
+    redis_ready=false
+
+    nc -z "${DB_HOST:-mariadb}" "${DB_PORT:-3306}" 2>/dev/null && mariadb_ready=true
+    nc -z redis 6379 2>/dev/null && redis_ready=true
+
+    if [ "$mariadb_ready" = true ] && [ "$redis_ready" = true ]; then
+        echo "✅ MariaDB and Redis are ready"
         break
-    else
-        echo "MariaDB port ${DB_PORT:-3306} not reachable on ${DB_HOST:-mariadb}, waiting... ($count/$timeout seconds)"
     fi
+
+    echo "Services not ready (MariaDB: $mariadb_ready, Redis: $redis_ready), waiting... ($count/$timeout seconds)"
     sleep 3
     count=$((count + 3))
 done
 
 if [ $count -ge $timeout ]; then
-    echo "MariaDB failed to start within timeout ($timeout seconds)"
-    echo "Checking MariaDB connection details:"
-    echo "Host: ${DB_HOST:-mariadb}"
-    echo "Port: ${DB_PORT:-3306}"
-    echo "User: ${DB_USER:-mvidarr}"
-    echo "Database: ${DB_NAME:-mvidarr}"
-    echo "Testing basic connectivity..."
-    nc -z "${DB_HOST:-mariadb}" "${DB_PORT:-3306}" && echo "Port is reachable" || echo "Port is not reachable"
+    echo "❌ Services failed to start within timeout ($timeout seconds)"
     exit 1
 fi
 
@@ -110,7 +131,7 @@ except Exception as e:
 "
 
 # Start the application
-echo "🚀 Starting MVidarr application..."
+echo "🚀 Starting MVidarr with supervisord (FastAPI + Celery)..."
 echo "📍 Working directory: $(pwd)"
 echo "🐍 Python path: $PYTHONPATH"
 
@@ -119,7 +140,7 @@ if [ "$#" -gt 0 ]; then
     echo "▶️ Executing custom command: $@"
     exec "$@"
 else
-    # Default: Start FastAPI application
-    echo "▶️ Executing: python3 fastapi_app.py"
-    exec python3 fastapi_app.py
+    # Default: Start supervisord to manage FastAPI + Celery
+    echo "▶️ Executing: /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
 fi

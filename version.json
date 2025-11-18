@@ -1,7 +1,7 @@
 {
   "version": "1.0.0-dev",
-  "build_date": "2025-11-14T15:30:43.751078",
-  "git_commit": "2868328",
+  "build_date": "2025-11-18T15:07:22.219429",
+  "git_commit": "52672ae",
   "git_branch": "dev",
   "release_name": "v1.0.0 Development - First Production Release",
   "features": [
@@ -10,6 +10,7 @@
     "🎬 Reliable video import system (no duplicates)",
     "✅ Post-import batch artist processing",
     "🎨 Auto-matching: IMVDb, Spotify, Last.fm, MusicBrainz",
-    "⚡ Celery task chaining for wizard workflow"
+    "⚡ Celery task chaining for wizard workflow",
+    "🐳 Simplified Docker setup with dedicated entrypoint script"
   ]
 }
