@@ -493,7 +493,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.7);
             z-index: 1000;
             align-items: center;
             justify-content: center;
@@ -501,19 +501,21 @@
         }
 
         .modal-content {
-            background: var(--bg-primary);
+            background: var(--wizard-bg);
+            border: 1px solid var(--wizard-border);
             border-radius: 8px;
             width: 100%;
             max-height: 90vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
         .modal-header {
             padding: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--wizard-border);
+            background: var(--wizard-card-bg);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -521,14 +523,14 @@
 
         .modal-header h3 {
             margin: 0;
-            color: var(--text-primary);
+            color: var(--wizard-text);
         }
 
         .modal-close {
             background: none;
             border: none;
             font-size: 2rem;
-            color: var(--text-secondary);
+            color: var(--wizard-text-secondary);
             cursor: pointer;
             padding: 0;
             width: 32px;
@@ -541,19 +543,25 @@
         }
 
         .modal-close:hover {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
+            background: rgba(0, 0, 0, 0.1);
+            color: var(--wizard-text);
+        }
+
+        [data-theme="dark"] .modal-close:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .modal-body {
             padding: 1.5rem;
             flex: 1;
             overflow-y: auto;
+            background: var(--wizard-bg);
         }
 
         .modal-footer {
             padding: 1.5rem;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid var(--wizard-border);
+            background: var(--wizard-card-bg);
             display: flex;
             gap: 1rem;
             justify-content: flex-end;
@@ -564,13 +572,14 @@
             align-items: center;
             gap: 1rem;
             padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--wizard-border);
             cursor: pointer;
             transition: background 0.2s;
+            background: var(--wizard-bg);
         }
 
         .directory-item:hover {
-            background: var(--bg-secondary);
+            background: var(--wizard-card-bg);
         }
 
         .directory-item:last-child {
@@ -584,7 +593,7 @@
 
         .directory-name {
             font-weight: 500;
-            color: var(--text-primary);
+            color: var(--wizard-text);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -592,7 +601,7 @@
 
         .directory-meta {
             font-size: 0.875rem;
-            color: var(--text-secondary);
+            color: var(--wizard-text-secondary);
             margin-top: 0.25rem;
         }
     </style>
