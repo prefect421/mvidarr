@@ -612,14 +612,16 @@ function loadArtists(page = 1, resetPage = false) {
             updateResultsSummary(summaryData);
             
             if (data.artists && data.artists.length > 0) {
-                const artistsHtml = data.artists.map(artist => `
-                    <div class="artist-card" data-artist-id="${artist.id}">
+                const artistsHtml = data.artists.map(artist => {
+                    const isSelected = selectedArtists.has(artist.id);
+                    return `
+                    <div class="artist-card ${isSelected ? 'selected' : ''}" data-artist-id="${artist.id}">
                         <div class="artist-selection-overlay">
-                            <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})">
+                            <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})" ${isSelected ? 'checked' : ''}>
                         </div>
                         <div class="artist-thumbnail">
                             <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${artist.name} details">
-                                <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" 
+                                <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}"
                                      alt="${artist.name}" onerror="handleThumbnailError(this)">
                             </a>
                         </div>
@@ -645,7 +647,8 @@ function loadArtists(page = 1, resetPage = false) {
                             ${artist.last_discovery ? `<p class="last-discovery">Last scan: ${new Date(artist.last_discovery).toLocaleDateString()}</p>` : ''}
                         </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
                 
                 const paginationHtml = createPaginationControls(pagination);
                 grid.innerHTML = `
@@ -654,6 +657,9 @@ function loadArtists(page = 1, resetPage = false) {
                     </div>
                     ${paginationHtml}
                 `;
+
+                // Update button states based on current selection
+                updateSelectionDisplay();
             } else {
                 grid.innerHTML = '<div class="no-results"><p>No artists found. Try adjusting your search or filters.</p></div>';
             }
@@ -696,14 +702,16 @@ function loadArtists(page = 1, resetPage = false) {
                     summary.textContent = `Showing ${data.count || 0} of ${data.total || 0} artists`;
                     
                     if (data.artists && data.artists.length > 0) {
-                        const artistsHtml = data.artists.map(artist => `
-                            <div class="artist-card" data-artist-id="${artist.id}">
+                        const artistsHtml = data.artists.map(artist => {
+                            const isSelected = selectedArtists.has(artist.id);
+                            return `
+                            <div class="artist-card ${isSelected ? 'selected' : ''}" data-artist-id="${artist.id}">
                                 <div class="artist-selection-overlay">
-                                    <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})">
+                                    <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})" ${isSelected ? 'checked' : ''}>
                                 </div>
                                 <div class="artist-thumbnail">
                                     <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${artist.name} details">
-                                        <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" 
+                                        <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}"
                                              alt="${artist.name}" onerror="handleThumbnailError(this)">
                                     </a>
                                 </div>
@@ -726,7 +734,8 @@ function loadArtists(page = 1, resetPage = false) {
                                     </div>
                                 </div>
                             </div>
-                        `).join('');
+                            `;
+                        }).join('');
                         
                         const paginationHtml = createPaginationControls({
                             page: data.page || 1,
@@ -739,6 +748,9 @@ function loadArtists(page = 1, resetPage = false) {
                             </div>
                             ${paginationHtml}
                         `;
+
+                        // Update button states based on current selection
+                        updateSelectionDisplay();
                     } else {
                         grid.innerHTML = '<div class="no-results"><p>No artists found.</p></div>';
                     }
