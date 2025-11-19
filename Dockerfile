@@ -5,6 +5,7 @@
 FROM python:3.12-slim
 
 # Install system dependencies including supervisord for process management
+# CACHE_BUST: 2025-11-19-v2 - Added xz-utils for Node.js tar extraction
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     curl \
