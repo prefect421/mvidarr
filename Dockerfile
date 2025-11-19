@@ -5,8 +5,9 @@
 FROM python:3.12-slim
 
 # Install system dependencies including supervisord for process management
-# CACHE_BUST: 2025-11-19-v2 - Added xz-utils for Node.js tar extraction
+# xz-utils is REQUIRED for extracting Node.js .tar.xz files
 RUN apt-get update && apt-get install -y \
+    xz-utils \
     ffmpeg \
     curl \
     procps \
@@ -17,7 +18,6 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     ca-certificates \
     gnupg \
-    xz-utils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
