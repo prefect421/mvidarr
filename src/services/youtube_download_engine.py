@@ -216,6 +216,9 @@ class YouTubeDownloadEngine:
         # Build base command
         cmd = [self.yt_dlp_path]
 
+        # Enable verbose logging for debugging download issues
+        cmd.extend(["--verbose", "--print-traffic"])
+
         # Output settings
         safe_title = self._sanitize_filename(title)
         output_template = os.path.join(output_path, f"{safe_title}.%(ext)s")
@@ -296,7 +299,7 @@ class YouTubeDownloadEngine:
         # URL
         cmd.append(url)
 
-        logger.debug(f"Command: {' '.join(cmd[:5])}... (truncated)")
+        logger.info(f"Full yt-dlp command: {' '.join(cmd)}")
 
         try:
             process = subprocess.Popen(
@@ -311,12 +314,9 @@ class YouTubeDownloadEngine:
             for line in iter(process.stdout.readline, ""):
                 output_lines.append(line.strip())
 
-                # Log important events
-                if any(
-                    keyword in line
-                    for keyword in ["ERROR:", "WARNING:", "Selected format:"]
-                ):
-                    logger.debug(f"yt-dlp: {line.strip()}")
+                # Log all yt-dlp output for debugging
+                if line.strip():  # Only log non-empty lines
+                    logger.info(f"yt-dlp: {line.strip()}")
 
             process.wait(timeout=300)  # 5 minute timeout
 
