@@ -726,9 +726,9 @@ async function openDirectoryBrowser() {
     const modal = document.getElementById('directoryBrowserModal');
     modal.style.display = 'flex';
 
-    // Start from the current value or root
+    // Start from the current value or /app/data (container default)
     const currentValue = document.getElementById('musicVideosPath').value;
-    currentBrowsePath = currentValue || '/';
+    currentBrowsePath = currentValue || '/app/data';
 
     await loadDirectory(currentBrowsePath);
 }
