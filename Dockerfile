@@ -14,8 +14,14 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     default-libmysqlclient-dev \
     build-essential \
-    nodejs \
-    npm \
+    ca-certificates \
+    gnupg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js from NodeSource (required for yt-dlp JavaScript runtime)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
