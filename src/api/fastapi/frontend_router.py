@@ -38,6 +38,14 @@ async def index(request: Request):
         raise HTTPException(status_code=500, detail="Failed to load dashboard")
 
 
+@frontend_router.get(
+    "/dashboard", response_class=HTMLResponse, name="frontend_dashboard"
+)
+async def dashboard(request: Request):
+    """Dashboard page (redirect to index)"""
+    return RedirectResponse(url="/", status_code=302)
+
+
 @frontend_router.get("/videos", response_class=HTMLResponse, name="frontend_videos")
 async def videos(request: Request):
     """Videos management page"""
