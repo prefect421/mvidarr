@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     ca-certificates \
     gnupg \
+    xz-utils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
