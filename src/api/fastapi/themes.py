@@ -450,3 +450,43 @@ async def get_theme(
     except Exception as e:
         logger.error(f"Error getting theme {theme_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{theme_id}")
+async def delete_theme(
+    theme_id: int = FastAPIPath(..., description="Theme ID to delete"),
+    db: Session = Depends(get_db_session),
+):
+    """
+    Delete a custom theme
+
+    Only custom themes can be deleted, not built-in themes.
+    """
+    try:
+        theme = db.query(CustomTheme).filter(CustomTheme.id == theme_id).first()
+
+        if not theme:
+            raise HTTPException(status_code=404, detail="Theme not found")
+
+        # Prevent deletion of built-in themes
+        if theme.is_built_in:
+            raise HTTPException(status_code=403, detail="Cannot delete built-in themes")
+
+        # Delete the theme
+        db.delete(theme)
+        db.commit()
+
+        logger.info(f"Deleted theme: {theme.name} (ID: {theme_id})")
+
+        return {
+            "success": True,
+            "message": f"Theme '{theme.display_name or theme.name}' deleted successfully",
+            "theme_id": theme_id,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting theme {theme_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
