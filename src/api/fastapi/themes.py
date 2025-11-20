@@ -506,15 +506,11 @@ async def export_all_themes(db: Session = Depends(get_db_session)):
         # Get all custom themes (exclude built-in)
         themes = db.query(CustomTheme).filter(CustomTheme.is_built_in == False).all()
 
-        if not themes:
-            raise HTTPException(
-                status_code=404, detail="No custom themes found to export"
-            )
-
-        # Build export data structure
+        # Build export data structure (even if empty)
         export_data = {
             "export_version": "1.0",
             "export_date": datetime.utcnow().isoformat(),
+            "theme_count": len(themes),
             "themes": [
                 {
                     "name": theme.name,
