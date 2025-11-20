@@ -263,26 +263,40 @@ async def get_celery_inspect(current_user: dict = Depends(require_authentication
             redis_url = CELERY_RESULT_BACKEND
             logger.info(f"Connecting to Redis for completed jobs: {redis_url}")
 
-            # Create Redis connection
-            redis_client = redis.from_url(redis_url, decode_responses=True)
+            # Create Redis connection with timeout
+            redis_client = redis.from_url(
+                redis_url,
+                decode_responses=True,
+                socket_timeout=3,
+                socket_connect_timeout=2,
+            )
 
-            # Get all task result keys (limited to most recent)
+            # Get task result keys (limited scan for performance)
             # Celery stores results as celery-task-meta-{task_id}
             pattern = "celery-task-meta-*"
             task_keys = []
+            max_jobs = 50  # Limit to 50 most recent completed jobs for performance
 
-            # Use SCAN to avoid blocking Redis (better than KEYS)
+            # Use SCAN with limited iterations to avoid blocking
             cursor = 0
-            while True:
+            scan_iterations = 0
+            max_scan_iterations = 5  # Limit scan iterations to prevent timeout
+
+            while scan_iterations < max_scan_iterations:
                 cursor, keys = redis_client.scan(cursor, match=pattern, count=100)
                 task_keys.extend(keys)
-                if cursor == 0:
+                scan_iterations += 1
+
+                # Break if we have enough keys or scan is complete
+                if cursor == 0 or len(task_keys) >= max_jobs:
                     break
 
-            logger.info(f"Found {len(task_keys)} completed job results in Redis")
+            logger.info(
+                f"Found {len(task_keys)} completed job results in Redis after {scan_iterations} scan iterations"
+            )
 
-            # Fetch metadata for each completed task (limit to most recent 100)
-            for key in task_keys[-100:]:
+            # Fetch metadata for each completed task (limit to max_jobs)
+            for key in task_keys[:max_jobs]:
                 try:
                     task_data = redis_client.get(key)
                     if task_data:
