@@ -558,11 +558,15 @@ async function refreshJobsPageHistory() {
 function applyJobFilters() {
     const container = document.getElementById('recentJobsList');
     const statusFilter = document.getElementById('statusFilter').value;
-    
-    let filteredJobs = allJobs;
-    
+
+    // Recent Jobs should only show completed, failed, or cancelled jobs (not active/queued)
+    let filteredJobs = allJobs.filter(job =>
+        job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled'
+    );
+
+    // Apply additional status filter if selected
     if (statusFilter) {
-        filteredJobs = allJobs.filter(job => job.status === statusFilter);
+        filteredJobs = filteredJobs.filter(job => job.status === statusFilter);
     }
     
     if (filteredJobs.length === 0) {
