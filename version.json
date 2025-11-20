@@ -1,7 +1,7 @@
 {
   "version": "1.0.0-dev",
-  "build_date": "2025-11-20T14:16:44.932635",
-  "git_commit": "57efa63",
+  "build_date": "2025-11-20T14:50:00.000000",
+  "git_commit": "pending",
   "git_branch": "dev",
   "release_name": "v1.0.0 Development - First Production Release",
   "features": [
@@ -9,7 +9,8 @@
     "🔧 Installation Wizard for first-run setup",
     "🎬 Reliable video import system (no duplicates)",
     "✅ API validation before configuration",
-    "🐛 CRITICAL FIX: Added Node.js runtime for yt-dlp YouTube downloads",
-    "📁 Added cookies directory for age-restricted video support"
+    "🐛 CRITICAL FIX: Node.js runtime + yt-dlp JavaScript configuration",
+    "⚡ Configured yt-dlp to use Node.js with --js-runtimes flag",
+    "🔐 Added remote component solver for YouTube challenges"
   ]
 }
