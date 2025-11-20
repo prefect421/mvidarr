@@ -246,17 +246,19 @@ def create_admin_user():
 
 
 def init_built_in_themes():
-    """Initialize built-in themes in the database"""
+    """Initialize built-in themes in the database
+
+    Note: This function is primarily for backward compatibility.
+    Built-in themes are now seeded via migration 015_seed_built_in_themes.py
+    which runs automatically during database initialization.
+
+    This function serves as a safety check to ensure themes exist,
+    but the actual seeding is handled by the migration system.
+    """
     from src.database.connection import get_db
 
     try:
         with get_db() as session:
-            # Get admin user for theme ownership
-            admin_user = session.query(User).filter_by(username="admin").first()
-            if not admin_user:
-                logger.warning("Admin user not found for theme initialization")
-                return True  # Don't fail initialization if admin user is missing
-
             # Check if built-in themes already exist
             existing_builtin_count = (
                 session.query(CustomTheme).filter_by(is_built_in=True).count()
@@ -268,46 +270,20 @@ def init_built_in_themes():
                 )
                 return True
 
-            # Define the new built-in themes (all database themes removed)
-            new_themes = []
+            # No built-in themes found - log a warning
+            # Migration 015 should have created them, so this shouldn't happen
+            logger.warning(
+                "No built-in themes found! Migration 015 should have seeded them. "
+                "Run migrations/015_seed_built_in_themes.py manually if needed."
+            )
 
-            # Create the themes
-            themes_created = 0
-            for theme_data in new_themes:
-                # Check if theme already exists by name
-                existing_theme = (
-                    session.query(CustomTheme)
-                    .filter_by(name=theme_data["name"])
-                    .first()
-                )
-                if existing_theme:
-                    logger.info(
-                        f"Theme '{theme_data['name']}' already exists, skipping"
-                    )
-                    continue
-
-                theme = CustomTheme(
-                    name=theme_data["name"],
-                    display_name=theme_data["display_name"],
-                    description=theme_data["description"],
-                    created_by=admin_user.id,
-                    is_public=True,
-                    is_built_in=True,
-                    theme_data=theme_data["theme_data"],
-                )
-                session.add(theme)
-                themes_created += 1
-
-            if themes_created > 0:
-                session.commit()
-                logger.info(f"Created {themes_created} built-in themes")
-            else:
-                logger.info("All built-in themes already exist")
+            # Don't fail initialization - themes can be added later
+            return True
 
         return True
 
     except Exception as e:
-        logger.error(f"Failed to initialize built-in themes: {e}")
+        logger.error(f"Failed to check built-in themes: {e}")
         return False
 
 
@@ -412,6 +388,24 @@ def initialize_database():
     except Exception as e:
         logger.error(f"Failed to run database migrations: {e}")
         return False
+
+    # Ensure built-in themes exist (failsafe check after migrations)
+    # This ensures themes are seeded even if migration 015 had issues
+    try:
+        from src.database.ensure_themes import ensure_builtin_themes_exist
+
+        success, count, message = ensure_builtin_themes_exist()
+        if success:
+            if count > 0:
+                logger.info(f"Seeded {count} built-in themes")
+            else:
+                logger.info("Built-in themes already exist")
+        else:
+            logger.warning(f"Theme seeding check failed: {message}")
+            # Don't fail initialization - themes can be added manually later
+    except Exception as e:
+        logger.warning(f"Failed to run theme seeding check: {e}")
+        # Don't fail initialization - themes can be added manually later
 
     # Health check
     if not check_database_health():

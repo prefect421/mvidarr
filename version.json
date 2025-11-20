@@ -1,7 +1,7 @@
 {
   "version": "1.0.0-dev",
-  "build_date": "2025-11-20T21:28:00.000000",
-  "git_commit": "6bef3bb",
+  "build_date": "2025-11-20T22:30:00.000000",
+  "git_commit": "9a72a4c",
   "git_branch": "dev",
   "release_name": "v1.0.0 Development - First Production Release",
   "features": [
@@ -11,6 +11,7 @@
     "✅ API validation before configuration",
     "📊 Enhanced jobs dashboard with completed job history from Redis",
     "🐛 Fixed Celery result backend configuration bug",
-    "🎨 Theme DELETE endpoint - remove custom themes via API"
+    "🎨 Theme DELETE endpoint - remove custom themes via API",
+    "🎨 Built-in theme seeding fix - ensures themes install on new deployments"
   ]
 }
