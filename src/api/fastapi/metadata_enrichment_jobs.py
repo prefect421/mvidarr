@@ -195,7 +195,11 @@ async def get_celery_health(current_user: dict = Depends(require_authentication)
 async def get_celery_inspect(current_user: dict = Depends(require_authentication)):
     """Get all Celery job information for the jobs dashboard"""
     try:
-        from src.jobs.celery_app import celery_app
+        import json
+
+        import redis
+
+        from src.jobs.celery_app import CELERY_RESULT_BACKEND, celery_app
 
         inspect = celery_app.control.inspect()
 
@@ -251,6 +255,102 @@ async def get_celery_inspect(current_user: dict = Depends(require_authentication
                         "kwargs": task.get("kwargs"),
                     }
                 )
+
+        # Query Redis for completed job results
+        try:
+            # Parse Redis URL to extract connection details
+            # Format: redis://:password@host:port/db
+            redis_url = CELERY_RESULT_BACKEND
+            logger.info(f"Connecting to Redis for completed jobs: {redis_url}")
+
+            # Create Redis connection
+            redis_client = redis.from_url(redis_url, decode_responses=True)
+
+            # Get all task result keys (limited to most recent)
+            # Celery stores results as celery-task-meta-{task_id}
+            pattern = "celery-task-meta-*"
+            task_keys = []
+
+            # Use SCAN to avoid blocking Redis (better than KEYS)
+            cursor = 0
+            while True:
+                cursor, keys = redis_client.scan(cursor, match=pattern, count=100)
+                task_keys.extend(keys)
+                if cursor == 0:
+                    break
+
+            logger.info(f"Found {len(task_keys)} completed job results in Redis")
+
+            # Fetch metadata for each completed task (limit to most recent 100)
+            for key in task_keys[-100:]:
+                try:
+                    task_data = redis_client.get(key)
+                    if task_data:
+                        task_meta = json.loads(task_data)
+                        task_id = key.replace("celery-task-meta-", "")
+
+                        # Extract task information
+                        status = task_meta.get("status", "UNKNOWN")
+                        result = task_meta.get("result", {})
+                        task_name = task_meta.get("task", "unknown")
+
+                        # Try to infer task type from result message if task name is unknown
+                        if task_name == "unknown" and isinstance(result, dict):
+                            message = result.get("message", "")
+                            if "download" in message.lower():
+                                task_name = "download_processor.process_downloads"
+                            elif (
+                                "metadata" in message.lower()
+                                or "enrich" in message.lower()
+                            ):
+                                task_name = "metadata_enrichment"
+                            elif "index" in message.lower():
+                                task_name = "video_index"
+                            elif "thumbnail" in message.lower():
+                                task_name = "thumbnail_generation"
+
+                        # Map Celery status to dashboard status
+                        dashboard_status = "completed"
+                        if status == "SUCCESS":
+                            dashboard_status = "completed"
+                        elif status == "FAILURE":
+                            dashboard_status = "failed"
+                        elif status == "REVOKED":
+                            dashboard_status = "cancelled"
+
+                        # Extract timing information
+                        date_done = task_meta.get("date_done")
+
+                        jobs.append(
+                            {
+                                "job_id": task_id,
+                                "type": task_name.replace(".", "_"),
+                                "status": dashboard_status,
+                                "worker": "completed",
+                                "created_at": None,  # Not available in result backend
+                                "completed_at": date_done,
+                                "result": result,
+                                "traceback": task_meta.get("traceback"),
+                            }
+                        )
+
+                except json.JSONDecodeError as json_error:
+                    logger.warning(
+                        f"Failed to parse task metadata for {key}: {json_error}"
+                    )
+                    continue
+                except Exception as task_error:
+                    logger.warning(f"Error processing task {key}: {task_error}")
+                    continue
+
+            redis_client.close()
+
+        except redis.RedisError as redis_error:
+            logger.error(f"Redis connection error: {redis_error}")
+            # Continue without completed jobs rather than failing completely
+        except Exception as completed_error:
+            logger.error(f"Error fetching completed jobs from Redis: {completed_error}")
+            # Continue without completed jobs rather than failing completely
 
         return {
             "jobs": jobs,
