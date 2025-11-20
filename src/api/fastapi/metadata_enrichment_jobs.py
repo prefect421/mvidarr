@@ -3,7 +3,7 @@ FastAPI Metadata Enrichment - Jobs Module
 Job management endpoints (job status, cancel, celery health, celery inspect)
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -332,8 +332,27 @@ async def get_celery_inspect(current_user: dict = Depends(require_authentication
                         elif status == "REVOKED":
                             dashboard_status = "cancelled"
 
-                        # Extract timing information
+                        # Extract timing information and convert to Unix timestamp
                         date_done = task_meta.get("date_done")
+                        completed_timestamp = None
+                        if date_done:
+                            try:
+                                # Convert ISO 8601 string to Unix timestamp (seconds)
+                                # Remove microseconds and 'Z' for parsing
+                                date_str = date_done.split(".")[
+                                    0
+                                ]  # Remove microseconds
+                                dt = datetime.fromisoformat(date_str)
+                                # Assume UTC if no timezone info
+                                if dt.tzinfo is None:
+                                    dt = dt.replace(tzinfo=timezone.utc)
+                                completed_timestamp = int(dt.timestamp())
+                            except Exception as ts_error:
+                                logger.debug(
+                                    f"Failed to parse timestamp {date_done}: {ts_error}"
+                                )
+                                # Return None instead of breaking the response
+                                completed_timestamp = None
 
                         jobs.append(
                             {
@@ -342,7 +361,7 @@ async def get_celery_inspect(current_user: dict = Depends(require_authentication
                                 "status": dashboard_status,
                                 "worker": "completed",
                                 "created_at": None,  # Not available in result backend
-                                "completed_at": date_done,
+                                "completed_at": completed_timestamp,
                                 "result": result,
                                 "traceback": task_meta.get("traceback"),
                             }
