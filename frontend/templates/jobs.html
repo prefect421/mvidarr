@@ -584,7 +584,7 @@ function applyJobFilters() {
                 </div>
                 <div class="job-details">
                     <span class="job-status ${job.status}">${job.status}</span>
-                    <span class="job-time">${formatTimestamp(job.created_at)}</span>
+                    <span class="job-time">${formatTimestamp(job.completed_at || job.created_at)}</span>
                     ${job.elapsed_seconds ? `<span class="job-duration">${formatDuration(job.elapsed_seconds)}</span>` : ''}
                 </div>
             </div>
@@ -627,12 +627,37 @@ async function cancelJob(jobId) {
     }
 }
 
-function clearCompletedJobs() {
-    if (confirm('Clear all completed jobs from history?')) {
-        // This would typically call an API endpoint to clear completed jobs
-        console.log('Clear completed jobs requested');
-        // For now, just refresh the display
+async function clearCompletedJobs() {
+    if (!confirm('Clear all completed jobs from history? This will permanently delete job history from Redis.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/metadata-enrichment/celery/clear-completed', {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to clear completed jobs');
+        }
+
+        const result = await response.json();
+        console.log('Cleared completed jobs:', result);
+
+        // Show success message
+        alert(`Successfully cleared ${result.deleted_count} completed jobs from history`);
+
+        // Refresh the display
         refreshJobsPageHistory();
+        loadJobsPageSystemStats();
+
+    } catch (error) {
+        console.error('Failed to clear completed jobs:', error);
+        alert('Failed to clear completed jobs: ' + error.message);
     }
 }
 

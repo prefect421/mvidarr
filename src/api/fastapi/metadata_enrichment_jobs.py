@@ -191,6 +191,53 @@ async def get_celery_health(current_user: dict = Depends(require_authentication)
         )
 
 
+@router.delete("/celery/clear-completed")
+async def clear_completed_jobs(current_user: dict = Depends(require_authentication)):
+    """Clear completed job history from Redis result backend"""
+    try:
+        import redis
+
+        from src.jobs.celery_app import CELERY_RESULT_BACKEND
+
+        # Create Redis connection with timeout
+        redis_client = redis.from_url(
+            CELERY_RESULT_BACKEND,
+            decode_responses=True,
+            socket_timeout=3,
+            socket_connect_timeout=2,
+        )
+
+        # Get all task result keys
+        pattern = "celery-task-meta-*"
+        deleted_count = 0
+
+        # Use SCAN to find and delete keys
+        cursor = 0
+        while True:
+            cursor, keys = redis_client.scan(cursor, match=pattern, count=100)
+            if keys:
+                deleted_count += redis_client.delete(*keys)
+            if cursor == 0:
+                break
+
+        redis_client.close()
+
+        logger.info(f"Cleared {deleted_count} completed job results from Redis")
+
+        return {
+            "success": True,
+            "deleted_count": deleted_count,
+            "message": f"Cleared {deleted_count} completed jobs from history",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+    except Exception as e:
+        logger.error(f"Error clearing completed jobs: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to clear completed jobs: {str(e)}"
+        )
+
+
 @router.get("/celery/inspect")
 async def get_celery_inspect(current_user: dict = Depends(require_authentication)):
     """Get all Celery job information for the jobs dashboard"""
