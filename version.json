@@ -1,16 +1,15 @@
 {
   "version": "1.0.0-dev",
-  "build_date": "2025-11-18T15:07:22.219429",
-  "git_commit": "52672ae",
+  "build_date": "2025-11-20T14:16:44.932635",
+  "git_commit": "57efa63",
   "git_branch": "dev",
   "release_name": "v1.0.0 Development - First Production Release",
   "features": [
     "🎉 First production-ready release milestone",
     "🔧 Installation Wizard for first-run setup",
     "🎬 Reliable video import system (no duplicates)",
-    "✅ Post-import batch artist processing",
-    "🎨 Auto-matching: IMVDb, Spotify, Last.fm, MusicBrainz",
-    "⚡ Celery task chaining for wizard workflow",
-    "🐳 Simplified Docker setup with dedicated entrypoint script"
+    "✅ API validation before configuration",
+    "🐛 CRITICAL FIX: Added Node.js runtime for yt-dlp YouTube downloads",
+    "📁 Added cookies directory for age-restricted video support"
   ]
 }

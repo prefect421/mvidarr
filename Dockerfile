@@ -50,7 +50,7 @@ RUN chmod +x /entrypoint.sh
 RUN useradd -m -u 1000 -s /bin/bash mvidarr
 
 # Create necessary directories and set proper permissions for entire app directory
-RUN mkdir -p /app/logs /app/downloads /app/data/musicvideos /app/data/logs \
+RUN mkdir -p /app/logs /app/downloads /app/data/musicvideos /app/data/logs /app/data/cookies \
     && chown -R mvidarr:mvidarr /app \
     && find /app -type d -exec chmod 755 {} \; \
     && find /app -type f -exec chmod 644 {} \; \

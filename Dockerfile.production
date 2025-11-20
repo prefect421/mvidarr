@@ -51,7 +51,9 @@ ENV GIT_COMMIT=${GIT_COMMIT} \
     VERSION=${VERSION}
 
 # Install runtime system dependencies including supervisord (cached layer - rarely changes)
+# xz-utils is REQUIRED for extracting Node.js .tar.xz files
 RUN apt-get update && apt-get install -y \
+    xz-utils \
     curl \
     ffmpeg \
     wget \
@@ -65,6 +67,13 @@ RUN apt-get update && apt-get install -y \
     && apt-get autoremove -y \
     && apt-get autoclean
 
+# Install Node.js from official binaries (required for yt-dlp JavaScript runtime)
+# This is CRITICAL for YouTube downloads to work properly in 2025
+RUN curl -fsSL https://nodejs.org/dist/v20.18.1/node-v20.18.1-linux-x64.tar.xz -o /tmp/node.tar.xz \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
+    && rm /tmp/node.tar.xz \
+    && node --version && npm --version
+
 # Create non-root user (cached layer - never changes)
 RUN groupadd -r mvidarr && useradd -r -g mvidarr -u 1000 mvidarr
 
@@ -75,7 +84,7 @@ WORKDIR /app
 COPY --from=builder /opt/python /usr/local
 
 # Create directories and set base permissions (cached layer - rarely changes)
-RUN mkdir -p /app/data/downloads /app/data/musicvideos /app/data/music_videos /app/data/thumbnails /app/data/logs /app/data/cache /app/data/backups /app/data/database /app/config && \
+RUN mkdir -p /app/data/downloads /app/data/musicvideos /app/data/music_videos /app/data/thumbnails /app/data/logs /app/data/cache /app/data/backups /app/data/database /app/data/cookies /app/config && \
     chown -R mvidarr:mvidarr /app/data /app/config
 
 # Copy static configuration files first (cached if config unchanged)
