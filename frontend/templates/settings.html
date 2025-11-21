@@ -1548,7 +1548,60 @@ input:checked + .slider:before {
                 <input type="number" id="log_backup_count" name="log_backup_count" min="1" max="20">
             </div>
         </div>
-        
+
+        <div class="settings-section">
+            <h2>System Management Tools</h2>
+            <p class="section-description">Monitor system health, perform maintenance tasks, and view collection analytics</p>
+            <div class="system-tools-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
+
+                <!-- System Health Tool -->
+                <div class="tool-card" style="background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                        <iconify-icon icon="tabler:heartbeat" style="font-size: 2rem; color: var(--text-accent, #00d4ff);"></iconify-icon>
+                        <h3 style="margin: 0; font-size: 1.1rem;">System Health</h3>
+                    </div>
+                    <p style="color: var(--text-secondary, #ccc); margin-bottom: 1rem; font-size: 0.9rem;">
+                        Monitor disk space, memory, CPU usage, and service status in real-time.
+                    </p>
+                    <a href="/system-health" class="btn btn-primary" style="width: 100%; text-align: center;">
+                        <iconify-icon icon="tabler:activity" style="margin-right: 0.5rem;"></iconify-icon>
+                        Open Dashboard
+                    </a>
+                </div>
+
+                <!-- Maintenance Tool -->
+                <div class="tool-card" style="background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                        <iconify-icon icon="tabler:tools" style="font-size: 2rem; color: var(--text-accent, #00d4ff);"></iconify-icon>
+                        <h3 style="margin: 0; font-size: 1.1rem;">Maintenance</h3>
+                    </div>
+                    <p style="color: var(--text-secondary, #ccc); margin-bottom: 1rem; font-size: 0.9rem;">
+                        Clean up old logs, optimize database, remove orphaned files, and manage storage.
+                    </p>
+                    <a href="/maintenance" class="btn btn-primary" style="width: 100%; text-align: center;">
+                        <iconify-icon icon="tabler:adjustments" style="margin-right: 0.5rem;"></iconify-icon>
+                        Open Tools
+                    </a>
+                </div>
+
+                <!-- Analytics Tool -->
+                <div class="tool-card" style="background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                        <iconify-icon icon="tabler:chart-bar" style="font-size: 2rem; color: var(--text-accent, #00d4ff);"></iconify-icon>
+                        <h3 style="margin: 0; font-size: 1.1rem;">Collection Analytics</h3>
+                    </div>
+                    <p style="color: var(--text-secondary, #ccc); margin-bottom: 1rem; font-size: 0.9rem;">
+                        View collection statistics, top artists, genres, health assessment, and export data.
+                    </p>
+                    <a href="/analytics" class="btn btn-primary" style="width: 100%; text-align: center;">
+                        <iconify-icon icon="tabler:chart-line" style="margin-right: 0.5rem;"></iconify-icon>
+                        View Analytics
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
             </div>
         </div>
 
