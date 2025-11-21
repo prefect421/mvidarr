@@ -125,10 +125,11 @@ def get_database_status() -> Dict:
     """
     try:
         from src.database.connection import get_db
+        from sqlalchemy import text
 
         with get_db() as session:
             # Try a simple query to verify connection
-            session.execute("SELECT 1")
+            session.execute(text("SELECT 1"))
 
         return {
             "connected": True,
@@ -153,7 +154,12 @@ def get_celery_status() -> Dict:
         Dict with Celery status information
     """
     try:
-        from src.celery_app import celery_app
+        # Try to import celery app - may not exist in all environments
+        try:
+            from src.celery_app import celery_app
+        except ImportError:
+            from celery import Celery
+            celery_app = Celery('mvidarr')
 
         # Get active workers
         inspect = celery_app.control.inspect()
@@ -202,9 +208,9 @@ def get_redis_status() -> Dict:
     """
     try:
         import redis
-        from src.config import get_setting
+        import os
 
-        redis_url = get_setting("redis_url", "redis://localhost:6379/0")
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         r = redis.from_url(redis_url)
 
         # Ping Redis

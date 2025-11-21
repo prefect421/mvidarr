@@ -333,9 +333,9 @@ def cleanup_old_job_history(
     """
     try:
         import redis
-        from src.config import get_setting
+        import os
 
-        redis_url = get_setting("redis_url", "redis://localhost:6379/0")
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         r = redis.from_url(redis_url)
 
         # Get all Celery result keys
