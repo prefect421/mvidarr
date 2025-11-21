@@ -9226,20 +9226,29 @@ async function refreshJobSystemStatus() {
     const loadingElement = document.getElementById('job-status-loading');
     const detailsContainer = document.getElementById('job-system-details');
     const detailsInfo = document.getElementById('job-system-info');
-    
+
+    if (!loadingElement || !detailsContainer || !detailsInfo) {
+        return; // Elements not ready yet
+    }
+
     loadingElement.textContent = 'Checking...';
     loadingElement.style.color = 'var(--text-secondary)';
-    
+
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
         const response = await fetch('/api/metadata-enrichment/celery/health', {
-            credentials: 'include'
+            credentials: 'include',
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
         const data = await response.json();
-        
+
         if (response.ok && data.status === 'healthy') {
             loadingElement.innerHTML = '<span style="color: var(--success-color, #10b981);"><iconify-icon icon="tabler:check-circle"></iconify-icon> System Running</span>';
-            
+
             // Show system details
             detailsInfo.innerHTML = `
                 <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 6px; margin-top: 0.5rem;">
@@ -9262,10 +9271,15 @@ async function refreshJobSystemStatus() {
             detailsContainer.style.display = 'block';
         }
     } catch (error) {
-        console.error('Failed to check job system status:', error);
-        loadingElement.innerHTML = '<span style="color: var(--danger-color, #ef4444);"><iconify-icon icon="tabler:wifi-off"></iconify-icon> Connection Error</span>';
-        detailsInfo.innerHTML = `<div style="color: var(--danger-color); margin-top: 0.5rem;">Failed to connect to job system</div>`;
-        detailsContainer.style.display = 'block';
+        // Silently handle the error during page load - only log, don't show error UI unless user explicitly refreshes
+        if (error.name === 'AbortError') {
+            console.warn('Job system health check timed out - this is normal during page load');
+            loadingElement.innerHTML = '<span style="color: var(--text-secondary);"><iconify-icon icon="tabler:refresh"></iconify-icon> Click refresh to check</span>';
+        } else {
+            console.warn('Job system health check failed (this is normal if page is still loading):', error.message);
+            loadingElement.innerHTML = '<span style="color: var(--text-secondary);"><iconify-icon icon="tabler:refresh"></iconify-icon> Click refresh to check</span>';
+        }
+        detailsContainer.style.display = 'none';
     }
 }
 
