@@ -10,9 +10,9 @@
         height: 24px;
         overflow: visible;
         font-size: 0.875rem;
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: var(--bg-tertiary, #1a1a1a);
         border-radius: 4px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid var(--border-secondary, #444);
         position: relative;
     }
 
@@ -22,13 +22,13 @@
         justify-content: center;
         align-items: center;
         overflow: visible;
-        color: #fff;
+        color: var(--text-inverse, #fff);
         text-align: center;
         white-space: nowrap;
         background-color: var(--text-accent, #00d4ff);
         transition: width 0.6s ease;
         font-weight: 600;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        text-shadow: 0 1px 2px var(--shadow, rgba(0, 0, 0, 0.5));
         position: relative;
         min-width: 0;
     }
@@ -39,28 +39,28 @@
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        color: #fff;
+        color: var(--text-inverse, #fff);
         font-weight: 600;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        text-shadow: 0 1px 2px var(--shadow, rgba(0, 0, 0, 0.8));
         z-index: 1;
     }
 
     .progress-bar.bg-success {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        background: linear-gradient(135deg, var(--success, #28a745) 0%, var(--success-dark, #20c997) 100%);
     }
 
     .progress-bar.bg-warning {
-        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-        color: #000;
+        background: linear-gradient(135deg, var(--warning, #ffc107) 0%, var(--warning-dark, #fd7e14) 100%);
+        color: var(--text-primary, #000);
     }
 
     .progress-bar.bg-warning::after {
-        color: #000;
-        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+        color: var(--text-primary, #000);
+        text-shadow: 0 1px 2px var(--bg-primary, rgba(255, 255, 255, 0.8));
     }
 
     .progress-bar.bg-danger {
-        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        background: linear-gradient(135deg, var(--btn-danger-bg, #dc3545) 0%, var(--btn-danger-hover, #c82333) 100%);
     }
 
     /* Card styles */
@@ -73,15 +73,15 @@
     }
 
     .card.border-success {
-        border-left: 4px solid #28a745;
+        border-left: 4px solid var(--success, #28a745);
     }
 
     .card.border-warning {
-        border-left: 4px solid #ffc107;
+        border-left: 4px solid var(--warning, #ffc107);
     }
 
     .card.border-danger {
-        border-left: 4px solid #dc3545;
+        border-left: 4px solid var(--btn-danger-bg, #dc3545);
     }
 
     .card-body {
@@ -167,15 +167,15 @@
 
     /* Text colors */
     .text-success {
-        color: #28a745;
+        color: var(--success, #28a745);
     }
 
     .text-warning {
-        color: #ffc107;
+        color: var(--warning, #ffc107);
     }
 
     .text-danger {
-        color: #dc3545;
+        color: var(--btn-danger-bg, #dc3545);
     }
 
     .text-muted {
@@ -340,7 +340,7 @@
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </h5>
-                    <div id="logs-container" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">
+                    <div id="logs-container">
                         <small class="text-muted">Loading logs...</small>
                     </div>
                 </div>
