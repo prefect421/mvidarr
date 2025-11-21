@@ -20,9 +20,9 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.9.9 - Production-Ready Code Cleanup & Security Hardening!**
+## 🚀 **LATEST: v1.0.0-dev - First Production Release Development**
 
-**🎉 MAJOR MILESTONE: Codebase Optimization Complete - Ready for 1.0.0 Release**
+**🎉 MAJOR MILESTONE: Production-Ready Release - First Public Version**
 
 ### Code Cleanup & Optimization ✅
 - **♻️ 10 Large Files Refactored** - Transformed 15,133 lines into 58 modular files
@@ -95,7 +95,8 @@ docker pull ghcr.io/prefect421/mvidarr:v0.9.9
 
 **Access the application:**
 - Open your browser to `http://localhost:5000`
-- Default login: `admin` / `admin` (change immediately)
+- Complete the first-run installation wizard
+- Configure directories, API keys, and preferences
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -138,14 +139,19 @@ sudo systemctl status mvidarr.service
 
 ## 📚 Documentation
 
-- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Complete deployment with Celery + Redis background jobs
+### Getting Started
+- **[Installation Guide](docs/installation.md)** - Docker, Manual, and Unraid installation
+- **[Unraid Installation](docs/UNRAID_INSTALLATION.md)** - Complete Unraid setup guide
 - **[User Guide](docs/USER-GUIDE.md)** - Feature documentation and tutorials
-- **[Installation Guide](docs/INSTALLATION-GUIDE.md)** - Comprehensive setup instructions
-- **[Celery Background Jobs](CELERY_BACKGROUND_JOBS_IMPLEMENTATION.md)** - Background job system documentation
-- **[Docker Optimization Guide](docs/DOCKER_OPTIMIZATION_GUIDE.md)** - Container build optimization and monitoring
-- **[Security Implementation](docs/SECURITY_IMPLEMENTATION.md)** - Security features and configuration
-- **[Final Project Status](docs/FINAL_PROJECT_STATUS.md)** - Complete feature status and changelog
-- **[Authentication Features](docs/AUTHENTICATION_FEATURE_LOG.md)** - User management and security features
+- **[Configuration Guide](docs/CONFIGURATION_GUIDE.md)** - Settings and customization
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+
+### Advanced Topics
+- **[API Documentation](docs/API_DOCUMENTATION.md)** - REST API reference and OpenAPI docs
+- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Production deployment with background jobs
+- **[Docker Optimization](docs/DOCKER_OPTIMIZATION_GUIDE.md)** - Container optimization
+- **[Security Implementation](docs/SECURITY_IMPLEMENTATION.md)** - Security features
+- **[Architecture](docs/ARCHITECTURE.md)** - System architecture and design
 
 ## 🏗️ Architecture
 
@@ -242,4 +248,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.9.8** - Built with ❤️ for music video enthusiasts
+**MVidarr v1.0.0-dev** - Built with ❤️ for music video enthusiasts
