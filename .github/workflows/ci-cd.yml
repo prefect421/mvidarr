@@ -215,6 +215,11 @@ jobs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         platforms: linux/amd64
+        build-args: |
+          GIT_COMMIT=${{ github.sha }}
+          GIT_BRANCH=${{ github.ref_name }}
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
 
   deploy:
     runs-on: ubuntu-latest

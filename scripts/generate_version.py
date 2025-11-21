@@ -17,7 +17,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -47,7 +47,7 @@ def generate_version_json(output_path: str):
     # Get git information from environment (set by Docker build args)
     git_commit = os.getenv("GIT_COMMIT", "unknown")
     git_branch = os.getenv("GIT_BRANCH", "unknown")
-    build_date = os.getenv("BUILD_DATE", datetime.utcnow().isoformat())
+    build_date = os.getenv("BUILD_DATE", datetime.now(timezone.utc).isoformat())
     version = os.getenv("VERSION", get_version_from_init())
 
     # Determine release name based on version
@@ -73,8 +73,8 @@ def generate_version_json(output_path: str):
             "📁 Directory validation and auto-configuration",
             "🔌 IMVDb and YouTube cookie setup",
             "📊 Real-time import progress tracking",
-            "🚀 Production-ready onboarding experience"
-        ]
+            "🚀 Production-ready onboarding experience",
+        ],
     }
 
     # Write version.json
@@ -101,7 +101,7 @@ def main():
     parser.add_argument(
         "--output",
         default="version.json",
-        help="Output path for version.json (default: version.json)"
+        help="Output path for version.json (default: version.json)",
     )
 
     args = parser.parse_args()
