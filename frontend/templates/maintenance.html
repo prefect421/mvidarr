@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Maintenance - MVidarr{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-tools"></i> Maintenance Tools</h2>
+            <p class="text-muted">Keep your MVidarr instance clean and optimized</p>
+        </div>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        Maintenance Summary
+                        <button class="btn btn-sm btn-primary float-right" onclick="refreshSummary()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </h5>
+                    <div id="summary-container">
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading summary...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Actions -->
+    <div class="row mb-4">
+        <!-- Log Cleanup -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-file-alt"></i> Log Cleanup</h6>
+                    <p class="text-muted small">Remove log files older than 30 days</p>
+                    <div class="form-group">
+                        <label for="log-days">Days to keep:</label>
+                        <input type="number" class="form-control" id="log-days" value="30" min="1" max="365">
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mr-2" onclick="cleanupLogs(true)">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="cleanupLogs(false)">
+                        <i class="fas fa-trash"></i> Clean Now
+                    </button>
+                    <div id="log-cleanup-result" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Optimization -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-database"></i> Database Optimization</h6>
+                    <p class="text-muted small">Optimize all database tables for better performance</p>
+                    <button class="btn btn-primary btn-sm" onclick="optimizeDatabase()">
+                        <i class="fas fa-magic"></i> Optimize Now
+                    </button>
+                    <div id="db-optimize-result" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orphaned Thumbnails -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-image"></i> Orphaned Thumbnails</h6>
+                    <p class="text-muted small">Remove thumbnails for deleted videos</p>
+                    <button class="btn btn-outline-primary btn-sm mr-2" onclick="cleanupThumbnails(true)">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="cleanupThumbnails(false)">
+                        <i class="fas fa-trash"></i> Clean Now
+                    </button>
+                    <div id="thumbnail-cleanup-result" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Temp Files -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-folder-open"></i> Temporary Files</h6>
+                    <p class="text-muted small">Clear cache and temporary download files</p>
+                    <button class="btn btn-outline-primary btn-sm mr-2" onclick="cleanupTempFiles(true)">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="cleanupTempFiles(false)">
+                        <i class="fas fa-trash"></i> Clean Now
+                    </button>
+                    <div id="temp-cleanup-result" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Job History -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-tasks"></i> Job History</h6>
+                    <p class="text-muted small">Remove old completed job records from Redis</p>
+                    <div class="form-group">
+                        <label for="job-days">Days to keep:</label>
+                        <input type="number" class="form-control" id="job-days" value="30" min="1" max="365">
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mr-2" onclick="cleanupJobs(true)">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="cleanupJobs(false)">
+                        <i class="fas fa-trash"></i> Clean Now
+                    </button>
+                    <div id="job-cleanup-result" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warning Notice -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong>
+                Always use "Preview" first to see what will be deleted. Cleanup operations cannot be undone.
+                Database optimization may take several minutes depending on database size.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Maintenance Dashboard JavaScript
+
+// Fetch maintenance summary
+async function refreshSummary() {
+    const container = document.getElementById('summary-container');
+    container.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div> Loading...</div>';
+
+    try {
+        const response = await fetch('/api/maintenance/summary');
+        const data = await response.json();
+
+        let html = '<div class="row">';
+
+        // Logs summary
+        if (data.logs && data.logs.success) {
+            html += `<div class="col-md-3 mb-2">
+                <div class="border rounded p-2">
+                    <small class="text-muted"><i class="fas fa-file-alt"></i> Old Logs</small>
+                    <h5 class="mb-0">${data.logs.files_found}</h5>
+                    <small>${data.logs.space_freed_mb} MB</small>
+                </div>
+            </div>`;
+        }
+
+        // Thumbnails summary
+        if (data.thumbnails && data.thumbnails.success) {
+            html += `<div class="col-md-3 mb-2">
+                <div class="border rounded p-2">
+                    <small class="text-muted"><i class="fas fa-image"></i> Orphaned Thumbnails</small>
+                    <h5 class="mb-0">${data.thumbnails.files_found}</h5>
+                    <small>${data.thumbnails.space_freed_mb} MB</small>
+                </div>
+            </div>`;
+        }
+
+        // Temp files summary
+        if (data.temp_files && data.temp_files.success) {
+            html += `<div class="col-md-3 mb-2">
+                <div class="border rounded p-2">
+                    <small class="text-muted"><i class="fas fa-folder-open"></i> Temp Files</small>
+                    <h5 class="mb-0">${data.temp_files.files_found}</h5>
+                    <small>${data.temp_files.space_freed_mb} MB</small>
+                </div>
+            </div>`;
+        }
+
+        // Job history summary
+        if (data.job_history && data.job_history.success) {
+            html += `<div class="col-md-3 mb-2">
+                <div class="border rounded p-2">
+                    <small class="text-muted"><i class="fas fa-tasks"></i> Old Jobs</small>
+                    <h5 class="mb-0">${data.job_history.jobs_found}</h5>
+                    <small>Records</small>
+                </div>
+            </div>`;
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error fetching summary:', error);
+        container.innerHTML = '<span class="text-danger">Error loading summary</span>';
+    }
+}
+
+// Cleanup logs
+async function cleanupLogs(dryRun) {
+    const days = document.getElementById('log-days').value;
+    const resultDiv = document.getElementById('log-cleanup-result');
+    resultDiv.innerHTML = '<small class="text-muted"><i class="fas fa-spinner fa-spin"></i> Processing...</small>';
+
+    try {
+        const response = await fetch(`/api/maintenance/logs/cleanup?days_to_keep=${days}&dry_run=${dryRun}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const action = dryRun ? 'Found' : 'Removed';
+            const colorClass = dryRun ? 'info' : 'success';
+            resultDiv.innerHTML = `<div class="alert alert-${colorClass} alert-sm mt-2">
+                <strong>${action}:</strong> ${data.files_found} files (${data.space_freed_mb} MB)
+                ${dryRun ? '<br><small>No files were deleted (preview mode)</small>' : ''}
+            </div>`;
+            if (!dryRun) refreshSummary();
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${error.message}</div>`;
+    }
+}
+
+// Optimize database
+async function optimizeDatabase() {
+    const resultDiv = document.getElementById('db-optimize-result');
+    resultDiv.innerHTML = '<small class="text-muted"><i class="fas fa-spinner fa-spin"></i> Optimizing (this may take a few minutes)...</small>';
+
+    try {
+        const response = await fetch('/api/maintenance/database/optimize', {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="alert alert-success alert-sm mt-2">
+                <strong>Optimized:</strong> ${data.tables_optimized} tables
+                ${data.tables_failed > 0 ? `<br><small class="text-warning">${data.tables_failed} tables failed</small>` : ''}
+            </div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${error.message}</div>`;
+    }
+}
+
+// Cleanup thumbnails
+async function cleanupThumbnails(dryRun) {
+    const resultDiv = document.getElementById('thumbnail-cleanup-result');
+    resultDiv.innerHTML = '<small class="text-muted"><i class="fas fa-spinner fa-spin"></i> Processing...</small>';
+
+    try {
+        const response = await fetch(`/api/maintenance/thumbnails/cleanup?dry_run=${dryRun}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const action = dryRun ? 'Found' : 'Removed';
+            const colorClass = dryRun ? 'info' : 'success';
+            resultDiv.innerHTML = `<div class="alert alert-${colorClass} alert-sm mt-2">
+                <strong>${action}:</strong> ${data.files_found} files (${data.space_freed_mb} MB)
+                ${dryRun ? '<br><small>No files were deleted (preview mode)</small>' : ''}
+            </div>`;
+            if (!dryRun) refreshSummary();
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${error.message}</div>`;
+    }
+}
+
+// Cleanup temp files
+async function cleanupTempFiles(dryRun) {
+    const resultDiv = document.getElementById('temp-cleanup-result');
+    resultDiv.innerHTML = '<small class="text-muted"><i class="fas fa-spinner fa-spin"></i> Processing...</small>';
+
+    try {
+        const response = await fetch(`/api/maintenance/temp-files/cleanup?dry_run=${dryRun}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const action = dryRun ? 'Found' : 'Removed';
+            const colorClass = dryRun ? 'info' : 'success';
+            resultDiv.innerHTML = `<div class="alert alert-${colorClass} alert-sm mt-2">
+                <strong>${action}:</strong> ${data.files_found} files (${data.space_freed_mb} MB)
+                ${dryRun ? '<br><small>No files were deleted (preview mode)</small>' : ''}
+            </div>`;
+            if (!dryRun) refreshSummary();
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${error.message}</div>`;
+    }
+}
+
+// Cleanup job history
+async function cleanupJobs(dryRun) {
+    const days = document.getElementById('job-days').value;
+    const resultDiv = document.getElementById('job-cleanup-result');
+    resultDiv.innerHTML = '<small class="text-muted"><i class="fas fa-spinner fa-spin"></i> Processing...</small>';
+
+    try {
+        const response = await fetch(`/api/maintenance/jobs/cleanup?days_to_keep=${days}&dry_run=${dryRun}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            const action = dryRun ? 'Found' : 'Removed';
+            const colorClass = dryRun ? 'info' : 'success';
+            resultDiv.innerHTML = `<div class="alert alert-${colorClass} alert-sm mt-2">
+                <strong>${action}:</strong> ${data.jobs_found} job records
+                ${dryRun ? '<br><small>No records were deleted (preview mode)</small>' : ''}
+            </div>`;
+            if (!dryRun) refreshSummary();
+        } else {
+            resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="alert alert-danger alert-sm mt-2">Error: ${error.message}</div>`;
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    refreshSummary();
+});
+</script>
+
+<style>
+.alert-sm {
+    padding: 0.5rem;
+    margin-bottom: 0;
+    font-size: 0.875rem;
+}
+</style>
+
+{% endblock %}
