@@ -7,37 +7,60 @@
     /* Progress bar styles */
     .progress {
         display: flex;
-        height: 1rem;
-        overflow: hidden;
-        font-size: 0.75rem;
-        background-color: var(--bg-tertiary, #333);
-        border-radius: 0.25rem;
-        border: 1px solid var(--border-secondary, #444);
+        height: 24px;
+        overflow: visible;
+        font-size: 0.875rem;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
     }
 
     .progress-bar {
         display: flex;
         flex-direction: column;
         justify-content: center;
-        overflow: hidden;
+        align-items: center;
+        overflow: visible;
         color: #fff;
         text-align: center;
         white-space: nowrap;
         background-color: var(--text-accent, #00d4ff);
         transition: width 0.6s ease;
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        position: relative;
+        min-width: 0;
+    }
+
+    /* Ensure percentage text is always visible */
+    .progress-bar::after {
+        content: attr(aria-valuenow) '%';
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        z-index: 1;
     }
 
     .progress-bar.bg-success {
-        background-color: #28a745;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
     }
 
     .progress-bar.bg-warning {
-        background-color: #ffc107;
+        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
         color: #000;
     }
 
+    .progress-bar.bg-warning::after {
+        color: #000;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+    }
+
     .progress-bar.bg-danger {
-        background-color: #dc3545;
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
     }
 
     /* Card styles */
@@ -409,11 +432,12 @@ function updateDiskStatus(disk) {
         const color = info.critical ? 'danger' : info.warning ? 'warning' : 'success';
         html += `<div class="mb-2">
             <small><strong>${path.split('/').pop() || 'root'}:</strong></small>
-            <div class="progress" style="height: 20px;">
+            <div class="progress">
                 <div class="progress-bar bg-${color}" role="progressbar"
-                     style="width: ${info.percent_used}%">
-                    ${info.percent_used}%
-                </div>
+                     style="width: ${info.percent_used}%"
+                     aria-valuenow="${info.percent_used}"
+                     aria-valuemin="0"
+                     aria-valuemax="100"></div>
             </div>
             <small class="text-muted">${info.used_gb}GB / ${info.total_gb}GB</small>
         </div>`;
@@ -432,11 +456,12 @@ function updateMemoryStatus(memory) {
 
     const color = memory.critical ? 'danger' : memory.warning ? 'warning' : 'success';
     container.innerHTML = `
-        <div class="progress" style="height: 30px;">
+        <div class="progress">
             <div class="progress-bar bg-${color}" role="progressbar"
-                 style="width: ${memory.percent_used}%">
-                ${memory.percent_used}%
-            </div>
+                 style="width: ${memory.percent_used}%"
+                 aria-valuenow="${memory.percent_used}"
+                 aria-valuemin="0"
+                 aria-valuemax="100"></div>
         </div>
         <small class="text-muted mt-1 d-block">${memory.used_gb}GB / ${memory.total_gb}GB</small>
     `;
@@ -452,11 +477,12 @@ function updateCPUStatus(cpu) {
 
     const color = cpu.critical ? 'danger' : cpu.warning ? 'warning' : 'success';
     container.innerHTML = `
-        <div class="progress" style="height: 30px;">
+        <div class="progress">
             <div class="progress-bar bg-${color}" role="progressbar"
-                 style="width: ${cpu.percent_used}%">
-                ${cpu.percent_used}%
-            </div>
+                 style="width: ${cpu.percent_used}%"
+                 aria-valuenow="${cpu.percent_used}"
+                 aria-valuemin="0"
+                 aria-valuemax="100"></div>
         </div>
         <small class="text-muted mt-1 d-block">${cpu.cpu_count} cores</small>
     `;
