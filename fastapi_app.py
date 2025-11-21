@@ -368,8 +368,11 @@ app.include_router(lidarr_router)
 
 # Health Check Router - Comprehensive Production Health Monitoring
 from src.api.fastapi.health import health_router
+from src.api.fastapi.system_health import router as system_health_router, page_router as system_health_page_router
 
 app.include_router(health_router, prefix="/api")
+app.include_router(system_health_router)
+app.include_router(system_health_page_router)
 
 logger.info(
     "✅ Phase 3 Week 29 services integrated: Personal Cloud Backup, YouTube Import, Network Sharing, Sync Manager, Mobile Access"

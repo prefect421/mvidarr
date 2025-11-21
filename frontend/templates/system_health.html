@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}System Health - MVidarr{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-heartbeat"></i> System Health</h2>
+            <p class="text-muted">Monitor your MVidarr instance health and performance</p>
+        </div>
+    </div>
+
+    <!-- Overall Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card" id="overall-status-card">
+                <div class="card-body">
+                    <h5 class="card-title">Overall Status</h5>
+                    <div id="overall-status" class="d-flex align-items-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <span class="ml-3">Checking system health...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Resources -->
+    <div class="row mb-4">
+        <!-- Disk Usage -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-hdd"></i> Disk Usage</h6>
+                    <div id="disk-status">
+                        <small class="text-muted">Loading...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memory Usage -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-memory"></i> Memory</h6>
+                    <div id="memory-status">
+                        <small class="text-muted">Loading...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CPU Usage -->
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-microchip"></i> CPU</h6>
+                    <div id="cpu-status">
+                        <small class="text-muted">Loading...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Services</h5>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <div id="database-status">
+                                <i class="fas fa-database"></i> <strong>Database:</strong> <small class="text-muted">Checking...</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <div id="celery-status">
+                                <i class="fas fa-tasks"></i> <strong>Celery:</strong> <small class="text-muted">Checking...</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <div id="redis-status">
+                                <i class="fas fa-server"></i> <strong>Redis:</strong> <small class="text-muted">Checking...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Logs -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-file-alt"></i> Recent Logs
+                        <button class="btn btn-sm btn-primary float-right" onclick="refreshLogs()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </h5>
+                    <div id="logs-container" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">
+                        <small class="text-muted">Loading logs...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refresh Controls -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <button class="btn btn-primary" onclick="refreshHealthData()">
+                <i class="fas fa-sync-alt"></i> Refresh All Data
+            </button>
+            <small class="text-muted ml-3">Auto-refresh every 30 seconds</small>
+        </div>
+    </div>
+</div>
+
+<script>
+// System Health Dashboard JavaScript
+let autoRefreshInterval;
+
+// Fetch overall health status
+async function fetchOverallHealth() {
+    try {
+        const response = await fetch('/api/system-health/');
+        const data = await response.json();
+
+        const statusCard = document.getElementById('overall-status');
+        const overallCard = document.getElementById('overall-status-card');
+
+        // Determine status color
+        let statusClass = '';
+        let statusIcon = '';
+        if (data.status === 'healthy') {
+            statusClass = 'text-success';
+            statusIcon = '<i class="fas fa-check-circle"></i>';
+            overallCard.className = 'card border-success';
+        } else if (data.status === 'warning') {
+            statusClass = 'text-warning';
+            statusIcon = '<i class="fas fa-exclamation-triangle"></i>';
+            overallCard.className = 'card border-warning';
+        } else {
+            statusClass = 'text-danger';
+            statusIcon = '<i class="fas fa-times-circle"></i>';
+            overallCard.className = 'card border-danger';
+        }
+
+        let html = `<h3 class="${statusClass}">${statusIcon} ${data.status.toUpperCase()}</h3>`;
+
+        if (data.warnings && data.warnings.length > 0) {
+            html += '<div class="mt-2"><strong>Warnings:</strong><ul class="mb-0">';
+            data.warnings.forEach(w => html += `<li class="text-warning">${w}</li>`);
+            html += '</ul></div>';
+        }
+
+        if (data.critical_issues && data.critical_issues.length > 0) {
+            html += '<div class="mt-2"><strong>Critical Issues:</strong><ul class="mb-0">';
+            data.critical_issues.forEach(i => html += `<li class="text-danger">${i}</li>`);
+            html += '</ul></div>';
+        }
+
+        html += `<small class="text-muted d-block mt-2">Last checked: ${new Date(data.checked_at).toLocaleString()}</small>`;
+
+        statusCard.innerHTML = html;
+
+        // Update individual components
+        if (data.components) {
+            updateDiskStatus(data.components.disk);
+            updateMemoryStatus(data.components.memory);
+            updateCPUStatus(data.components.cpu);
+            updateDatabaseStatus(data.components.database);
+            updateCeleryStatus(data.components.celery);
+            updateRedisStatus(data.components.redis);
+        }
+    } catch (error) {
+        console.error('Error fetching health status:', error);
+        document.getElementById('overall-status').innerHTML = '<span class="text-danger">Error loading health status</span>';
+    }
+}
+
+// Update disk status
+function updateDiskStatus(disk) {
+    const container = document.getElementById('disk-status');
+    let html = '';
+
+    for (const [path, info] of Object.entries(disk)) {
+        if (!info.exists) continue;
+        const color = info.critical ? 'danger' : info.warning ? 'warning' : 'success';
+        html += `<div class="mb-2">
+            <small><strong>${path.split('/').pop() || 'root'}:</strong></small>
+            <div class="progress" style="height: 20px;">
+                <div class="progress-bar bg-${color}" role="progressbar"
+                     style="width: ${info.percent_used}%">
+                    ${info.percent_used}%
+                </div>
+            </div>
+            <small class="text-muted">${info.used_gb}GB / ${info.total_gb}GB</small>
+        </div>`;
+    }
+
+    container.innerHTML = html || '<small class="text-muted">No disk info available</small>';
+}
+
+// Update memory status
+function updateMemoryStatus(memory) {
+    const container = document.getElementById('memory-status');
+    if (memory.error) {
+        container.innerHTML = `<small class="text-danger">${memory.error}</small>`;
+        return;
+    }
+
+    const color = memory.critical ? 'danger' : memory.warning ? 'warning' : 'success';
+    container.innerHTML = `
+        <div class="progress" style="height: 30px;">
+            <div class="progress-bar bg-${color}" role="progressbar"
+                 style="width: ${memory.percent_used}%">
+                ${memory.percent_used}%
+            </div>
+        </div>
+        <small class="text-muted mt-1 d-block">${memory.used_gb}GB / ${memory.total_gb}GB</small>
+    `;
+}
+
+// Update CPU status
+function updateCPUStatus(cpu) {
+    const container = document.getElementById('cpu-status');
+    if (cpu.error) {
+        container.innerHTML = `<small class="text-danger">${cpu.error}</small>`;
+        return;
+    }
+
+    const color = cpu.critical ? 'danger' : cpu.warning ? 'warning' : 'success';
+    container.innerHTML = `
+        <div class="progress" style="height: 30px;">
+            <div class="progress-bar bg-${color}" role="progressbar"
+                 style="width: ${cpu.percent_used}%">
+                ${cpu.percent_used}%
+            </div>
+        </div>
+        <small class="text-muted mt-1 d-block">${cpu.cpu_count} cores</small>
+    `;
+}
+
+// Update database status
+function updateDatabaseStatus(db) {
+    const container = document.getElementById('database-status');
+    const icon = db.connected ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-danger"></i>';
+    const status = db.connected ? '<span class="text-success">Connected</span>' : '<span class="text-danger">Disconnected</span>';
+    container.innerHTML = `${icon} <strong>Database:</strong> ${status}`;
+}
+
+// Update Celery status
+function updateCeleryStatus(celery) {
+    const container = document.getElementById('celery-status');
+    const icon = celery.running ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-warning"></i>';
+    const status = celery.running ? `<span class="text-success">${celery.worker_count} workers</span>` : '<span class="text-warning">Not running</span>';
+    container.innerHTML = `${icon} <strong>Celery:</strong> ${status}`;
+}
+
+// Update Redis status
+function updateRedisStatus(redis) {
+    const container = document.getElementById('redis-status');
+    const icon = redis.connected ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-warning"></i>';
+    const status = redis.connected ? '<span class="text-success">Connected</span>' : '<span class="text-warning">Disconnected</span>';
+    container.innerHTML = `${icon} <strong>Redis:</strong> ${status}`;
+}
+
+// Fetch and display logs
+async function fetchLogs() {
+    try {
+        const response = await fetch('/api/system-health/logs?lines=100');
+        const data = await response.json();
+
+        const container = document.getElementById('logs-container');
+        if (data.logs && data.logs.length > 0) {
+            container.innerHTML = data.logs.map(line => `<div>${escapeHtml(line)}</div>`).join('');
+            container.scrollTop = container.scrollHeight; // Scroll to bottom
+        } else {
+            container.innerHTML = '<small class="text-muted">No logs available</small>';
+        }
+    } catch (error) {
+        console.error('Error fetching logs:', error);
+        document.getElementById('logs-container').innerHTML = '<span class="text-danger">Error loading logs</span>';
+    }
+}
+
+// Refresh logs only
+function refreshLogs() {
+    fetchLogs();
+}
+
+// Refresh all health data
+function refreshHealthData() {
+    fetchOverallHealth();
+    fetchLogs();
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    refreshHealthData();
+
+    // Auto-refresh every 30 seconds
+    autoRefreshInterval = setInterval(refreshHealthData, 30000);
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+});
+</script>
+
+{% endblock %}
