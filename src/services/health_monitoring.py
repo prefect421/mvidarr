@@ -9,11 +9,12 @@ Provides simple health checks for home self-hosters:
 - Redis connection status
 """
 
-import os
-import psutil
 import logging
-from typing import Dict, List, Optional
+import os
 from datetime import datetime
+from typing import Dict, List, Optional
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +44,7 @@ def get_disk_usage(paths: Optional[List[str]] = None) -> Dict[str, Dict]:
     for path in paths:
         try:
             if not os.path.exists(path):
-                disk_info[path] = {
-                    "exists": False,
-                    "error": "Path does not exist"
-                }
+                disk_info[path] = {"exists": False, "error": "Path does not exist"}
                 continue
 
             usage = psutil.disk_usage(path)
@@ -61,10 +59,7 @@ def get_disk_usage(paths: Optional[List[str]] = None) -> Dict[str, Dict]:
             }
         except Exception as e:
             logger.error(f"Error getting disk usage for {path}: {e}")
-            disk_info[path] = {
-                "exists": False,
-                "error": str(e)
-            }
+            disk_info[path] = {"exists": False, "error": str(e)}
 
     return disk_info
 
@@ -124,8 +119,9 @@ def get_database_status() -> Dict:
         Dict with database connection information
     """
     try:
-        from src.database.connection import get_db
         from sqlalchemy import text
+
+        from src.database.connection import get_db
 
         with get_db() as session:
             # Try a simple query to verify connection
@@ -154,41 +150,64 @@ def get_celery_status() -> Dict:
         Dict with Celery status information
     """
     try:
-        # Try to import celery app - may not exist in all environments
-        try:
-            from src.celery_app import celery_app
-        except ImportError:
-            from celery import Celery
-            celery_app = Celery('mvidarr')
+        # Check if Celery workers are running via process check
+        import subprocess
 
-        # Get active workers
-        inspect = celery_app.control.inspect()
-        active_workers = inspect.active()
-        stats = inspect.stats()
+        result = subprocess.run(
+            ["ps", "aux"], capture_output=True, text=True, timeout=5
+        )
 
-        if not active_workers:
+        # Count celery worker processes
+        celery_processes = [
+            line
+            for line in result.stdout.split("\n")
+            if "celery" in line and "worker" in line
+        ]
+        worker_count = len(celery_processes)
+
+        if worker_count > 0:
             return {
-                "running": False,
-                "status": "no workers available",
+                "running": True,
+                "status": "healthy",
+                "worker_count": worker_count,
                 "workers": [],
+                "note": f"Detected {worker_count} Celery worker processes",
             }
 
-        worker_list = []
-        for worker_name, tasks in active_workers.items():
-            worker_stats = stats.get(worker_name, {}) if stats else {}
-            worker_list.append({
-                "name": worker_name,
-                "active_tasks": len(tasks),
-                "status": "active",
-                "pool": worker_stats.get("pool", {}).get("max-concurrency", "unknown"),
-            })
+        # Try Celery control API as fallback (may fail in some environments)
+        try:
+            from src.jobs.celery_app import celery_app
+
+            inspect = celery_app.control.inspect(timeout=1.0)
+            active_workers = inspect.active()
+
+            if active_workers:
+                worker_list = []
+                for worker_name, tasks in active_workers.items():
+                    worker_list.append(
+                        {
+                            "name": worker_name,
+                            "active_tasks": len(tasks),
+                            "status": "active",
+                        }
+                    )
+
+                return {
+                    "running": True,
+                    "status": "healthy",
+                    "workers": worker_list,
+                    "worker_count": len(worker_list),
+                }
+        except Exception:
+            pass  # Ignore control API errors if process check succeeded
 
         return {
-            "running": True,
-            "status": "healthy",
-            "workers": worker_list,
-            "worker_count": len(worker_list),
+            "running": False,
+            "status": "no workers detected",
+            "workers": [],
+            "worker_count": 0,
         }
+
     except Exception as e:
         logger.error(f"Error getting Celery status: {e}")
         return {
@@ -196,6 +215,7 @@ def get_celery_status() -> Dict:
             "status": "error",
             "error": str(e),
             "workers": [],
+            "worker_count": 0,
         }
 
 
@@ -207,8 +227,9 @@ def get_redis_status() -> Dict:
         Dict with Redis connection information
     """
     try:
-        import redis
         import os
+
+        import redis
 
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         r = redis.from_url(redis_url)
@@ -240,20 +261,41 @@ def get_recent_logs(log_file: Optional[str] = None, lines: int = 100) -> List[st
     Get recent log entries.
 
     Args:
-        log_file: Path to log file. If None, uses default MVidarr log.
+        log_file: Path to log file. If None, searches for MVidarr log in common locations.
         lines: Number of recent lines to return
 
     Returns:
         List of log lines
     """
     if log_file is None:
-        log_file = "/app/data/logs/mvidarr.log"
+        # Try multiple possible log locations
+        possible_paths = [
+            "/app/data/logs/mvidarr.log",
+            "data/logs/mvidarr.log",
+            "/tmp/mvidarr_dev.log",
+            "mvidarr.log",
+            "data/logs/mvidarr_structured.log",
+        ]
+
+        for path in possible_paths:
+            if os.path.exists(path):
+                log_file = path
+                break
+        else:
+            # No log file found
+            return [
+                "No log file found in common locations:",
+                "  - /app/data/logs/mvidarr.log",
+                "  - data/logs/mvidarr.log",
+                "  - /tmp/mvidarr_dev.log",
+                "  - data/logs/mvidarr_structured.log",
+            ]
 
     try:
         if not os.path.exists(log_file):
             return [f"Log file not found: {log_file}"]
 
-        with open(log_file, "r") as f:
+        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
             all_lines = f.readlines()
             return all_lines[-lines:] if len(all_lines) > lines else all_lines
 
