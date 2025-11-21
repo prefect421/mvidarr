@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}Collection Analytics - MVidarr{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-chart-bar"></i> Collection Analytics</h2>
+            <p class="text-muted">Insights about your music video collection</p>
+        </div>
+    </div>
+
+    <!-- Collection Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Total Videos</h6>
+                    <h2 id="total-videos" class="mb-0">-</h2>
+                    <small class="text-muted" id="downloaded-videos">- downloaded</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Total Artists</h6>
+                    <h2 id="total-artists" class="mb-0">-</h2>
+                    <small class="text-muted" id="monitored-artists">- monitored</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Total Duration</h6>
+                    <h2 id="total-duration" class="mb-0">-</h2>
+                    <small class="text-muted">hours of music videos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Collection Health</h6>
+                    <h2 id="health-score" class="mb-0">-</h2>
+                    <small class="text-muted" id="health-status">-</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Artists and Genres -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-star"></i> Top Artists</h5>
+                    <div id="top-artists-list">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-music"></i> Top Genres</h5>
+                    <div id="top-genres-list">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collection Health Details -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-heartbeat"></i> Collection Health</h5>
+                    <div id="health-details">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Additions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-clock"></i> Recent Additions (Last 30 Days)</h5>
+                    <div id="recent-additions">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Videos by Year -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-calendar"></i> Videos by Year</h5>
+                    <div id="videos-by-year">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Options -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <a href="/api/analytics/export/csv" class="btn btn-primary" download>
+                <i class="fas fa-download"></i> Export Collection as CSV
+            </a>
+            <button class="btn btn-secondary ml-2" onclick="refreshAnalytics()">
+                <i class="fas fa-sync-alt"></i> Refresh Data
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Collection Analytics JavaScript
+
+// Fetch all analytics data
+async function fetchAnalytics() {
+    try {
+        const response = await fetch('/api/analytics/summary');
+        const data = await response.json();
+
+        if (data.collection && data.collection.success) {
+            updateCollectionStats(data.collection);
+        }
+
+        if (data.top_artists && data.top_artists.success) {
+            updateTopArtists(data.top_artists.artists);
+        }
+
+        if (data.top_genres && data.top_genres.success) {
+            updateTopGenres(data.top_genres.genres);
+        }
+
+        if (data.health && data.health.success) {
+            updateHealth(data.health);
+        }
+
+        if (data.recent_additions && data.recent_additions.success) {
+            updateRecentAdditions(data.recent_additions.videos);
+        }
+    } catch (error) {
+        console.error('Error fetching analytics:', error);
+    }
+}
+
+// Update collection stats cards
+function updateCollectionStats(stats) {
+    document.getElementById('total-videos').textContent = stats.videos.total;
+    document.getElementById('downloaded-videos').textContent =
+        `${stats.videos.downloaded} downloaded`;
+
+    document.getElementById('total-artists').textContent = stats.artists.total;
+    document.getElementById('monitored-artists').textContent =
+        `${stats.artists.monitored} monitored`;
+
+    document.getElementById('total-duration').textContent = stats.videos.total_duration_hours;
+
+    // Videos by year
+    if (stats.by_year && stats.by_year.length > 0) {
+        let html = '<div class="row">';
+        stats.by_year.forEach(item => {
+            html += `<div class="col-md-2 col-6 mb-2 text-center">
+                <div class="border rounded p-2">
+                    <h5 class="mb-0">${item.count}</h5>
+                    <small class="text-muted">${item.year}</small>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        document.getElementById('videos-by-year').innerHTML = html;
+    }
+}
+
+// Update top artists list
+function updateTopArtists(artists) {
+    const container = document.getElementById('top-artists-list');
+
+    if (artists.length === 0) {
+        container.innerHTML = '<p class="text-muted">No artists found</p>';
+        return;
+    }
+
+    let html = '<div class="list-group list-group-flush">';
+    artists.forEach((artist, index) => {
+        html += `<div class="list-group-item d-flex justify-content-between align-items-center">
+            <span><strong>#${index + 1}</strong> ${escapeHtml(artist.name)}</span>
+            <span class="badge badge-primary badge-pill">${artist.video_count} videos</span>
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Update top genres list
+function updateTopGenres(genres) {
+    const container = document.getElementById('top-genres-list');
+
+    if (genres.length === 0) {
+        container.innerHTML = '<p class="text-muted">No genres found</p>';
+        return;
+    }
+
+    let html = '<div class="list-group list-group-flush">';
+    genres.forEach((genre, index) => {
+        html += `<div class="list-group-item d-flex justify-content-between align-items-center">
+            <span><strong>#${index + 1}</strong> ${escapeHtml(genre.name)}</span>
+            <span class="badge badge-primary badge-pill">${genre.video_count} videos</span>
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Update health section
+function updateHealth(health) {
+    const score = health.health_score;
+    let scoreClass = 'text-success';
+    let status = 'Excellent';
+
+    if (score < 70) {
+        scoreClass = 'text-danger';
+        status = 'Needs Attention';
+    } else if (score < 90) {
+        scoreClass = 'text-warning';
+        status = 'Good';
+    }
+
+    document.getElementById('health-score').innerHTML = `<span class="${scoreClass}">${score}%</span>`;
+    document.getElementById('health-status').textContent = status;
+
+    // Health details
+    const container = document.getElementById('health-details');
+    let html = '<div class="row">';
+
+    // Issues
+    const issues = health.issues;
+    if (issues.missing_thumbnail > 0) {
+        html += `<div class="col-md-4 mb-2">
+            <div class="alert alert-warning mb-0">
+                <strong>${issues.missing_thumbnail}</strong> videos missing thumbnails
+            </div>
+        </div>`;
+    }
+    if (issues.missing_file > 0) {
+        html += `<div class="col-md-4 mb-2">
+            <div class="alert alert-info mb-0">
+                <strong>${issues.missing_file}</strong> videos pending download
+            </div>
+        </div>`;
+    }
+    if (issues.missing_release_date > 0) {
+        html += `<div class="col-md-4 mb-2">
+            <div class="alert alert-warning mb-0">
+                <strong>${issues.missing_release_date}</strong> videos missing release dates
+            </div>
+        </div>`;
+    }
+
+    html += '</div>';
+
+    // Recommendations
+    if (health.recommendations && health.recommendations.length > 0) {
+        html += '<h6 class="mt-3">Recommendations:</h6><ul class="mb-0">';
+        health.recommendations.forEach(rec => {
+            html += `<li>${escapeHtml(rec)}</li>`;
+        });
+        html += '</ul>';
+    }
+
+    container.innerHTML = html;
+}
+
+// Update recent additions
+function updateRecentAdditions(videos) {
+    const container = document.getElementById('recent-additions');
+
+    if (videos.length === 0) {
+        container.innerHTML = '<p class="text-muted">No recent additions</p>';
+        return;
+    }
+
+    let html = '<div class="list-group list-group-flush">';
+    videos.forEach(video => {
+        const date = new Date(video.added_at).toLocaleDateString();
+        html += `<div class="list-group-item">
+            <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1">${escapeHtml(video.title)}</h6>
+                <small>${date}</small>
+            </div>
+            <small class="text-muted">${escapeHtml(video.artist_name)}</small>
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Refresh analytics
+function refreshAnalytics() {
+    fetchAnalytics();
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    fetchAnalytics();
+});
+</script>
+
+{% endblock %}
