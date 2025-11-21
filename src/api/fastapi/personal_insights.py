@@ -4,26 +4,25 @@ Personal Insights API endpoints for MVidarr.
 Provides collection analytics and insights for home self-hosters.
 """
 
+import logging
+from datetime import datetime
+from typing import Dict
+
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from typing import Dict
-import logging
 
+from src.api.fastapi.template_system import template_system
 from src.services.personal_analytics import (
+    export_collection_csv,
+    get_analytics_summary,
+    get_collection_health,
     get_collection_statistics,
+    get_recent_additions,
     get_top_artists,
     get_top_genres,
-    get_collection_health,
-    get_recent_additions,
-    get_analytics_summary,
-    export_collection_csv,
 )
 
 logger = logging.getLogger(__name__)
-
-# Setup templates
-templates = Jinja2Templates(directory="frontend/templates")
 
 router = APIRouter(prefix="/api/analytics", tags=["Personal Analytics"])
 
@@ -54,7 +53,9 @@ async def get_collection_stats() -> Dict:
     try:
         result = get_collection_statistics()
         if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
         return result
     except HTTPException:
         raise
@@ -78,7 +79,9 @@ async def get_top_artists_list(limit: int = 10) -> Dict:
         limit = min(limit, 50)  # Cap at 50
         result = get_top_artists(limit=limit)
         if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
         return result
     except HTTPException:
         raise
@@ -102,7 +105,9 @@ async def get_top_genres_list(limit: int = 10) -> Dict:
         limit = min(limit, 50)  # Cap at 50
         result = get_top_genres(limit=limit)
         if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
         return result
     except HTTPException:
         raise
@@ -122,7 +127,9 @@ async def get_health() -> Dict:
     try:
         result = get_collection_health()
         if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
         return result
     except HTTPException:
         raise
@@ -149,7 +156,9 @@ async def get_recent(days: int = 30, limit: int = 10) -> Dict:
 
         result = get_recent_additions(days=days, limit=limit)
         if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
         return result
     except HTTPException:
         raise
@@ -174,7 +183,7 @@ async def export_csv():
             media_type="text/csv",
             headers={
                 "Content-Disposition": f"attachment; filename=mvidarr_collection_{datetime.now().strftime('%Y%m%d')}.csv"
-            }
+            },
         )
     except Exception as e:
         logger.error(f"Error exporting CSV: {e}")
@@ -188,8 +197,7 @@ page_router = APIRouter(tags=["Analytics Pages"])
 @page_router.get("/analytics", response_class=HTMLResponse)
 async def analytics_page(request: Request):
     """Render the personal analytics page."""
-    return templates.TemplateResponse("collection_stats.html", {"request": request})
-
-
-# Import datetime for CSV filename
-from datetime import datetime
+    context = {"page_title": "Collection Analytics"}
+    return await template_system.render_response(
+        "collection_stats.html", request, context
+    )

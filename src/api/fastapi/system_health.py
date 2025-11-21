@@ -4,27 +4,25 @@ System Health API endpoints for MVidarr.
 Provides health monitoring endpoints for home self-hosters.
 """
 
+import logging
+from typing import Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from typing import Dict, List, Optional
-import logging
 
+from src.api.fastapi.template_system import template_system
 from src.services.health_monitoring import (
-    get_overall_health,
-    get_disk_usage,
-    get_memory_usage,
+    get_celery_status,
     get_cpu_usage,
     get_database_status,
-    get_celery_status,
-    get_redis_status,
+    get_disk_usage,
+    get_memory_usage,
+    get_overall_health,
     get_recent_logs,
+    get_redis_status,
 )
 
 logger = logging.getLogger(__name__)
-
-# Setup templates
-templates = Jinja2Templates(directory="frontend/templates")
 
 router = APIRouter(prefix="/api/system-health", tags=["System Health"])
 
@@ -147,4 +145,5 @@ page_router = APIRouter(tags=["System Health Pages"])
 @page_router.get("/system-health", response_class=HTMLResponse)
 async def system_health_page(request: Request):
     """Render the system health dashboard page."""
-    return templates.TemplateResponse("system_health.html", {"request": request})
+    context = {"page_title": "System Health"}
+    return await template_system.render_response("system_health.html", request, context)

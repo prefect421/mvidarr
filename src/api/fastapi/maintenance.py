@@ -4,25 +4,23 @@ Maintenance API endpoints for MVidarr.
 Provides simple cleanup and optimization tools for home self-hosters.
 """
 
+import logging
+from typing import Dict, Optional
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from typing import Dict, Optional
-import logging
 
+from src.api.fastapi.template_system import template_system
 from src.services.maintenance_tasks import (
+    cleanup_old_job_history,
     cleanup_old_logs,
-    optimize_database,
     cleanup_orphaned_thumbnails,
     cleanup_temp_files,
-    cleanup_old_job_history,
     get_maintenance_summary,
+    optimize_database,
 )
 
 logger = logging.getLogger(__name__)
-
-# Setup templates
-templates = Jinja2Templates(directory="frontend/templates")
 
 router = APIRouter(prefix="/api/maintenance", tags=["Maintenance"])
 
@@ -44,9 +42,7 @@ async def get_summary() -> Dict:
 
 @router.post("/logs/cleanup")
 async def cleanup_logs(
-    days_to_keep: int = 30,
-    dry_run: bool = False,
-    log_directory: Optional[str] = None
+    days_to_keep: int = 30, dry_run: bool = False, log_directory: Optional[str] = None
 ) -> Dict:
     """
     Clean up old log files.
@@ -67,7 +63,9 @@ async def cleanup_logs(
         result = cleanup_old_logs(**kwargs)
 
         if not result["success"]:
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
 
         return result
     except HTTPException:
@@ -89,7 +87,9 @@ async def optimize_db() -> Dict:
         result = optimize_database()
 
         if not result["success"]:
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
 
         return result
     except HTTPException:
@@ -101,8 +101,7 @@ async def optimize_db() -> Dict:
 
 @router.post("/thumbnails/cleanup")
 async def cleanup_thumbnails(
-    dry_run: bool = False,
-    thumbnails_path: Optional[str] = None
+    dry_run: bool = False, thumbnails_path: Optional[str] = None
 ) -> Dict:
     """
     Clean up orphaned thumbnail files.
@@ -122,7 +121,9 @@ async def cleanup_thumbnails(
         result = cleanup_orphaned_thumbnails(**kwargs)
 
         if not result["success"]:
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
 
         return result
     except HTTPException:
@@ -133,9 +134,7 @@ async def cleanup_thumbnails(
 
 
 @router.post("/temp-files/cleanup")
-async def cleanup_temp(
-    dry_run: bool = False
-) -> Dict:
+async def cleanup_temp(dry_run: bool = False) -> Dict:
     """
     Clean up temporary files and cache.
 
@@ -149,7 +148,9 @@ async def cleanup_temp(
         result = cleanup_temp_files(dry_run=dry_run)
 
         if not result["success"]:
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
 
         return result
     except HTTPException:
@@ -160,10 +161,7 @@ async def cleanup_temp(
 
 
 @router.post("/jobs/cleanup")
-async def cleanup_jobs(
-    days_to_keep: int = 30,
-    dry_run: bool = False
-) -> Dict:
+async def cleanup_jobs(days_to_keep: int = 30, dry_run: bool = False) -> Dict:
     """
     Clean up old job history from Redis.
 
@@ -178,7 +176,9 @@ async def cleanup_jobs(
         result = cleanup_old_job_history(days_to_keep=days_to_keep, dry_run=dry_run)
 
         if not result["success"]:
-            raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "Unknown error")
+            )
 
         return result
     except HTTPException:
@@ -195,4 +195,5 @@ page_router = APIRouter(tags=["Maintenance Pages"])
 @page_router.get("/maintenance", response_class=HTMLResponse)
 async def maintenance_page(request: Request):
     """Render the maintenance tools page."""
-    return templates.TemplateResponse("maintenance.html", {"request": request})
+    context = {"page_title": "Maintenance Tools"}
+    return await template_system.render_response("maintenance.html", request, context)
