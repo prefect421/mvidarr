@@ -71,6 +71,42 @@ volumes:
   mariadb_data:
 ```
 
+## 🖥️ Unraid Installation
+
+MVidarr can be easily installed on Unraid using the Community Applications template.
+
+### Quick Installation
+
+1. Open **Apps** tab in Unraid
+2. Search for **"MVidarr"**
+3. Click **Install** and configure settings
+4. Access at `http://[UNRAID-IP]:5000`
+
+### Requirements
+
+- **Unraid 6.9+** (6.12+ recommended)
+- **MariaDB container** (install from Community Applications if needed)
+- **Community Applications plugin** installed
+
+### Detailed Instructions
+
+For complete Unraid installation instructions including:
+- MariaDB setup and configuration
+- Container configuration and path mapping
+- Troubleshooting common Unraid issues
+- Performance optimization tips
+- Reverse proxy configuration
+
+**See our comprehensive [Unraid Installation Guide]({{ site.github.repository_url }}/blob/main/docs/UNRAID_INSTALLATION.md)**
+
+### Template URL
+
+If MVidarr is not yet in Community Applications, you can add it manually:
+
+```
+https://raw.githubusercontent.com/prefect421/mvidarr/main/unraid-template.xml
+```
+
 ## 🔧 Manual Installation
 
 ### Prerequisites

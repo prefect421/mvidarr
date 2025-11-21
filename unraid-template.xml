@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>MVidarr</Name>
+  <Repository>ghcr.io/prefect421/mvidarr:latest</Repository>
+  <Registry>https://github.com/prefect421/mvidarr/pkgs/container/mvidarr</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/prefect421/mvidarr/issues</Support>
+  <Project>https://github.com/prefect421/mvidarr</Project>
+  <Overview>MVidarr is a self-hosted music video collection manager and player designed for home users. Organize, discover, and play your music video library with automated metadata enrichment, playlist management, and a modern web interface.
+
+Features:
+- Automatic metadata enrichment from IMVDb and YouTube
+- Smart playlist generation and management
+- Thumbnail generation and artist artwork
+- Modern, responsive web interface
+- FastAPI backend with WebSocket support
+- Full subtitle support for music videos
+- MKV video transcoding for browser playback
+- Celery task queue for background processing
+- Theme customization support</Overview>
+  <Category>MediaApp:Video MediaServer:Video</Category>
+  <WebUI>http://[IP]:[PORT:5000]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/prefect421/mvidarr/main/unraid-template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/prefect421/mvidarr/main/frontend/static/img/favicon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>MariaDB or MySQL database (can use Unraid MariaDB container)</Requires>
+  <Config Name="WebUI Port" Target="5000" Default="5000" Mode="tcp" Description="Web interface port" Type="Port" Display="always" Required="true" Mask="false">5000</Config>
+  <Config Name="Music Videos" Target="/app/data/musicvideos" Default="/mnt/user/music-videos/" Mode="rw" Description="Path to your music video files" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/music-videos/</Config>
+  <Config Name="Thumbnails" Target="/app/data/thumbnails" Default="/mnt/user/appdata/mvidarr/thumbnails/" Mode="rw" Description="Thumbnail and artwork storage" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mvidarr/thumbnails/</Config>
+  <Config Name="Database Folder" Target="/app/data/database" Default="/mnt/user/appdata/mvidarr/database/" Mode="rw" Description="Application database files" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mvidarr/database/</Config>
+  <Config Name="Logs" Target="/app/data/logs" Default="/mnt/user/appdata/mvidarr/logs/" Mode="rw" Description="Application log files" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mvidarr/logs/</Config>
+  <Config Name="Downloads" Target="/app/data/downloads" Default="/mnt/user/appdata/mvidarr/downloads/" Mode="rw" Description="Temporary download storage for yt-dlp" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mvidarr/downloads/</Config>
+  <Config Name="Cache" Target="/app/data/cache" Default="/mnt/user/appdata/mvidarr/cache/" Mode="rw" Description="Application cache storage" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/mvidarr/cache/</Config>
+  <Config Name="Config" Target="/app/config" Default="/mnt/user/appdata/mvidarr/config/" Mode="rw" Description="Application configuration files" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/mvidarr/config/</Config>
+  <Config Name="DB_HOST" Target="DB_HOST" Default="mariadb" Mode="" Description="Database hostname (use container name if using Unraid MariaDB)" Type="Variable" Display="always" Required="true" Mask="false">mariadb</Config>
+  <Config Name="DB_PORT" Target="DB_PORT" Default="3306" Mode="" Description="Database port" Type="Variable" Display="advanced" Required="true" Mask="false">3306</Config>
+  <Config Name="DB_USER" Target="DB_USER" Default="mvidarr" Mode="" Description="Database username" Type="Variable" Display="always" Required="true" Mask="false">mvidarr</Config>
+  <Config Name="DB_PASSWORD" Target="DB_PASSWORD" Default="" Mode="" Description="Database password (must match your MariaDB container)" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="DB_NAME" Target="DB_NAME" Default="mvidarr" Mode="" Description="Database name" Type="Variable" Display="advanced" Required="true" Mask="false">mvidarr</Config>
+  <Config Name="SECRET_KEY" Target="SECRET_KEY" Default="" Mode="" Description="Secret key for session encryption (generate a random 32+ character string)" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="MVIDARR_SECRET_KEY" Target="MVIDARR_SECRET_KEY" Default="" Mode="" Description="MVidarr secret key (should match SECRET_KEY)" Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="IMVDB_API_KEY" Target="IMVDB_API_KEY" Default="" Mode="" Description="IMVDb API key for metadata enrichment (optional - get from https://imvdb.com/developers)" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="YOUTUBE_API_KEY" Target="YOUTUBE_API_KEY" Default="" Mode="" Description="YouTube API key for metadata enrichment (optional - get from Google Cloud Console)" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="Timezone (e.g., America/New_York, Europe/London)" Type="Variable" Display="always" Required="false" Mask="false">America/New_York</Config>
+  <Config Name="DEBUG" Target="DEBUG" Default="false" Mode="" Description="Enable debug mode (true/false)" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="PORT" Target="PORT" Default="5000" Mode="" Description="Internal application port (should match WebUI Port)" Type="Variable" Display="advanced" Required="false" Mask="false">5000</Config>
+  <Config Name="PYTHONUNBUFFERED" Target="PYTHONUNBUFFERED" Default="1" Mode="" Description="Python unbuffered output for better logging" Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+</Container>
