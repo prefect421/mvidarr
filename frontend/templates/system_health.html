@@ -4,14 +4,14 @@
 
 {% block head %}
 <style>
-    /* Progress bar styles */
+    /* Progress bar styles - v2024-11-22 */
     .progress {
         display: flex;
         height: 24px;
-        overflow: visible;
+        overflow: hidden;
         font-size: 0.875rem;
-        background-color: var(--bg-tertiary, #1a1a1a);
-        border-radius: 4px;
+        background-color: var(--bg-tertiary, #3a3a3a);
+        border-radius: 2px;
         border: 1px solid var(--border-secondary, #444);
         position: relative;
     }
@@ -21,7 +21,7 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        overflow: visible;
+        overflow: hidden;
         color: var(--text-inverse, #fff);
         text-align: center;
         white-space: nowrap;
@@ -31,6 +31,8 @@
         text-shadow: 0 1px 2px var(--shadow, rgba(0, 0, 0, 0.5));
         position: relative;
         min-width: 0;
+        height: 100% !important;
+        border-radius: 2px !important;
     }
 
     /* Ensure percentage text is always visible */
@@ -41,6 +43,7 @@
         transform: translateX(-50%);
         color: var(--text-inverse, #fff);
         font-weight: 600;
+        font-size: 0.75rem;
         text-shadow: 0 1px 2px var(--shadow, rgba(0, 0, 0, 0.8));
         z-index: 1;
     }
@@ -92,6 +95,10 @@
         font-size: 1.25rem;
         margin-bottom: 0.75rem;
         color: var(--text-primary, #fff);
+    }
+
+    .card h5.card-title {
+        margin-bottom: 0.5rem;
     }
 
     .card h6.card-title {
@@ -184,7 +191,7 @@
 
     /* Log container */
     #logs-container {
-        background-color: var(--bg-tertiary, #1a1a1a);
+        background-color: var(--bg-tertiary, #3a3a3a);
         border: 1px solid var(--border-secondary, #444);
         border-radius: 4px;
         padding: 1rem;
@@ -389,7 +396,10 @@ async function fetchOverallHealth() {
             overallCard.className = 'card border-danger';
         }
 
-        let html = `<h3 class="${statusClass}">${statusIcon} ${data.status.toUpperCase()}</h3>`;
+        // Remove flex classes that prevent line breaks
+        statusCard.className = '';
+
+        let html = `<h3 class="${statusClass}" style="margin-top: 0; margin-bottom: 0.5rem;">${statusIcon} ${data.status.toUpperCase()}</h3>`;
 
         if (data.warnings && data.warnings.length > 0) {
             html += '<div class="mt-2"><strong>Warnings:</strong><ul class="mb-0">';
@@ -403,7 +413,7 @@ async function fetchOverallHealth() {
             html += '</ul></div>';
         }
 
-        html += `<small class="text-muted d-block mt-2">Last checked: ${new Date(data.checked_at).toLocaleString()}</small>`;
+        html += `<div style="margin-top: 1rem;"><small class="text-muted">Last checked: ${new Date(data.checked_at).toLocaleString()}</small></div>`;
 
         statusCard.innerHTML = html;
 
