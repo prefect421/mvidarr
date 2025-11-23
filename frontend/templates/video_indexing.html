@@ -1,0 +1,801 @@
+{% extends "base.html" %}
+
+{% block title %}Video Indexing - MVidarr{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--border-primary, #333);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        color: var(--text-primary, #fff);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .indexing-dashboard {
+        display: grid;
+        gap: 2rem;
+    }
+
+    .indexing-section {
+        background: var(--bg-secondary, #222);
+        border: 1px solid var(--border-secondary, #444);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+
+    .section-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-secondary, #333);
+    }
+
+    .section-header h2 {
+        margin: 0;
+        color: var(--text-primary, #fff);
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-box {
+        background: var(--bg-tertiary, #2a2a2a);
+        border: 1px solid var(--border-secondary, #444);
+        border-radius: 6px;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-accent, #00d4ff);
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        color: var(--text-secondary, #ccc);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-indicator {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-indicator.success {
+        background: var(--success, #10b981);
+        color: white;
+    }
+
+    .status-indicator.error {
+        background: var(--error, #ef4444);
+        color: white;
+    }
+
+    .status-indicator.warning {
+        background: var(--warning, #f59e0b);
+        color: white;
+    }
+
+    .indexing-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .indexing-actions .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+    }
+
+    .progress-container {
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        background: var(--bg-tertiary, #2a2a2a);
+        border-radius: 6px;
+        border: 1px solid var(--border-secondary, #444);
+    }
+
+    .progress-bar-container {
+        width: 100%;
+        height: 30px;
+        background: var(--bg-primary, #1a1a1a);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(135deg, var(--text-accent, #00d4ff) 0%, var(--accent-color, #3b82f6) 100%);
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+    }
+
+    #progress-text {
+        color: var(--text-secondary, #ccc);
+        font-size: 0.9rem;
+        text-align: center;
+        display: block;
+    }
+
+    .results-container {
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        background: var(--bg-tertiary, #2a2a2a);
+        border-radius: 6px;
+        border: 1px solid var(--border-secondary, #444);
+    }
+
+    .indexing-results h4 {
+        color: var(--text-primary, #fff);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .results-grid {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .result-item {
+        padding: 0.75rem;
+        background: var(--bg-primary, #1a1a1a);
+        border-radius: 4px;
+        border: 1px solid var(--border-secondary, #444);
+    }
+
+    .result-item strong {
+        color: var(--text-accent, #00d4ff);
+        margin-right: 0.5rem;
+    }
+
+    .error {
+        color: var(--error, #ef4444);
+    }
+
+    .success {
+        color: var(--success, #10b981);
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .indexing-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        <iconify-icon icon="tabler:database-search"></iconify-icon>
+        Video Indexing
+    </h1>
+    <button class="btn btn-secondary" onclick="refreshStats()">
+        <iconify-icon icon="tabler:refresh"></iconify-icon>
+        Refresh Stats
+    </button>
+</div>
+
+<!-- Database Status Section -->
+<div class="indexing-section">
+    <div class="section-header">
+        <h2>
+            <iconify-icon icon="tabler:database"></iconify-icon>
+            Database Status
+        </h2>
+    </div>
+
+    <div id="indexing-stats">
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-value" id="stats-loading">...</div>
+                <div class="stat-label">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 1.5rem;">
+        <label style="color: var(--text-secondary, #ccc); font-weight: 600; margin-bottom: 0.5rem; display: block;">IMVDB Connection:</label>
+        <div id="imvdb-status">
+            <span id="imvdb-loading">Checking...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Indexing Actions Section -->
+<div class="indexing-section">
+    <div class="section-header">
+        <h2>
+            <iconify-icon icon="tabler:tool"></iconify-icon>
+            Indexing Operations
+        </h2>
+    </div>
+
+    <div class="indexing-actions">
+        <button onclick="testImvdbConnection()" class="btn btn-info">
+            <iconify-icon icon="tabler:plug"></iconify-icon>
+            Test IMVDB Connection
+        </button>
+        <button onclick="indexAllVideos()" class="btn btn-primary">
+            <iconify-icon icon="tabler:database-import"></iconify-icon>
+            Index All Videos
+        </button>
+        <button onclick="scanVideoFiles()" class="btn btn-info">
+            <iconify-icon icon="tabler:scan"></iconify-icon>
+            Scan Video Files
+        </button>
+        <button onclick="populateArtistThumbnails()" class="btn btn-warning">
+            <iconify-icon icon="tabler:photo"></iconify-icon>
+            Populate Artist Thumbnails
+        </button>
+        <button onclick="bulkAutomatchAllArtists()" class="btn btn-success">
+            <iconify-icon icon="tabler:users"></iconify-icon>
+            Bulk Artist Automatch
+        </button>
+        <button onclick="bulkEnrichAllArtists()" class="btn btn-success">
+            <iconify-icon icon="tabler:sparkles"></iconify-icon>
+            Bulk Artist Enrich
+        </button>
+        <button onclick="fixMissingVideos()" class="btn btn-warning">
+            <iconify-icon icon="tabler:tool"></iconify-icon>
+            Fix Missing Videos
+        </button>
+        <button onclick="checkVideoQualities()" class="btn btn-success">
+            <iconify-icon icon="tabler:video"></iconify-icon>
+            Check Video Qualities
+        </button>
+    </div>
+
+    <!-- Progress Container -->
+    <div id="indexing-progress" class="progress-container" style="display: none;">
+        <div class="progress-bar-container">
+            <div id="progress-fill" class="progress-fill" style="width: 0%;">0%</div>
+        </div>
+        <span id="progress-text">Processing...</span>
+    </div>
+
+    <!-- Results Container -->
+    <div id="indexing-results" class="results-container" style="display: none;"></div>
+</div>
+
+<script>
+// Video Indexing Functions
+function loadIndexingStats() {
+    fetch('/api/video-indexing/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('indexing-stats').innerHTML =
+                    '<span class="error">Error loading stats: ' + data.error + '</span>';
+            } else {
+                const stats = `
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">${data.total_videos || 0}</div>
+                            <div class="stat-label">Total Videos</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.indexed_videos || 0}</div>
+                            <div class="stat-label">Indexed Videos</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.unindexed_videos || 0}</div>
+                            <div class="stat-label">Unindexed Videos</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.total_artists || 0}</div>
+                            <div class="stat-label">Total Artists</div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('indexing-stats').innerHTML = stats;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading stats:', error);
+            document.getElementById('indexing-stats').innerHTML =
+                '<span class="error">Error loading stats: ' + error.message + '</span>';
+        });
+}
+
+function testImvdbConnection() {
+    document.getElementById('imvdb-status').innerHTML = '<span id="imvdb-loading">Testing connection...</span>';
+
+    fetch('/api/health/imvdb')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'healthy') {
+                document.getElementById('imvdb-status').innerHTML =
+                    '<span class="status-indicator success">✓ Connected</span> <span style="color: var(--text-secondary, #ccc);">' +
+                    (data.message || 'IMVDB API is accessible') + '</span>';
+            } else {
+                document.getElementById('imvdb-status').innerHTML =
+                    '<span class="status-indicator error">✗ Error</span> <span class="error">' +
+                    (data.error || data.detail || 'Connection failed') + '</span>';
+            }
+        })
+        .catch(error => {
+            console.error('Error testing IMVDB:', error);
+            document.getElementById('imvdb-status').innerHTML =
+                '<span class="status-indicator error">✗ Error</span> <span class="error">' +
+                error.message + '</span>';
+        });
+}
+
+function refreshStats() {
+    loadIndexingStats();
+    testImvdbConnection();
+}
+
+function showProgress(message) {
+    const progressContainer = document.getElementById('indexing-progress');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    progressContainer.style.display = 'block';
+    progressFill.style.width = '0%';
+    progressFill.textContent = '0%';
+    progressText.textContent = message;
+}
+
+function updateProgress(percent, message) {
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    progressFill.style.width = percent + '%';
+    progressFill.textContent = percent + '%';
+    if (message) {
+        progressText.textContent = message;
+    }
+}
+
+function hideProgress() {
+    document.getElementById('indexing-progress').style.display = 'none';
+}
+
+function showResults(html) {
+    const resultsContainer = document.getElementById('indexing-results');
+    resultsContainer.innerHTML = html;
+    resultsContainer.style.display = 'block';
+}
+
+function scanVideoFiles() {
+    showProgress('Scanning video files...');
+
+    fetch('/api/video-indexing/scan', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            hideProgress();
+
+            if (data.error) {
+                showResults('<span class="error">Error: ' + data.error + '</span>');
+                return;
+            }
+
+            const results = `
+                <div class="indexing-results">
+                    <h4>📂 Video File Scan Complete</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Total files found:</strong> ${data.total_files || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Video files:</strong> ${data.video_files || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>New files:</strong> ${data.new_files || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Already in database:</strong> ${data.existing_files || 0}
+                        </div>
+                    </div>
+                </div>
+            `;
+            showResults(results);
+            refreshStats();
+        })
+        .catch(error => {
+            hideProgress();
+            console.error('Error scanning video files:', error);
+            showResults('<span class="error">Scan failed: ' + error.message + '</span>');
+        });
+}
+
+function indexAllVideos() {
+    const message = 'This will index all videos in your music videos directory with IMVDb metadata. This may take a while. Continue?';
+
+    if (typeof toastConfirm === 'function') {
+        toastConfirm(message, () => {
+            proceedIndexAllVideos();
+        });
+    } else {
+        if (confirm(message)) {
+            proceedIndexAllVideos();
+        }
+    }
+}
+
+function proceedIndexAllVideos() {
+    startIndexing(true);
+}
+
+function indexAllVideosNoMeta() {
+    const message = 'This will index all videos without fetching metadata (faster). Continue?';
+
+    if (typeof toastConfirm === 'function') {
+        toastConfirm(message, () => {
+            proceedIndexAllVideosNoMeta();
+        });
+    } else {
+        if (confirm(message)) {
+            proceedIndexAllVideosNoMeta();
+        }
+    }
+}
+
+function proceedIndexAllVideosNoMeta() {
+    startIndexing(false);
+}
+
+function startIndexing(fetchMetadata) {
+    showProgress('Starting video indexing...');
+
+    const requestData = {
+        fetch_metadata: fetchMetadata,
+        max_files: null // Process all files
+    };
+
+    fetch('/api/video-indexing/index-all', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress();
+
+        if (data.success && data.job_id) {
+            // Background job was queued successfully
+            const result = `
+                <div class="indexing-results">
+                    <h4>📋 Video Indexing Job Started</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Job ID:</strong> ${data.job_id}
+                        </div>
+                        <div class="result-item">
+                            <strong>Status:</strong> Processing in background
+                        </div>
+                        <div class="result-item">
+                            <strong>Message:</strong> ${data.message}
+                        </div>
+                        <div class="result-item">
+                            <p style="color: var(--text-secondary, #ccc); margin: 0;">
+                                Track progress in the <a href="/jobs" style="color: var(--text-accent, #00d4ff);">Background Jobs</a> page
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            showResults(result);
+            refreshStats();
+
+        } else if (data.success && data.summary) {
+            // Legacy synchronous response (fallback)
+            const summary = data.summary;
+            const result = `
+                <div class="indexing-results">
+                    <h4>🎬 Video Indexing Complete</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Total files:</strong> ${summary.total_files}
+                        </div>
+                        <div class="result-item">
+                            <strong>Successfully indexed:</strong> ${summary.successful}
+                        </div>
+                        <div class="result-item">
+                            <strong>Already indexed:</strong> ${summary.already_indexed}
+                        </div>
+                        <div class="result-item">
+                            <strong>Failed:</strong> ${summary.failed}
+                        </div>
+                    </div>
+                </div>
+            `;
+            showResults(result);
+            refreshStats();
+
+        } else {
+            showResults('<span class="error">Error: ' + (data.error || 'Unknown error') + '</span>');
+        }
+    })
+    .catch(error => {
+        hideProgress();
+        console.error('Error indexing videos:', error);
+        showResults('<span class="error">Indexing failed: ' + error.message + '</span>');
+    });
+}
+
+function populateArtistThumbnails() {
+    if (!confirm('Populate artist thumbnails from IMVDB? This may take a while.')) {
+        return;
+    }
+
+    showProgress('Populating artist thumbnails...');
+
+    fetch('/api/video-indexing/populate-artist-thumbnails', {
+        method: 'POST'
+    })
+        .then(response => response.json())
+        .then(data => {
+            hideProgress();
+
+            if (data.error) {
+                showResults('<span class="error">Error: ' + data.error + '</span>');
+                return;
+            }
+
+            const result = `
+                <div class="indexing-results">
+                    <h4>🖼️ Artist Thumbnails Updated</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Artists processed:</strong> ${data.processed || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Thumbnails added:</strong> ${data.updated || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Failed:</strong> ${data.failed || 0}
+                        </div>
+                    </div>
+                </div>
+            `;
+            showResults(result);
+            refreshStats();
+        })
+        .catch(error => {
+            hideProgress();
+            console.error('Error populating thumbnails:', error);
+            showResults('<span class="error">Operation failed: ' + error.message + '</span>');
+        });
+}
+
+function bulkAutomatchAllArtists() {
+    if (!confirm('Auto-match all artists with IMVDB? This will match artists based on name similarity.')) {
+        return;
+    }
+
+    showProgress('Auto-matching artists...');
+
+    fetch('/api/video-indexing/bulk-automatch-artists', {
+        method: 'POST'
+    })
+        .then(response => response.json())
+        .then(data => {
+            hideProgress();
+
+            if (data.error) {
+                showResults('<span class="error">Error: ' + data.error + '</span>');
+                return;
+            }
+
+            const result = `
+                <div class="indexing-results">
+                    <h4>✓ Artist Auto-Match Complete</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Artists processed:</strong> ${data.processed || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Matched:</strong> ${data.matched || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Failed:</strong> ${data.failed || 0}
+                        </div>
+                    </div>
+                </div>
+            `;
+            showResults(result);
+            refreshStats();
+        })
+        .catch(error => {
+            hideProgress();
+            console.error('Error auto-matching artists:', error);
+            showResults('<span class="error">Operation failed: ' + error.message + '</span>');
+        });
+}
+
+function bulkEnrichAllArtists() {
+    if (!confirm('Enrich all artist metadata from IMVDB? This may take a while.')) {
+        return;
+    }
+
+    showProgress('Enriching artist metadata...');
+
+    fetch('/api/video-indexing/bulk-enrich-artists', {
+        method: 'POST'
+    })
+        .then(response => response.json())
+        .then(data => {
+            hideProgress();
+
+            if (data.error) {
+                showResults('<span class="error">Error: ' + data.error + '</span>');
+                return;
+            }
+
+            const result = `
+                <div class="indexing-results">
+                    <h4>✨ Artist Enrichment Complete</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Artists processed:</strong> ${data.processed || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Enriched:</strong> ${data.enriched || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Failed:</strong> ${data.failed || 0}
+                        </div>
+                    </div>
+                </div>
+            `;
+            showResults(result);
+            refreshStats();
+        })
+        .catch(error => {
+            hideProgress();
+            console.error('Error enriching artists:', error);
+            showResults('<span class="error">Operation failed: ' + error.message + '</span>');
+        });
+}
+
+function fixMissingVideos() {
+    if (!confirm('Attempt to fix videos with missing metadata? This will re-index videos without artist or IMVDB IDs.')) {
+        return;
+    }
+
+    showProgress('Fixing missing videos...');
+
+    fetch('/api/video-indexing/fix-missing', {
+        method: 'POST'
+    })
+        .then(response => response.json())
+        .then(data => {
+            hideProgress();
+
+            if (data.error) {
+                showResults('<span class="error">Error: ' + data.error + '</span>');
+                return;
+            }
+
+            const result = `
+                <div class="indexing-results">
+                    <h4>🔧 Missing Videos Fixed</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Videos processed:</strong> ${data.processed || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Fixed:</strong> ${data.fixed || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Still missing:</strong> ${data.still_missing || 0}
+                        </div>
+                    </div>
+                </div>
+            `;
+            showResults(result);
+            refreshStats();
+        })
+        .catch(error => {
+            hideProgress();
+            console.error('Error fixing missing videos:', error);
+            showResults('<span class="error">Operation failed: ' + error.message + '</span>');
+        });
+}
+
+function checkVideoQualities() {
+    showProgress('Checking video qualities...');
+
+    fetch('/api/video-indexing/check-qualities', {
+        method: 'POST'
+    })
+        .then(response => response.json())
+        .then(data => {
+            hideProgress();
+
+            if (data.error) {
+                showResults('<span class="error">Error: ' + data.error + '</span>');
+                return;
+            }
+
+            const result = `
+                <div class="indexing-results">
+                    <h4>📊 Video Quality Check Complete</h4>
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <strong>Videos checked:</strong> ${data.checked || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>HD Videos:</strong> ${data.hd_count || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>SD Videos:</strong> ${data.sd_count || 0}
+                        </div>
+                        <div class="result-item">
+                            <strong>Unknown Quality:</strong> ${data.unknown_count || 0}
+                        </div>
+                    </div>
+                </div>
+            `;
+            showResults(result);
+            refreshStats();
+        })
+        .catch(error => {
+            hideProgress();
+            console.error('Error checking qualities:', error);
+            showResults('<span class="error">Operation failed: ' + error.message + '</span>');
+        });
+}
+
+// Load stats on page load
+document.addEventListener('DOMContentLoaded', function() {
+    refreshStats();
+});
+</script>
+{% endblock %}
