@@ -65,15 +65,15 @@ def get_collection_statistics() -> Dict:
 
             total_genres = len(unique_genres)
 
-            # Videos by year
+            # Videos by year (using year field instead of release_date)
             videos_by_year = (
                 session.query(
-                    func.year(Video.release_date).label("year"),
+                    Video.year.label("year"),
                     func.count(Video.id).label("count"),
                 )
-                .filter(Video.release_date.isnot(None))
-                .group_by(func.year(Video.release_date))
-                .order_by(func.year(Video.release_date).desc())
+                .filter(Video.year.isnot(None))
+                .group_by(Video.year)
+                .order_by(Video.year.desc())
                 .limit(10)
                 .all()
             )

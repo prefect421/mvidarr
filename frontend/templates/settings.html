@@ -37,12 +37,7 @@
 
 .provider-config {
     padding: 1rem;
-    display: none; /* Hidden by default, shown when enabled */
-}
-
-.metadata-provider input[type="checkbox"]:checked ~ .provider-config,
-.metadata-provider input[type="checkbox"]:checked + .provider-header + .provider-config {
-    display: block;
+    display: none; /* Hidden by default, shown via JavaScript when enabled */
 }
 
 .form-group.inline {
@@ -2643,7 +2638,10 @@ function loadSettings() {
             
             // After settings are loaded, update the user credentials section visibility
             updateUserCredentialsSection();
-            
+
+            // Set up metadata provider toggles after checkboxes are populated
+            setupMetadataProviderToggles();
+
             // Load OAuth2 client ID if available (client secret is never loaded for security)
             if (settings.youtube_oauth_client_id) {
                 const clientIdElement = document.getElementById('youtube_oauth_client_id');
@@ -2729,27 +2727,53 @@ async function loadCurrentThemeOnStartup() {
     }
 }
 
+// Set up metadata provider toggle functionality
+function setupMetadataProviderToggles() {
+    // Find all metadata provider checkboxes
+    const providerCheckboxes = document.querySelectorAll('.metadata-provider input[type="checkbox"]');
+
+    providerCheckboxes.forEach(checkbox => {
+        // Find the parent .metadata-provider container
+        const provider = checkbox.closest('.metadata-provider');
+        if (provider) {
+            const providerConfig = provider.querySelector('.provider-config');
+
+            // Set initial visibility based on checkbox state
+            if (providerConfig) {
+                providerConfig.style.display = checkbox.checked ? 'block' : 'none';
+            }
+
+            // Add change listener
+            checkbox.addEventListener('change', function() {
+                if (providerConfig) {
+                    providerConfig.style.display = this.checked ? 'block' : 'none';
+                }
+            });
+        }
+    });
+}
+
 // Set up authentication toggle event listener and load settings on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Load settings when page loads
     loadSettings();
-    
+
     // Theme is already loaded via server-side rendering, no need to reload
     console.log(`Theme already applied via SSR: ${window.currentTheme}`);
-    
+
     // Load certificate status
     loadCertificateStatus();
-    
+
     // Check cookie status for both systems
     checkCookieStatusSettings();  // MeTube cookies (upload/delete functionality)
     checkCookieStatus();          // yt-dlp cookies (SABR workarounds)
-    
+
     // Set up authentication toggle event listener
     const authToggle = document.getElementById('require_authentication');
     if (authToggle) {
         authToggle.addEventListener('change', updateUserCredentialsSection);
     }
-    
+
     // Set up scheduled downloads frequency change listener
     const downloadFrequency = document.getElementById('auto_download_schedule_days');
     if (downloadFrequency) {
@@ -2757,7 +2781,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize visibility on page load
         updateDownloadTimeVisibility();
     }
-    
+
     // Initialize tab from URL hash
     initializeTab();
 });

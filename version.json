@@ -1,17 +1,18 @@
 {
   "version": "1.0.0-dev",
-  "build_date": "PLACEHOLDER_BUILD_DATE",
-  "git_commit": "PLACEHOLDER_GIT_COMMIT",
-  "git_branch": "PLACEHOLDER_GIT_BRANCH",
+  "build_date": "2025-11-23T00:31:14.245146",
+  "git_commit": "0e28847",
+  "git_branch": "dev",
   "release_name": "v1.0.0 Development - First Production Release",
   "features": [
     "🎉 First production-ready release milestone",
-    "🔧 Installation Wizard for first-run setup (Issue #163)",
+    "🔧 Installation Wizard for first-run setup",
     "🎬 Reliable video import system (no duplicates)",
     "✅ API validation before configuration",
-    "📁 Directory validation and auto-configuration",
-    "🔌 IMVDb and YouTube cookie setup",
-    "📊 Real-time import progress tracking",
-    "🚀 Production-ready onboarding experience"
+    "🎨 Theme-based frontend styling across all pages",
+    "📊 Fixed Analytics page to use Video.year field",
+    "🔧 Fixed maintenance tasks to use Config paths",
+    "⚙️ Fixed metadata provider toggle visibility in Settings",
+    "📈 Fixed jobs page to display accurate job counts"
   ]
 }

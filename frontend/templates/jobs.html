@@ -421,31 +421,59 @@ function refreshAllJobsPage() {
 
 async function loadJobsPageSystemStats() {
     try {
-        const response = await fetch('/api/health/status', {
+        // Fetch job data from Celery inspect endpoint
+        const response = await fetch('/api/metadata-enrichment/celery/inspect', {
             credentials: 'include'
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to fetch system stats');
         }
-        
+
         const data = await response.json();
-        
+        const jobs = data.jobs || [];
+
+        // Calculate job counts from the fetched data
+        const activeCount = jobs.filter(j => j.status === 'processing').length;
+        const queuedCount = jobs.filter(j => j.status === 'queued').length;
+
+        // For completed today, filter jobs completed in the last 24 hours
+        const oneDayAgo = Date.now() / 1000 - (24 * 60 * 60); // Unix timestamp 24 hours ago
+        const completedTodayCount = jobs.filter(j =>
+            j.status === 'completed' &&
+            j.completed_at &&
+            j.completed_at >= oneDayAgo
+        ).length;
+
         // Update stat cards
-        document.getElementById('activeJobCount').textContent = data.active_jobs || 0;
-        document.getElementById('queuedJobCount').textContent = data.queue_size || 0;
-        document.getElementById('completedJobCount').textContent = data.completed_jobs || 0;
-        
-        // Update system status
+        document.getElementById('activeJobCount').textContent = activeCount;
+        document.getElementById('queuedJobCount').textContent = queuedCount;
+        document.getElementById('completedJobCount').textContent = completedTodayCount;
+
+        // Update system status based on job data
         const statusElement = document.getElementById('systemStatus');
-        const status = data.status || 'unknown';
+        const failedCount = jobs.filter(j => j.status === 'failed').length;
+
+        let status = 'healthy';
+        if (failedCount > 0) {
+            status = 'warning';
+        }
+        if (activeCount > 10) {
+            status = 'busy';
+        }
+
         statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
         statusElement.style.color = getStatusColor(status);
-        
+
     } catch (error) {
         console.error('Failed to load system stats:', error);
         document.getElementById('systemStatus').textContent = 'Error';
         document.getElementById('systemStatus').style.color = 'var(--error, #ef4444)';
+
+        // Reset counts to 0 on error
+        document.getElementById('activeJobCount').textContent = '0';
+        document.getElementById('queuedJobCount').textContent = '0';
+        document.getElementById('completedJobCount').textContent = '0';
     }
 }
 
@@ -717,8 +745,10 @@ function getStatusColor(status) {
     const colors = {
         healthy: 'var(--success, #10b981)',
         operational: 'var(--success, #10b981)',
+        busy: 'var(--accent-color, #3b82f6)',
         partial: 'var(--warning, #f59e0b)',
         degraded: 'var(--warning, #f59e0b)',
+        warning: 'var(--warning, #f59e0b)',
         error: 'var(--error, #ef4444)',
         offline: 'var(--error, #ef4444)'
     };
