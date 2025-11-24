@@ -42,9 +42,9 @@
                     <button onclick="refreshCandidates()" class="btn btn-ghost btn-sm" title="Refresh candidates list">
                         <iconify-icon icon="tabler:refresh"></iconify-icon>
                     </button>
-                    <button onclick="showBatchEnrichmentModal()" class="btn btn-primary btn-sm" title="Batch enrich selected candidates">
+                    <button onclick="showEnrichAllModal()" class="btn btn-primary btn-sm" title="Enrich all candidates">
                         <iconify-icon icon="tabler:bolt"></iconify-icon>
-                        Batch Enrich
+                        Enrich All
                     </button>
                 </div>
             </div>
@@ -1383,22 +1383,55 @@ function updateBatchPreview() {
     document.getElementById('selectedCount').textContent = selectedCount;
 }
 
+function showEnrichAllModal() {
+    console.log('showEnrichAllModal called');
+
+    if (!enrichmentData.candidates || enrichmentData.candidates.length === 0) {
+        showError('No enrichment candidates available');
+        return;
+    }
+
+    // Select all candidates
+    enrichmentData.selectedCandidates.clear();
+    enrichmentData.candidates.forEach(candidate => {
+        enrichmentData.selectedCandidates.add(candidate.artist_id);
+    });
+
+    console.log('Selected all candidates:', enrichmentData.selectedCandidates.size);
+
+    // Update checkboxes to show all selected
+    document.querySelectorAll('.candidate-select').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+
+    updateBatchPreview();
+    const modal = document.getElementById('batchEnrichmentModal');
+
+    // Fix modal display - CSS expects 'block' not 'flex'
+    modal.style.display = 'block';
+
+    // Trigger animation by adding show class after a short delay
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+}
+
 function showBatchEnrichmentModal() {
     console.log('showBatchEnrichmentModal called, selectedCandidates:', enrichmentData.selectedCandidates);
     console.log('selectedCandidates size:', enrichmentData.selectedCandidates.size);
-    
+
     if (enrichmentData.selectedCandidates.size === 0) {
         showError('Please select at least one candidate for batch enrichment');
         return;
     }
-    
+
     updateBatchPreview();
     const modal = document.getElementById('batchEnrichmentModal');
     console.log('Modal element:', modal);
-    
+
     // Fix modal display - CSS expects 'block' not 'flex'
     modal.style.display = 'block';
-    
+
     // Trigger animation by adding show class after a short delay
     setTimeout(() => {
         modal.classList.add('show');
