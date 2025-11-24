@@ -1498,18 +1498,17 @@ async function executeBatchEnrichment() {
             const result = await response.json();
             
             if (response.ok) {
-                updateEnhancedProgress(100, 'Comprehensive batch enrichment completed successfully');
-                const successMsg = `Comprehensively enriched ${result.successful_count || 0} artists from all services`;
-                const failureMsg = result.failed_count > 0 ? ` (${result.failed_count} failed)` : '';
-                showSuccess(successMsg + failureMsg);
-                
+                updateEnhancedProgress(100, 'Comprehensive batch enrichment job started');
+                const successMsg = result.message || `Batch enrichment queued for ${selectedIds.length} artists`;
+                showSuccess(successMsg + ' - Processing in background');
+
                 setTimeout(() => {
                     closeProgressModal();
                     initializeDashboard();
                     enrichmentData.selectedCandidates.clear();
                 }, 3000);
             } else {
-                throw new Error(result.error || 'Comprehensive batch enrichment failed');
+                throw new Error(result.error || result.detail || 'Comprehensive batch enrichment failed');
             }
         } catch (error) {
             clearInterval(progressInterval);
