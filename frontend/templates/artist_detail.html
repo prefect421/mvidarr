@@ -2119,6 +2119,10 @@ div.metadata-section:hover,
 }
 
 .stat-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
     text-align: center;
     padding: 1rem 0.5rem;
     background: var(--bg-tertiary, #333);
@@ -2133,19 +2137,21 @@ div.metadata-section:hover,
 }
 
 .stat-value {
-    display: block;
-    font-size: 1.8rem;
+    display: block !important;
+    font-size: 2.5rem !important;
     font-weight: bold;
     color: var(--text-accent, #00d4ff);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem !important;
+    order: 1 !important;
 }
 
 .stat-label {
-    display: block;
-    font-size: 0.75rem;
+    display: block !important;
+    font-size: 0.7rem !important;
     color: var(--text-muted, #888);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    order: 2 !important;
 }
 
 .activity-list {
@@ -3723,15 +3729,15 @@ function renderArtistHeader(artist, statistics) {
                     </div>
                     <div class="stats-right">
                         <div class="action-stack">
-                            <button type="button" onclick="enrichMetadataAllSources(event)" class="btn btn-success" style="font-size: 0.8rem; padding: 0.4rem 0.6rem; flex: 0 0 auto; gap: 0.3rem; min-width: auto; width: auto; border: none !important;">
+                            <button type="button" onclick="enrichMetadataAllSources(event)" class="btn btn-success" style="font-size: 0.8rem; padding: 0.4rem 0.6rem; flex: 0 0 auto; gap: 0.3rem; min-width: auto; width: auto; border: none !important; outline: none !important; box-shadow: none !important;">
                                 <iconify-icon icon="tabler:sparkles" style="font-size: 0.9rem;"></iconify-icon>
                                 Enrich from All Services
                             </button>
-                            <button type="button" onclick="autoMatchServices()" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.6rem; flex: 0 0 auto; gap: 0.3rem; min-width: auto; width: auto; border: none !important;">
+                            <button type="button" onclick="autoMatchServices()" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.6rem; flex: 0 0 auto; gap: 0.3rem; min-width: auto; width: auto; border: none !important; outline: none !important; box-shadow: none !important;">
                                 <iconify-icon icon="tabler:wand" style="font-size: 0.9rem;"></iconify-icon>
                                 Auto-Match Services
                             </button>
-                            <button type="button" onclick="viewEnrichmentHistory()" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.6rem; flex: 0 0 auto; gap: 0.3rem; min-width: auto; width: auto; border: none !important;">
+                            <button type="button" onclick="viewEnrichmentHistory()" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.6rem; flex: 0 0 auto; gap: 0.3rem; min-width: auto; width: auto; border: none !important; outline: none !important; box-shadow: none !important;">
                                 <iconify-icon icon="tabler:history" style="font-size: 0.9rem;"></iconify-icon>
                                 Enrichment History
                             </button>
