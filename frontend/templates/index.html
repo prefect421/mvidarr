@@ -761,9 +761,15 @@ document.addEventListener('keydown', function(event) {
 
 .dashboard-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     margin-bottom: 30px;
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+    .dashboard-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .stat-card {
@@ -930,15 +936,30 @@ document.addEventListener('keydown', function(event) {
     line-height: 1.6;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px) and (min-width: 481px) {
     .dashboard-container {
         padding: 15px;
     }
-    
+
     .dashboard-container h1 {
         font-size: 2rem;
     }
-    
+
+    .dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-container {
+        padding: 15px;
+    }
+
+    .dashboard-container h1 {
+        font-size: 2rem;
+    }
+
     .dashboard-stats {
         grid-template-columns: 1fr;
         gap: 15px;
