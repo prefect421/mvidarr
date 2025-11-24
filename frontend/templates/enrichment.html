@@ -1394,7 +1394,7 @@ function showEnrichAllModal() {
     // Select all candidates
     enrichmentData.selectedCandidates.clear();
     enrichmentData.candidates.forEach(candidate => {
-        enrichmentData.selectedCandidates.add(candidate.artist_id);
+        enrichmentData.selectedCandidates.add(candidate.id);
     });
 
     console.log('Selected all candidates:', enrichmentData.selectedCandidates.size);
