@@ -1668,31 +1668,48 @@ async function runComprehensiveEnrichment() {
 
 async function runAutoEnrichment() {
     showProgressModal();
-    
+
     try {
-        const response = await fetch('/api/metadata-enrichment/auto-enrich', {
+        // Get high priority candidates (missing external IDs, limit 50)
+        updateProgress(20, 'Identifying priority candidates...');
+        const candidatesResponse = await fetch('/api/metadata-enrichment/candidates?limit=50&missing_external_ids=true');
+        const candidatesData = await candidatesResponse.json();
+
+        if (!candidatesResponse.ok || !candidatesData.candidates || candidatesData.candidates.length === 0) {
+            throw new Error('No priority candidates found for enrichment');
+        }
+
+        const priorityIds = candidatesData.candidates.map(c => c.id);
+        console.log(`Smart auto-enrich: Found ${priorityIds.length} priority candidates`);
+
+        // Enrich priority candidates using batch endpoint
+        updateProgress(40, `Enriching ${priorityIds.length} priority artists...`);
+        const response = await fetch('/api/metadata-enrichment/enrich/batch', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                limit: 50,
+                artist_ids: priorityIds,
+                force_refresh: false,
                 missing_external_ids: true,
-                smart_prioritization: true
+                comprehensive: true,
+                source: 'all'
             })
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok) {
-            updateProgress(100, 'Smart auto enrichment completed');
-            showSuccess(`Smart auto-enriched ${result.successful_count || 0} priority artists`);
+            updateProgress(100, 'Smart auto enrichment job queued');
+            const successMsg = result.message || `Smart auto-enrichment queued for ${priorityIds.length} priority artists`;
+            showSuccess(successMsg + ' - Processing in background');
             setTimeout(() => {
                 closeProgressModal();
                 initializeDashboard();
             }, 2000);
         } else {
-            throw new Error(result.error || 'Smart auto enrichment failed');
+            throw new Error(result.error || result.detail || 'Smart auto enrichment failed');
         }
     } catch (error) {
         console.error('Smart auto enrichment error:', error);
