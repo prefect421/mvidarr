@@ -482,63 +482,38 @@ async def bulk_automatch_artists(
     current_user: dict = Depends(require_authentication_legacy),
     session: Session = Depends(get_db_session),
 ):
-    """Auto-match all artists with external services (IMVDb, Spotify, Last.fm, etc.)"""
+    """Queue background job to auto-match all artists with external services"""
     try:
         from src.database.models import Artist
-        from src.services.artist_auto_processing_service import (
-            ArtistAutoProcessingService,
-        )
 
         logger.info(
-            f"Starting bulk artist auto-match for user {current_user.get('username')}"
+            f"Queueing bulk artist auto-match job for user {current_user.get('username')}"
         )
 
-        # Get all artists
-        artists = session.query(Artist).all()
-        total_artists = len(artists)
+        # Count artists
+        total_artists = session.query(Artist).count()
 
         if total_artists == 0:
             return {
-                "processed": 0,
-                "matched": 0,
-                "failed": 0,
-                "message": "No artists found",
+                "job_id": None,
+                "total_artists": 0,
+                "message": "No artists found to match",
             }
 
-        logger.info(f"Processing {total_artists} artists for auto-match")
+        # Queue Celery job for background processing
+        from src.jobs.metadata_tasks import bulk_automatch_artists_task
 
-        processed = 0
-        matched = 0
-        failed = 0
+        job = bulk_automatch_artists_task.delay()
+        job_id = job.id
 
-        for artist in artists:
-            try:
-                result = ArtistAutoProcessingService._run_auto_match(artist, session)
-                processed += 1
-
-                if result.get("match_count", 0) > 0:
-                    matched += 1
-
-                # Commit after each artist to avoid losing progress
-                session.commit()
-
-            except Exception as e:
-                logger.error(f"Error auto-matching artist {artist.name}: {e}")
-                failed += 1
-                session.rollback()
-                continue
-
-        logger.info(
-            f"Bulk auto-match complete: {processed} processed, {matched} matched, {failed} failed"
-        )
+        logger.info(f"Bulk auto-match job queued: {job_id} for {total_artists} artists")
 
         return {
-            "processed": processed,
-            "matched": matched,
-            "failed": failed,
-            "message": f"Successfully processed {processed} artists",
+            "job_id": job_id,
+            "total_artists": total_artists,
+            "message": f"Bulk auto-match job queued for {total_artists} artists - processing in background",
         }
 
     except Exception as e:
-        logger.error(f"Bulk auto-match failed: {e}")
+        logger.error(f"Failed to queue bulk auto-match job: {e}")
         raise HTTPException(status_code=500, detail={"error": str(e)})

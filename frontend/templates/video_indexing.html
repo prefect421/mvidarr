@@ -615,11 +615,11 @@ function populateArtistThumbnails() {
 }
 
 function bulkAutomatchAllArtists() {
-    if (!confirm('Auto-match all artists with IMVDB? This will match artists based on name similarity.')) {
+    if (!confirm('Auto-match all artists with external services? This will match artists based on name similarity and may take several minutes.')) {
         return;
     }
 
-    showProgress('Auto-matching artists...');
+    showProgress('Queueing auto-match job...');
 
     fetch('/api/video-indexing/bulk-automatch-artists', {
         method: 'POST'
@@ -633,20 +633,29 @@ function bulkAutomatchAllArtists() {
                 return;
             }
 
+            if (!data.job_id) {
+                showResults('<span class="info">' + (data.message || 'No artists found to match') + '</span>');
+                return;
+            }
+
             const result = `
                 <div class="indexing-results">
-                    <h4>✓ Artist Auto-Match Complete</h4>
+                    <h4>✓ Artist Auto-Match Job Queued</h4>
                     <div class="results-grid">
                         <div class="result-item">
-                            <strong>Artists processed:</strong> ${data.processed || 0}
+                            <strong>Job ID:</strong> ${data.job_id}
                         </div>
                         <div class="result-item">
-                            <strong>Matched:</strong> ${data.matched || 0}
+                            <strong>Total Artists:</strong> ${data.total_artists || 0}
                         </div>
                         <div class="result-item">
-                            <strong>Failed:</strong> ${data.failed || 0}
+                            <strong>Status:</strong> Processing in background
                         </div>
                     </div>
+                    <p class="info-message">
+                        ${data.message || 'Auto-matching job has been queued and will process in the background.'}
+                        <br>Check the Jobs page to monitor progress.
+                    </p>
                 </div>
             `;
             showResults(result);
@@ -654,7 +663,7 @@ function bulkAutomatchAllArtists() {
         })
         .catch(error => {
             hideProgress();
-            console.error('Error auto-matching artists:', error);
+            console.error('Error queueing auto-match job:', error);
             showResults('<span class="error">Operation failed: ' + error.message + '</span>');
         });
 }

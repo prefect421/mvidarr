@@ -1084,3 +1084,102 @@ def bulk_enrich_videos_metadata_task(
 
         # Re-raise for Celery to handle
         raise Exception(error_msg)
+
+
+@celery_app.task(bind=True, base=CallbackTask, name="metadata.bulk_automatch_artists")
+def bulk_automatch_artists_task(self):
+    """Celery task to bulk auto-match all artists with external services"""
+    try:
+        from src.services.artist_auto_processing_service import (
+            ArtistAutoProcessingService,
+        )
+
+        logger.info("Starting bulk artist auto-match job")
+        init_db_standalone()
+
+        task_id = self.request.id
+
+        with get_db() as session:
+            # Get all artists
+            artists = session.query(Artist).all()
+            total_artists = len(artists)
+
+            if total_artists == 0:
+                logger.info("No artists found to auto-match")
+                return {"processed": 0, "matched": 0, "failed": 0}
+
+            logger.info(f"Processing {total_artists} artists for auto-match")
+
+            processed = 0
+            matched = 0
+            failed = 0
+
+            for idx, artist in enumerate(artists, 1):
+                try:
+                    # Extract artist data before processing to avoid session issues
+                    artist_id = artist.id
+                    artist_name = artist.name
+
+                    # Update progress
+                    progress = int((idx / total_artists) * 100)
+                    self.update_progress(
+                        task_id,
+                        progress,
+                        f"Auto-matching {artist_name} ({idx}/{total_artists})",
+                    )
+
+                    # Run auto-match
+                    result = ArtistAutoProcessingService._run_auto_match(
+                        artist, session
+                    )
+                    processed += 1
+
+                    if result.get("match_count", 0) > 0:
+                        matched += 1
+                        logger.info(
+                            f"Matched artist {artist_name}: {result.get('match_count')} services"
+                        )
+
+                    # Commit after each artist to preserve progress
+                    session.commit()
+
+                except Exception as e:
+                    logger.error(
+                        f"Error auto-matching artist {artist_name} (ID: {artist_id}): {e}"
+                    )
+                    failed += 1
+                    session.rollback()
+                    continue
+
+            logger.info(
+                f"Bulk auto-match complete: {processed} processed, {matched} matched, {failed} failed"
+            )
+
+            # Final progress update
+            self.update_progress(
+                task_id,
+                100,
+                f"Complete: {matched} artists matched with external services",
+            )
+
+            return {
+                "processed": processed,
+                "matched": matched,
+                "failed": failed,
+                "message": f"Successfully processed {processed} artists",
+            }
+
+    except Exception as e:
+        error_msg = f"Bulk artist auto-match failed: {str(e)}"
+        logger.error(f"{error_msg}\n{traceback.format_exc()}")
+
+        self.update_state(
+            state="FAILURE",
+            meta={
+                "error": error_msg,
+                "traceback": traceback.format_exc(),
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+
+        raise Exception(error_msg)
