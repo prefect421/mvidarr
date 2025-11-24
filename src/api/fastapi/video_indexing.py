@@ -475,3 +475,70 @@ async def test_imvdb_connection(
         raise HTTPException(
             status_code=503, detail={"status": "error", "error": str(e)}
         )
+
+
+@router.post("/bulk-automatch-artists")
+async def bulk_automatch_artists(
+    current_user: dict = Depends(require_authentication_legacy),
+    session: Session = Depends(get_db_session),
+):
+    """Auto-match all artists with external services (IMVDb, Spotify, Last.fm, etc.)"""
+    try:
+        from src.database.models import Artist
+        from src.services.artist_auto_processing_service import (
+            ArtistAutoProcessingService,
+        )
+
+        logger.info(
+            f"Starting bulk artist auto-match for user {current_user.get('username')}"
+        )
+
+        # Get all artists
+        artists = session.query(Artist).all()
+        total_artists = len(artists)
+
+        if total_artists == 0:
+            return {
+                "processed": 0,
+                "matched": 0,
+                "failed": 0,
+                "message": "No artists found",
+            }
+
+        logger.info(f"Processing {total_artists} artists for auto-match")
+
+        processed = 0
+        matched = 0
+        failed = 0
+
+        for artist in artists:
+            try:
+                result = ArtistAutoProcessingService._run_auto_match(artist, session)
+                processed += 1
+
+                if result.get("match_count", 0) > 0:
+                    matched += 1
+
+                # Commit after each artist to avoid losing progress
+                session.commit()
+
+            except Exception as e:
+                logger.error(f"Error auto-matching artist {artist.name}: {e}")
+                failed += 1
+                session.rollback()
+                continue
+
+        logger.info(
+            f"Bulk auto-match complete: {processed} processed, {matched} matched, {failed} failed"
+        )
+
+        return {
+            "processed": processed,
+            "matched": matched,
+            "failed": failed,
+            "message": f"Successfully processed {processed} artists",
+        }
+
+    except Exception as e:
+        logger.error(f"Bulk auto-match failed: {e}")
+        raise HTTPException(status_code=500, detail={"error": str(e)})
