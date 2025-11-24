@@ -68,13 +68,13 @@
 .btn-primary {
     background-color: var(--btn-primary-bg);
     color: var(--btn-primary-text);
-    border-color: transparent;
+    border-color: transparent !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .btn-primary:hover:not(:disabled) {
     background-color: var(--btn-primary-hover);
-    border-color: transparent;
+    border-color: transparent !important;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
 }
@@ -88,12 +88,12 @@
 .btn-secondary {
     background-color: var(--btn-secondary-bg);
     color: var(--btn-secondary-text);
-    border-color: transparent;
+    border-color: transparent !important;
 }
 
 .btn-secondary:hover:not(:disabled) {
     background-color: var(--btn-secondary-hover);
-    border-color: transparent;
+    border-color: transparent !important;
     transform: translateY(-1px);
     box-shadow: 0 2px 8px var(--secondary-shadow);
 }
@@ -119,7 +119,7 @@
 .btn-ghost {
     background-color: transparent;
     color: var(--text-accent);
-    border-color: transparent;
+    border-color: transparent !important;
 }
 
 .btn-ghost:hover:not(:disabled) {
@@ -149,12 +149,12 @@
 .btn-success {
     background-color: var(--success);
     color: white;
-    border-color: transparent;
+    border-color: transparent !important;
 }
 
 .btn-success:hover:not(:disabled) {
     background-color: var(--success-dark);
-    border-color: transparent;
+    border-color: transparent !important;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px var(--success-shadow);
 }
