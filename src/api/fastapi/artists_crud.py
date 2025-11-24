@@ -152,36 +152,49 @@ async def list_artists(
             offset = (page - 1) * items_per_page
 
         # Start with optimized query approach
+        # Create video count subquery (used for both optimized and fallback paths)
+        video_count_subquery = (
+            session.query(Video.artist_id, func.count(Video.id).label("video_count"))
+            .filter(Video.status.in_(["DOWNLOADED", "WANTED", "DOWNLOADING"]))
+            .group_by(Video.artist_id)
+            .subquery()
+        )
+
         try:
             from src.database.performance_optimizations import (
                 DatabasePerformanceOptimizer,
             )
 
             optimizer = DatabasePerformanceOptimizer()
-            base_query = optimizer.get_optimized_artist_video_counts(
-                session, monitored_only=False
+            # Use optimized query but we still need the subquery for filtering
+            base_query = (
+                session.query(
+                    Artist,
+                    func.coalesce(video_count_subquery.c.video_count, 0).label(
+                        "video_count"
+                    ),
+                )
+                .outerjoin(
+                    video_count_subquery, Artist.id == video_count_subquery.c.artist_id
+                )
+                .group_by(Artist.id)
             )
 
         except ImportError:
             logger.warning("Performance optimizer not available, using fallback query")
 
-            # Fallback to optimized subquery approach
-            video_count_subquery = (
+            # Fallback uses the same subquery approach
+            base_query = (
                 session.query(
-                    Video.artist_id, func.count(Video.id).label("video_count")
+                    Artist,
+                    func.coalesce(video_count_subquery.c.video_count, 0).label(
+                        "video_count"
+                    ),
                 )
-                .filter(Video.status.in_(["DOWNLOADED", "WANTED", "DOWNLOADING"]))
-                .group_by(Video.artist_id)
-                .subquery()
-            )
-
-            base_query = session.query(
-                Artist,
-                func.coalesce(video_count_subquery.c.video_count, 0).label(
-                    "video_count"
-                ),
-            ).outerjoin(
-                video_count_subquery, Artist.id == video_count_subquery.c.artist_id
+                .outerjoin(
+                    video_count_subquery, Artist.id == video_count_subquery.c.artist_id
+                )
+                .group_by(Artist.id)
             )
 
         # Apply search filter
@@ -194,14 +207,13 @@ async def list_artists(
 
         # Apply filters
         if has_videos is not None:
+            # Use the labeled column directly to avoid alias issues
+            from sqlalchemy import literal_column
+
             if has_videos:
-                base_query = base_query.having(
-                    func.coalesce(video_count_subquery.c.video_count, 0) > 0
-                )
+                base_query = base_query.having(literal_column("video_count") > 0)
             else:
-                base_query = base_query.having(
-                    func.coalesce(video_count_subquery.c.video_count, 0) == 0
-                )
+                base_query = base_query.having(literal_column("video_count") == 0)
 
         if has_imvdb_filter is not None:
             if has_imvdb_filter:
@@ -234,15 +246,14 @@ async def list_artists(
                 )
 
         # Apply video count filters
+        # Use the labeled column directly to avoid alias issues when filters modify the query
+        from sqlalchemy import literal_column
+
         if min_videos is not None:
-            base_query = base_query.having(
-                func.coalesce(video_count_subquery.c.video_count, 0) >= min_videos
-            )
+            base_query = base_query.having(literal_column("video_count") >= min_videos)
 
         if max_videos is not None:
-            base_query = base_query.having(
-                func.coalesce(video_count_subquery.c.video_count, 0) <= max_videos
-            )
+            base_query = base_query.having(literal_column("video_count") <= max_videos)
 
         # Apply sorting
         if sort_field == "name":
