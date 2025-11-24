@@ -23,7 +23,7 @@
     white-space: nowrap;
     
     /* Layout */
-    border: 1px solid transparent;
+    border: 1px solid transparent !important;
     cursor: pointer;
     transition: all var(--transition-fast);
     

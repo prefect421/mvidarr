@@ -2101,20 +2101,20 @@ div.metadata-section:hover,
 }
 
 .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1rem !important;
 }
 
 @media (max-width: 768px) {
     .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, 1fr) !important;
     }
 }
 
 @media (max-width: 480px) {
     .stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
     }
 }
 
@@ -2568,13 +2568,6 @@ div.artist-header-actions button.btn iconify-icon {
     <!-- Overview Tab -->
     <div class="tab-content active" id="overviewContent">
         <div class="overview-layout">
-            <!-- Hero section with key info -->
-            <div class="artist-hero-card">
-                <div class="hero-content">
-                    <!-- Metadata actions moved to artist header -->
-                </div>
-            </div>
-
             <!-- Main content grid -->
             <div class="metadata-grid" style="display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 1.5rem !important;">
                 <!-- Row 1: Library Statistics (Full Width) -->
