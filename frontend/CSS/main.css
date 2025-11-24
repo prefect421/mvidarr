@@ -5060,19 +5060,21 @@ body {
     .artist-nav-tabs {
         flex-wrap: wrap;
     }
-    
+
     .tab-button {
         flex: none;
         min-width: 120px;
     }
-    
-    .videos-grid {
-        grid-template-columns: 1fr;
-    }
-    
+
     .discover-controls {
         flex-direction: column;
         align-items: stretch;
+    }
+}
+
+@media (max-width: 480px) {
+    .videos-grid {
+        grid-template-columns: 1fr;
     }
 }
 
