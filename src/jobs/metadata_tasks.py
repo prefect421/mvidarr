@@ -1115,6 +1115,8 @@ def bulk_automatch_artists_task(self):
             failed = 0
 
             for idx, artist in enumerate(artists, 1):
+                artist_id = None
+                artist_name = "Unknown"
                 try:
                     # Extract artist data before processing to avoid session issues
                     artist_id = artist.id
@@ -1143,12 +1145,27 @@ def bulk_automatch_artists_task(self):
                     # Commit after each artist to preserve progress
                     session.commit()
 
+                    # Refresh artist object to keep it bound to session
+                    session.refresh(artist)
+
                 except Exception as e:
                     logger.error(
                         f"Error auto-matching artist {artist_name} (ID: {artist_id}): {e}"
                     )
                     failed += 1
                     session.rollback()
+
+                    # Re-fetch artist to ensure it's bound to session for next iteration
+                    if artist_id:
+                        try:
+                            artist = (
+                                session.query(Artist)
+                                .filter(Artist.id == artist_id)
+                                .first()
+                            )
+                        except Exception:
+                            pass  # Continue to next artist if refetch fails
+
                     continue
 
             logger.info(
