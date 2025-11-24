@@ -8847,24 +8847,24 @@ function updateNavigationUI() {
     navigationControls.style.display = 'flex';
     
     // Update position info
-    positionInfo.textContent = `Artist ${navigationData.current_artist.position} of ${navigationData.current_artist.total_artists}`;
-    
+    positionInfo.textContent = `Artist ${navigationData.current_artist.position} of ${navigationData.current_artist.total}`;
+
     // Update previous button (left arrow - should go to the artist before in list)
-    if (navigationData.next_artist) {
+    if (navigationData.prev_artist) {
         prevBtn.disabled = false;
-        prevBtn.title = `Previous: ${navigationData.next_artist.name}`;
-        prevBtn.innerHTML = `<span>←</span> ${navigationData.next_artist.name}`;
+        prevBtn.title = `Previous: ${navigationData.prev_artist.name}`;
+        prevBtn.innerHTML = `<span>←</span> ${navigationData.prev_artist.name}`;
     } else {
         prevBtn.disabled = true;
         prevBtn.title = 'No previous artist';
         prevBtn.innerHTML = '<span>←</span> Previous Artist';
     }
-    
+
     // Update next button (right arrow - should go to the artist after in list)
-    if (navigationData.prev_artist) {
+    if (navigationData.next_artist) {
         nextBtn.disabled = false;
-        nextBtn.title = `Next: ${navigationData.prev_artist.name}`;
-        nextBtn.innerHTML = `${navigationData.prev_artist.name} <span>→</span>`;
+        nextBtn.title = `Next: ${navigationData.next_artist.name}`;
+        nextBtn.innerHTML = `${navigationData.next_artist.name} <span>→</span>`;
     } else {
         nextBtn.disabled = true;
         nextBtn.title = 'No next artist';
@@ -8873,16 +8873,16 @@ function updateNavigationUI() {
 }
 
 function navigateToPrevArtist() {
-    if (!navigationData || !navigationData.next_artist) return;
-    
-    const prevArtistId = navigationData.next_artist.id;
+    if (!navigationData || !navigationData.prev_artist) return;
+
+    const prevArtistId = navigationData.prev_artist.id;
     window.location.href = `/artist/${prevArtistId}`;
 }
 
 function navigateToNextArtist() {
-    if (!navigationData || !navigationData.prev_artist) return;
-    
-    const nextArtistId = navigationData.prev_artist.id;
+    if (!navigationData || !navigationData.next_artist) return;
+
+    const nextArtistId = navigationData.next_artist.id;
     window.location.href = `/artist/${nextArtistId}`;
 }
 
