@@ -218,20 +218,27 @@ class ArtistAutoProcessingService:
             try:
                 if not current_musicbrainz_id:
                     mb_results = musicbrainz_service.search_artist(artist_name)
-                    if mb_results and mb_results.get("artists"):
-                        best_match = mb_results["artists"][0]
+                    # musicbrainz_service.search_artist returns a List, not a Dict
+                    if (
+                        mb_results
+                        and isinstance(mb_results, list)
+                        and len(mb_results) > 0
+                    ):
+                        best_match = mb_results[0]
                         matches["musicbrainz"] = {
-                            "id": best_match.get("id"),
+                            "id": best_match.get("mbid") or best_match.get("id"),
                             "name": best_match.get("name"),
                             "disambiguation": best_match.get("disambiguation"),
                             "type": best_match.get("type"),
                         }
                         # Store MusicBrainz ID in metadata - defer this update too
                         updated_metadata = current_metadata.copy()
-                        updated_metadata["musicbrainz_id"] = best_match.get("id")
+                        updated_metadata["musicbrainz_id"] = best_match.get(
+                            "mbid"
+                        ) or best_match.get("id")
                         pending_updates["imvdb_metadata"] = updated_metadata
                         logger.info(
-                            f"Auto-matched MusicBrainz ID: {best_match.get('id')} for {artist_name}"
+                            f"Auto-matched MusicBrainz ID: {best_match.get('mbid') or best_match.get('id')} for {artist_name}"
                         )
             except Exception as e:
                 logger.warning(f"MusicBrainz auto-match failed for {artist_name}: {e}")

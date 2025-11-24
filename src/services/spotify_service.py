@@ -50,6 +50,23 @@ class SpotifyService:
             self._client_id = settings.get("spotify_client_id")
             self._client_secret = settings.get("spotify_client_secret")
 
+            # Load access token and refresh token from settings
+            self.access_token = settings.get("spotify_access_token")
+            self.refresh_token = settings.get("spotify_refresh_token")
+
+            # Load token expiry if available
+            token_expires_in = settings.get("spotify_token_expires_in")
+            if token_expires_in:
+                try:
+                    from datetime import datetime, timedelta
+
+                    # Store token expiry time (assuming it was just set)
+                    self.token_expires = datetime.now() + timedelta(
+                        seconds=int(token_expires_in)
+                    )
+                except Exception:
+                    self.token_expires = None
+
             # Try to get configured redirect URI first
             configured_uri = settings.get("spotify_redirect_uri")
             if configured_uri:
@@ -67,13 +84,17 @@ class SpotifyService:
                 logger.debug(f"Using default redirect URI: {self._redirect_uri}")
 
             self._settings_loaded = True
-            logger.debug("Spotify settings loaded successfully")
+            logger.debug(
+                f"Spotify settings loaded successfully (access_token: {'present' if self.access_token else 'missing'})"
+            )
 
         except Exception as e:
             logger.error(f"Failed to load Spotify settings: {e}")
             # Set fallback values
             self._client_id = None
             self._client_secret = None
+            self.access_token = None
+            self.refresh_token = None
             self._redirect_uri = "http://127.0.0.1:5000/api/spotify/callback"
             self._settings_loaded = True
             logger.warning(f"Using fallback redirect URI: {self._redirect_uri}")
@@ -259,6 +280,9 @@ class SpotifyService:
 
     def _ensure_valid_token(self):
         """Ensure we have a valid access token"""
+        # Load settings if not already loaded (includes access_token)
+        self._load_settings()
+
         if not self.access_token:
             raise ValueError("No access token available")
 
