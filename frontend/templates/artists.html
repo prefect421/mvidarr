@@ -1929,8 +1929,8 @@ function bulkDeleteArtists() {
     const originalText = deleteBtn.textContent;
     deleteBtn.textContent = 'Deleting...';
     deleteBtn.disabled = true;
-    
-    fetch('/api/artists/bulk-delete', {
+
+    fetch('/api/artists/bulk/delete', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
