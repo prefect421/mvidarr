@@ -2102,20 +2102,8 @@ div.metadata-section:hover,
 
 .stats-grid {
     display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
     gap: 1rem !important;
-}
-
-@media (max-width: 768px) {
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
-}
-
-@media (max-width: 480px) {
-    .stats-grid {
-        grid-template-columns: 1fr !important;
-    }
 }
 
 .stat-item {
