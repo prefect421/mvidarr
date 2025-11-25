@@ -1086,7 +1086,13 @@ def bulk_enrich_videos_metadata_task(
         raise Exception(error_msg)
 
 
-@celery_app.task(bind=True, base=CallbackTask, name="metadata.bulk_automatch_artists")
+@celery_app.task(
+    bind=True,
+    base=CallbackTask,
+    name="metadata.bulk_automatch_artists",
+    time_limit=1800,  # 30 minutes
+    soft_time_limit=1740,  # 29 minutes (warning before hard limit)
+)
 def bulk_automatch_artists_task(self):
     """Celery task to bulk auto-match all artists with external services"""
     try:
