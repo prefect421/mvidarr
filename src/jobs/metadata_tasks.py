@@ -1100,9 +1100,8 @@ def bulk_automatch_artists_task(self):
         task_id = self.request.id
 
         with get_db() as session:
-            # Get all artists
-            artists = session.query(Artist).all()
-            total_artists = len(artists)
+            # Get count of total artists
+            total_artists = session.query(Artist).count()
 
             if total_artists == 0:
                 logger.info("No artists found to auto-match")
@@ -1114,12 +1113,21 @@ def bulk_automatch_artists_task(self):
             matched = 0
             failed = 0
 
-            for idx, artist in enumerate(artists, 1):
-                artist_id = None
+            # Query artist IDs only first to avoid session detachment issues
+            artist_ids = [id_tuple[0] for id_tuple in session.query(Artist.id).all()]
+
+            for idx, artist_id in enumerate(artist_ids, 1):
                 artist_name = "Unknown"
                 try:
-                    # Extract artist data before processing to avoid session issues
-                    artist_id = artist.id
+                    # Fetch artist fresh from database for each iteration
+                    artist = (
+                        session.query(Artist).filter(Artist.id == artist_id).first()
+                    )
+
+                    if not artist:
+                        logger.warning(f"Artist {artist_id} not found, skipping")
+                        continue
+
                     artist_name = artist.name
 
                     # Update progress
@@ -1145,27 +1153,12 @@ def bulk_automatch_artists_task(self):
                     # Commit after each artist to preserve progress
                     session.commit()
 
-                    # Refresh artist object to keep it bound to session
-                    session.refresh(artist)
-
                 except Exception as e:
                     logger.error(
                         f"Error auto-matching artist {artist_name} (ID: {artist_id}): {e}"
                     )
                     failed += 1
                     session.rollback()
-
-                    # Re-fetch artist to ensure it's bound to session for next iteration
-                    if artist_id:
-                        try:
-                            artist = (
-                                session.query(Artist)
-                                .filter(Artist.id == artist_id)
-                                .first()
-                            )
-                        except Exception:
-                            pass  # Continue to next artist if refetch fails
-
                     continue
 
             logger.info(
