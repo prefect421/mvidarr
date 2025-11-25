@@ -217,14 +217,8 @@ class YouTubeDownloadEngine:
         cmd = [self.yt_dlp_path]
 
         # Configure JavaScript runtime for YouTube challenges (CRITICAL for 2025)
-        cmd.extend(
-            [
-                "--js-runtimes",
-                "node",  # Use Node.js for JavaScript execution
-                "--remote-components",
-                "ejs:github",  # Download challenge solver scripts
-            ]
-        )
+        # Note: --js-runtimes and --remote-components flags don't exist in yt-dlp
+        # Node.js runtime is automatically detected and used when available
 
         # Enable verbose logging for debugging download issues
         cmd.extend(["--verbose", "--print-traffic"])
@@ -748,10 +742,6 @@ class YouTubeDownloadEngine:
             # Query available subtitles for this video
             cmd = [
                 self.yt_dlp_path,
-                "--js-runtimes",
-                "node",
-                "--remote-components",
-                "ejs:github",
                 "--list-subs",
                 url,
             ]
@@ -818,10 +808,7 @@ class YouTubeDownloadEngine:
 
                 # Use simulate mode for testing
                 cmd = [self.yt_dlp_path, "--simulate"]
-                # Add JavaScript runtime configuration
-                cmd.extend(
-                    ["--js-runtimes", "node", "--remote-components", "ejs:github"]
-                )
+                # Node.js runtime is automatically detected when available
                 cmd.extend(self._get_strategy_args(strategy))
                 cmd.append(test_url)
 
