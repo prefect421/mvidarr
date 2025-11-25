@@ -185,7 +185,7 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.0.0 Development - First Production Release
+### Current Phase: v1.0.0 Production Release - First Public Release
 
 #### 0.9.9 Code Cleanup & Optimization Phase ✅ COMPLETED (2025-11-10)
 - **Status**: Cleanup phase completed
@@ -195,24 +195,28 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
   - Enhanced code quality
   - Ready for v1.0.0 feature development
 
-#### 1.0.0 Development Phase 🚀 ACTIVE
-- **Focus**: Build production-ready features for first public release
-- **Major Feature**: Installation Wizard (Issue #163)
-- **Key Goals**:
-  - First-run setup wizard with guided configuration
-  - Reliable video import system (no duplicates)
-  - API validation and testing
-  - Directory configuration and validation
-  - Production-ready onboarding experience
-- **Status**: Active development on dev branch
-- **Target Release**: Production-ready v1.0.0
+#### 1.0.0 Production Release 🎉 COMPLETE (2025-11-25)
+- **Status**: ✅ All features complete, ready for production release
+- **Major Features Delivered**:
+  - ✅ Installation Wizard for guided first-run setup (Issue #163)
+  - ✅ Reliable video import system with duplicate detection
+  - ✅ API validation and testing before configuration
+  - ✅ Directory configuration and validation
+  - ✅ Production-ready onboarding experience
+  - ✅ Complete documentation and user guides (Issue #91)
+  - ✅ Performance monitoring dashboard (Issue #95)
+  - ✅ Migration tools and database upgrades (Issue #92)
+  - ✅ Unraid template support (Issue #97)
+  - ✅ Comprehensive security monitoring and fixes
+- **Milestone**: All 7 issues in 1.0.0 milestone completed
+- **Next Steps**: Create v1.0.0 GitHub release and deploy to production
 
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.0.0-dev (First Production Release)
-- **Development Focus**: Installation wizard and production-ready features
+- **Current Version**: v1.0.0 (First Production Release)
+- **Development Focus**: Bug fixes and v1.0.1 maintenance
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -242,13 +246,13 @@ CURRENT_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.%6N")
 # Keep version number the same unless explicitly incrementing
 cat > version.json << EOF
 {
-  "version": "1.0.0-dev",
+  "version": "1.0.0",
   "build_date": "$CURRENT_TIMESTAMP",
   "git_commit": "$CURRENT_COMMIT",
   "git_branch": "dev",
-  "release_name": "v1.0.0 Development - First Production Release",
+  "release_name": "v1.0.0 - First Production Release",
   "features": [
-    "🎉 First production-ready release milestone",
+    "🎉 First production-ready release",
     "🔧 Installation Wizard for first-run setup",
     "🎬 Reliable video import system (no duplicates)",
     "✅ API validation before configuration"

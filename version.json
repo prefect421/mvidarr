@@ -1,18 +1,19 @@
 {
-  "version": "1.0.0-dev",
-  "build_date": "2025-11-23T00:31:14.245146",
-  "git_commit": "0e28847",
+  "version": "1.0.0",
+  "build_date": "2025-11-25T21:00:00.000000",
+  "git_commit": "03662b9",
   "git_branch": "dev",
-  "release_name": "v1.0.0 Development - First Production Release",
+  "release_name": "v1.0.0 - First Production Release",
   "features": [
-    "🎉 First production-ready release milestone",
-    "🔧 Installation Wizard for first-run setup",
-    "🎬 Reliable video import system (no duplicates)",
-    "✅ API validation before configuration",
-    "🎨 Theme-based frontend styling across all pages",
-    "📊 Fixed Analytics page to use Video.year field",
-    "🔧 Fixed maintenance tasks to use Config paths",
-    "⚙️ Fixed metadata provider toggle visibility in Settings",
-    "📈 Fixed jobs page to display accurate job counts"
+    "🎉 First production-ready release",
+    "🔧 Installation Wizard for guided first-run setup",
+    "🎬 Reliable video import system with duplicate detection",
+    "✅ API validation and testing before configuration",
+    "🎨 Complete theme-based frontend styling",
+    "📊 Enhanced analytics and system health monitoring",
+    "🔒 Comprehensive security updates and monitoring",
+    "📚 Complete documentation and user guides",
+    "🐳 Docker and Unraid deployment support",
+    "⚙️ Production-ready configuration management"
   ]
 }
