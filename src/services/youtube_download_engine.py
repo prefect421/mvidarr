@@ -45,7 +45,7 @@ class YouTubeDownloadEngine:
     """
 
     def __init__(self):
-        self.yt_dlp_path = self._find_best_ytdlp()
+        self.yt_dlp_cmd = self._find_best_ytdlp()
         # Strategy order prioritizes TV client then web with cookies
         self.strategies = [
             DownloadStrategy.TV_CLIENT,  # Primary: Works reliably for most videos
@@ -58,19 +58,36 @@ class YouTubeDownloadEngine:
 
         logger.info("YouTube Download Engine initialized with complete strategy suite")
 
-    def _find_best_ytdlp(self) -> str:
-        """Find the best yt-dlp executable, preferring nightly builds"""
+    def _find_best_ytdlp(self) -> List[str]:
+        """Find the best yt-dlp command, preferring system-wide install with Node.js support"""
+        # Prefer system-wide python module (supports --js-runtimes and --remote-components)
+        try:
+            result = subprocess.run(
+                ["python3", "-m", "yt_dlp", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0 and "2025" in result.stdout:
+                logger.info(
+                    f"Using system-wide yt-dlp via python3 -m yt_dlp: {result.stdout.strip()}"
+                )
+                return ["python3", "-m", "yt_dlp"]
+        except Exception as e:
+            logger.debug(f"System-wide yt-dlp check failed: {e}")
+
+        # Fallback to binary paths
         candidates = [
-            "/root/.local/bin/yt-dlp",  # pipx nightly
-            "/usr/local/bin/yt-dlp",  # system install
+            "/root/.local/bin/yt-dlp",  # pipx install
+            "/usr/local/bin/yt-dlp",  # system binary
             "yt-dlp",  # PATH fallback
         ]
 
         for path in candidates:
             if path.startswith("/") and os.path.exists(path):
-                return path
+                return [path]
             elif not path.startswith("/") and shutil.which(path):
-                return shutil.which(path)
+                return [shutil.which(path)]
 
         raise RuntimeError("yt-dlp not found - please install yt-dlp")
 
@@ -79,7 +96,7 @@ class YouTubeDownloadEngine:
         try:
             # Check current version
             result = subprocess.run(
-                [self.yt_dlp_path, "--version"],
+                self.yt_dlp_cmd + ["--version"],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -214,11 +231,18 @@ class YouTubeDownloadEngine:
         """Attempt download with specific strategy"""
 
         # Build base command
-        cmd = [self.yt_dlp_path]
+        cmd = self.yt_dlp_cmd.copy()
 
         # Configure JavaScript runtime for YouTube challenges (CRITICAL for 2025)
-        # Note: --js-runtimes and --remote-components flags don't exist in yt-dlp
-        # Node.js runtime is automatically detected and used when available
+        # Requires yt-dlp 2025.11+ with Node.js v20+ installed
+        cmd.extend(
+            [
+                "--js-runtimes",
+                "node",  # Use Node.js for JavaScript execution
+                "--remote-components",
+                "ejs:github",  # Download challenge solver scripts
+            ]
+        )
 
         # Enable verbose logging for debugging download issues
         cmd.extend(["--verbose", "--print-traffic"])
@@ -740,11 +764,8 @@ class YouTubeDownloadEngine:
         """Resolve subtitle language patterns like 'en.*' to actual available languages"""
         try:
             # Query available subtitles for this video
-            cmd = [
-                self.yt_dlp_path,
-                "--list-subs",
-                url,
-            ]
+            cmd = self.yt_dlp_cmd.copy()
+            cmd.extend(["--list-subs", url])
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
             if result.returncode != 0:
@@ -807,8 +828,16 @@ class YouTubeDownloadEngine:
                 logger.info(f"Testing strategy: {strategy.value}")
 
                 # Use simulate mode for testing
-                cmd = [self.yt_dlp_path, "--simulate"]
-                # Node.js runtime is automatically detected when available
+                cmd = self.yt_dlp_cmd.copy()
+                cmd.extend(
+                    [
+                        "--simulate",
+                        "--js-runtimes",
+                        "node",
+                        "--remote-components",
+                        "ejs:github",
+                    ]
+                )
                 cmd.extend(self._get_strategy_args(strategy))
                 cmd.append(test_url)
 
