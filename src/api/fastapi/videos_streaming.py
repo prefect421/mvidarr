@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, Optional
 from urllib.parse import quote, unquote
 
+import aiofiles
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Path as FastAPIPath
 from fastapi import Request
@@ -197,18 +198,36 @@ async def stream_video(
             range_end = max(range_start, min(range_end, file_size - 1))
             content_length = range_end - range_start + 1
 
-            # Create streaming response for range
-            def generate_range():
-                with open(video_path, "rb") as f:
-                    f.seek(range_start)
-                    remaining = content_length
-                    while remaining:
-                        chunk_size = min(8192, remaining)
-                        chunk = f.read(chunk_size)
-                        if not chunk:
-                            break
-                        remaining -= len(chunk)
-                        yield chunk
+            # Create async streaming response for range
+            async def generate_range():
+                """Async generator for streaming video ranges"""
+                try:
+                    async with aiofiles.open(video_path, "rb") as f:
+                        await f.seek(range_start)
+                        remaining = content_length
+                        chunk_size = 65536  # 64KB chunks for better performance
+
+                        while remaining > 0:
+                            # Read smaller chunk if remaining is less than chunk_size
+                            read_size = min(chunk_size, remaining)
+                            chunk = await f.read(read_size)
+
+                            if not chunk:
+                                # End of file reached unexpectedly
+                                logger.warning(
+                                    f"EOF reached early during range {range_start}-{range_end}, "
+                                    f"sent {content_length - remaining}/{content_length} bytes"
+                                )
+                                break
+
+                            remaining -= len(chunk)
+                            yield chunk
+
+                except Exception as e:
+                    logger.error(
+                        f"Error streaming range {range_start}-{range_end}: {e}"
+                    )
+                    raise
 
             # Get MIME type - handle common video formats explicitly
             # For MKV files, use MP4 MIME type to trick browsers into attempting playback
@@ -237,6 +256,8 @@ async def stream_video(
                 "Accept-Ranges": "bytes",
                 "Content-Length": str(content_length),
                 "Content-Type": content_type,
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "X-Content-Type-Options": "nosniff",
             }
 
             return StreamingResponse(generate_range(), status_code=206, headers=headers)
@@ -262,9 +283,12 @@ async def stream_video(
                 else:
                     content_type = "video/mp4"  # Default fallback
 
-            return FileResponse(
+            response = FileResponse(
                 video_path, media_type=content_type, filename=video_path.name
             )
+            # Add Accept-Ranges header to indicate range request support
+            response.headers["Accept-Ranges"] = "bytes"
+            return response
 
     except HTTPException:
         raise
