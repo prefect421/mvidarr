@@ -1900,31 +1900,11 @@ function loadAllSubtitleTracks() {
             videoElement.textTracks[0].mode = 'showing';
             console.log('Enabled first subtitle track');
 
-            // Force center all captions by removing embedded positioning
-            forceCenterCaptions(videoElement);
+            // Note: Caption centering is now handled server-side by stripping
+            // positioning directives from VTT files. JavaScript override removed
+            // to prevent Chrome STATUS_BREAKPOINT crashes during seeking.
         }
     }, 100);
-}
-
-// Force captions to center by overriding embedded positioning
-function forceCenterCaptions(videoElement) {
-    if (!videoElement || !videoElement.textTracks) return;
-
-    Array.from(videoElement.textTracks).forEach((track) => {
-        track.addEventListener('cuechange', function() {
-            if (!this.activeCues) return;
-
-            Array.from(this.activeCues).forEach((cue) => {
-                // Override any embedded positioning in the VTT file
-                if (cue.line !== undefined) cue.line = 'auto';
-                if (cue.position !== undefined) cue.position = 'auto';
-                if (cue.align !== undefined) cue.align = 'center';
-                if (cue.size !== undefined) cue.size = 100;
-            });
-        });
-
-        console.log('Added caption centering override to track:', track.label);
-    });
 }
 
 // Quality Upgrade Functions
