@@ -535,7 +535,7 @@ async def serve_subtitle(
     subtitle_filename: str = FastAPIPath(..., description="Subtitle filename"),
     session: Session = Depends(get_db_session),
 ):
-    """Serve subtitle file for a video"""
+    """Serve subtitle file for a video with positioning stripped for proper centering"""
     try:
         # URL decode the subtitle filename
         decoded_filename = unquote(subtitle_filename)
@@ -576,7 +576,50 @@ async def serve_subtitle(
         else:
             mimetype = "text/plain"
 
-        # Return the subtitle file with CORS headers
+        # For VTT files, strip positioning to allow proper centering via CSS
+        if subtitle_ext == ".vtt":
+            import re
+
+            async with aiofiles.open(subtitle_path, "r", encoding="utf-8") as f:
+                content = await f.read()
+
+            # Remove align:start, position:0%, and similar positioning directives
+            # This regex removes positioning settings from WebVTT cue timings
+            content = re.sub(
+                r"(\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+align:\w+\s+position:\d+%",
+                r"\1",
+                content,
+            )
+
+            # Also handle cases with only align or only position
+            content = re.sub(
+                r"(\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+align:\w+",
+                r"\1",
+                content,
+            )
+            content = re.sub(
+                r"(\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+position:\d+%",
+                r"\1",
+                content,
+            )
+
+            # Return modified content as streaming response
+            from fastapi.responses import Response
+
+            response = Response(content=content, media_type=mimetype)
+
+            # Add CORS headers
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Cache-Control"] = "public, max-age=3600"
+
+            logger.debug(
+                f"Served VTT subtitle with positioning stripped: {decoded_filename}"
+            )
+            return response
+
+        # For non-VTT files, serve as-is
         response = FileResponse(
             path=subtitle_path, media_type=mimetype, filename=decoded_filename
         )
