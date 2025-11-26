@@ -1962,6 +1962,29 @@ function loadAllSubtitleTracks() {
 
                 console.log('Added Chrome timeline hover workaround');
             }
+
+            // Also disable tracks during actual seek operations
+            if (navigator.userAgent.indexOf('Chrome') > -1 && navigator.userAgent.indexOf('Edg') === -1) {
+                videoElement.addEventListener('seeking', function() {
+                    // Disable all tracks when seeking starts
+                    for (let i = 0; i < videoElement.textTracks.length; i++) {
+                        videoElement.textTracks[i].mode = 'disabled';
+                    }
+                    console.log('Disabled tracks during seek operation');
+                });
+
+                videoElement.addEventListener('seeked', function() {
+                    // Re-enable first track after seek completes (with small delay for safety)
+                    setTimeout(() => {
+                        if (videoElement.textTracks.length > 0) {
+                            videoElement.textTracks[0].mode = 'showing';
+                            console.log('Re-enabled tracks after seek completed');
+                        }
+                    }, 100);
+                });
+
+                console.log('Added Chrome seeking event workaround');
+            }
         }
     }, 100);
 }
