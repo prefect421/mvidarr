@@ -583,24 +583,14 @@ async def serve_subtitle(
             async with aiofiles.open(subtitle_path, "r", encoding="utf-8") as f:
                 content = await f.read()
 
-            # Remove align:start, position:0%, and similar positioning directives
-            # This regex removes positioning settings from WebVTT cue timings
+            # Remove ALL WebVTT cue settings (align, position, line, size, vertical)
+            # These settings can cause Chrome renderer crashes during video seeking
+            # Strip everything after the end timestamp, keeping only timing information
             content = re.sub(
-                r"(\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+align:\w+\s+position:\d+%",
+                r"(\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+.*$",
                 r"\1",
                 content,
-            )
-
-            # Also handle cases with only align or only position
-            content = re.sub(
-                r"(\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+align:\w+",
-                r"\1",
-                content,
-            )
-            content = re.sub(
-                r"(\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+position:\d+%",
-                r"\1",
-                content,
+                flags=re.MULTILINE,
             )
 
             # Return modified content as streaming response
