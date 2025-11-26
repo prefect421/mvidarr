@@ -1903,6 +1903,65 @@ function loadAllSubtitleTracks() {
             // Note: Caption centering is now handled server-side by stripping
             // positioning directives from VTT files. JavaScript override removed
             // to prevent Chrome STATUS_BREAKPOINT crashes during seeking.
+
+            // Chrome-specific workaround for STATUS_BREAKPOINT crash on timeline hover
+            if (navigator.userAgent.indexOf('Chrome') > -1 && navigator.userAgent.indexOf('Edg') === -1) {
+                let tracksDisabled = false;
+                let restoreTimer = null;
+
+                // Temporarily disable tracks when hovering over bottom 15% of video (where controls are)
+                videoElement.addEventListener('mousemove', function(e) {
+                    const rect = videoElement.getBoundingClientRect();
+                    const mouseY = e.clientY - rect.top;
+                    const videoHeight = rect.height;
+                    const controlsArea = videoHeight * 0.15; // Bottom 15% is controls
+
+                    // If mouse is in controls area, temporarily disable tracks
+                    if (mouseY > (videoHeight - controlsArea)) {
+                        if (!tracksDisabled && videoElement.textTracks.length > 0) {
+                            for (let i = 0; i < videoElement.textTracks.length; i++) {
+                                videoElement.textTracks[i].mode = 'disabled';
+                            }
+                            tracksDisabled = true;
+                            console.log('Temporarily disabled tracks for Chrome timeline hover');
+                        }
+
+                        // Clear any pending restore timer
+                        if (restoreTimer) clearTimeout(restoreTimer);
+                    } else {
+                        // Mouse moved out of controls area, schedule restore
+                        if (tracksDisabled && !restoreTimer) {
+                            restoreTimer = setTimeout(() => {
+                                if (videoElement.textTracks.length > 0) {
+                                    videoElement.textTracks[0].mode = 'showing';
+                                }
+                                tracksDisabled = false;
+                                restoreTimer = null;
+                                console.log('Re-enabled tracks after leaving controls area');
+                            }, 300);
+                        }
+                    }
+                });
+
+                // Also restore tracks when mouse leaves video entirely
+                videoElement.addEventListener('mouseleave', function() {
+                    if (tracksDisabled) {
+                        setTimeout(() => {
+                            if (videoElement.textTracks.length > 0) {
+                                videoElement.textTracks[0].mode = 'showing';
+                            }
+                            tracksDisabled = false;
+                            if (restoreTimer) {
+                                clearTimeout(restoreTimer);
+                                restoreTimer = null;
+                            }
+                            console.log('Re-enabled tracks after mouse left video');
+                        }, 100);
+                    }
+                });
+
+                console.log('Added Chrome timeline hover workaround');
+            }
         }
     }, 100);
 }
