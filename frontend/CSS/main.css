@@ -703,6 +703,57 @@
     border-radius: 8px;
 }
 
+/* Subtitle/Caption Styling - Center and Position Properly */
+.video-element::cue,
+#videoElement::cue,
+#modalVideoElement::cue,
+video::cue {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 1.2em;
+    text-align: center;
+    padding: 0.2em 0.5em;
+    line-height: 1.4;
+}
+
+/* Webkit-specific caption styling for Chrome/Safari */
+.video-element::-webkit-media-text-track-container,
+#videoElement::-webkit-media-text-track-container,
+#modalVideoElement::-webkit-media-text-track-container,
+video::-webkit-media-text-track-container {
+    text-align: center;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding-bottom: 2%;
+}
+
+.video-element::-webkit-media-text-track-display,
+#videoElement::-webkit-media-text-track-display,
+#modalVideoElement::-webkit-media-text-track-display,
+video::-webkit-media-text-track-display {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+.video-element::-webkit-media-text-track-background,
+#videoElement::-webkit-media-text-track-background,
+#modalVideoElement::-webkit-media-text-track-background,
+video::-webkit-media-text-track-background {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Firefox-specific caption styling */
+.video-element::-moz-text-track-container,
+#videoElement::-moz-text-track-container,
+#modalVideoElement::-moz-text-track-container,
+video::-moz-text-track-container {
+    text-align: center;
+}
+
 .video-thumbnail-large {
     position: relative;
     display: flex;
