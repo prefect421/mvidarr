@@ -78,7 +78,7 @@ services:
       - "127.0.0.1:${MARIADB_PORT:-3306}:3306"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
       interval: 10s
       timeout: 5s
       retries: 5
