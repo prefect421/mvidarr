@@ -7,7 +7,7 @@ uvicorn==0.24.0
 websockets==12.0
 
 # Template engine (compatible with FastAPI)
-jinja2==3.1.2
+jinja2==3.1.6
 
 # Static files serving
 aiofiles==23.2.1
@@ -23,10 +23,13 @@ httpx==0.25.2
 sqlalchemy[asyncio]>=2.0.23
 aiomysql>=0.2.0
 cryptography>=3.4.8
-python-multipart>=0.0.5
+python-multipart>=0.0.20
 
 # Keep pymysql for Flask compatibility during migration
 pymysql>=1.0.2
+
+# Security utilities
+werkzeug>=3.1.4
 
 # Background job dependencies (already installed)
 # asyncio (built-in)
