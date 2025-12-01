@@ -1,7 +1,7 @@
 {
   "version": "0.10.0-beta.1",
-  "build_date": "2025-12-01T14:23:21.879872",
-  "git_commit": "7fee787",
+  "build_date": "2025-12-01T15:35:41.821003",
+  "git_commit": "4fc877e",
   "git_branch": "dev",
   "release_name": "v0.10.0-beta.1 - First Beta Release",
   "features": [
