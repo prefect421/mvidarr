@@ -150,7 +150,23 @@ MVidarr provides a comprehensive suite of features designed for serious music vi
 - Comprehensive audit logging and activity tracking
 - API rate limiting and resource quota management
 
-### Version 1.0.0 (Planned) - Production Readiness
+### Version 0.10.0-beta.1 (Current) - Beta Testing Phase
+
+**Status**: Active Development - Feature Complete
+**Focus**: Production validation, Docker testing, community feedback
+
+**Included Features**:
+- Security: 10 critical vulnerabilities resolved
+- Installation Wizard with validation
+- Reliable video import system
+- Performance monitoring dashboard
+- Complete documentation
+
+**Next**: v0.10.0-beta.2 after Docker testing and bug fixes
+
+---
+
+### Version 1.0.0 (Planned Q1 2026) - Production Readiness
 - Complete documentation overhaul and user guides
 - Migration tools and database upgrade automation
 - Advanced backup and disaster recovery system

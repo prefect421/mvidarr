@@ -128,7 +128,34 @@ Track MVidarr's development progress through our release history and upcoming mi
 - **🎨 Advanced Theming**: Enhanced customization capabilities
 - **🔍 Search Improvements**: AI-powered search suggestions and recommendations
 
-### v1.0.0 - Stable Release
+### v0.10.0-beta.1 - First Beta Release (Current)
+
+**Release Date**: December 1, 2025
+**Status**: Beta Testing - Active Development
+
+This is the first beta release following SemVer 0.x conventions. The software is feature-complete but undergoing testing before production deployment.
+
+**Key Features**:
+- 🔒 Security: Fixed 10 critical vulnerabilities
+- 📋 Versioning: Migrated to SemVer 0.x for pre-production
+- 🔧 Installation Wizard with validation
+- 🎬 Reliable video import with duplicate detection
+- 📊 Performance monitoring dashboard
+
+**Beta Notes**: This is not yet production-ready. Report issues at [GitHub Issues](https://github.com/prefect421/mvidarr/issues).
+
+---
+
+### v1.0.0 - Pre-release Milestone (Superseded)
+
+**Release Date**: November 25, 2025
+**Status**: Development Milestone - Marked as Pre-release
+
+Originally tagged as v1.0.0, this release predates the beta testing phase and has been superseded by v0.10.0-beta.1.
+
+---
+
+### Future: v1.0.0 - Stable Production Release
 **Target**: Q1 2026
 
 #### Goals

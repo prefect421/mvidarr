@@ -82,7 +82,8 @@ Our development roadmap focuses on continuous improvement:
 - **0.9.7**: Advanced features and integration capabilities
 - **0.9.8**: External service integrations
 - **0.9.9**: Enterprise and multi-user features
-- **1.0.0**: Production readiness and public release
+- **0.10.0-beta.1**: First beta release - active testing phase
+- **1.0.0**: Production readiness and public release (planned Q1 2026)
 
 ## Contributing
 

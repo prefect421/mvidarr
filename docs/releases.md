@@ -144,7 +144,34 @@ See `USER_TESTING_RESULTS_0.9.8.md` for complete testing results and `SERVICE_IN
 - Third-party metadata providers integration
 - Cloud storage integration and backup solutions
 
-### v1.0.0 - Production Readiness & Stability
+### v0.10.0-beta.1 - First Beta Release (Current)
+
+**Release Date**: December 1, 2025
+**Status**: Beta Testing - Active Development
+**SemVer**: Following 0.x.y convention for pre-production software
+
+**Highlights**:
+- 🔒 Security: Resolved 10 critical vulnerabilities (werkzeug, python-multipart, jinja2)
+- 📋 Versioning: Migrated to SemVer 0.x standards for pre-production clarity
+- 🎉 Code Quality: 71.4% size reduction from refactoring
+- 🔧 Installation Wizard for guided setup
+- 🎬 Reliable video import system
+- 📊 Performance monitoring and diagnostics
+
+**Beta Status**: This release is feature-complete but requires production testing and validation before v1.0.0.
+
+---
+
+### v1.0.0 - Pre-release (Superseded)
+
+**Release Date**: November 25, 2025
+**Status**: Development Milestone
+
+Originally tagged as first production release, but re-classified as pre-release milestone. Development continues in 0.10.x-beta series.
+
+---
+
+### Future: v1.0.0 - Production Readiness & Stability
 **Planned Release**: November 2026 - **Public Release**
 
 - Complete documentation overhaul and user guides

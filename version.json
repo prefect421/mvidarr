@@ -1,19 +1,26 @@
 {
-  "version": "1.0.0",
-  "build_date": "2025-11-25T21:00:00.000000",
-  "git_commit": "03662b9",
+  "version": "0.10.0-beta.1",
+  "build_date": "2025-12-01T14:23:21.879872",
+  "git_commit": "7fee787",
   "git_branch": "dev",
-  "release_name": "v1.0.0 - First Production Release",
+  "release_name": "v0.10.0-beta.1 - First Beta Release",
   "features": [
-    "🎉 First production-ready release",
-    "🔧 Installation Wizard for guided first-run setup",
-    "🎬 Reliable video import system with duplicate detection",
-    "✅ API validation and testing before configuration",
-    "🎨 Complete theme-based frontend styling",
-    "📊 Enhanced analytics and system health monitoring",
-    "🔒 Comprehensive security updates and monitoring",
-    "📚 Complete documentation and user guides",
-    "🐳 Docker and Unraid deployment support",
-    "⚙️ Production-ready configuration management"
+    "🔒 Security: Resolved 10 critical vulnerabilities (werkzeug, python-multipart, jinja2)",
+    "📋 Versioning: Migrated to SemVer 0.x for pre-production development",
+    "🎉 Code Cleanup: 71.4% size reduction across refactored modules",
+    "🔧 Installation Wizard: Guided first-run setup with validation",
+    "🎬 Video Import: Reliable import system with duplicate detection",
+    "✅ API Validation: Testing before configuration",
+    "📊 Monitoring: Performance dashboard and system health tracking",
+    "🔒 Security Scanning: Automated vulnerability detection and remediation",
+    "📚 Documentation: Complete user guides and API documentation",
+    "🐳 Docker Support: Production-ready containerized deployment"
+  ],
+  "beta_notes": [
+    "This is a BETA release - not yet production-ready",
+    "Active development and testing phase",
+    "Breaking changes may occur between beta versions",
+    "Production release (v1.0.0) will come after beta testing completes",
+    "Report issues: https://github.com/prefect421/mvidarr/issues"
   ]
 }

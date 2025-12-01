@@ -185,38 +185,49 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.0.0 Production Release - First Public Release
+### Current Phase: v0.10.0-beta.1 - First Beta Release
 
-#### 0.9.9 Code Cleanup & Optimization Phase ✅ COMPLETED (2025-11-10)
-- **Status**: Cleanup phase completed
-- **Key Achievements**:
-  - Code optimization and dead code removal
-  - Performance improvements
-  - Enhanced code quality
-  - Ready for v1.0.0 feature development
+#### Versioning Policy (Updated 2025-12-01)
+- **Current Version**: 0.10.0-beta.1
+- **Versioning Standard**: SemVer 2.0.0
+- **Version Scheme**:
+  - **0.x.y**: Pre-production development (current phase)
+  - **0.x.y-beta.z**: Beta testing releases
+  - **0.x.y-rc.z**: Release candidates
+  - **1.0.0**: First production-ready release (future)
 
-#### 1.0.0 Production Release 🎉 COMPLETE (2025-11-25)
-- **Status**: ✅ All features complete, ready for production release
-- **Major Features Delivered**:
-  - ✅ Installation Wizard for guided first-run setup (Issue #163)
+#### Version History
+- **v0.9.9** (2025-11-04): Code cleanup & optimization complete
+- **v1.0.0** (2025-11-25): Premature release - marked as pre-release
+- **v0.10.0-beta.1** (2025-12-01): First beta release with security fixes
+
+#### 0.10.0-beta.1 Release 🔒 IN PROGRESS (2025-12-01)
+- **Status**: Beta testing phase - active development
+- **Major Features**:
+  - ✅ Security: Fixed 10 critical vulnerabilities (issue #165)
+  - ✅ Installation Wizard for guided first-run setup (issue #163)
   - ✅ Reliable video import system with duplicate detection
   - ✅ API validation and testing before configuration
-  - ✅ Directory configuration and validation
-  - ✅ Production-ready onboarding experience
-  - ✅ Complete documentation and user guides (Issue #91)
-  - ✅ Performance monitoring dashboard (Issue #95)
-  - ✅ Migration tools and database upgrades (Issue #92)
-  - ✅ Unraid template support (Issue #97)
-  - ✅ Comprehensive security monitoring and fixes
-- **Milestone**: All 7 issues in 1.0.0 milestone completed
-- **Next Steps**: Create v1.0.0 GitHub release and deploy to production
+  - ✅ Complete documentation and user guides (issue #91)
+  - ✅ Performance monitoring dashboard (issue #95)
+  - ✅ Migration tools and database upgrades (issue #92)
+  - ✅ Unraid template support (issue #97)
+  - ✅ Versioning: Migrated to SemVer 0.x conventions
+- **Beta Focus**: Docker testing, community feedback, production validation
+- **Next Steps**:
+  - Deploy to test environments
+  - Gather community feedback
+  - Release v0.10.0-beta.2 with fixes
+  - Eventually graduate to v0.10.0 (stable)
+  - Continue development toward v1.0.0 (production)
 
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.0.0 (First Production Release)
-- **Development Focus**: Bug fixes and v1.0.1 maintenance
+- **Current Version**: v0.10.0-beta.1 (First Beta Release)
+- **Development Focus**: Beta testing, bug fixes, production validation
+- **Next Version**: v0.10.0-beta.2 (planned after Docker testing)
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -244,18 +255,23 @@ CURRENT_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.%6N")
 
 # Update version.json with current commit and build date
 # Keep version number the same unless explicitly incrementing
+# For beta releases, use format: 0.x.y-beta.z
 cat > version.json << EOF
 {
-  "version": "1.0.0",
+  "version": "0.10.0-beta.1",
   "build_date": "$CURRENT_TIMESTAMP",
   "git_commit": "$CURRENT_COMMIT",
   "git_branch": "dev",
-  "release_name": "v1.0.0 - First Production Release",
+  "release_name": "v0.10.0-beta.1 - First Beta Release",
   "features": [
-    "🎉 First production-ready release",
+    "🔒 Security: Resolved 10 critical vulnerabilities",
     "🔧 Installation Wizard for first-run setup",
     "🎬 Reliable video import system (no duplicates)",
     "✅ API validation before configuration"
+  ],
+  "beta_notes": [
+    "This is a BETA release - not yet production-ready",
+    "Report issues: https://github.com/prefect421/mvidarr/issues"
   ]
 }
 EOF
