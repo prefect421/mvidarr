@@ -1,5 +1,6 @@
 # FastAPI Core Framework
-fastapi==0.104.1
+fastapi==0.123.0
+starlette>=0.50.0  # Security: Fix GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 uvicorn[standard]==0.24.0
 
 # ASGI Server and WebSocket support
