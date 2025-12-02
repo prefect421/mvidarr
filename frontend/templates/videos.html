@@ -2240,13 +2240,10 @@ function loadModalSubtitleTracks() {
                 });
 
                 videoElement.addEventListener('seeked', function() {
-                    // Re-enable first track after seek completes (with small delay for safety)
-                    setTimeout(() => {
-                        if (videoElement.textTracks.length > 0) {
-                            videoElement.textTracks[0].mode = 'showing';
-                            console.log('Re-enabled modal tracks after seek completed');
-                        }
-                    }, 100);
+                    // DO NOT auto-re-enable tracks after seek - this causes Chrome STATUS_BREAKPOINT crash
+                    // Even with sanitized WebVTT, Chrome's renderer crashes when re-enabling subtitle tracks post-seek
+                    // Users can manually re-enable captions via the CC button if desired
+                    console.log('Seek completed - subtitles remain disabled (Chrome crash prevention)');
                 });
 
                 console.log('Added Chrome seeking event workaround for modal');
