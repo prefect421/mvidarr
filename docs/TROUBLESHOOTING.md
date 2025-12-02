@@ -91,6 +91,79 @@ ls -la /path/to/downloads
 3. **Network issues**: Verify internet connectivity
 4. **YouTube restrictions**: Video may be geo-blocked or removed
 
+### Video Playback Issues
+
+#### Problem: Chrome browser crashes when seeking videos with subtitles
+
+**Symptoms:**
+- Browser displays "STATUS_BREAKPOINT" error when seeking
+- Video player freezes or becomes unresponsive
+- Chrome tab crashes when dragging video timeline
+- Only occurs when subtitles are enabled
+
+**Solution (v0.10.0-beta.1):**
+This is a known Chrome browser bug that has been addressed with a Chrome-specific workaround:
+
+1. **Automatic Protection**: MVidarr automatically disables subtitles during seek operations in Chrome
+2. **Browser Detection**: Workaround only applies to Chrome (Firefox, Safari, Edge unaffected)
+3. **Manual Re-enable**: After seeking, manually re-enable subtitles using the CC button if needed
+
+**Alternative Solutions:**
+1. **Use Different Browser**: Firefox or Edge provide better subtitle stability
+   - Subtitles remain active during seeking
+   - No manual re-enabling required
+   - Recommended for users who frequently use subtitles
+
+2. **Disable Subtitles**: If crashes persist, disable subtitles in Chrome:
+   - Click CC button to turn off subtitles
+   - Seek to desired position
+   - Re-enable subtitles after seeking
+
+**Technical Details:**
+- **Affected**: Chrome 90-130+ (all versions)
+- **Root Cause**: Chrome video decoder bug with subtitle tracks
+- **Workaround**: JavaScript detection and track disabling
+- **Status**: Permanent workaround until Chrome fixes upstream bug
+
+See [Browser Compatibility Guide](BROWSER_COMPATIBILITY.md) for detailed browser support information.
+
+#### Problem: Video won't play or shows error
+
+**Quick Fixes:**
+```bash
+# Check video file exists
+ls -la /path/to/videos/
+
+# Check file permissions
+ls -l /path/to/videos/videofile.mp4
+
+# Test video file integrity
+ffmpeg -v error -i /path/to/videos/videofile.mp4 -f null -
+```
+
+**Common Solutions:**
+1. **Unsupported format**: MVidarr auto-transcodes MKV files to MP4
+2. **Corrupted file**: Re-download the video
+3. **Permission issues**: Fix video directory permissions
+4. **Missing codecs**: Ensure FFmpeg is installed with H.264/AAC support
+
+#### Problem: Subtitles not showing
+
+**Diagnostic Steps:**
+```bash
+# Check subtitle files exist
+ls /path/to/videos/*.{vtt,srt,ass,ssa,sub}
+
+# Verify subtitle API endpoint
+curl http://localhost:5000/api/videos/{video_id}/subtitles
+```
+
+**Solutions:**
+1. **No subtitle files**: Enable subtitle download in Settings → Downloads
+2. **Wrong language**: Check subtitle_languages setting matches available subtitles
+3. **Browser cache**: Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
+4. **CC button**: Manually enable using browser's CC controls
+
 ## 🔍 Detailed Troubleshooting Procedures
 
 ### Database Issues

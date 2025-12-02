@@ -1,11 +1,14 @@
 {
   "version": "0.10.0-beta.1",
-  "build_date": "2025-12-01T15:35:41.821003",
-  "git_commit": "4fc877e",
+  "build_date": "2025-12-02T19:30:00.000000",
+  "git_commit": "78fd56b",
   "git_branch": "dev",
   "release_name": "v0.10.0-beta.1 - First Beta Release",
   "features": [
     "🔒 Security: Resolved 10 critical vulnerabilities (werkzeug, python-multipart, jinja2)",
+    "🔒 Security: Fixed FastAPI/Starlette DoS vulnerabilities (PYSEC-2024-38, GHSA-f96h-pmfr-66vw)",
+    "🐛 Chrome Fix: Resolved STATUS_BREAKPOINT crash during video seeking with subtitles",
+    "🐛 MariaDB Fix: Updated health check to use mariadb-admin instead of mysqladmin",
     "📋 Versioning: Migrated to SemVer 0.x for pre-production development",
     "🎉 Code Cleanup: 71.4% size reduction across refactored modules",
     "🔧 Installation Wizard: Guided first-run setup with validation",

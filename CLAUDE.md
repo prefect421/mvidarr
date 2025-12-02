@@ -100,6 +100,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Respects user subtitle language preferences
 - Works with both standard and YouTube's custom language codes
 
+#### Browser-Specific Behavior
+
+##### Chrome STATUS_BREAKPOINT Crash Workaround ✅
+**Issue**: Chrome browser experiences STATUS_BREAKPOINT crashes when seeking videos with active subtitle tracks.
+
+**Solution**: Chrome-specific workaround implemented (v0.10.0-beta.1)
+- **Detection**: User agent check for Chrome (excluding Edge)
+- **Behavior**: Subtitles automatically disabled during seek operations in Chrome only
+- **Scope**: Workaround only active for Chrome browser
+- **Other Browsers**: Firefox, Safari, Edge maintain normal subtitle functionality during seeking
+
+**Technical Implementation**:
+```javascript
+// Chrome-only subtitle disable on seek (videos.html:2233, video_detail.html:1967)
+if (navigator.userAgent.indexOf('Chrome') > -1 && navigator.userAgent.indexOf('Edg') === -1) {
+    videoElement.addEventListener('seeking', function() {
+        // Disable all tracks when seeking starts
+        for (let i = 0; i < videoElement.textTracks.length; i++) {
+            videoElement.textTracks[i].mode = 'disabled';
+        }
+    });
+}
+```
+
+**User Impact**:
+- **Chrome users**: May need to manually re-enable subtitles after seeking (prevents crashes)
+- **Other browsers**: No impact, subtitles remain active during seeking
+- **Trade-off**: Stability over convenience for Chrome users only
+
 ## MKV Video Transcoding System
 
 ### Real-Time FFmpeg Transcoding ✅

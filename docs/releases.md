@@ -147,18 +147,60 @@ See `USER_TESTING_RESULTS_0.9.8.md` for complete testing results and `SERVICE_IN
 ### v0.10.0-beta.1 - First Beta Release (Current)
 
 **Release Date**: December 1, 2025
+**Updated**: December 2, 2025
 **Status**: Beta Testing - Active Development
 **SemVer**: Following 0.x.y convention for pre-production software
+**Docker Image**: `ghcr.io/prefect421/mvidarr:v0.10.0-beta.1`
 
-**Highlights**:
-- 🔒 Security: Resolved 10 critical vulnerabilities (werkzeug, python-multipart, jinja2)
-- 📋 Versioning: Migrated to SemVer 0.x standards for pre-production clarity
-- 🎉 Code Quality: 71.4% size reduction from refactoring
-- 🔧 Installation Wizard for guided setup
-- 🎬 Reliable video import system
-- 📊 Performance monitoring and diagnostics
+#### 🔒 Security Enhancements
+- **Critical Vulnerabilities Fixed (10)**: werkzeug, python-multipart, jinja2
+- **DoS Vulnerability Patches**: Fixed FastAPI/Starlette DoS vulnerabilities (PYSEC-2024-38, GHSA-f96h-pmfr-66vw, GHSA-7f5h-v6xp-fcq8)
+- **Dependency Updates**: All production dependencies updated to secure versions
+
+#### 🐛 Critical Bug Fixes
+- **Chrome STATUS_BREAKPOINT Crash**: Resolved Chrome browser crash when seeking videos with active subtitles
+  - Implemented Chrome-specific workaround to disable subtitles during seek operations
+  - Other browsers (Firefox, Safari, Edge) maintain normal subtitle functionality
+  - See [Browser Compatibility Guide](BROWSER_COMPATIBILITY.md) for details
+- **MariaDB Health Check**: Updated Docker health check to use `mariadb-admin` instead of deprecated `mysqladmin`
+- **Subtitle Stability**: Enhanced subtitle track handling across all video players
+
+#### 📋 Versioning & Code Quality
+- **SemVer Migration**: Adopted SemVer 0.x.y convention for pre-production clarity
+- **Code Cleanup**: 71.4% size reduction from systematic refactoring
+- **Version Metadata**: Enhanced version tracking with commit hash and build timestamps
+
+#### 🔧 New Features
+- **Installation Wizard**: Guided first-run setup with validation
+- **Video Import System**: Reliable import with duplicate detection
+- **API Validation**: Pre-configuration testing capabilities
+- **Performance Monitoring**: Comprehensive system health dashboard
+- **Browser Compatibility**: Intelligent browser-specific behavior for optimal experience
+
+#### 🌐 Browser Support
+- **Fully Supported**: Firefox, Safari, Edge, Opera, Brave
+- **Chrome**: Supported with workarounds (see compatibility notes)
+- **Recommended**: Firefox or Edge for best subtitle experience during video seeking
+
+#### 📚 Documentation Updates
+- **New**: [Browser Compatibility Guide](BROWSER_COMPATIBILITY.md) with detailed browser-specific notes
+- **Enhanced**: CLAUDE.md with Chrome subtitle behavior documentation
+- **Updated**: Known issues section with browser compatibility information
+
+#### 🐳 Docker Improvements
+- **Health Checks**: Fixed MariaDB health check for better container reliability
+- **Build Date**: Version metadata now includes accurate build timestamps
+- **Commit Tracking**: Docker images tagged with git commit hash for traceability
+
+#### Known Issues
+- **Chrome Subtitle Seeking**: Subtitles may need manual re-enable after seeking (stability workaround)
+- **Safari WebM**: Limited codec support (auto-transcoded to MP4)
 
 **Beta Status**: This release is feature-complete but requires production testing and validation before v1.0.0.
+
+**Related Issues**: #165 (Security Vulnerabilities), #163 (Installation Wizard), #91 (Documentation), #95 (Performance Monitoring)
+
+**Git Commit**: `78fd56b` | **Build**: 2025-12-02
 
 ---
 
