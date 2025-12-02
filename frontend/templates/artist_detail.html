@@ -5236,7 +5236,7 @@ function renderVideosTab(videos) {
             <input type="checkbox" class="video-select" onchange="toggleVideoSelection(${video.id})" onclick="event.stopPropagation()">
             <div class="selection-indicator"></div>
             <div class="video-thumbnail">
-                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" onerror="this.src='/static/placeholder-video.png'">
+                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" data-fallback-src="/static/placeholder-video.png">
                 <div class="video-status status-${video.status ? video.status.toLowerCase() : 'unknown'}">${video.status || 'Unknown'}</div>
             </div>
             <div class="video-info">
@@ -5471,7 +5471,7 @@ function renderDiscoverResults(data) {
                 ` : ''}
                 
                 <div class="discovered-video-thumbnail">
-                    <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" onerror="this.src='/static/placeholder-video.png'">
+                    <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" data-fallback-src="/static/placeholder-video.png">
                     <div class="video-badges">
                         <div class="source-badge source-${video.source || 'imvdb'}">${(video.source || 'imvdb').toUpperCase()}</div>
                         ${video.already_exists ? `<div class="exists-badge">Exists (${video.existing_status || 'Unknown'})</div>` : ''}
@@ -7922,7 +7922,7 @@ function loadVideoPreview() {
     const previewHtml = selectedVideoData.map(video => `
         <div class="video-preview-item">
             <div class="preview-thumbnail">
-                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" onerror="this.src='/static/placeholder-video.png'">
+                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" data-fallback-src="/static/placeholder-video.png">
             </div>
             <div class="preview-metadata">
                 <h4>${video.title}</h4>
@@ -10858,6 +10858,19 @@ function executeMerge(sourceArtistId, targetArtistId) {
         mergeBtn.textContent = originalText;
     });
 }
+
+// ===================================================================
+// Global image error handler - Fixes CSP violations and Chrome crashes
+// ===================================================================
+// Replaces inline onerror="this.src='/static/placeholder-video.png'"
+// which violates Content Security Policy and can trigger STATUS_BREAKPOINT
+document.addEventListener('error', function(e) {
+    if (e.target.tagName === 'IMG' && e.target.dataset.fallbackSrc) {
+        e.target.src = e.target.dataset.fallbackSrc;
+        // Remove the fallback attribute to prevent infinite loops
+        delete e.target.dataset.fallbackSrc;
+    }
+}, true); // Use capture phase to catch errors before they bubble
 
 </script>
 

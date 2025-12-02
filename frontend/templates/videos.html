@@ -596,8 +596,9 @@ function displaySearchResults(data) {
                 ${video.relevance_score ? `<div class="relevance-badge" title="Relevance Score: ${video.relevance_score}%">${Math.round(video.relevance_score)}%</div>` : ''}
                 <div class="video-thumbnail" data-video-id="${video.id}" data-action="play">
                     ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="thumbnail-artist-link" title="View ${video.artist_name || 'Unknown'} artist page">` : ''}
-                    <img src="/api/videos/${video.id}/thumbnail" 
-                         alt="${highlightSearchTerms(video.title, searchQuery)}" onerror="this.src='/static/placeholder-video.png'">
+                    <img src="/api/videos/${video.id}/thumbnail"
+                         alt="${highlightSearchTerms(video.title, searchQuery)}"
+                         data-fallback-src="/static/placeholder-video.png">
                     ${video.artist_id ? '</a>' : ''}
                     <div class="play-overlay">
                         <div class="play-button">▶</div>
@@ -1689,9 +1690,9 @@ function updateSingleVideoCard(videoId) {
                 </div>
                 <div class="video-thumbnail" data-video-id="${video.id}" data-action="play">
                     ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="thumbnail-artist-link" title="View ${escapeHtml(video.artist_name || 'Unknown')} artist page">` : ''}
-                    <img src="/api/videos/${video.id}/thumbnail" 
+                    <img src="/api/videos/${video.id}/thumbnail"
                          alt="${video.title}"
-                         onerror="this.src='/static/placeholder-video.png'">
+                         data-fallback-src="/static/placeholder-video.png">
                     ${video.artist_id ? '</a>' : ''}
                     <div class="play-overlay">
                         <div class="play-button">▶</div>
@@ -4390,8 +4391,9 @@ function displayVideos(videos) {
                         </div>
                         <div class="video-thumbnail" data-video-id="${safeVideo.id}" data-action="play">
                             ${safeVideo.artist_id ? `<a href="/artist/${safeVideo.artist_id}" class="thumbnail-artist-link" title="View ${safeVideo.artist_name || 'Unknown'} artist page">` : ''}
-                            <img src="/api/videos/${safeVideo.id}/thumbnail" 
-                                 alt="${safeVideo.title}" onerror="this.src='/static/placeholder-video.png'">
+                            <img src="/api/videos/${safeVideo.id}/thumbnail"
+                                 alt="${safeVideo.title}"
+                                 data-fallback-src="/static/placeholder-video.png">
                             ${safeVideo.artist_id ? '</a>' : ''}
                             <div class="play-overlay">
                                 <div class="play-button">▶</div>
@@ -5555,6 +5557,19 @@ function performVideoMerge(currentVideoId, duplicateVideoId) {
         mergeBtn.disabled = false;
     });
 }
+
+// ===================================================================
+// Global image error handler - Fixes CSP violations and Chrome crashes
+// ===================================================================
+// Replaces inline onerror="this.src='/static/placeholder-video.png'"
+// which violates Content Security Policy and can trigger STATUS_BREAKPOINT
+document.addEventListener('error', function(e) {
+    if (e.target.tagName === 'IMG' && e.target.dataset.fallbackSrc) {
+        e.target.src = e.target.dataset.fallbackSrc;
+        // Remove the fallback attribute to prevent infinite loops
+        delete e.target.dataset.fallbackSrc;
+    }
+}, true); // Use capture phase to catch errors before they bubble
 </script>
 
 <!-- Add to Playlist Modal -->
