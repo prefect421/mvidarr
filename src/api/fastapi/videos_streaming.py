@@ -583,15 +583,95 @@ async def serve_subtitle(
             async with aiofiles.open(subtitle_path, "r", encoding="utf-8") as f:
                 content = await f.read()
 
-            # Remove ALL WebVTT cue settings (align, position, line, size, vertical)
+            # COMPREHENSIVE WEBVTT SANITIZATION
+            # Fixes Chrome STATUS_BREAKPOINT crash when seeking video timeline
+            # Issue: YouTube auto-generated subtitles have nested timestamps, empty cues,
+            # and micro-duration cues that crash Chrome's renderer during seek operations
+
+            # Step 1: Remove ALL WebVTT cue settings (align, position, line, size, vertical)
             # These settings can cause Chrome renderer crashes during video seeking
-            # Strip everything after the end timestamp, keeping only timing information
             content = re.sub(
                 r"(\d{2}:\d{2}:\d{2}\.\d{3}\s+-->\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+.*$",
                 r"\1",
                 content,
                 flags=re.MULTILINE,
             )
+
+            # Step 2: Remove nested word-level timestamps (YouTube's format)
+            # Example: "forget <00:00:07.933><c>to </c><00:00:08.376><c>thumbs </c>"
+            # becomes: "forget to thumbs"
+            content = re.sub(r"<\d{2}:\d{2}:\d{2}\.\d{3}>", "", content)
+            content = re.sub(r"</?c>", "", content)
+
+            # Step 3: Parse cues and filter out problematic ones
+            lines = content.split("\n")
+            sanitized_lines = []
+            i = 0
+
+            while i < len(lines):
+                line = lines[i]
+
+                # Keep header and non-cue lines
+                if (
+                    line.startswith("WEBVTT")
+                    or line.startswith("Kind:")
+                    or line.startswith("Language:")
+                    or not line.strip()
+                    or "-->" not in line
+                ):
+                    sanitized_lines.append(line)
+                    i += 1
+                    continue
+
+                # This is a timestamp line
+                timestamp_line = line
+                cue_text_lines = []
+
+                # Collect cue text (lines after timestamp until blank line)
+                i += 1
+                while i < len(lines) and lines[i].strip() and "-->" not in lines[i]:
+                    cue_text_lines.append(lines[i])
+                    i += 1
+
+                # Check if cue has actual text content
+                cue_text = "\n".join(cue_text_lines).strip()
+
+                # Skip empty cues (no text or only whitespace)
+                if not cue_text:
+                    continue
+
+                # Parse timestamp to check duration
+                timestamp_match = re.match(
+                    r"(\d{2}:\d{2}:\d{2}\.\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2}\.\d{3})",
+                    timestamp_line,
+                )
+
+                if timestamp_match:
+                    start_time = timestamp_match.group(1)
+                    end_time = timestamp_match.group(2)
+
+                    # Convert to milliseconds
+                    def time_to_ms(time_str):
+                        h, m, s = time_str.split(":")
+                        s, ms = s.split(".")
+                        return (
+                            int(h) * 3600000 + int(m) * 60000 + int(s) * 1000 + int(ms)
+                        )
+
+                    duration = time_to_ms(end_time) - time_to_ms(start_time)
+
+                    # Skip micro-duration cues (< 100ms) that cause seek crashes
+                    if duration < 100:
+                        logger.debug(
+                            f"Skipping micro-duration cue ({duration}ms): {cue_text[:30]}"
+                        )
+                        continue
+
+                # Keep valid cue
+                sanitized_lines.append(timestamp_line)
+                sanitized_lines.extend(cue_text_lines)
+
+            content = "\n".join(sanitized_lines)
 
             # Return modified content as streaming response
             from fastapi.responses import Response
