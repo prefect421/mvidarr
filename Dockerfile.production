@@ -117,7 +117,7 @@ RUN python3 /app/scripts/generate_version.py --output /app/version.json && \
 # Set proper permissions for all application files
 RUN find /app -type d -exec chmod 755 {} \; && \
     find /app -type f -exec chmod 644 {} \; && \
-    chmod 755 /app/fastapi_app.py
+    chmod 755 /app/fastapi_app.py /app/entrypoint.sh
 
 # Expose the application port
 EXPOSE 5000
