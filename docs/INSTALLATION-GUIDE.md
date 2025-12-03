@@ -20,7 +20,7 @@ This comprehensive guide will walk you through installing MVidarr using multiple
 ## 🐳 Docker Installation (Recommended)
 
 ### Prerequisites Check
-![Prerequisites Check](screenshots/prerequisites-docker.png)
+
 *Verify your system meets the requirements before starting*
 
 **System Requirements:**
@@ -46,7 +46,7 @@ df -h
 ```
 
 ### Step 1: Download and Setup
-![Docker Download](screenshots/docker-step1-download.png)
+
 *Clone the repository and prepare for configuration*
 
 ```bash
@@ -63,7 +63,7 @@ ls -la
 ```
 
 ### Step 2: Configuration
-![Docker Configuration](screenshots/docker-step2-config.png)
+
 *Configure your deployment with the visual configuration editor*
 
 ```bash
@@ -75,7 +75,7 @@ nano docker-config.yml
 ```
 
 **Essential Configuration Settings:**
-![Configuration Settings](screenshots/docker-config-essential.png)
+
 
 ```yaml
 # 🗄️ STORAGE PATHS (Customize these for your system)
@@ -99,7 +99,7 @@ YOUTUBE_API_KEY=your_youtube_api_key
 ```
 
 **Getting API Keys:**
-![API Keys Setup](screenshots/api-keys-howto.png)
+
 
 1. **IMVDb API Key:**
    - Visit https://imvdb.com/developers/api
@@ -114,7 +114,7 @@ YOUTUBE_API_KEY=your_youtube_api_key
    - Copy the generated key
 
 ### Step 3: Storage Directory Setup
-![Storage Setup](screenshots/docker-step3-storage.png)
+
 *Create and configure storage directories with proper permissions*
 
 ```bash
@@ -132,7 +132,7 @@ ls -la /home/youruser/
 ```
 
 **Directory Structure Preview:**
-![Directory Structure](screenshots/docker-directories.png)
+
 ```
 /home/youruser/
 ├── MusicVideos/           # Your music video collection
@@ -147,7 +147,7 @@ ls -la /home/youruser/
 ```
 
 ### Step 4: Deploy Services
-![Docker Deploy](screenshots/docker-step4-deploy.png)
+
 *Start all services with Docker Compose*
 
 ```bash
@@ -160,7 +160,7 @@ docker-compose -f docker-compose.production.yml logs -f
 ```
 
 **Deployment Progress:**
-![Deployment Progress](screenshots/docker-deployment-progress.png)
+
 
 You should see output like:
 ```
@@ -171,7 +171,7 @@ Creating mvidarr-enhanced ... done
 ```
 
 ### Step 5: Verify Installation
-![Docker Verify](screenshots/docker-step5-verify.png)
+
 *Verify all containers are running and healthy*
 
 ```bash
@@ -189,7 +189,7 @@ curl -f http://localhost:5000/api/health
 ```
 
 ### Step 6: Initial Access
-![Initial Access](screenshots/docker-step6-access.png)
+
 *Access your new MVidarr installation*
 
 1. **Open Web Browser**
@@ -197,7 +197,7 @@ curl -f http://localhost:5000/api/health
    - You should see the MVidarr welcome screen
 
 2. **Complete Setup Wizard**
-   ![Setup Wizard](screenshots/setup-wizard-docker.png)
+
    - Configure API keys (if not done in docker-config.yml)
    - Set up download preferences
    - Create your first artist
@@ -212,7 +212,7 @@ curl -f http://localhost:5000/api/health
 ## 🔧 Local Installation
 
 ### Prerequisites Check
-![Local Prerequisites](screenshots/prerequisites-local.png)
+
 *Comprehensive system requirements verification*
 
 **System Requirements:**
@@ -225,7 +225,7 @@ curl -f http://localhost:5000/api/health
 **System-Specific Prerequisites:**
 
 #### Ubuntu/Debian
-![Ubuntu Prerequisites](screenshots/prerequisites-ubuntu.png)
+
 ```bash
 # Update package list
 sudo apt update
@@ -251,7 +251,7 @@ ffmpeg -version      # Should show FFmpeg information
 ```
 
 #### CentOS/RHEL
-![CentOS Prerequisites](screenshots/prerequisites-centos.png)
+
 ```bash
 # Enable EPEL repository
 sudo yum install -y epel-release
@@ -275,7 +275,7 @@ sudo systemctl enable mariadb
 ```
 
 #### macOS
-![macOS Prerequisites](screenshots/prerequisites-macos.png)
+
 ```bash
 # Install Homebrew (if not already installed)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -288,7 +288,7 @@ brew services start mariadb
 ```
 
 ### Step 1: Database Setup
-![Database Setup](screenshots/local-step1-database.png)
+
 *Configure MariaDB database for MVidarr*
 
 ```bash
@@ -304,7 +304,7 @@ sudo mysql_secure_installation
 ```
 
 **Create MVidarr Database:**
-![Database Creation](screenshots/database-creation.png)
+
 ```bash
 # Connect to MariaDB as root
 sudo mysql -u root -p
@@ -330,7 +330,7 @@ EXIT;
 ```
 
 ### Step 2: Application Download and Setup
-![App Setup](screenshots/local-step2-app.png)
+
 *Download and configure the MVidarr application*
 
 ```bash
@@ -360,11 +360,11 @@ pip install -r requirements-dev.txt
 ```
 
 **Installation Progress:**
-![Installation Progress](screenshots/local-install-progress.png)
+
 *Monitor the dependency installation process*
 
 ### Step 3: Configuration
-![Local Configuration](screenshots/local-step3-config.png)
+
 *Configure application settings and environment*
 
 ```bash
@@ -376,7 +376,7 @@ nano .env
 ```
 
 **Environment Configuration:**
-![Environment Config](screenshots/local-env-config.png)
+
 ```bash
 # Database configuration
 DB_HOST=localhost
@@ -405,7 +405,7 @@ TZ=America/New_York
 ```
 
 ### Step 4: Initialize Database
-![Database Init](screenshots/local-step4-dbinit.png)
+
 *Initialize the database schema and tables*
 
 ```bash
@@ -428,7 +428,7 @@ print('Database initialized successfully!')
 ```
 
 ### Step 5: Create Storage Directories
-![Storage Directories](screenshots/local-step5-storage.png)
+
 *Set up data storage directories with proper permissions*
 
 ```bash
@@ -447,7 +447,7 @@ ls -la ~/mvidarr-data/
 ```
 
 ### Step 6: Start Application
-![App Start](screenshots/local-step6-start.png)
+
 *Launch MVidarr application*
 
 ```bash
@@ -464,7 +464,7 @@ python fastapi_app.py
 ```
 
 **Systemd Service Management (Recommended):**
-![Service Management](screenshots/systemd-service.png)
+
 
 1. **Install Service**
 ```bash
@@ -516,7 +516,7 @@ chmod +x scripts/manage_service.sh
 ```
 
 ### Step 7: Initial Setup
-![Local Initial Setup](screenshots/local-step7-setup.png)
+
 *Complete the initial configuration through web interface*
 
 1. **Access Web Interface**
@@ -524,13 +524,13 @@ chmod +x scripts/manage_service.sh
    - You should see the MVidarr welcome screen
 
 2. **Configure API Keys**
-   ![API Configuration](screenshots/local-api-setup.png)
+
    - Go to Settings → External Services
    - Add your IMVDb and YouTube API keys
    - Test connections to verify functionality
 
 3. **Set Storage Paths**
-   ![Storage Configuration](screenshots/local-storage-setup.png)
+
    - Go to Settings → Downloads
    - Verify paths match your directory setup
    - Test write permissions
@@ -540,7 +540,7 @@ chmod +x scripts/manage_service.sh
 ## ☁️ Cloud Installation
 
 ### AWS EC2 Deployment
-![AWS Deployment](screenshots/cloud-aws.png)
+
 *Deploy MVidarr on Amazon Web Services*
 
 **EC2 Instance Requirements:**
@@ -573,7 +573,7 @@ cd mvidarr
 ```
 
 ### DigitalOcean Droplet
-![DigitalOcean Deployment](screenshots/cloud-digitalocean.png)
+
 *Simple deployment on DigitalOcean*
 
 **Droplet Specifications:**
@@ -583,7 +583,6 @@ cd mvidarr
 - **Firewall**: Allow HTTP, HTTPS, SSH
 
 ### Google Cloud Platform
-![GCP Deployment](screenshots/cloud-gcp.png)
 *Deploy on Google Cloud Platform with managed services*
 
 **Compute Engine Setup:**
@@ -597,7 +596,6 @@ cd mvidarr
 ## 🔧 Post-Installation Configuration
 
 ### Initial System Health Check
-![Health Check](screenshots/post-install-health.png)
 *Verify all components are working correctly*
 
 **Health Check Steps:**
@@ -622,7 +620,6 @@ cd mvidarr
    - Test log file creation
 
 ### Security Hardening
-![Security Setup](screenshots/post-install-security.png)
 *Secure your MVidarr installation*
 
 **Security Checklist:**
@@ -635,7 +632,6 @@ cd mvidarr
 - ✅ Regular security updates
 
 ### Backup Configuration
-![Backup Setup](screenshots/post-install-backup.png)
 *Set up automated backups for your data*
 
 **Backup Strategy:**
@@ -666,7 +662,6 @@ cd mvidarr
 ### Common Installation Issues
 
 #### Docker Issues
-![Docker Troubleshooting](screenshots/troubleshoot-docker-install.png)
 
 **Container Won't Start:**
 ```bash
@@ -697,7 +692,6 @@ df -h
 ```
 
 #### Local Installation Issues
-![Local Troubleshooting](screenshots/troubleshoot-local-install.png)
 
 **Python Dependencies:**
 ```bash
@@ -727,7 +721,6 @@ sudo systemctl restart mariadb
 ```
 
 ### Performance Optimization
-![Performance Optimization](screenshots/post-install-performance.png)
 *Optimize your installation for best performance*
 
 **For Large Video Collections:**
@@ -755,7 +748,6 @@ sudo systemctl restart mariadb
 ## ✅ Installation Verification Checklist
 
 ### Basic Functionality
-![Verification Checklist](screenshots/verification-checklist.png)
 
 - [ ] **Web interface accessible** at configured URL
 - [ ] **Database connection successful** (green status in health check)
