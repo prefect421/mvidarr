@@ -201,7 +201,6 @@ test_*.py
 comprehensive-security-scan-*/
 
 # Development requirements - exclude from production builds
-requirements.txt
 requirements-dev.txt
 
 # Virtual environments
