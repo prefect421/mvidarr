@@ -29,8 +29,8 @@ WORKDIR /app
 RUN pip install --no-cache-dir --upgrade pip
 
 # Copy requirements and install with increased timeout
-COPY requirements-prod.txt requirements-fastapi.txt ./
-RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements-prod.txt && \
+COPY requirements.txt requirements-fastapi.txt ./
+RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements.txt && \
     pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements-fastapi.txt
 
 #################################
@@ -88,7 +88,6 @@ RUN mkdir -p /app/data/downloads /app/data/musicvideos /app/data/music_videos /a
     chown -R mvidarr:mvidarr /app/data /app/config
 
 # Copy static configuration files first (cached if config unchanged)
-COPY --chown=mvidarr:mvidarr docker-config.yml.sample /app/config/docker-config.yml
 COPY entrypoint.sh /app/entrypoint.sh
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
