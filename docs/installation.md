@@ -12,63 +12,115 @@ This guide provides comprehensive instructions for installing and configuring MV
 
 Docker deployment is the recommended method for production use, offering consistent environments and easy maintenance.
 
+### Prerequisites
+
+- Docker 20.10+ and Docker Compose 2.0+
+- At least 2GB RAM available
+- Path to your music video collection
+
 ### Quick Start
 
+**1. Clone the repository:**
 ```bash
-# Clone the repository
 git clone https://github.com/prefect421/mvidarr.git
 cd mvidarr
+```
 
-# Start with Docker Compose
+**2. Create your environment file:**
+```bash
+cp .env.example .env
+```
+
+**3. Edit your .env file:**
+```bash
+nano .env  # or use your preferred editor
+```
+
+**Required settings to configure:**
+```bash
+# Database passwords
+DB_PASSWORD=your_secure_database_password_here
+MYSQL_ROOT_PASSWORD=your_secure_root_password_here
+
+# Application security (generate with: openssl rand -hex 32)
+SECRET_KEY=your_secret_key_here_minimum_32_characters
+
+# Path to your music video collection
+MUSIC_VIDEOS_PATH=/path/to/your/music/videos
+```
+
+**Optional settings:**
+```bash
+# API Keys for metadata enrichment
+IMVDB_API_KEY=your_imvdb_api_key
+YOUTUBE_API_KEY=your_youtube_api_key
+
+# Port configuration
+MVIDARR_PORT=5000
+
+# Timezone
+TZ=America/New_York
+```
+
+**4. Start MVidarr:**
+```bash
 docker-compose up -d
 ```
 
-**Access the application:**
-- Open your browser to `http://localhost:5001`
+**5. Access the application:**
+- Open your browser to `http://localhost:5000`
 - Default login: `admin` / `admin` (⚠️ **Change immediately**)
+- Complete the first-run setup wizard
 
 ### Production Docker Image
 
-Use our optimized production image:
+Use our production image:
 
 ```bash
-# Pull the latest release
-docker pull ghcr.io/prefect421/mvidarr:v0.9.7
+# Pull the latest stable release
+docker pull ghcr.io/prefect421/mvidarr:latest
 
-# Or use in docker-compose.yml
-services:
-  mvidarr:
-    image: ghcr.io/prefect421/mvidarr:v0.9.7
-    # ... other configuration
+# Or specific version
+docker pull ghcr.io/prefect421/mvidarr:v0.10.0-beta.1
 ```
 
-### Docker Configuration
+The `docker-compose.yml` automatically uses the `:latest` tag for production deployments.
 
-Create a `docker-compose.override.yml` for customization:
+### Docker Architecture
 
-```yaml
-version: '3.8'
-services:
-  mvidarr:
-    environment:
-      - SECRET_KEY=your-secure-secret-key
-      - IMVDB_API_KEY=your-imvdb-api-key
-      - YOUTUBE_API_KEY=your-youtube-api-key
-    volumes:
-      - ./data:/app/data
-      - ./config:/app/config
-    ports:
-      - "5001:5000"
-  
-  mariadb:
-    environment:
-      - MYSQL_ROOT_PASSWORD=secure-root-password
-      - MYSQL_PASSWORD=secure-app-password
-    volumes:
-      - mariadb_data:/var/lib/mysql
+MVidarr uses a simplified 3-container architecture:
 
-volumes:
-  mariadb_data:
+- **mvidarr** - FastAPI application + Celery worker (managed by supervisord)
+- **mariadb** - MySQL-compatible database (MariaDB 11.4)
+- **redis** - Cache and job queue
+
+All background jobs run inside the main container, making deployment simple and efficient.
+
+### Updating
+
+To update to the latest version:
+
+```bash
+cd mvidarr
+git pull origin main
+docker-compose pull
+docker-compose up -d
+```
+
+### Managing Containers
+
+```bash
+# View logs
+docker-compose logs -f mvidarr
+
+# Restart services
+docker-compose restart
+
+# Stop services
+docker-compose down
+
+# Stop and remove volumes (⚠️ deletes database)
+docker-compose down -v
 ```
 
 ## 🖥️ Unraid Installation
@@ -97,250 +149,176 @@ For complete Unraid installation instructions including:
 - Performance optimization tips
 - Reverse proxy configuration
 
-**See our comprehensive [Unraid Installation Guide]({{ site.github.repository_url }}/blob/main/docs/UNRAID_INSTALLATION.md)**
+**See our comprehensive [Unraid Installation Guide](https://github.com/prefect421/mvidarr/blob/main/docs/UNRAID_INSTALLATION.md)**
 
-### Template URL
+## 🐧 Manual Installation (Linux/macOS)
 
-If MVidarr is not yet in Community Applications, you can add it manually:
-
-```
-https://raw.githubusercontent.com/prefect421/mvidarr/main/unraid-template.xml
-```
-
-## 🔧 Manual Installation
+For development or non-Docker deployments.
 
 ### Prerequisites
 
-- **Python**: 3.12+ (required)
-- **Database**: MariaDB 11.4+ (recommended) or MySQL 8.0+
-- **Media Processing**: FFmpeg (required for video processing)
-- **Operating System**: Linux, macOS, or Windows
+- Python 3.12+
+- MariaDB 11.4+ or MySQL 8.0+
+- Redis 7+
+- FFmpeg
+- yt-dlp
 
-### System Dependencies
+### Installation Steps
 
-**Ubuntu/Debian:**
-```bash
-sudo apt update
-sudo apt install python3.12 python3.12-venv python3-pip
-sudo apt install mariadb-server mariadb-client
-sudo apt install ffmpeg
-sudo apt install build-essential pkg-config default-libmysqlclient-dev
-```
-
-**CentOS/RHEL:**
-```bash
-sudo yum install python3.12 python3.12-venv python3-pip
-sudo yum install mariadb-server mariadb
-sudo yum install ffmpeg
-sudo yum install gcc gcc-c++ pkgconfig mysql-devel
-```
-
-**macOS:**
-```bash
-brew install python@3.12
-brew install mariadb
-brew install ffmpeg
-brew install pkg-config mysql-client
-```
-
-### Database Setup
-
-1. **Install and start MariaDB:**
-```bash
-sudo systemctl start mariadb
-sudo systemctl enable mariadb
-sudo mysql_secure_installation
-```
-
-2. **Create database and user:**
-```sql
-CREATE DATABASE mvidarr CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'mvidarr'@'localhost' IDENTIFIED BY 'secure_password';
-GRANT ALL PRIVILEGES ON mvidarr.* TO 'mvidarr'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-### Application Installation
-
-1. **Clone the repository:**
+**1. Clone the repository:**
 ```bash
 git clone https://github.com/prefect421/mvidarr.git
 cd mvidarr
 ```
 
-2. **Create virtual environment:**
+**2. Create virtual environment:**
 ```bash
-python3.12 -m venv venv
-source venv/bin/activate  # Linux/macOS
-# venv\Scripts\activate   # Windows
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. **Install dependencies:**
+**3. Install dependencies:**
 ```bash
-pip install --upgrade pip
 pip install -r requirements.txt
+pip install -r requirements-fastapi.txt
 ```
 
-4. **Configure environment:**
+**4. Configure database:**
+```bash
+# Install MariaDB
+sudo apt install mariadb-server  # Ubuntu/Debian
+# OR
+brew install mariadb  # macOS
+
+# Create database and user
+mysql -u root -p << EOF
+CREATE DATABASE mvidarr CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'mvidarr'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON mvidarr.* TO 'mvidarr'@'localhost';
+FLUSH PRIVILEGES;
+EOF
+```
+
+**5. Configure environment:**
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
+nano .env
 ```
 
-5. **Initialize database:**
+Set database connection:
 ```bash
-python -c "
-from src.database.init_db import initialize_database
-if initialize_database():
-    print('✅ Database initialized successfully')
-else:
-    print('❌ Database initialization failed')
-"
-```
-
-6. **Start the application:**
-```bash
-python app.py
-```
-
-**Access:** `http://localhost:5000`
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-Create a `.env` file with your configuration:
-
-```bash
-# Database Configuration
 DB_HOST=localhost
-DB_NAME=mvidarr
 DB_USER=mvidarr
-DB_PASSWORD=secure_password
-DB_PORT=3306
-
-# Application Configuration
-SECRET_KEY=your-super-secret-key-here
-FLASK_ENV=production
-PORT=5000
-HOST=0.0.0.0
-
-# API Keys (Optional but recommended)
-IMVDB_API_KEY=your-imvdb-api-key
-YOUTUBE_API_KEY=your-youtube-api-key
-
-# Media Processing
-DOWNLOADS_PATH=data/downloads
-MUSIC_VIDEOS_PATH=data/musicvideos
-THUMBNAILS_PATH=data/thumbnails
-
-# Security Settings
-REQUIRE_AUTHENTICATION=true
-SESSION_TIMEOUT=24
-MAX_LOGIN_ATTEMPTS=5
+DB_PASSWORD=your_password
+DB_NAME=mvidarr
+SECRET_KEY=$(openssl rand -hex 32)
 ```
 
-### Directory Structure
+**6. Initialize database:**
+```bash
+python scripts/init_db.py
+```
 
-Ensure these directories exist and have proper permissions:
+**7. Start services:**
+```bash
+# Terminal 1: Start FastAPI application
+python fastapi_app.py
+
+# Terminal 2: Start Celery worker (optional, for background jobs)
+celery -A src.celery_app worker --loglevel=info
+
+# Terminal 3: Start Celery beat (optional, for scheduled tasks)
+celery -A src.celery_app beat --loglevel=info
+```
+
+**8. Access the application:**
+- Open your browser to `http://localhost:5000`
+- Default login: `admin` / `admin`
+
+### Production Service (systemd)
+
+For production deployments, use systemd:
 
 ```bash
-mkdir -p data/{downloads,musicvideos,thumbnails,logs,cache,backups,database}
-mkdir -p config
-chmod 755 data/
-chmod 750 config/
+# Copy service file
+sudo cp mvidarr.service /etc/systemd/system/
+
+# Edit paths in service file
+sudo nano /etc/systemd/system/mvidarr.service
+
+# Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable mvidarr.service
+sudo systemctl start mvidarr.service
+
+# Check status
+sudo systemctl status mvidarr.service
 ```
 
-## 🛡️ Security Configuration
+## 🪟 Windows Installation
 
-### Default Credentials
+### Using Docker Desktop (Recommended)
 
-**⚠️ IMPORTANT**: Change default credentials immediately after installation:
+1. Install [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop)
+2. Enable WSL 2 backend
+3. Follow the Docker deployment instructions above
 
-- **Default Username**: `admin`
-- **Default Password**: `mvidarr` (for simple auth) or `MVidarr@P4ss!` (for user auth)
+### Manual Installation
 
-### User Management
+1. Install [Python 3.12+](https://www.python.org/downloads/)
+2. Install [MariaDB](https://mariadb.org/download/)
+3. Install [FFmpeg](https://ffmpeg.org/download.html)
+4. Follow manual installation steps (use `venv\Scripts\activate` for venv)
 
-Create additional users through the web interface or using the management commands:
+## 🔧 Configuration
 
+After installation, configure MVidarr through:
+
+1. **Environment Variables** (`.env` file) - Database, security, paths
+2. **Web UI Settings** - API keys, metadata preferences, themes
+3. **Setup Wizard** - First-run configuration guide
+
+See [Configuration Guide](https://github.com/prefect421/mvidarr/blob/main/docs/CONFIGURATION_GUIDE.md) for detailed configuration options.
+
+## 🔍 Troubleshooting
+
+### Container won't start
 ```bash
-python -c "
-from src.database.models import User, UserRole
-from src.database.connection import get_db
+# Check logs
+docker-compose logs mvidarr
 
-with get_db() as session:
-    user = User(
-        username='your_username',
-        email='your_email@example.com',
-        password='SecurePassword123!',
-        role=UserRole.USER
-    )
-    session.add(user)
-    session.commit()
-    print('User created successfully')
-"
+# Common issues:
+# - Missing .env file (copy from .env.example)
+# - Invalid SECRET_KEY (must be 32+ characters)
+# - MUSIC_VIDEOS_PATH doesn't exist
 ```
 
-## 🔍 Verification
-
-### System Health Check
-
-After installation, verify everything is working:
-
-1. **Database Connection**: Check the System Health page in the web interface
-2. **Media Processing**: Verify FFmpeg is detected
-3. **API Integration**: Test IMVDB and YouTube API connections (if configured)
-4. **File Permissions**: Ensure data directories are writable
-
-### Performance Optimization
-
-For production deployments:
-
-- **Use a reverse proxy** (nginx, Apache) for SSL termination
-- **Configure log rotation** for application logs  
-- **Set up monitoring** for system resources
-- **Regular backups** of database and configuration
-
-## 🆙 Updating
-
-### Docker Updates
-
+### Database connection errors
 ```bash
-# Pull latest image
-docker pull ghcr.io/prefect421/mvidarr:latest
+# Check MariaDB is healthy
+docker-compose ps
 
-# Restart containers
-docker-compose down
-docker-compose up -d
+# Verify database credentials in .env match docker-compose.yml
 ```
 
-### Manual Updates
-
+### Permission issues
 ```bash
-# Backup database first
-mysqldump -u mvidarr -p mvidarr > backup-$(date +%Y%m%d).sql
-
-# Update code
-git pull origin main
-
-# Update dependencies
-pip install -r requirements.txt --upgrade
-
-# Run any database migrations
-python -c "from src.database.init_db import initialize_database; initialize_database()"
-
-# Restart application
-sudo systemctl restart mvidarr  # if using systemd
+# Set correct PUID/PGID in .env
+# Run 'id' command to get your user/group IDs
+PUID=1000
+PGID=1000
 ```
 
-## 📞 Support
+See [Troubleshooting Guide](https://github.com/prefect421/mvidarr/blob/main/docs/TROUBLESHOOTING.md) for more help.
 
-- **Installation Issues**: Check our [troubleshooting guide]({{ site.github.repository_url }}/blob/main/docs/TROUBLESHOOTING.md)
-- **Configuration Help**: See our [configuration documentation]({{ site.github.repository_url }}/blob/main/docs/CONFIGURATION.md)
-- **Community Support**: Join our [GitHub Discussions]({{ site.github.repository_url }}/discussions)
-- **Bug Reports**: Submit [GitHub Issues]({{ site.github.repository_url }}/issues)
+## 📚 Next Steps
 
----
+- [User Guide](https://github.com/prefect421/mvidarr/blob/main/docs/USER-GUIDE.md) - Learn how to use MVidarr
+- [Configuration Guide](https://github.com/prefect421/mvidarr/blob/main/docs/CONFIGURATION_GUIDE.md) - Advanced configuration
+- [API Documentation](https://github.com/prefect421/mvidarr/blob/main/docs/API_DOCUMENTATION.md) - REST API reference
 
-Need help? Don't hesitate to ask in our [community discussions]({{ site.github.repository_url }}/discussions)!
+## 🆘 Support
+
+- **Issues**: [GitHub Issues](https://github.com/prefect421/mvidarr/issues)
+- **Documentation**: [Full Documentation](https://prefect421.github.io/mvidarr/)
+- **Community**: [Discussions](https://github.com/prefect421/mvidarr/discussions)

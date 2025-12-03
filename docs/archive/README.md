@@ -1,33 +1,55 @@
 # Documentation Archive
 
-This directory contains documentation files that are no longer current or have been superseded by newer versions.
+This directory contains archived documentation files that have been superseded by updated versions or are no longer applicable to current MVidarr deployments.
 
 ## Archived Files
 
-### Installation Guides (Superseded)
-- `QUICKSTART.md` - Old v2.0 quickstart guide (superseded by main README.md)
-- `INSTALLATION_GUIDE.md` - Outdated installation guide (superseded by main README.md)
-- `INSTALLATION_AND_TESTING_GUIDE.md` - Redundant installation/testing guide
-- `NO_SUDO_INSTALLATION.md` - Specific installation variant (no longer needed)
+### DEPLOYMENT_GUIDE-OLD.md
+**Archived**: December 3, 2025
+**Reason**: Contained outdated Docker Compose configurations and deployment strategies that no longer match the simplified 3-container architecture.
 
-### Docker Documentation (Consolidated)
-- `DOCKER-QUICKSTART.md` - Old Docker quickstart (consolidated into main README.md)
-- `DOCKER-CONTAINER.md` - Redundant Docker container guide
-- `README-Docker.md` - Redundant Docker README
-- ~~`docker-compose-fixed-auth.yml`~~ - **REMOVED** (obsolete Docker compose file)
+**Old Approach:**
+- Multiple docker-compose variants (6+ files)
+- Complex multi-container setups with separate Celery containers
+- Outdated environment variable structure
+- Docker Swarm and Kubernetes examples (overly complex for home use)
 
-### Historical Status Files (Cleaned Up)
-- ~~`REFACTORING_COMPLETE.md`~~ - **REMOVED** (outdated refactoring completion status)
-- ~~`WEBSITE_FIXED.md`~~ - **REMOVED** (outdated website fix documentation)
+**Current Approach:**
+- Single `docker-compose.yml` in root directory
+- Simplified 3-container architecture (mvidarr, mariadb, redis)
+- FastAPI + Celery managed by supervisord in single container
+- Clear `.env` file configuration
+- Focus on consumer-grade self-hosting
 
-## Current Documentation
+**Replacement**: See [docs/installation.md](../installation.md) for current deployment instructions.
 
-For current documentation, see:
-- Main `README.md` - Updated project overview and quick start
-- `docs/USER-GUIDE.md` - Current user documentation
-- `docs/INSTALLATION-GUIDE.md` - Current installation instructions
-- `docs/FINAL_PROJECT_STATUS.md` - Current project status
-- `docker-compose.yml` - Current Docker configuration
+## Why Files Are Archived
 
-## Archive Date
-July 30, 2025 - Documentation reorganization and cleanup
+MVidarr v0.10.0-beta.1 introduced significant simplifications to the deployment process:
+
+1. **Simplified Docker Architecture** - Reduced from 6+ containers to 3 containers
+2. **Single Configuration File** - One docker-compose.yml instead of 5 variants
+3. **Clear Environment Setup** - Single .env.example with inline documentation
+4. **Consumer Focus** - Removed enterprise/cloud deployment complexity
+
+These changes make MVidarr easier to deploy and maintain for home users, which is the primary target audience.
+
+## Reference
+
+If you need advanced deployment patterns (Kubernetes, Docker Swarm, cloud deployments), the archived guides contain historical reference information. However, these are not officially supported or tested with current versions.
+
+For current deployment information:
+- [Installation Guide](../installation.md) - Main installation documentation
+- [README.md](../../README.md) - Quick start guide
+- [.env.example](../../.env.example) - Configuration template
+- [docker-compose.yml](../../docker-compose.yml) - Production deployment file
+
+## Archive Policy
+
+Documentation is archived when:
+1. It references deprecated deployment methods
+2. It conflicts with current best practices
+3. It adds unnecessary complexity for the target audience
+4. Maintained for historical reference only
+
+**Last Updated**: December 3, 2025
