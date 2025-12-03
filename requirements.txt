@@ -1,11 +1,15 @@
 # MVidarr Enhanced - Production Dependencies
 
-# Core Framework - FastAPI Only (Flask removed in 0.9.9)
+# Core Framework - FastAPI primary, Flask for backwards compatibility
 fastapi==0.123.0
 starlette>=0.50.0  # Security: Fix GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 uvicorn[standard]==0.24.0
 python-multipart==0.0.20
 jinja2==3.1.6
+
+# Flask - Optional backwards compatibility (to be fully removed in future release)
+Flask==3.1.0
+Flask-Session==0.8.0
 
 # Database
 SQLAlchemy==2.0.23
