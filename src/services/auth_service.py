@@ -6,7 +6,14 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-from flask import session as flask_session
+# Optional Flask support - only needed for Flask-based routes
+try:
+    from flask import session as flask_session
+    FLASK_AVAILABLE = True
+except ImportError:
+    flask_session = None
+    FLASK_AVAILABLE = False
+
 from sqlalchemy.exc import IntegrityError
 
 from src.database.connection import get_db
@@ -700,9 +707,15 @@ class AuthService:
         """
         Get current authenticated user from Flask session
 
+        Note: Only works when Flask is available. For FastAPI, use request-based auth.
+
         Returns:
             User data dict if authenticated, None otherwise
         """
+        if not FLASK_AVAILABLE or flask_session is None:
+            # Flask not available - return None (FastAPI should use request-based auth)
+            return None
+
         session_token = flask_session.get("session_token")
         if session_token:
             return AuthService.get_user_by_session_token(session_token)
