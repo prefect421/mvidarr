@@ -89,10 +89,10 @@ docker-compose up -d
 
 **Production Docker Image:**
 ```bash
-# Use the latest release
+# Use the latest beta release
 docker pull ghcr.io/prefect421/mvidarr:latest
 # Or specific version
-docker pull ghcr.io/prefect421/mvidarr:v0.9.9
+docker pull ghcr.io/prefect421/mvidarr:v0.10.0-beta.1
 ```
 
 **Access the application:**
@@ -250,4 +250,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v1.0.0-dev** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.10.0-beta.1** - Built with ❤️ for music video enthusiasts
