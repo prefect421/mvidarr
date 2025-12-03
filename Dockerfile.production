@@ -122,5 +122,5 @@ RUN find /app -type d -exec chmod 755 {} \; && \
 # Expose the application port
 EXPOSE 5000
 
-# Default command - run supervisord to manage FastAPI + Celery
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Use entrypoint script for initialization and startup
+ENTRYPOINT ["/app/entrypoint.sh"]
