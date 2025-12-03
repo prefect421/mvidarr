@@ -74,31 +74,48 @@
 
 ### Docker Deployment (Recommended)
 
-**Simplified 3-Container Architecture:**
-MVidarr uses a streamlined consumer-grade deployment with only 3 containers:
+**Simple 3-Container Architecture:**
 - **mvidarr** - FastAPI application + Celery worker (managed by supervisord)
 - **mariadb** - Database
 - **redis** - Cache and job queue
 
-**Quick Start:**
-```bash
-git clone https://github.com/prefect421/mvidarr.git
-cd mvidarr
-docker-compose up -d
-```
+**Installation Steps:**
 
-**Production Docker Image:**
-```bash
-# Use the latest beta release
-docker pull ghcr.io/prefect421/mvidarr:latest
-# Or specific version
-docker pull ghcr.io/prefect421/mvidarr:v0.10.0-beta.1
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/prefect421/mvidarr.git
+   cd mvidarr
+   ```
 
-**Access the application:**
-- Open your browser to `http://localhost:5000`
-- Complete the first-run installation wizard
-- Configure directories, API keys, and preferences
+2. **Create your environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Edit .env with your configuration:**
+   ```bash
+   nano .env  # or use your preferred editor
+   ```
+
+   **Required settings:**
+   - `DB_PASSWORD` - Set a secure database password
+   - `MYSQL_ROOT_PASSWORD` - Set a secure root password
+   - `SECRET_KEY` - Generate with: `openssl rand -hex 32`
+   - `MUSIC_VIDEOS_PATH` - Path to your music video collection
+
+4. **Start MVidarr:**
+   ```bash
+   docker-compose up -d
+   ```
+
+5. **Access the application:**
+   - Open your browser to `http://localhost:5000`
+   - Default login: `admin` / `admin` (change immediately)
+   - Complete the first-run setup wizard
+
+**Docker Images:**
+- **Latest:** `ghcr.io/prefect421/mvidarr:latest`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.10.0-beta.1`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
