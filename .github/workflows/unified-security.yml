@@ -52,9 +52,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-        # Install security tools
-        pip install pip-audit safety bandit[toml] semgrep
+
+        # Install security tools (excluding semgrep - using official action instead)
+        pip install pip-audit safety bandit[toml]
 
     - name: Determine scan scope
       id: scan-scope
@@ -98,10 +98,13 @@ jobs:
 
     - name: Run Semgrep (Security Pattern Analysis)
       if: steps.scan-scope.outputs.scan_type == 'comprehensive' || steps.scan-scope.outputs.scan_type == 'quick'
-      run: |
-        echo "🎯 Running security pattern analysis..."
-        semgrep --config=p/security-audit src/ --json --output=semgrep-results.json || true
-        semgrep --config=p/security-audit src/ || true
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: >-
+          p/security-audit
+          p/owasp-top-ten
+        generateSarif: true
+      continue-on-error: true
 
     # Secret Detection
     - name: Install Secret Detection Tools
