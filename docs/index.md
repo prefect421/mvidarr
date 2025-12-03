@@ -25,24 +25,25 @@ title: Home
 - **🔐 User Authentication** - Role-based access control with security features
 - **🌙 Dark/Light Themes** - Multiple theme options with automatic switching
 
-## 🚀 **NEW in v0.9.9 - Production-Ready Code Cleanup & Security Hardening!**
+## 🚀 **NEW in v0.10.0-beta.1 - First Beta Release with Critical Fixes!**
 
-**🎉 MAJOR MILESTONE: Production-Ready with Enterprise-Grade Code Quality**
+**🔒 BETA RELEASE: Security & Stability Improvements**
 
-- **🎥 Real-Time MKV Transcoding** - Smart FFmpeg codec detection with adaptive remux/transcode
-- **♻️ Massive Code Refactoring** - 10 large files refactored into 58 modular files (71.4% size reduction)
-- **🧹 Complete Code Cleanup** - 607 unused imports removed (100% cleanup across 264 files)
-- **🔒 Security Hardening** - 30 medium-severity issues fixed (69.8% improvement, zero high-severity)
-- **📚 Complete Documentation** - Comprehensive API docs, scripts guides, and release notes
-- **🧪 Rigorous Testing** - 222/230 E2E tests passing (96.5%), 100% critical smoke tests
-- **📦 Script Organization** - 26 obsolete scripts archived with comprehensive documentation
+- **🐛 Chrome Fix** - Resolved STATUS_BREAKPOINT crash when seeking videos with subtitles
+- **🔒 Security Updates** - Fixed 10 critical vulnerabilities + FastAPI/Starlette DoS patches
+- **🐛 MariaDB Health Check** - Updated to use mariadb-admin instead of deprecated mysqladmin
+- **📚 Browser Compatibility** - Comprehensive guide for Chrome, Firefox, Safari, Edge support
+- **🔧 Installation Wizard** - Guided first-run setup with validation
+- **🎬 Video Import** - Reliable import system with duplicate detection
+- **📊 Performance Monitoring** - System health dashboard and diagnostics
+- **🐳 Docker Improvements** - Better health checks and container reliability
 
-### **v0.9.9 Achievements:**
-- ✅ **MKV Video Support**: Real-time transcoding with intelligent codec detection
-- ✅ **Code Architecture**: 15,133 lines → 58 modular files with backward compatibility
-- ✅ **Security**: SQL injection protection, HMAC verification, XXE prevention, HTTP timeouts
-- ✅ **Documentation**: API_DOCUMENTATION.md (17 routers, 200+ endpoints), scripts/README.md
-- ✅ **Production Ready**: Zero blocking issues, comprehensive testing, complete cleanup
+### **v0.10.0-beta.1 Achievements:**
+- ✅ **Chrome Stability**: Fixed crash during video seeking with active subtitles
+- ✅ **Security**: 10 critical CVEs resolved, DoS vulnerability patches applied
+- ✅ **Documentation**: New browser compatibility guide and enhanced troubleshooting
+- ✅ **CI/CD**: Fixed security audit workflow with official Semgrep action
+- ✅ **Beta Testing**: Active development phase, production validation in progress
 
 ## 🚀 Quick Start
 
@@ -56,8 +57,11 @@ docker-compose up -d
 
 **Production Docker Image:**
 ```bash
-# Use the latest production-ready release
-docker pull ghcr.io/prefect421/mvidarr:v0.9.9
+# Use the latest beta release
+docker pull ghcr.io/prefect421/mvidarr:v0.10.0-beta.1
+
+# Or use the latest tag (points to current beta)
+docker pull ghcr.io/prefect421/mvidarr:latest
 ```
 
 **Access the application:**
@@ -82,4 +86,4 @@ This project is licensed under the MIT License - see the [LICENSE]({{ site.githu
 
 ---
 
-**MVidarr v{{ site.data.version.current | default: "0.9.9" }}** - Built with ❤️ for music video enthusiasts
+**MVidarr v{{ site.data.version.current | default: "0.10.0-beta.1" }}** - Built with ❤️ for music video enthusiasts
