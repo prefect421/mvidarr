@@ -6,7 +6,7 @@ Provides Spotify-specific API endpoints for artist search and metadata
 import asyncio
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 # from src.middleware.fastapi_auth_middleware import require_authentication  # Temporarily disabled
 from src.utils.logger import get_logger
@@ -448,7 +448,7 @@ async def test_spotify_integration():
 
 
 @router.post("/authorize")
-async def authorize_spotify():
+async def authorize_spotify(request: Request):
     """Get Spotify authorization URL for user authentication"""
     try:
         if not spotify_available:
@@ -458,9 +458,15 @@ async def authorize_spotify():
 
         client_id = settings.get("spotify_client_id")
         client_secret = settings.get("spotify_client_secret")
-        redirect_uri = settings.get(
-            "spotify_redirect_uri", "http://localhost:5000/api/spotify/callback"
-        )
+
+        # Construct redirect URI dynamically from request
+        redirect_uri = settings.get("spotify_redirect_uri")
+        if not redirect_uri:
+            # Auto-detect from request headers
+            scheme = request.url.scheme
+            host = request.headers.get("host", "localhost:5000")
+            redirect_uri = f"{scheme}://{host}/api/spotify/callback"
+            logger.info(f"Auto-detected redirect URI from request: {redirect_uri}")
 
         if not client_id or not client_secret:
             raise HTTPException(
@@ -496,6 +502,7 @@ async def authorize_spotify():
 
 @router.get("/callback")
 async def spotify_callback(
+    request: Request,
     code: Optional[str] = Query(None, description="Authorization code from Spotify"),
     error: Optional[str] = Query(None, description="Error from Spotify OAuth"),
 ):
@@ -521,9 +528,17 @@ async def spotify_callback(
 
         client_id = settings.get("spotify_client_id")
         client_secret = settings.get("spotify_client_secret")
-        redirect_uri = settings.get(
-            "spotify_redirect_uri", "http://localhost:5000/api/spotify/callback"
-        )
+
+        # Construct redirect URI dynamically from request
+        redirect_uri = settings.get("spotify_redirect_uri")
+        if not redirect_uri:
+            # Auto-detect from request headers
+            scheme = request.url.scheme
+            host = request.headers.get("host", "localhost:5000")
+            redirect_uri = f"{scheme}://{host}/api/spotify/callback"
+            logger.info(
+                f"Auto-detected redirect URI from callback request: {redirect_uri}"
+            )
 
         if not client_id or not client_secret:
             logger.error("Spotify credentials not configured")
