@@ -408,26 +408,13 @@ def upgrade(connection):
                 if admin_user_result:
                     admin_user_id = admin_user_result[0]
                 else:
-                    # No admin user exists yet - use first user or create system marker
-                    any_user_result = connection.execute(
-                        text("SELECT id FROM users LIMIT 1")
-                    ).fetchone()
-
-                    if any_user_result:
-                        admin_user_id = any_user_result[0]
-                    else:
-                        # No users at all - create a system user for built-in themes
-                        connection.execute(
-                            text("""
-                                INSERT INTO users (username, password_hash, email, role, is_active, is_email_verified, failed_login_attempts, two_factor_enabled, created_at)
-                                VALUES ('system', '', 'system@mvidarr.local', 'ADMIN', TRUE, FALSE, 0, FALSE, CURRENT_TIMESTAMP)
-                            """)
-                        )
-                        system_user_result = connection.execute(
-                            text("SELECT id FROM users WHERE username = 'system'")
-                        ).fetchone()
-                        admin_user_id = system_user_result[0]
-                        logger.info("Created system user for built-in themes")
+                    # No admin user exists yet - skip theme seeding
+                    # Themes will be seeded after the first admin is created via the wizard
+                    logger.info(
+                        "Skipping built-in theme seeding - no admin user exists yet. "
+                        "Themes will be seeded after first admin creation via Installation Wizard."
+                    )
+                    return  # Exit migration - themes will be seeded later
 
                 connection.execute(
                     text(
