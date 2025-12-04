@@ -84,20 +84,17 @@ def ensure_builtin_themes_exist():
                 admin_user = result.fetchone()
 
             if not admin_user:
-                # Create system user
-                logger.info("No users found - creating system user for themes")
-                connection.execute(
-                    text(
-                        """
-                    INSERT INTO users (username, password_hash, email, role, created_at)
-                    VALUES ('system', '', 'system@mvidarr.local', 'ADMIN', CURRENT_TIMESTAMP)
-                """
-                    )
+                # No users exist yet - skip theme seeding
+                # Themes will be seeded after the first admin is created via Installation Wizard
+                logger.info(
+                    "No users found - skipping built-in theme seeding. "
+                    "Themes will be seeded after first admin creation via Installation Wizard."
                 )
-                result = connection.execute(
-                    text("SELECT id FROM users WHERE username = 'system'")
+                return (
+                    True,
+                    0,
+                    "Skipped - no admin user exists yet (will seed after wizard completion)",
                 )
-                admin_user = result.fetchone()
 
             admin_user_id = admin_user[0]
 
