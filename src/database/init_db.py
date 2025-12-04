@@ -210,39 +210,16 @@ def ensure_default_credentials(force_reset=False):
 
 
 def create_admin_user():
-    """Create default admin user"""
-    from src.database.connection import get_db
-    from src.database.models import UserRole
+    """
+    DEPRECATED: Admin user creation is now handled by the Installation Wizard (v1.0.0)
 
-    try:
-        with get_db() as session:
-            # Check if any users exist
-            existing_users = session.query(User).count()
-
-            if existing_users == 0:
-                # Create default admin user with secure password
-                # Password: MVidarr@P4ss! (meets all security requirements, avoids common patterns)
-                secure_password = "MVidarr@P4ss!"
-                admin_user = User(
-                    username="admin",
-                    email="admin@localhost",
-                    password=secure_password,
-                    role=UserRole.ADMIN,
-                )
-                session.add(admin_user)
-                session.commit()
-
-                logger.info(
-                    f"Created default admin user (username: admin, password: {secure_password})"
-                )
-            else:
-                logger.info(f"Users already exist ({existing_users} entries)")
-
-        return True
-
-    except Exception as e:
-        logger.error(f"Failed to create admin user: {e}")
-        return False
+    This function is kept for backwards compatibility but is no longer called
+    during database initialization. Admin users are created through the wizard UI.
+    """
+    logger.warning(
+        "create_admin_user() is deprecated - admin creation handled by Installation Wizard"
+    )
+    return True  # Return True to avoid breaking old code that might call this
 
 
 def init_built_in_themes():
@@ -360,10 +337,10 @@ def initialize_database():
         logger.error("Failed to ensure default credentials")
         return False
 
-    # Create admin user
-    if not create_admin_user():
-        logger.error("Failed to create admin user")
-        return False
+    # NOTE: Admin user creation is now handled by the Installation Wizard (v1.0.0)
+    # We no longer auto-create a default admin user during database initialization.
+    # Users will create their first admin account through the wizard UI.
+    logger.info("Skipping default admin user creation - handled by Installation Wizard")
 
     # Initialize built-in themes
     if not init_built_in_themes():
