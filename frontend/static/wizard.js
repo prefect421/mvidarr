@@ -141,6 +141,20 @@ async function loadWizardState() {
             // Update local state from server
             if (data.config_data) {
                 wizardState.config = { ...wizardState.config, ...data.config_data };
+
+                // Pre-populate API fields from config_data (e.g., from environment variables)
+                if (data.config_data.apis) {
+                    const imvdbInput = document.getElementById('imvdbApiKey');
+                    if (imvdbInput && data.config_data.apis.imvdb) {
+                        imvdbInput.value = data.config_data.apis.imvdb;
+                        console.log('✅ Pre-populated IMVDB API key from environment');
+                    }
+
+                    // YouTube API key (if we add a field for it later)
+                    if (data.config_data.apis.youtube_api_key) {
+                        console.log('✅ YouTube API key available from environment');
+                    }
+                }
             }
 
             // Store import job ID if present
@@ -352,6 +366,83 @@ async function submitDirectories() {
 // ============================================================================
 // STEP 4: API CONFIGURATION
 // ============================================================================
+
+/**
+ * Handle YouTube cookies file upload
+ * Reads the file content and populates the hidden textarea
+ */
+async function handleCookieFileUpload(fileInput) {
+    const file = fileInput.files[0];
+    const validationDiv = document.getElementById('youtubeValidation');
+    const errorDiv = document.getElementById('youtubeError');
+
+    // Clear previous validation/errors
+    validationDiv.innerHTML = '';
+    errorDiv.textContent = '';
+
+    if (!file) {
+        return;
+    }
+
+    // Validate file type
+    const validExtensions = ['.txt', '.cookies'];
+    const fileName = file.name.toLowerCase();
+    const isValidType = validExtensions.some(ext => fileName.endsWith(ext));
+
+    if (!isValidType) {
+        errorDiv.textContent = 'Please upload a .txt or .cookies file';
+        fileInput.value = ''; // Clear the input
+        return;
+    }
+
+    // Validate file size (max 1MB for cookies file)
+    const maxSize = 1024 * 1024; // 1MB
+    if (file.size > maxSize) {
+        errorDiv.textContent = 'File too large. Cookies file should be less than 1MB';
+        fileInput.value = '';
+        return;
+    }
+
+    try {
+        // Read file content
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+
+            // Basic validation - check if it looks like a cookies file
+            if (content.trim().length === 0) {
+                errorDiv.textContent = 'File is empty';
+                fileInput.value = '';
+                return;
+            }
+
+            // Populate hidden textarea with file content
+            const cookiesTextarea = document.getElementById('youtubeCookies');
+            cookiesTextarea.value = content;
+
+            // Show success message
+            validationDiv.innerHTML = `
+                <div class="validation-badge success" style="margin-top: 0.5rem;">
+                    <iconify-icon icon="mdi:check-circle"></iconify-icon>
+                    Cookies file loaded (${file.name})
+                </div>
+            `;
+
+            console.log(`✅ Loaded YouTube cookies from file: ${file.name}`);
+        };
+
+        reader.onerror = function() {
+            errorDiv.textContent = 'Error reading file. Please try again.';
+            fileInput.value = '';
+        };
+
+        reader.readAsText(file);
+    } catch (error) {
+        console.error('Error reading cookies file:', error);
+        errorDiv.textContent = 'Error reading file. Please try again.';
+        fileInput.value = '';
+    }
+}
 
 async function testIMVDb() {
     const apiKeyInput = document.getElementById('imvdbApiKey');

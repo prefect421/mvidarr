@@ -206,7 +206,31 @@ async def get_wizard_status(
             session.commit()
             session.refresh(wizard_state)
 
-        return WizardStateResponse(**wizard_state.to_dict())
+        # Pre-populate config_data with environment variables (if not already set)
+        config_data = wizard_state.config_data or {}
+
+        # Pre-populate API keys from environment if not already configured
+        if not config_data.get("apis"):
+            config_data["apis"] = {}
+
+        # IMVDB API key from environment (only if not already set by user)
+        if not config_data["apis"].get("imvdb"):
+            env_imvdb_key = os.getenv("IMVDB_API_KEY", "").strip()
+            if env_imvdb_key:
+                config_data["apis"]["imvdb"] = env_imvdb_key
+                logger.info("Pre-populated IMVDB_API_KEY from environment")
+
+        # YouTube API key from environment (only if not already set by user)
+        if not config_data["apis"].get("youtube_api_key"):
+            env_youtube_key = os.getenv("YOUTUBE_API_KEY", "").strip()
+            if env_youtube_key:
+                config_data["apis"]["youtube_api_key"] = env_youtube_key
+                logger.info("Pre-populated YOUTUBE_API_KEY from environment")
+
+        # Return wizard state with pre-populated config_data
+        wizard_dict = wizard_state.to_dict()
+        wizard_dict["config_data"] = config_data
+        return WizardStateResponse(**wizard_dict)
 
     except Exception as e:
         logger.error(f"Error getting wizard status: {str(e)}")
