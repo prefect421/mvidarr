@@ -903,22 +903,30 @@
                     </p>
 
                     <div class="form-group">
-                        <label class="form-label" for="youtubeCookies">
-                            YouTube Cookies
+                        <label class="form-label" for="youtubeCookiesFile">
+                            Upload Cookies File
                         </label>
-                        <textarea
-                            id="youtubeCookies"
-                            name="youtubeCookies"
+                        <input
+                            type="file"
+                            id="youtubeCookiesFile"
+                            name="youtubeCookiesFile"
                             class="form-input"
-                            rows="4"
-                            placeholder="Paste your YouTube cookies content here"
-                        ></textarea>
+                            accept=".txt,.cookies"
+                            onchange="handleCookieFileUpload(this)"
+                        >
                         <div class="form-help">
-                            Export cookies from your browser using a cookies.txt extension
+                            Export cookies from your browser using a cookies.txt extension (e.g., "cookies.txt")
                         </div>
                         <div class="form-error" id="youtubeError"></div>
                         <div id="youtubeValidation"></div>
                     </div>
+
+                    <!-- Hidden textarea to store cookie content (populated from file upload) -->
+                    <textarea
+                        id="youtubeCookies"
+                        name="youtubeCookies"
+                        style="display: none;"
+                    ></textarea>
                 </div>
                 <div class="wizard-actions">
                     <button type="button" class="btn btn-secondary" onclick="previousStep()">
