@@ -419,8 +419,8 @@ def upgrade(connection):
                         # No users at all - create a system user for built-in themes
                         connection.execute(
                             text("""
-                                INSERT INTO users (username, password_hash, email, role, is_active, created_at)
-                                VALUES ('system', '', 'system@mvidarr.local', 'ADMIN', TRUE, CURRENT_TIMESTAMP)
+                                INSERT INTO users (username, password_hash, email, role, is_active, is_email_verified, failed_login_attempts, two_factor_enabled, created_at)
+                                VALUES ('system', '', 'system@mvidarr.local', 'ADMIN', TRUE, FALSE, 0, FALSE, CURRENT_TIMESTAMP)
                             """)
                         )
                         system_user_result = connection.execute(
