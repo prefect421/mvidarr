@@ -44,9 +44,8 @@ find /app/data -type f -exec chmod 644 {} \;
 find /app/logs -type d -exec chmod 755 {} \;
 find /app/logs -type f -exec chmod 644 {} \;
 
-# Create initialization marker
-touch /app/data/database/.initialized 2>/dev/null || true
-chown "$PUID:$PGID" /app/data/database/.initialized 2>/dev/null || true
+# NOTE: Do NOT create initialization marker here - it should only be created
+# AFTER successful database initialization (see line ~117)
 
 # Set umask
 UMASK_SET=${UMASK_SET:-022}
@@ -115,6 +114,7 @@ except Exception as e:
     if [ $? -eq 0 ]; then
         echo "✅ Database initialization completed successfully"
         touch /app/data/database/.initialized
+        chown "$PUID:$PGID" /app/data/database/.initialized 2>/dev/null || true
     else
         echo "❌ Database initialization failed - check logs above"
         echo "🔄 Attempting to start application anyway (database may exist)..."
