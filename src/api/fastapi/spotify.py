@@ -212,7 +212,7 @@ async def get_related_artists(
 
 @router.get("/playlists")
 async def get_user_playlists(
-    limit: int = Query(20, description="Number of playlists to return", ge=1, le=50),
+    limit: int = Query(50, description="Number of playlists to return", ge=1, le=50),
     offset: int = Query(0, description="Offset for pagination", ge=0),
 ):
     """Get current user's Spotify playlists"""
@@ -220,41 +220,62 @@ async def get_user_playlists(
         if not spotify_available:
             raise HTTPException(status_code=503, detail="Spotify service not available")
 
-        logger.info("Getting Spotify user playlists")
-        spotify_service = await get_async_spotify_service()
+        from src.services.spotify_service import SpotifyService
 
-        # Mock response since this requires OAuth authentication
-        # In production, this would require proper user authentication
+        logger.info(f"Getting Spotify user playlists (limit={limit}, offset={offset})")
+
+        # Create SpotifyService instance (will load access token from settings)
+        spotify = SpotifyService()
+        spotify._load_settings()
+
+        # Check if user is authenticated
+        if not spotify.access_token:
+            raise HTTPException(
+                status_code=401,
+                detail="Not authenticated with Spotify. Please authorize first."
+            )
+
+        # Call Spotify API to get user's playlists
+        result = spotify.get_user_playlists(limit=limit, offset=offset)
+
+        if not result or "items" not in result:
+            logger.warning("No playlists data returned from Spotify API")
+            return {"playlists": [], "total": 0}
+
+        # Transform Spotify API response to match frontend expectations
+        playlists = []
+        for item in result.get("items", []):
+            playlists.append({
+                "id": item.get("id"),
+                "name": item.get("name"),
+                "description": item.get("description", ""),
+                "public": item.get("public", False),
+                "tracks_total": item.get("tracks", {}).get("total", 0),
+                "owner": {
+                    "id": item.get("owner", {}).get("id"),
+                    "display_name": item.get("owner", {}).get("display_name")
+                },
+                "images": item.get("images", []),
+                "external_url": item.get("external_urls", {}).get("spotify")
+            })
+
+        logger.info(f"Retrieved {len(playlists)} playlists from Spotify")
+
         return {
-            "items": [
-                {
-                    "id": "mock_playlist_1",
-                    "name": "My Music Videos",
-                    "description": "Personal collection of music videos",
-                    "public": False,
-                    "tracks": {"total": 50},
-                    "owner": {"id": "user123", "display_name": "User"},
-                    "images": [],
-                },
-                {
-                    "id": "mock_playlist_2",
-                    "name": "Favorites",
-                    "description": "My favorite tracks",
-                    "public": True,
-                    "tracks": {"total": 25},
-                    "owner": {"id": "user123", "display_name": "User"},
-                    "images": [],
-                },
-            ],
-            "total": 2,
+            "playlists": playlists,
+            "total": result.get("total", len(playlists)),
             "limit": limit,
             "offset": offset,
-            "next": None,
-            "previous": None,
+            "next": result.get("next"),
+            "previous": result.get("previous"),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Spotify playlists error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=500, detail=f"Failed to get playlists: {str(e)}"
         )
