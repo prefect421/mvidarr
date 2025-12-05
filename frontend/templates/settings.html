@@ -3379,21 +3379,23 @@ function syncYouTubePlaylists() {
 
 function testSpotifyIntegration() {
     showIntegrationLoading('Spotify');
-    
+
     fetch('/api/spotify/test', {
         method: 'POST'
     })
     .then(response => response.json())
     .then(data => {
-        if (data.status === 'success') {
-            showSuccess('Spotify integration test passed! API credentials are valid.');
+        if (data.success) {
+            const message = data.note || 'Spotify service is available';
+            showSuccess('Spotify integration test passed! ' + message);
         } else {
-            showError('Spotify integration test failed: ' + data.message);
+            const errorMsg = data.error || 'Unknown error';
+            showError('Spotify integration test failed: ' + errorMsg);
         }
     })
     .catch(error => {
         console.error('Error testing Spotify integration:', error);
-        showError('Spotify integration test failed: ' + error.message);
+        showError('Spotify integration test failed: ' + (error.message || 'Unknown error'));
     });
 }
 
