@@ -209,7 +209,10 @@ class SpotifyService:
         if not self.refresh_token:
             raise ValueError("No refresh token available")
 
-        credentials = f"{self.client_id}:{self.client_secret}"
+        if not self._client_id or not self._client_secret:
+            raise ValueError("Spotify client credentials not configured")
+
+        credentials = f"{self._client_id}:{self._client_secret}"
         encoded_credentials = base64.b64encode(credentials.encode()).decode()
 
         headers = {
@@ -238,6 +241,12 @@ class SpotifyService:
             # Calculate expiration time
             expires_in = token_data.get("expires_in", 3600)
             self.token_expires = datetime.now() + timedelta(seconds=expires_in)
+
+            # Save new token to settings database
+            settings.set("spotify_access_token", self.access_token)
+            if token_data.get("refresh_token"):
+                settings.set("spotify_refresh_token", token_data["refresh_token"])
+            settings.set("spotify_token_expires_in", expires_in)
 
             logger.info("Successfully refreshed Spotify access token")
             return token_data
@@ -290,7 +299,7 @@ class SpotifyService:
             self.refresh_access_token()
 
     def _make_request(self, endpoint: str, params: Dict = None) -> Dict:
-        """Make authenticated request to Spotify API"""
+        """Make authenticated request to Spotify API with automatic token refresh"""
         self._ensure_valid_token()
 
         headers = {
@@ -306,6 +315,29 @@ class SpotifyService:
             )
             response.raise_for_status()
             return response.json()
+
+        except requests.HTTPError as e:
+            # If 401 Unauthorized, try to refresh token and retry once
+            if e.response.status_code == 401 and self.refresh_token:
+                logger.info("Access token expired, attempting to refresh...")
+                try:
+                    self.refresh_access_token()
+
+                    # Retry request with new token
+                    headers["Authorization"] = f"Bearer {self.access_token}"
+                    response = requests.get(
+                        url, headers=headers, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+                    )
+                    response.raise_for_status()
+                    logger.info("Successfully retried request after token refresh")
+                    return response.json()
+
+                except Exception as refresh_error:
+                    logger.error(f"Token refresh failed: {refresh_error}")
+                    raise
+
+            logger.error(f"Spotify API request failed: {e}")
+            raise
 
         except requests.RequestException as e:
             logger.error(f"Spotify API request failed: {e}")
