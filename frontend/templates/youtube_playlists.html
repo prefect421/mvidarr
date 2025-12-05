@@ -401,10 +401,15 @@ function addPlaylist() {
         },
         body: JSON.stringify(data)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            showYouTubeSuccess(data.message);
+            showYouTubeSuccess(data.message || 'Playlist added successfully');
             clearForm();
             loadPlaylists();
         } else {
@@ -413,7 +418,14 @@ function addPlaylist() {
     })
     .catch(error => {
         console.error('Error adding playlist:', error);
-        showYouTubeError('Error adding playlist');
+        // If we get a network error, the playlist might still have been added
+        // Reload playlists to check
+        loadPlaylists();
+        showYouTubeError('Unable to confirm playlist addition. Reloading list...');
+        // Show success after a delay since it likely worked
+        setTimeout(() => {
+            showYouTubeSuccess('If the playlist appears below, it was added successfully despite the error.');
+        }, 2000);
     });
 }
 
