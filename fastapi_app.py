@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from src.api.fastapi.logging_middleware import setup_logging_middleware
 from src.api.fastapi.wizard_middleware import setup_wizard_middleware
@@ -407,6 +408,15 @@ app.add_middleware(
     allow_headers=["*"],
     max_age=86400,  # Cache preflight requests for 24 hours
 )
+
+# Add proxy headers middleware for HTTPS reverse proxy support
+# This allows FastAPI to trust X-Forwarded-* headers from reverse proxies
+# Fixes mixed content issues when accessing via HTTPS proxy (e.g., https://mvidarr.prefect42.com)
+app.add_middleware(
+    ProxyHeadersMiddleware,
+    trusted_hosts=["*"],  # Trust all proxies - adjust for production security
+)
+logger.info("✅ Proxy headers middleware enabled for reverse proxy support")
 
 # Add analytics middleware - Phase 3 Week 36
 from src.middleware.analytics_middleware import AnalyticsMiddleware
