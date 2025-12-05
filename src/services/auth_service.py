@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple
 # Optional Flask support - only needed for Flask-based routes
 try:
     from flask import session as flask_session
+
     FLASK_AVAILABLE = True
 except ImportError:
     flask_session = None
