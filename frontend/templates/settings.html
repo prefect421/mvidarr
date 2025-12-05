@@ -3405,7 +3405,7 @@ function authorizeSpotify() {
     .then(data => {
         if (data.authorization_url) {
             window.open(data.authorization_url, '_blank');
-            showInfoMessage('Please complete authorization in the new window, then test the connection.');
+            showInfo('Please complete authorization in the new window, then test the connection.');
         } else {
             showError('Failed to get Spotify authorization URL: ' + data.error);
         }
@@ -3465,7 +3465,7 @@ function authorizeLastfm() {
     .then(data => {
         if (data.auth_url) {
             window.open(data.auth_url, '_blank');
-            showInfoMessage('Please complete authorization in the new window, then test the connection.');
+            showInfo('Please complete authorization in the new window, then test the connection.');
         } else {
             showError('Failed to get Last.fm authorization URL: ' + data.error);
         }
@@ -3580,7 +3580,8 @@ function showIntegrationLoading(service) {
     if (typeof showInfo === 'function') {
         showInfo(`Testing ${service} integration...`);
     } else {
-        showInfoMessage(`Testing ${service} integration...`);
+        // Fallback if showInfo is not available
+        console.log(`Testing ${service} integration...`);
     }
 }
 
