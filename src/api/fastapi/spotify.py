@@ -392,27 +392,75 @@ async def get_user_profile():
 
 @router.get("/status")
 async def get_spotify_status():
-    """Get Spotify service status - no authentication required"""
+    """Get Spotify service status - checks configuration and authentication"""
     try:
         if not spotify_available:
             return {
                 "available": False,
+                "configured": False,
+                "authenticated": False,
                 "error": "Spotify service not configured",
                 "service": "Spotify Web API",
             }
 
-        # Don't test actual Spotify connection to avoid timeouts
-        # Just return that the service module is available
-        return {
+        from src.services.settings_service import settings
+
+        # Check if credentials are configured
+        client_id = settings.get("spotify_client_id")
+        client_secret = settings.get("spotify_client_secret")
+        configured = bool(client_id and client_secret)
+
+        if not configured:
+            return {
+                "available": True,
+                "configured": False,
+                "authenticated": False,
+                "service": "Spotify Web API",
+            }
+
+        # Check if we have access tokens (authenticated)
+        access_token = settings.get("spotify_access_token")
+        refresh_token = settings.get("spotify_refresh_token")
+        authenticated = bool(access_token or refresh_token)
+
+        response = {
             "available": True,
-            "authenticated": False,  # Would require OAuth setup
+            "configured": True,
+            "authenticated": authenticated,
             "service": "Spotify Web API",
-            "note": "Service available but requires OAuth authentication for full functionality",
         }
+
+        # If authenticated, try to get user profile
+        if authenticated and access_token:
+            try:
+                import spotipy
+                from spotipy.oauth2 import SpotifyOAuth
+
+                sp = spotipy.Spotify(auth=access_token)
+                profile = sp.current_user()
+
+                response["profile"] = {
+                    "display_name": profile.get("display_name"),
+                    "email": profile.get("email"),
+                    "country": profile.get("country"),
+                    "followers": profile.get("followers"),
+                    "images": profile.get("images", []),
+                }
+            except Exception as profile_error:
+                logger.warning(f"Could not fetch Spotify profile: {profile_error}")
+                # Still return authenticated=True, just without profile data
+
+        return response
 
     except Exception as e:
         logger.error(f"Spotify status check error: {e}")
-        return {"available": False, "error": str(e), "service": "Spotify Web API"}
+        return {
+            "available": False,
+            "configured": False,
+            "authenticated": False,
+            "error": str(e),
+            "service": "Spotify Web API",
+        }
 
 
 @router.post("/test")
