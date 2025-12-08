@@ -585,6 +585,11 @@ async def update_artist(
             wikipedia_url=getattr(artist, "wikipedia_url", None),
             musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
+            monitored=getattr(
+                artist, "monitored", True
+            ),  # Default to True for compatibility
+            auto_download=getattr(artist, "auto_download", False),  # Default to False
+            imvdb_metadata=artist.imvdb_metadata,  # Include metadata for song recommendations
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
