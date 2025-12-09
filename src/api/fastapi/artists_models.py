@@ -34,6 +34,11 @@ class ArtistResponse(BaseModel):
     imvdb_metadata: Optional[Dict[str, Any]] = (
         None  # Include metadata for song recommendations
     )
+    # Category 1 fields - Issue #174: Fields in database but were missing from API
+    keywords: Optional[List[str]] = None  # Video filtering keywords
+    genres: Optional[List[str]] = None  # Artist genres
+    labels: Optional[List[str]] = None  # Record labels
+    members: Optional[str] = None  # Band members
     video_count: int = 0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -70,6 +75,11 @@ class ArtistUpdateRequest(BaseModel):
     spotify_id: Optional[str] = None
     monitored: Optional[bool] = None
     auto_download: Optional[bool] = None
+    # Category 1 fields - Issue #174: Fields in database but were missing from API
+    keywords: Optional[List[str]] = None  # Video filtering keywords
+    genres: Optional[List[str]] = None  # Artist genres
+    labels: Optional[List[str]] = None  # Record labels
+    members: Optional[str] = None  # Band members
 
 
 class ArtistSearchRequest(BaseModel):

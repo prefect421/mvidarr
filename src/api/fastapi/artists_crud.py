@@ -423,6 +423,11 @@ async def get_artist(
             ),  # Default to True for compatibility
             auto_download=getattr(artist, "auto_download", False),  # Default to False
             imvdb_metadata=artist.imvdb_metadata,  # Include metadata for song recommendations
+            # Category 1 fields - Issue #174: Fields in database but were missing from API
+            keywords=artist.keywords,  # Video filtering keywords
+            genres=artist.genres,  # Artist genres
+            labels=artist.labels,  # Record labels
+            members=artist.members,  # Band members
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
@@ -590,6 +595,11 @@ async def update_artist(
             ),  # Default to True for compatibility
             auto_download=getattr(artist, "auto_download", False),  # Default to False
             imvdb_metadata=artist.imvdb_metadata,  # Include metadata for song recommendations
+            # Category 1 fields - Issue #174: Fields in database but were missing from API
+            keywords=artist.keywords,  # Video filtering keywords
+            genres=artist.genres,  # Artist genres
+            labels=artist.labels,  # Record labels
+            members=artist.members,  # Band members
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
