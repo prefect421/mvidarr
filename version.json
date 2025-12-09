@@ -2,7 +2,7 @@
   "version": "0.10.0-beta.2",
   "build_date": "2025-12-09T22:00:00.000000",
   "git_commit": "90163ae",
-  "git_branch": "dev",
+  "git_branch": "main",
   "release_name": "v0.10.0-beta.2 - Artist Settings & Field Sync Release",
   "features": [
     "🔒 Security: Resolved 10 critical vulnerabilities (werkzeug, python-multipart, jinja2)",
