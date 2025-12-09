@@ -433,6 +433,18 @@ app.add_middleware(
 )
 logger.info("✅ Proxy headers middleware enabled for reverse proxy support")
 
+# Add request size limit middleware for DoS prevention (Issue #171)
+from src.middleware.request_size_middleware import RequestSizeLimitMiddleware
+
+app.add_middleware(
+    RequestSizeLimitMiddleware,
+    max_upload_size=100 * 1024 * 1024,  # 100 MB for file uploads
+    max_form_size=10 * 1024 * 1024,  # 10 MB for form submissions
+)
+logger.info(
+    "✅ Request size limit middleware enabled (uploads: 100MB, forms: 10MB)"
+)
+
 # Add analytics middleware - Phase 3 Week 36
 from src.middleware.analytics_middleware import AnalyticsMiddleware
 
