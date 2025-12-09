@@ -110,9 +110,16 @@ class ArtistUpdateRequest(BaseModel):
     @field_validator("keywords", "genres", "labels", mode="before")
     @classmethod
     def empty_str_to_none_list(cls, v):
-        """Convert empty strings to None for list fields"""
-        if v == "" or v == []:
+        """Convert empty strings to None for list fields, and strings to lists"""
+        if v == "" or v == [] or v is None:
             return None
+        # If it's a string, split by comma and trim whitespace
+        if isinstance(v, str):
+            items = [item.strip() for item in v.split(",") if item.strip()]
+            return items if items else None
+        # If it's already a list, return it
+        if isinstance(v, list):
+            return v
         return v
 
     @field_validator("priority", "formed_year", "disbanded_year", mode="before")
