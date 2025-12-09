@@ -137,6 +137,14 @@ async def lifespan(app: FastAPI):
         await start_job_scheduler()
         logger.info("✅ Advanced job scheduler started")
 
+        # Start scheduler service for scheduled downloads and video discovery
+        logger.info("🔄 Starting scheduler service for downloads/discovery...")
+        from src.services.scheduler_service import scheduler_service
+
+        # Run scheduler.start() in thread executor (it's synchronous)
+        await asyncio.to_thread(scheduler_service.start)
+        logger.info("✅ Scheduler service started successfully")
+
         # ytdlp_service is already initialized and pending downloads resumed during import
         logger.info(
             "✅ ytdlp_service initialized (pending downloads auto-resumed during init)"
@@ -157,6 +165,13 @@ async def lifespan(app: FastAPI):
             logger.info("🔄 Stopping advanced job scheduler...")
             await stop_job_scheduler()
             logger.info("✅ Advanced job scheduler stopped")
+
+            # Stop scheduler service for scheduled downloads and video discovery
+            logger.info("🔄 Stopping scheduler service...")
+            from src.services.scheduler_service import scheduler_service
+
+            await asyncio.to_thread(scheduler_service.stop)
+            logger.info("✅ Scheduler service stopped")
 
             # Cleanup WebSocket system
             logger.info("🔄 Stopping WebSocket job progress system...")

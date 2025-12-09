@@ -421,6 +421,47 @@ async def get_production_health(session=Depends(get_db_session)):
         except Exception as e:
             services["celery"] = {"status": "not_configured"}
 
+        # Check scheduler service for scheduled downloads and video discovery
+        try:
+            from src.services.scheduler_service import scheduler_service
+            from src.services.settings_service import SettingsService
+
+            scheduler_info = {
+                "status": "healthy" if scheduler_service.running else "stopped",
+                "running": scheduler_service.running,
+                "downloads_enabled": SettingsService.get_bool(
+                    "auto_download_schedule_enabled", False
+                ),
+                "discovery_enabled": SettingsService.get_bool(
+                    "auto_discovery_schedule_enabled", False
+                ),
+            }
+
+            # Add next run time if scheduler is running
+            if scheduler_service.running:
+                next_run = scheduler_service.get_next_run_time()
+                if next_run:
+                    scheduler_info["next_run"] = next_run.isoformat()
+                else:
+                    scheduler_info["next_run"] = None
+
+            services["scheduler"] = scheduler_info
+
+            # Alert if scheduler should be running but isn't
+            downloads_enabled = scheduler_info["downloads_enabled"]
+            discovery_enabled = scheduler_info["discovery_enabled"]
+            if (downloads_enabled or discovery_enabled) and not scheduler_service.running:
+                alerts.append(
+                    "Scheduler service is not running but scheduled downloads/discovery are enabled"
+                )
+                overall_status = (
+                    "warning" if overall_status == "healthy" else overall_status
+                )
+
+        except Exception as e:
+            services["scheduler"] = {"status": "error", "error": str(e)}
+            logger.error(f"Error checking scheduler service: {e}")
+
         return ProductionHealthResponse(
             status=overall_status,
             timestamp=datetime.utcnow().isoformat(),
