@@ -9,7 +9,7 @@ in the Artists API endpoints.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ArtistResponse(BaseModel):
@@ -106,6 +106,28 @@ class ArtistUpdateRequest(BaseModel):
     instagram_url: Optional[str] = None  # Instagram profile URL
     quality_profile: Optional[str] = None  # Quality profile for downloads
     priority: Optional[int] = Field(None, ge=0)  # Artist priority for downloads
+
+    @field_validator("keywords", "genres", "labels", mode="before")
+    @classmethod
+    def empty_str_to_none_list(cls, v):
+        """Convert empty strings to None for list fields"""
+        if v == "" or v == []:
+            return None
+        return v
+
+    @field_validator("priority", "formed_year", "disbanded_year", mode="before")
+    @classmethod
+    def empty_str_to_none_int(cls, v):
+        """Convert empty strings and invalid values to None for integer fields"""
+        if v == "" or v is None:
+            return None
+        # Handle string values like "normal", "high", etc. - convert to None
+        if isinstance(v, str):
+            try:
+                return int(v)
+            except (ValueError, TypeError):
+                return None
+        return v
 
 
 class ArtistSearchRequest(BaseModel):
