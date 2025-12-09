@@ -7006,6 +7006,8 @@ function saveArtistSettings() {
             currentArtistData = { ...currentArtistData, artist: data.artist };
             // Refresh the header to show updated information
             renderArtistHeader(currentArtistData.artist, currentArtistData.statistics);
+            // Refresh the settings form with saved values
+            populateSettings(currentArtistData.artist);
         } else {
             showError('Error: ' + data.error);
         }

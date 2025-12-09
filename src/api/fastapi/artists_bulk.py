@@ -642,16 +642,52 @@ async def get_artist_detailed(
                 "folder_path": artist.folder_path,
                 "imvdb_id": artist.imvdb_id,
                 "imvdb_slug": getattr(artist, "imvdb_slug", None),
-                "biography": metadata.get("biography")
+                # Category 2 fields - prefer database over metadata
+                "biography": getattr(artist, "biography", None)
+                or metadata.get("biography")
                 or metadata.get("overview")
                 or metadata.get("bio"),
-                "formed_year": metadata.get("formed_year"),
-                "location": metadata.get("location"),
-                "website": metadata.get("website"),
-                "wikipedia_url": metadata.get("wikipedia_url"),
-                "musicbrainz_id": metadata.get("musicbrainz_id"),
+                "formed_year": getattr(artist, "formed_year", None)
+                or metadata.get("formed_year"),
+                "location": getattr(artist, "location", None)
+                or metadata.get("location"),
+                "website": getattr(artist, "website", None) or metadata.get("website"),
+                "wikipedia_url": getattr(artist, "wikipedia_url", None)
+                or metadata.get("wikipedia_url"),
+                "musicbrainz_id": getattr(artist, "musicbrainz_id", None)
+                or metadata.get("musicbrainz_id"),
                 "spotify_id": artist.spotify_id,
                 "lastfm_name": artist.lastfm_name or metadata.get("lastfm_name"),
+                # Category 1 fields - database only
+                "keywords": getattr(artist, "keywords", None),
+                "genres": getattr(artist, "genres", None),
+                "labels": getattr(artist, "labels", None),
+                "members": getattr(artist, "members", None),
+                # Category 3 fields - prefer database over metadata
+                "overview": getattr(artist, "overview", None)
+                or metadata.get("overview"),
+                "disbanded_year": getattr(artist, "disbanded_year", None)
+                or metadata.get("disbanded_year"),
+                "origin_country": getattr(artist, "origin_country", None)
+                or metadata.get("origin_country"),
+                "spotify_url": getattr(artist, "spotify_url", None)
+                or metadata.get("spotify_url"),
+                "youtube_url": getattr(artist, "youtube_url", None)
+                or metadata.get("youtube_url"),
+                "apple_music_url": getattr(artist, "apple_music_url", None)
+                or metadata.get("apple_music_url"),
+                "twitter_url": getattr(artist, "twitter_url", None)
+                or metadata.get("twitter_url"),
+                "facebook_url": getattr(artist, "facebook_url", None)
+                or metadata.get("facebook_url"),
+                "instagram_url": getattr(artist, "instagram_url", None)
+                or metadata.get("instagram_url"),
+                "quality_profile": getattr(artist, "quality_profile", None),
+                "priority": getattr(artist, "priority", None),
+                # Settings
+                "monitored": getattr(artist, "monitored", True),
+                "auto_download": getattr(artist, "auto_download", False),
+                # Metadata and timestamps
                 "imvdb_metadata": artist.imvdb_metadata,
                 "created_at": (
                     artist.created_at.isoformat() if artist.created_at else None
