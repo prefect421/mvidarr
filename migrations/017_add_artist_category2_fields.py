@@ -140,7 +140,9 @@ def downgrade(connection):
                 connection.execute(text(f"DROP INDEX {index_name} ON artists"))
                 logger.info(f"Dropped index {index_name}")
             except Exception as e:
-                logger.warning(f"Could not drop index {index_name} (may not exist): {e}")
+                logger.warning(
+                    f"Could not drop index {index_name} (may not exist): {e}"
+                )
 
         # Drop columns
         fields_to_drop = [
