@@ -7002,10 +7002,12 @@ function saveArtistSettings() {
     .then(data => {
         if (data.success) {
             showSuccess(data.message);
-            // Update the current artist data
-            currentArtistData = { ...currentArtistData, ...data.artist };
+            // Update the current artist data (maintain nested structure)
+            currentArtistData = { ...currentArtistData, artist: data.artist };
             // Refresh the header to show updated information
             renderArtistHeader(currentArtistData.artist, currentArtistData.statistics);
+            // Refresh the settings form with saved values
+            populateSettings(currentArtistData.artist);
         } else {
             showError('Error: ' + data.error);
         }
@@ -7141,8 +7143,8 @@ function importFromImvdb() {
     .then(data => {
         if (data.success) {
             showSuccess('Metadata imported successfully from IMVDb');
-            currentArtistData = { ...currentArtistData, ...data.artist };
-            populateSettings(currentArtistData);
+            currentArtistData = { ...currentArtistData, artist: data.artist };
+            populateSettings(currentArtistData.artist);
         } else {
             showError('Failed to import metadata: ' + data.error);
         }
@@ -8387,8 +8389,8 @@ function updateMetadataFromMatch(imvdbId) {
             
             // Update artist data and refresh UI
             if (data.artist_data) {
-                currentArtistData = { ...currentArtistData, ...data.artist_data };
-                populateSettings(currentArtistData);
+                currentArtistData = { ...currentArtistData, artist: data.artist_data };
+                populateSettings(currentArtistData.artist);
                 
                 // Update thumbnail if it was changed
                 if (data.updated_fields.includes('thumbnail')) {
@@ -10840,11 +10842,11 @@ function executeMerge(sourceArtistId, targetArtistId) {
             document.querySelector('.modal').remove();
             
             // Update current artist data with the merged data
-            currentArtistData = { ...currentArtistData, ...data.updated_artist };
+            currentArtistData = { ...currentArtistData, artist: data.updated_artist };
             
             // Refresh the entire page to show updated data
             loadArtistDetails();
-            populateSettings(currentArtistData);
+            populateSettings(currentArtistData.artist);
         } else {
             showError('Merge failed: ' + data.error);
         }

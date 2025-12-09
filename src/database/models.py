@@ -322,6 +322,7 @@ class Artist(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
+    sort_name = Column(String(255), nullable=True)  # For alphabetical sorting
     imvdb_id = Column(String(100), unique=True, nullable=True)
     spotify_id = Column(String(100), nullable=True)  # Spotify artist ID
     lastfm_name = Column(String(255), nullable=True)  # Last.fm artist name
@@ -341,6 +342,26 @@ class Artist(Base):
     )  # Artist genres (automatically updated from videos)
     labels = Column(JSON, nullable=True)  # Record labels associated with the artist
     members = Column(Text, nullable=True)  # Band members (stored as text)
+    # Category 2 fields - Issue #174: Fields in API but were missing from database
+    biography = Column(Text, nullable=True)  # Artist biography/description
+    formed_year = Column(Integer, nullable=True)  # Year the artist/band was formed
+    location = Column(String(255), nullable=True)  # Artist origin location
+    website = Column(String(500), nullable=True)  # Official artist website
+    wikipedia_url = Column(String(500), nullable=True)  # Wikipedia article URL
+    musicbrainz_id = Column(String(100), nullable=True)  # MusicBrainz identifier
+    imvdb_slug = Column(String(100), nullable=True)  # IMVDb URL slug
+    # Category 3 fields - Issue #174: Fields in frontend but were missing from API/database
+    overview = Column(Text, nullable=True)  # Artist overview/summary
+    disbanded_year = Column(Integer, nullable=True)  # Year the band disbanded
+    origin_country = Column(String(100), nullable=True)  # Country of origin
+    spotify_url = Column(String(500), nullable=True)  # Spotify profile URL
+    youtube_url = Column(String(500), nullable=True)  # YouTube channel URL
+    apple_music_url = Column(String(500), nullable=True)  # Apple Music profile URL
+    twitter_url = Column(String(500), nullable=True)  # Twitter/X profile URL
+    facebook_url = Column(String(500), nullable=True)  # Facebook page URL
+    instagram_url = Column(String(500), nullable=True)  # Instagram profile URL
+    quality_profile = Column(String(50), nullable=True)  # Quality profile for downloads
+    priority = Column(Integer, nullable=True)  # Artist priority for downloads
     monitored = Column(Boolean, default=True)
     source = Column(
         String(50), nullable=True
@@ -360,10 +381,20 @@ class Artist(Base):
     # Indexes
     __table_args__ = (
         Index("idx_artist_name", "name"),
+        Index("idx_artist_sort_name", "sort_name"),  # Migration 006
         Index("idx_artist_imvdb_id", "imvdb_id"),
         Index("idx_artist_spotify_id", "spotify_id"),
         Index("idx_artist_monitored", "monitored"),
         Index("idx_artist_source", "source"),
+        # Category 2 field indexes - Issue #174
+        Index("idx_artist_formed_year", "formed_year"),
+        Index("idx_artist_musicbrainz_id", "musicbrainz_id"),
+        Index("idx_artist_imvdb_slug", "imvdb_slug"),
+        # Category 3 field indexes - Issue #174
+        Index("idx_artist_origin_country", "origin_country"),
+        Index("idx_artist_disbanded_year", "disbanded_year"),
+        Index("idx_artist_quality_profile", "quality_profile"),
+        Index("idx_artist_priority", "priority"),
         {"extend_existing": True},
     )
 

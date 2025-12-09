@@ -137,6 +137,14 @@ async def lifespan(app: FastAPI):
         await start_job_scheduler()
         logger.info("✅ Advanced job scheduler started")
 
+        # Start scheduler service for scheduled downloads and video discovery
+        logger.info("🔄 Starting scheduler service for downloads/discovery...")
+        from src.services.scheduler_service import scheduler_service
+
+        # Run scheduler.start() in thread executor (it's synchronous)
+        await asyncio.to_thread(scheduler_service.start)
+        logger.info("✅ Scheduler service started successfully")
+
         # ytdlp_service is already initialized and pending downloads resumed during import
         logger.info(
             "✅ ytdlp_service initialized (pending downloads auto-resumed during init)"
@@ -157,6 +165,13 @@ async def lifespan(app: FastAPI):
             logger.info("🔄 Stopping advanced job scheduler...")
             await stop_job_scheduler()
             logger.info("✅ Advanced job scheduler stopped")
+
+            # Stop scheduler service for scheduled downloads and video discovery
+            logger.info("🔄 Stopping scheduler service...")
+            from src.services.scheduler_service import scheduler_service
+
+            await asyncio.to_thread(scheduler_service.stop)
+            logger.info("✅ Scheduler service stopped")
 
             # Cleanup WebSocket system
             logger.info("🔄 Stopping WebSocket job progress system...")
@@ -417,6 +432,18 @@ app.add_middleware(
     trusted_hosts=["*"],  # Trust all proxies - adjust for production security
 )
 logger.info("✅ Proxy headers middleware enabled for reverse proxy support")
+
+# Add request size limit middleware for DoS prevention (Issue #171)
+from src.middleware.request_size_middleware import RequestSizeLimitMiddleware
+
+app.add_middleware(
+    RequestSizeLimitMiddleware,
+    max_upload_size=100 * 1024 * 1024,  # 100 MB for file uploads
+    max_form_size=10 * 1024 * 1024,  # 10 MB for form submissions
+)
+logger.info(
+    "✅ Request size limit middleware enabled (uploads: 100MB, forms: 10MB)"
+)
 
 # Add analytics middleware - Phase 3 Week 36
 from src.middleware.analytics_middleware import AnalyticsMiddleware

@@ -232,7 +232,7 @@ async def get_user_playlists(
         if not spotify.access_token:
             raise HTTPException(
                 status_code=401,
-                detail="Not authenticated with Spotify. Please authorize first."
+                detail="Not authenticated with Spotify. Please authorize first.",
             )
 
         # Call Spotify API to get user's playlists
@@ -245,19 +245,21 @@ async def get_user_playlists(
         # Transform Spotify API response to match frontend expectations
         playlists = []
         for item in result.get("items", []):
-            playlists.append({
-                "id": item.get("id"),
-                "name": item.get("name"),
-                "description": item.get("description", ""),
-                "public": item.get("public", False),
-                "tracks_total": item.get("tracks", {}).get("total", 0),
-                "owner": {
-                    "id": item.get("owner", {}).get("id"),
-                    "display_name": item.get("owner", {}).get("display_name")
-                },
-                "images": item.get("images", []),
-                "external_url": item.get("external_urls", {}).get("spotify")
-            })
+            playlists.append(
+                {
+                    "id": item.get("id"),
+                    "name": item.get("name"),
+                    "description": item.get("description", ""),
+                    "public": item.get("public", False),
+                    "tracks_total": item.get("tracks", {}).get("total", 0),
+                    "owner": {
+                        "id": item.get("owner", {}).get("id"),
+                        "display_name": item.get("owner", {}).get("display_name"),
+                    },
+                    "images": item.get("images", []),
+                    "external_url": item.get("external_urls", {}).get("spotify"),
+                }
+            )
 
         logger.info(f"Retrieved {len(playlists)} playlists from Spotify")
 
@@ -275,6 +277,7 @@ async def get_user_playlists(
     except Exception as e:
         logger.error(f"Spotify playlists error: {e}")
         import traceback
+
         traceback.print_exc()
         raise HTTPException(
             status_code=500, detail=f"Failed to get playlists: {str(e)}"

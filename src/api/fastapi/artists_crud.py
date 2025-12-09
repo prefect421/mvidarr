@@ -423,6 +423,31 @@ async def get_artist(
             ),  # Default to True for compatibility
             auto_download=getattr(artist, "auto_download", False),  # Default to False
             imvdb_metadata=artist.imvdb_metadata,  # Include metadata for song recommendations
+            # Category 1 fields - Issue #174: Fields in database but were missing from API
+            keywords=artist.keywords,  # Video filtering keywords
+            genres=artist.genres,  # Artist genres
+            labels=artist.labels,  # Record labels
+            members=artist.members,  # Band members
+            # Category 3 fields - Issue #174: Fields in frontend but were missing from API/database
+            overview=getattr(artist, "overview", None),  # Artist overview/summary
+            disbanded_year=getattr(
+                artist, "disbanded_year", None
+            ),  # Year the band disbanded
+            origin_country=getattr(artist, "origin_country", None),  # Country of origin
+            spotify_url=getattr(artist, "spotify_url", None),  # Spotify profile URL
+            youtube_url=getattr(artist, "youtube_url", None),  # YouTube channel URL
+            apple_music_url=getattr(
+                artist, "apple_music_url", None
+            ),  # Apple Music profile URL
+            twitter_url=getattr(artist, "twitter_url", None),  # Twitter/X profile URL
+            facebook_url=getattr(artist, "facebook_url", None),  # Facebook page URL
+            instagram_url=getattr(
+                artist, "instagram_url", None
+            ),  # Instagram profile URL
+            quality_profile=getattr(
+                artist, "quality_profile", None
+            ),  # Quality profile for downloads
+            priority=getattr(artist, "priority", None),  # Artist priority for downloads
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
@@ -585,6 +610,36 @@ async def update_artist(
             wikipedia_url=getattr(artist, "wikipedia_url", None),
             musicbrainz_id=getattr(artist, "musicbrainz_id", None),
             spotify_id=artist.spotify_id,
+            monitored=getattr(
+                artist, "monitored", True
+            ),  # Default to True for compatibility
+            auto_download=getattr(artist, "auto_download", False),  # Default to False
+            imvdb_metadata=artist.imvdb_metadata,  # Include metadata for song recommendations
+            # Category 1 fields - Issue #174: Fields in database but were missing from API
+            keywords=artist.keywords,  # Video filtering keywords
+            genres=artist.genres,  # Artist genres
+            labels=artist.labels,  # Record labels
+            members=artist.members,  # Band members
+            # Category 3 fields - Issue #174: Fields in frontend but were missing from API/database
+            overview=getattr(artist, "overview", None),  # Artist overview/summary
+            disbanded_year=getattr(
+                artist, "disbanded_year", None
+            ),  # Year the band disbanded
+            origin_country=getattr(artist, "origin_country", None),  # Country of origin
+            spotify_url=getattr(artist, "spotify_url", None),  # Spotify profile URL
+            youtube_url=getattr(artist, "youtube_url", None),  # YouTube channel URL
+            apple_music_url=getattr(
+                artist, "apple_music_url", None
+            ),  # Apple Music profile URL
+            twitter_url=getattr(artist, "twitter_url", None),  # Twitter/X profile URL
+            facebook_url=getattr(artist, "facebook_url", None),  # Facebook page URL
+            instagram_url=getattr(
+                artist, "instagram_url", None
+            ),  # Instagram profile URL
+            quality_profile=getattr(
+                artist, "quality_profile", None
+            ),  # Quality profile for downloads
+            priority=getattr(artist, "priority", None),  # Artist priority for downloads
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,

@@ -326,7 +326,10 @@ class SpotifyService:
                     # Retry request with new token
                     headers["Authorization"] = f"Bearer {self.access_token}"
                     response = requests.get(
-                        url, headers=headers, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+                        url,
+                        headers=headers,
+                        params=params,
+                        timeout=DEFAULT_REQUEST_TIMEOUT,
                     )
                     response.raise_for_status()
                     logger.info("Successfully retried request after token refresh")

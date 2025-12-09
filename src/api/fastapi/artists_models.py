@@ -9,7 +9,7 @@ in the Artists API endpoints.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ArtistResponse(BaseModel):
@@ -34,6 +34,23 @@ class ArtistResponse(BaseModel):
     imvdb_metadata: Optional[Dict[str, Any]] = (
         None  # Include metadata for song recommendations
     )
+    # Category 1 fields - Issue #174: Fields in database but were missing from API
+    keywords: Optional[List[str]] = None  # Video filtering keywords
+    genres: Optional[List[str]] = None  # Artist genres
+    labels: Optional[List[str]] = None  # Record labels
+    members: Optional[str] = None  # Band members
+    # Category 3 fields - Issue #174: Fields in frontend but were missing from API/database
+    overview: Optional[str] = None  # Artist overview/summary
+    disbanded_year: Optional[int] = None  # Year the band disbanded
+    origin_country: Optional[str] = None  # Country of origin
+    spotify_url: Optional[str] = None  # Spotify profile URL
+    youtube_url: Optional[str] = None  # YouTube channel URL
+    apple_music_url: Optional[str] = None  # Apple Music profile URL
+    twitter_url: Optional[str] = None  # Twitter/X profile URL
+    facebook_url: Optional[str] = None  # Facebook page URL
+    instagram_url: Optional[str] = None  # Instagram profile URL
+    quality_profile: Optional[str] = None  # Quality profile for downloads
+    priority: Optional[int] = None  # Artist priority for downloads
     video_count: int = 0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -70,6 +87,54 @@ class ArtistUpdateRequest(BaseModel):
     spotify_id: Optional[str] = None
     monitored: Optional[bool] = None
     auto_download: Optional[bool] = None
+    # Category 1 fields - Issue #174: Fields in database but were missing from API
+    keywords: Optional[List[str]] = None  # Video filtering keywords
+    genres: Optional[List[str]] = None  # Artist genres
+    labels: Optional[List[str]] = None  # Record labels
+    members: Optional[str] = None  # Band members
+    # Category 3 fields - Issue #174: Fields in frontend but were missing from API/database
+    overview: Optional[str] = None  # Artist overview/summary
+    disbanded_year: Optional[int] = Field(
+        None, ge=1800, le=2100
+    )  # Year the band disbanded
+    origin_country: Optional[str] = None  # Country of origin
+    spotify_url: Optional[str] = None  # Spotify profile URL
+    youtube_url: Optional[str] = None  # YouTube channel URL
+    apple_music_url: Optional[str] = None  # Apple Music profile URL
+    twitter_url: Optional[str] = None  # Twitter/X profile URL
+    facebook_url: Optional[str] = None  # Facebook page URL
+    instagram_url: Optional[str] = None  # Instagram profile URL
+    quality_profile: Optional[str] = None  # Quality profile for downloads
+    priority: Optional[int] = Field(None, ge=0)  # Artist priority for downloads
+
+    @field_validator("keywords", "genres", "labels", mode="before")
+    @classmethod
+    def empty_str_to_none_list(cls, v):
+        """Convert empty strings to None for list fields, and strings to lists"""
+        if v == "" or v == [] or v is None:
+            return None
+        # If it's a string, split by comma and trim whitespace
+        if isinstance(v, str):
+            items = [item.strip() for item in v.split(",") if item.strip()]
+            return items if items else None
+        # If it's already a list, return it
+        if isinstance(v, list):
+            return v
+        return v
+
+    @field_validator("priority", "formed_year", "disbanded_year", mode="before")
+    @classmethod
+    def empty_str_to_none_int(cls, v):
+        """Convert empty strings and invalid values to None for integer fields"""
+        if v == "" or v is None:
+            return None
+        # Handle string values like "normal", "high", etc. - convert to None
+        if isinstance(v, str):
+            try:
+                return int(v)
+            except (ValueError, TypeError):
+                return None
+        return v
 
 
 class ArtistSearchRequest(BaseModel):
