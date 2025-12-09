@@ -428,6 +428,26 @@ async def get_artist(
             genres=artist.genres,  # Artist genres
             labels=artist.labels,  # Record labels
             members=artist.members,  # Band members
+            # Category 3 fields - Issue #174: Fields in frontend but were missing from API/database
+            overview=getattr(artist, "overview", None),  # Artist overview/summary
+            disbanded_year=getattr(
+                artist, "disbanded_year", None
+            ),  # Year the band disbanded
+            origin_country=getattr(artist, "origin_country", None),  # Country of origin
+            spotify_url=getattr(artist, "spotify_url", None),  # Spotify profile URL
+            youtube_url=getattr(artist, "youtube_url", None),  # YouTube channel URL
+            apple_music_url=getattr(
+                artist, "apple_music_url", None
+            ),  # Apple Music profile URL
+            twitter_url=getattr(artist, "twitter_url", None),  # Twitter/X profile URL
+            facebook_url=getattr(artist, "facebook_url", None),  # Facebook page URL
+            instagram_url=getattr(
+                artist, "instagram_url", None
+            ),  # Instagram profile URL
+            quality_profile=getattr(
+                artist, "quality_profile", None
+            ),  # Quality profile for downloads
+            priority=getattr(artist, "priority", None),  # Artist priority for downloads
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
@@ -600,6 +620,26 @@ async def update_artist(
             genres=artist.genres,  # Artist genres
             labels=artist.labels,  # Record labels
             members=artist.members,  # Band members
+            # Category 3 fields - Issue #174: Fields in frontend but were missing from API/database
+            overview=getattr(artist, "overview", None),  # Artist overview/summary
+            disbanded_year=getattr(
+                artist, "disbanded_year", None
+            ),  # Year the band disbanded
+            origin_country=getattr(artist, "origin_country", None),  # Country of origin
+            spotify_url=getattr(artist, "spotify_url", None),  # Spotify profile URL
+            youtube_url=getattr(artist, "youtube_url", None),  # YouTube channel URL
+            apple_music_url=getattr(
+                artist, "apple_music_url", None
+            ),  # Apple Music profile URL
+            twitter_url=getattr(artist, "twitter_url", None),  # Twitter/X profile URL
+            facebook_url=getattr(artist, "facebook_url", None),  # Facebook page URL
+            instagram_url=getattr(
+                artist, "instagram_url", None
+            ),  # Instagram profile URL
+            quality_profile=getattr(
+                artist, "quality_profile", None
+            ),  # Quality profile for downloads
+            priority=getattr(artist, "priority", None),  # Artist priority for downloads
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,

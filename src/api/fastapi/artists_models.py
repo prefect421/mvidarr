@@ -39,6 +39,18 @@ class ArtistResponse(BaseModel):
     genres: Optional[List[str]] = None  # Artist genres
     labels: Optional[List[str]] = None  # Record labels
     members: Optional[str] = None  # Band members
+    # Category 3 fields - Issue #174: Fields in frontend but were missing from API/database
+    overview: Optional[str] = None  # Artist overview/summary
+    disbanded_year: Optional[int] = None  # Year the band disbanded
+    origin_country: Optional[str] = None  # Country of origin
+    spotify_url: Optional[str] = None  # Spotify profile URL
+    youtube_url: Optional[str] = None  # YouTube channel URL
+    apple_music_url: Optional[str] = None  # Apple Music profile URL
+    twitter_url: Optional[str] = None  # Twitter/X profile URL
+    facebook_url: Optional[str] = None  # Facebook page URL
+    instagram_url: Optional[str] = None  # Instagram profile URL
+    quality_profile: Optional[str] = None  # Quality profile for downloads
+    priority: Optional[int] = None  # Artist priority for downloads
     video_count: int = 0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -80,6 +92,20 @@ class ArtistUpdateRequest(BaseModel):
     genres: Optional[List[str]] = None  # Artist genres
     labels: Optional[List[str]] = None  # Record labels
     members: Optional[str] = None  # Band members
+    # Category 3 fields - Issue #174: Fields in frontend but were missing from API/database
+    overview: Optional[str] = None  # Artist overview/summary
+    disbanded_year: Optional[int] = Field(
+        None, ge=1800, le=2100
+    )  # Year the band disbanded
+    origin_country: Optional[str] = None  # Country of origin
+    spotify_url: Optional[str] = None  # Spotify profile URL
+    youtube_url: Optional[str] = None  # YouTube channel URL
+    apple_music_url: Optional[str] = None  # Apple Music profile URL
+    twitter_url: Optional[str] = None  # Twitter/X profile URL
+    facebook_url: Optional[str] = None  # Facebook page URL
+    instagram_url: Optional[str] = None  # Instagram profile URL
+    quality_profile: Optional[str] = None  # Quality profile for downloads
+    priority: Optional[int] = Field(None, ge=0)  # Artist priority for downloads
 
 
 class ArtistSearchRequest(BaseModel):
