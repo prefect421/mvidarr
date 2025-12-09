@@ -54,9 +54,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
             f"max_form={max_form_size / 1024 / 1024:.1f}MB"
         )
 
-    async def dispatch(
-        self, request: Request, call_next: Callable
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Check request size before processing.
 
@@ -165,9 +163,7 @@ class FormFieldSizeLimitMiddleware(BaseHTTPMiddleware):
             f"max_field={max_field_size / 1024:.0f}KB"
         )
 
-    async def dispatch(
-        self, request: Request, call_next: Callable
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Validate individual form field sizes.
 

@@ -450,7 +450,9 @@ async def get_production_health(session=Depends(get_db_session)):
             # Alert if scheduler should be running but isn't
             downloads_enabled = scheduler_info["downloads_enabled"]
             discovery_enabled = scheduler_info["discovery_enabled"]
-            if (downloads_enabled or discovery_enabled) and not scheduler_service.running:
+            if (
+                downloads_enabled or discovery_enabled
+            ) and not scheduler_service.running:
                 alerts.append(
                     "Scheduler service is not running but scheduled downloads/discovery are enabled"
                 )
