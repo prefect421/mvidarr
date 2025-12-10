@@ -137,13 +137,13 @@ async def lifespan(app: FastAPI):
         await start_job_scheduler()
         logger.info("✅ Advanced job scheduler started")
 
-        # Start scheduler service for scheduled downloads and video discovery
-        logger.info("🔄 Starting scheduler service for downloads/discovery...")
-        from src.services.scheduler_service import scheduler_service
+        # Start enhanced scheduler service for scheduled downloads and video discovery
+        logger.info("🔄 Starting enhanced scheduler service for downloads/discovery...")
+        from src.services.enhanced_scheduler_service import enhanced_scheduler_service
 
-        # Run scheduler.start() in thread executor (it's synchronous)
-        await asyncio.to_thread(scheduler_service.start)
-        logger.info("✅ Scheduler service started successfully")
+        # Run enhanced_scheduler.start() in thread executor (it's synchronous)
+        await asyncio.to_thread(enhanced_scheduler_service.start)
+        logger.info("✅ Enhanced scheduler service started successfully")
 
         # ytdlp_service is already initialized and pending downloads resumed during import
         logger.info(
@@ -166,12 +166,14 @@ async def lifespan(app: FastAPI):
             await stop_job_scheduler()
             logger.info("✅ Advanced job scheduler stopped")
 
-            # Stop scheduler service for scheduled downloads and video discovery
-            logger.info("🔄 Stopping scheduler service...")
-            from src.services.scheduler_service import scheduler_service
+            # Stop enhanced scheduler service for scheduled downloads and video discovery
+            logger.info("🔄 Stopping enhanced scheduler service...")
+            from src.services.enhanced_scheduler_service import (
+                enhanced_scheduler_service,
+            )
 
-            await asyncio.to_thread(scheduler_service.stop)
-            logger.info("✅ Scheduler service stopped")
+            await asyncio.to_thread(enhanced_scheduler_service.stop)
+            logger.info("✅ Enhanced scheduler service stopped")
 
             # Cleanup WebSocket system
             logger.info("🔄 Stopping WebSocket job progress system...")
@@ -441,9 +443,7 @@ app.add_middleware(
     max_upload_size=100 * 1024 * 1024,  # 100 MB for file uploads
     max_form_size=10 * 1024 * 1024,  # 10 MB for form submissions
 )
-logger.info(
-    "✅ Request size limit middleware enabled (uploads: 100MB, forms: 10MB)"
-)
+logger.info("✅ Request size limit middleware enabled (uploads: 100MB, forms: 10MB)")
 
 # Add analytics middleware - Phase 3 Week 36
 from src.middleware.analytics_middleware import AnalyticsMiddleware
