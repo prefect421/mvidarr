@@ -2,6 +2,8 @@
 
 **A comprehensive music video management and discovery platform** that helps you organize, discover, and stream your music video collection with intelligent artist management and advanced search capabilities.
 
+![Artist Screen](mvidarr-screen.png)
+
 ## ✨ Key Features
 
 - **🎯 Advanced Artist Management** - Multi-criteria search and bulk operations
