@@ -8909,7 +8909,7 @@ async function startUploadAndImport() {
     }
 }
 
-// Browse server directory (start from root/home)
+// Browse server directory (start from music videos library)
 async function browseServerRootDirectory() {
     try {
         const response = await fetch('/api/filesystem/common-paths');
@@ -8919,11 +8919,18 @@ async function browseServerRootDirectory() {
 
         const paths = await response.json();
         if (paths.length > 0) {
-            // Start from home directory
+            // Priority: Music Videos Library > Home > First available path
+            const musicVideosPath = paths.find(p => p.name.includes('Music Videos Library'));
             const homePath = paths.find(p => p.name.includes('Home'));
-            if (homePath) {
+
+            if (musicVideosPath) {
+                console.log(`📂 Starting from Music Videos Library: ${musicVideosPath.path}`);
+                await browseServerDirectory(musicVideosPath.path);
+            } else if (homePath) {
+                console.log(`📂 Starting from Home directory: ${homePath.path}`);
                 await browseServerDirectory(homePath.path);
             } else {
+                console.log(`📂 Starting from first available path: ${paths[0].path}`);
                 await browseServerDirectory(paths[0].path);
             }
         }
