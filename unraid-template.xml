@@ -19,8 +19,12 @@ Features:
 - FastAPI backend with WebSocket support
 - Full subtitle support for music videos
 - MKV video transcoding for browser playback
-- Celery task queue for background processing
-- Theme customization support</Overview>
+- Celery task queue for background processing (Redis-powered)
+- Theme customization support
+
+Requirements:
+- MariaDB/MySQL database (install separately from Community Apps)
+- Redis 7+ cache/job queue (install separately from Community Apps)</Overview>
   <Category>MediaApp:Video MediaServer:Video</Category>
   <WebUI>http://[IP]:[PORT:5000]</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/prefect421/mvidarr/main/unraid-template.xml</TemplateURL>
@@ -31,7 +35,7 @@ Features:
   <DateInstalled/>
   <DonateText/>
   <DonateLink/>
-  <Requires>MariaDB or MySQL database (can use Unraid MariaDB container)</Requires>
+  <Requires>MariaDB or MySQL database (can use Unraid MariaDB container) AND Redis 7+ (can use Unraid Redis container)</Requires>
   <Config Name="WebUI Port" Target="5000" Default="5000" Mode="tcp" Description="Web interface port" Type="Port" Display="always" Required="true" Mask="false">5000</Config>
   <Config Name="Music Videos" Target="/app/data/musicvideos" Default="/mnt/user/music-videos/" Mode="rw" Description="Path to your music video files" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/music-videos/</Config>
   <Config Name="Thumbnails" Target="/app/data/thumbnails" Default="/mnt/user/appdata/mvidarr/thumbnails/" Mode="rw" Description="Thumbnail and artwork storage" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mvidarr/thumbnails/</Config>
@@ -50,7 +54,17 @@ Features:
   <Config Name="IMVDB_API_KEY" Target="IMVDB_API_KEY" Default="" Mode="" Description="IMVDb API key for metadata enrichment (optional - get from https://imvdb.com/developers)" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="YOUTUBE_API_KEY" Target="YOUTUBE_API_KEY" Default="" Mode="" Description="YouTube API key for metadata enrichment (optional - get from Google Cloud Console)" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="Timezone (e.g., America/New_York, Europe/London)" Type="Variable" Display="always" Required="false" Mask="false">America/New_York</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID for file permissions (run 'id' command to find yours)" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID for file permissions (run 'id' command to find yours)" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
   <Config Name="DEBUG" Target="DEBUG" Default="false" Mode="" Description="Enable debug mode (true/false)" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
   <Config Name="PORT" Target="PORT" Default="5000" Mode="" Description="Internal application port (should match WebUI Port)" Type="Variable" Display="advanced" Required="false" Mask="false">5000</Config>
   <Config Name="PYTHONUNBUFFERED" Target="PYTHONUNBUFFERED" Default="1" Mode="" Description="Python unbuffered output for better logging" Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+  <Config Name="REDIS_HOST" Target="REDIS_HOST" Default="redis" Mode="" Description="Redis hostname (use container name if using Unraid Redis container)" Type="Variable" Display="always" Required="true" Mask="false">redis</Config>
+  <Config Name="REDIS_PORT" Target="REDIS_PORT" Default="6379" Mode="" Description="Redis port" Type="Variable" Display="advanced" Required="false" Mask="false">6379</Config>
+  <Config Name="REDIS_URL" Target="REDIS_URL" Default="redis://redis:6379/0" Mode="" Description="Redis connection URL (auto-generated from REDIS_HOST:REDIS_PORT)" Type="Variable" Display="advanced" Required="false" Mask="false">redis://redis:6379/0</Config>
+  <Config Name="CELERY_BROKER_URL" Target="CELERY_BROKER_URL" Default="redis://redis:6379/0" Mode="" Description="Celery message broker URL (uses Redis)" Type="Variable" Display="advanced" Required="false" Mask="false">redis://redis:6379/0</Config>
+  <Config Name="CELERY_RESULT_BACKEND" Target="CELERY_RESULT_BACKEND" Default="redis://redis:6379/1" Mode="" Description="Celery result backend URL (uses Redis)" Type="Variable" Display="advanced" Required="false" Mask="false">redis://redis:6379/1</Config>
+  <Config Name="BACKGROUND_JOBS_ENABLED" Target="BACKGROUND_JOBS_ENABLED" Default="true" Mode="" Description="Enable background job processing" Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="JOB_SYSTEM_ENABLED" Target="JOB_SYSTEM_ENABLED" Default="true" Mode="" Description="Enable job system" Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="JOB_WORKER_COUNT" Target="JOB_WORKER_COUNT" Default="3" Mode="" Description="Number of Celery worker processes" Type="Variable" Display="advanced" Required="false" Mask="false">3</Config>
 </Container>

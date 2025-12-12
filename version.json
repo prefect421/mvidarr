@@ -1,8 +1,8 @@
 {
   "version": "0.10.0-beta.2",
-  "build_date": "2025-12-09T22:00:00.000000",
-  "git_commit": "90163ae",
-  "git_branch": "main",
+  "build_date": "2025-12-12T01:52:40.504116",
+  "git_commit": "43d00e1",
+  "git_branch": "dev",
   "release_name": "v0.10.0-beta.2 - Artist Settings & Field Sync Release",
   "features": [
     "🔒 Security: Resolved 10 critical vulnerabilities (werkzeug, python-multipart, jinja2)",
@@ -22,7 +22,8 @@
     "📊 Monitoring: Performance dashboard and system health tracking",
     "🔒 Security Scanning: Automated vulnerability detection and remediation",
     "📚 Documentation: Complete user guides and API documentation",
-    "🐳 Docker Support: Production-ready containerized deployment"
+    "🐳 Docker Support: Production-ready containerized deployment",
+    "🖥️ Unraid: Complete Redis integration with dual template support (6.x and 7.2.0+)"
   ],
   "beta_notes": [
     "This is a BETA release - not yet production-ready",

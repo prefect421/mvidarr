@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>MVidarr</Name>
+  <Repository>ghcr.io/prefect421/mvidarr:latest</Repository>
+  <Registry>https://github.com/prefect421/mvidarr/pkgs/container/mvidarr</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/prefect421/mvidarr/issues</Support>
+  <Project>https://github.com/prefect421/mvidarr</Project>
+  <Overview>MVidarr is a self-hosted music video collection manager and player designed for home users. Organize, discover, and play your music video library with automated metadata enrichment, playlist management, and a modern web interface.
+
+✨ Optimized for Unraid 7.2.0+ ✨
+
+Features:
+- Automatic metadata enrichment from IMVDb and YouTube
+- Smart playlist generation and management
+- Thumbnail generation and artist artwork
+- Modern, responsive web interface
+- FastAPI backend with WebSocket support
+- Full subtitle support for music videos
+- MKV video transcoding for browser playback
+- Celery task queue for background processing (Redis-powered)
+- Theme customization support
+- Container health monitoring
+- Automatic job queue management
+
+Requirements:
+- Unraid 7.2.0 or higher
+- MariaDB 11.4+ or MySQL 8.0+ (install from Community Apps)
+- Redis 7+ cache/job queue (install from Community Apps)
+- FFmpeg (included in container)
+- yt-dlp (included in container)</Overview>
+  <Category>MediaApp:Video MediaServer:Video</Category>
+  <WebUI>http://[IP]:[PORT:5000]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/prefect421/mvidarr/main/unraid-template-7.2.0.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/prefect421/mvidarr/main/frontend/static/img/favicon.png</Icon>
+  <ExtraParams>--health-cmd="curl -f http://localhost:5000/api/health || exit 1" --health-interval=30s --health-timeout=10s --health-retries=3 --health-start-period=60s</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Description>Complete music video collection management system with automated metadata, transcoding, and modern web interface. Requires MariaDB and Redis containers.</Description>
+  <Requires>MariaDB 11.4+ or MySQL 8.0+ database (install from Community Apps) AND Redis 7+ cache/queue (install from Community Apps)</Requires>
+  <Config Name="WebUI Port" Target="5000" Default="5000" Mode="tcp" Description="Web interface port - access MVidarr at http://[UNRAID-IP]:[PORT]" Type="Port" Display="always" Required="true" Mask="false">5000</Config>
+  <Config Name="Music Videos" Target="/app/data/musicvideos" Default="/mnt/user/music-videos/" Mode="rw" Description="Path to your music video files (can be on array or cache)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/music-videos/</Config>
+  <Config Name="Thumbnails" Target="/app/data/thumbnails" Default="/mnt/user/appdata/mvidarr/thumbnails/" Mode="rw" Description="Thumbnail and artwork storage (recommended: cache drive for performance)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mvidarr/thumbnails/</Config>
+  <Config Name="Database Folder" Target="/app/data/database" Default="/mnt/user/appdata/mvidarr/database/" Mode="rw" Description="Application database files (SQLite fallback - recommended: cache drive)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mvidarr/database/</Config>
+  <Config Name="Logs" Target="/app/data/logs" Default="/mnt/user/appdata/mvidarr/logs/" Mode="rw" Description="Application log files (recommended: cache drive)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mvidarr/logs/</Config>
+  <Config Name="Downloads" Target="/app/data/downloads" Default="/mnt/user/appdata/mvidarr/downloads/" Mode="rw" Description="Temporary download storage for yt-dlp (recommended: cache drive for speed)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mvidarr/downloads/</Config>
+  <Config Name="Cache" Target="/app/data/cache" Default="/mnt/user/appdata/mvidarr/cache/" Mode="rw" Description="Application cache storage (recommended: cache drive)" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/mvidarr/cache/</Config>
+  <Config Name="Config" Target="/app/config" Default="/mnt/user/appdata/mvidarr/config/" Mode="rw" Description="Application configuration files (recommended: cache drive)" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/appdata/mvidarr/config/</Config>
+  <Config Name="DB_HOST" Target="DB_HOST" Default="mariadb" Mode="" Description="Database hostname - use the exact container name of your MariaDB container (case-sensitive)" Type="Variable" Display="always" Required="true" Mask="false">mariadb</Config>
+  <Config Name="DB_PORT" Target="DB_PORT" Default="3306" Mode="" Description="Database port (default MySQL/MariaDB port is 3306)" Type="Variable" Display="advanced" Required="true" Mask="false">3306</Config>
+  <Config Name="DB_USER" Target="DB_USER" Default="mvidarr" Mode="" Description="Database username - must match the user created in MariaDB" Type="Variable" Display="always" Required="true" Mask="false">mvidarr</Config>
+  <Config Name="DB_PASSWORD" Target="DB_PASSWORD" Default="" Mode="" Description="Database password - MUST match your MariaDB user password exactly" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="DB_NAME" Target="DB_NAME" Default="mvidarr" Mode="" Description="Database name - must match the database created in MariaDB" Type="Variable" Display="advanced" Required="true" Mask="false">mvidarr</Config>
+  <Config Name="SECRET_KEY" Target="SECRET_KEY" Default="" Mode="" Description="Secret key for session encryption - generate with: openssl rand -base64 32 (minimum 32 characters)" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="MVIDARR_SECRET_KEY" Target="MVIDARR_SECRET_KEY" Default="" Mode="" Description="MVidarr secret key - should match SECRET_KEY for consistency" Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="IMVDB_API_KEY" Target="IMVDB_API_KEY" Default="" Mode="" Description="IMVDb API key for music video metadata enrichment - get free key at https://imvdb.com/developers" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="YOUTUBE_API_KEY" Target="YOUTUBE_API_KEY" Default="" Mode="" Description="YouTube Data API v3 key for metadata enrichment - get from Google Cloud Console" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="Timezone for logs and scheduled tasks (e.g., America/New_York, Europe/London, Asia/Tokyo)" Type="Variable" Display="always" Required="false" Mask="false">America/New_York</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID for file permissions - Unraid default is 99 (nobody). Run 'id username' to find yours" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID for file permissions - Unraid default is 100 (users). Run 'id username' to find yours" Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+  <Config Name="DEBUG" Target="DEBUG" Default="false" Mode="" Description="Enable debug mode for verbose logging (true/false) - only enable for troubleshooting" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="PORT" Target="PORT" Default="5000" Mode="" Description="Internal application port - should match WebUI Port setting above" Type="Variable" Display="advanced" Required="false" Mask="false">5000</Config>
+  <Config Name="PYTHONUNBUFFERED" Target="PYTHONUNBUFFERED" Default="1" Mode="" Description="Python unbuffered output for real-time logging in Docker logs" Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+  <Config Name="REDIS_HOST" Target="REDIS_HOST" Default="redis" Mode="" Description="Redis hostname - use the exact container name of your Redis container (case-sensitive)" Type="Variable" Display="always" Required="true" Mask="false">redis</Config>
+  <Config Name="REDIS_PORT" Target="REDIS_PORT" Default="6379" Mode="" Description="Redis port (default Redis port is 6379)" Type="Variable" Display="advanced" Required="false" Mask="false">6379</Config>
+  <Config Name="REDIS_URL" Target="REDIS_URL" Default="redis://redis:6379/0" Mode="" Description="Redis connection URL - auto-configured from REDIS_HOST:REDIS_PORT/database" Type="Variable" Display="advanced" Required="false" Mask="false">redis://redis:6379/0</Config>
+  <Config Name="CELERY_BROKER_URL" Target="CELERY_BROKER_URL" Default="redis://redis:6379/0" Mode="" Description="Celery message broker URL - uses Redis database 0 for job queuing" Type="Variable" Display="advanced" Required="false" Mask="false">redis://redis:6379/0</Config>
+  <Config Name="CELERY_RESULT_BACKEND" Target="CELERY_RESULT_BACKEND" Default="redis://redis:6379/1" Mode="" Description="Celery result backend URL - uses Redis database 1 for job results storage" Type="Variable" Display="advanced" Required="false" Mask="false">redis://redis:6379/1</Config>
+  <Config Name="BACKGROUND_JOBS_ENABLED" Target="BACKGROUND_JOBS_ENABLED" Default="true" Mode="" Description="Enable background job processing for metadata enrichment, thumbnails, etc." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="JOB_SYSTEM_ENABLED" Target="JOB_SYSTEM_ENABLED" Default="true" Mode="" Description="Enable Celery job system for asynchronous task processing" Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="JOB_WORKER_COUNT" Target="JOB_WORKER_COUNT" Default="3" Mode="" Description="Number of Celery worker processes - increase for faster parallel processing (recommended: 2-6)" Type="Variable" Display="advanced" Required="false" Mask="false">3</Config>
+</Container>

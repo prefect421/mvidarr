@@ -2,15 +2,33 @@
 
 Complete guide for installing and configuring MVidarr on Unraid using the Community Applications template.
 
+## 🚀 Quick Start Overview
+
+MVidarr requires **three containers** to run on Unraid:
+
+1. **MariaDB** - Database for storing video metadata and application data
+2. **Redis** - Cache and job queue for background processing
+3. **MVidarr** - Main application container
+
+**Installation Order:**
+1. Install MariaDB container (Step 1)
+2. Install Redis container (Step 2)
+3. Install MVidarr container (Step 3)
+4. Configure MVidarr settings (Step 4)
+5. Start using MVidarr! (Step 5)
+
+**Estimated Installation Time:** 15-20 minutes
+
 ---
 
 ## 📋 Prerequisites
 
 Before installing MVidarr on Unraid, ensure you have:
 
-- **Unraid 6.9+** (6.12+ recommended)
+- **Unraid 6.9+** (6.12+ recommended, 7.2.0+ for optimized template)
 - **Community Applications plugin** installed
 - **MariaDB container** running (or plan to install one)
+- **Redis container** running (or plan to install one)
 - **2GB RAM** minimum, 4GB recommended
 - **5GB disk space** minimum, 50GB+ recommended for music video storage
 
@@ -44,7 +62,59 @@ docker ps | grep mariadb
 
 ---
 
-## 🎬 Step 2: Install MVidarr
+## 🔴 Step 2: Install Redis (if not already installed)
+
+MVidarr requires Redis for job queuing, caching, and background task management.
+
+### Using Community Applications:
+
+1. Open **Apps** tab in Unraid
+2. Search for **"Redis"**
+3. Click **Install** on the official Redis template (redis:7-alpine recommended)
+4. Configure the following settings:
+   - **Container Name**: `redis` (important - MVidarr template expects this name)
+   - **Port**: `6379` (default)
+   - **Network Type**: `bridge` (same as MariaDB and MVidarr)
+   - **Data Path**: `/mnt/user/appdata/redis/` (for persistence)
+
+5. **Advanced Settings** (Optional but Recommended):
+   - **Extra Parameters**: Add these for better performance:
+     ```
+     --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+     ```
+   - This enables persistence and sets a 512MB memory limit with LRU eviction
+
+6. Click **Apply** and wait for Redis to start
+
+### Manual Redis Configuration:
+
+If you prefer to manually configure Redis:
+
+```bash
+# From Unraid console - Create Redis container
+docker run -d \
+  --name=redis \
+  --network=bridge \
+  -p 6379:6379 \
+  -v /mnt/user/appdata/redis:/data \
+  redis:7-alpine \
+  redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+```
+
+### Verify Redis is running:
+```bash
+# From Unraid console
+docker ps | grep redis
+# Should show the redis container running
+
+# Test Redis connection
+docker exec -it redis redis-cli ping
+# Should respond with "PONG"
+```
+
+---
+
+## 🎬 Step 3: Install MVidarr
 
 ### Method A: Community Applications (Recommended)
 
@@ -66,6 +136,7 @@ If MVidarr is not yet in Community Applications:
 
 ### Method C: Direct Template URL
 
+**For Unraid 6.9 - 6.x:**
 1. Open **Docker** tab in Unraid
 2. Scroll to bottom and click **Add Container**
 3. In the **Template** dropdown, select **Select another template**
@@ -75,9 +146,19 @@ If MVidarr is not yet in Community Applications:
    ```
 5. Configure settings and click **Apply**
 
+**For Unraid 7.2.0+:**
+1. Open **Docker** tab in Unraid
+2. Scroll to bottom and click **Add Container**
+3. In the **Template** dropdown, select **Select another template**
+4. Paste this URL:
+   ```
+   https://raw.githubusercontent.com/prefect421/mvidarr/main/unraid-template-7.2.0.xml
+   ```
+5. Configure settings and click **Apply**
+
 ---
 
-## ⚙️ Step 3: Configuration
+## ⚙️ Step 4: Configuration
 
 ### Required Settings:
 
@@ -100,6 +181,18 @@ If MVidarr is not yet in Community Applications:
 | **DB_USER** | `mvidarr` | Database username (must match MariaDB setup) |
 | **DB_PASSWORD** | *(your password)* | **Must match your MariaDB password** |
 | **DB_NAME** | `mvidarr` | Database name (must match MariaDB setup) |
+
+#### **Redis Settings**:
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| **REDIS_HOST** | `redis` | Container name of your Redis instance |
+| **REDIS_PORT** | `6379` | Redis port (default) |
+| **REDIS_URL** | `redis://redis:6379/0` | Auto-configured, uses database 0 |
+| **CELERY_BROKER_URL** | `redis://redis:6379/0` | Job queue broker (auto-configured) |
+| **CELERY_RESULT_BACKEND** | `redis://redis:6379/1` | Job results storage (auto-configured) |
+
+**Note:** Redis settings are auto-configured if you use the default container name `redis`. Only change if using a different Redis container name or custom port.
 
 #### **Security Settings**:
 
@@ -131,7 +224,7 @@ openssl rand -base64 32
 
 ---
 
-## 🚀 Step 4: Start and Access MVidarr
+## 🚀 Step 5: Start and Access MVidarr
 
 1. Click **Apply** to start the container
 2. Wait for the container to initialize (check logs if needed)
@@ -146,7 +239,7 @@ docker logs -f mvidarr
 
 ---
 
-## 🔧 Post-Installation Setup
+## 🔧 Step 6: Post-Installation Setup
 
 ### 1. Complete First-Run Wizard
 
@@ -174,6 +267,12 @@ On first access, MVidarr will guide you through:
 
 ### Container Won't Start
 
+**Check all required containers are running:**
+```bash
+docker ps | grep -E "mariadb|redis|mvidarr"
+# Should show all three containers running
+```
+
 **Check MariaDB is running:**
 ```bash
 docker ps | grep mariadb
@@ -188,43 +287,83 @@ USE mvidarr;
 SHOW TABLES;
 ```
 
+**Check Redis is running:**
+```bash
+docker ps | grep redis
+
+# Test Redis connection
+docker exec -it redis redis-cli ping
+# Should respond with "PONG"
+```
+
 **View MVidarr logs:**
 ```bash
 docker logs mvidarr
-# Look for database connection errors
+# Look for database or Redis connection errors
 ```
 
 ### Common Issues:
 
 #### "Database connection failed"
-- Verify `DB_HOST` matches your MariaDB container name
+- Verify `DB_HOST` matches your MariaDB container name (case-sensitive)
 - Ensure `DB_PASSWORD` matches MariaDB user password
 - Check MariaDB container is running
 - Verify database `mvidarr` exists in MariaDB
+- Ensure MariaDB and MVidarr are on the same Docker network
+
+#### "Redis connection failed" or "Background jobs not working"
+- Verify `REDIS_HOST` matches your Redis container name (case-sensitive)
+- Check Redis container is running: `docker ps | grep redis`
+- Test Redis connection: `docker exec -it redis redis-cli ping`
+- Ensure Redis and MVidarr are on the same Docker network
+- Check Redis logs: `docker logs redis`
+- Verify REDIS_URL is correctly formatted: `redis://redis:6379/0`
 
 #### "Permission denied" errors
 - Check Unraid user permissions on appdata directories
 - Ensure container has read/write access to mapped paths
+- Verify PUID (99) and PGID (100) are correct for Unraid
+- Check appdata folder ownership: `ls -la /mnt/user/appdata/mvidarr/`
 
 #### Can't access WebUI
 - Verify port `5000` is not used by another container
 - Check Unraid firewall settings
 - Try accessing via `http://localhost:5000` from Unraid console
+- Check MVidarr container logs for startup errors
 
 ### Reset Configuration:
 
 If you need to start over:
 ```bash
-# Stop container
+# Stop all containers
 docker stop mvidarr
 
-# Remove container (keeps data)
+# Remove MVidarr container (keeps data)
 docker rm mvidarr
 
-# Delete appdata (WARNING: removes all data)
+# Delete MVidarr appdata (WARNING: removes all MVidarr data)
 rm -rf /mnt/user/appdata/mvidarr/
 
-# Reinstall container from template
+# Optional: Clear Redis cache (WARNING: clears all cached data)
+docker exec -it redis redis-cli FLUSHALL
+
+# Reinstall MVidarr container from template
+```
+
+**Complete Reset (including database and Redis):**
+```bash
+# Stop all containers
+docker stop mvidarr redis mariadb
+
+# Remove containers
+docker rm mvidarr redis mariadb
+
+# Remove all data (WARNING: deletes everything!)
+rm -rf /mnt/user/appdata/mvidarr/
+rm -rf /mnt/user/appdata/redis/
+# Note: MariaDB data location depends on your setup
+
+# Reinstall all containers from templates
 ```
 
 ---
@@ -234,20 +373,37 @@ rm -rf /mnt/user/appdata/mvidarr/
 ### For Better Performance on Unraid:
 
 1. **Use Cache Drive** for appdata:
-   - Set MVidarr appdata to use cache drive
+   - Set MVidarr appdata to use cache drive for best performance
+   - Set Redis appdata to use cache drive (critical for job queue speed)
+   - Set MariaDB appdata to use cache drive if possible
    - Enable mover for periodic backup to array
 
 2. **Optimize Database**:
    - Put MariaDB data on cache/SSD if possible
    - Regular database maintenance via MVidarr settings
+   - Consider using MariaDB with InnoDB for better performance
 
-3. **Video Storage**:
+3. **Optimize Redis**:
+   - Redis appdata should be on cache/SSD for fast job processing
+   - Use the recommended memory limit: `--maxmemory 512mb`
+   - Enable persistence: `--appendonly yes`
+   - Monitor Redis memory usage: `docker exec redis redis-cli INFO memory`
+
+4. **Video Storage**:
    - Keep video files on array for capacity
-   - Use cache for downloads/thumbnails
+   - Use cache for downloads/thumbnails for faster processing
+   - Consider cache pool for transcoding temp files
 
-4. **Resource Allocation**:
-   - Assign 2-4 CPU cores to MVidarr container
+5. **Resource Allocation**:
+   - Assign 2-4 CPU cores to MVidarr container (for video transcoding)
    - Allocate 2-4GB RAM depending on library size
+   - Allocate 512MB-1GB RAM to Redis (set via maxmemory)
+   - Allocate 1-2GB RAM to MariaDB for optimal database performance
+
+6. **Network Performance**:
+   - Keep all containers (MVidarr, MariaDB, Redis) on the same Docker network
+   - Use bridge mode for best compatibility
+   - Consider custom Docker network for isolation if needed
 
 ---
 

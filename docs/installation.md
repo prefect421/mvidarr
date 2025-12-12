@@ -125,9 +125,9 @@ docker-compose down -v
 
 ## 🖥️ Unraid Installation
 
-MVidarr can be easily installed on Unraid using the Community Applications template.
+MVidarr can be easily installed on Unraid using the Community Applications template or manually via direct template URL.
 
-### Quick Installation
+### Quick Installation (Community Applications)
 
 1. Open **Apps** tab in Unraid
 2. Search for **"MVidarr"**
@@ -136,20 +136,102 @@ MVidarr can be easily installed on Unraid using the Community Applications templ
 
 ### Requirements
 
-- **Unraid 6.9+** (6.12+ recommended)
+- **Unraid 6.9+** (6.12+ recommended, 7.2.0+ for optimized template)
 - **MariaDB container** (install from Community Applications if needed)
+- **Redis container** (install from Community Applications if needed)
 - **Community Applications plugin** installed
+
+### Manual Installation via Template URL
+
+If MVidarr is not yet in Community Applications, or you prefer manual installation:
+
+**For Unraid 6.9 - 6.x:**
+1. Open **Docker** tab in Unraid
+2. Click **Add Container**
+3. Select **Template repositories** or **Select another template**
+4. Paste template URL:
+   ```
+   https://raw.githubusercontent.com/prefect421/mvidarr/main/unraid-template.xml
+   ```
+5. Configure required settings (DB password, secret key, paths)
+6. Click **Apply**
+
+**For Unraid 7.2.0+:**
+1. Open **Docker** tab in Unraid
+2. Click **Add Container**
+3. Select **Select another template**
+4. Paste optimized template URL:
+   ```
+   https://raw.githubusercontent.com/prefect421/mvidarr/main/unraid-template-7.2.0.xml
+   ```
+5. Configure required settings (DB password, secret key, paths)
+6. Click **Apply**
+
+### Container Dependencies
+
+Before installing MVidarr, ensure these containers are installed and running:
+
+**1. MariaDB (Database)**
+- Install from Community Applications
+- Container name: `mariadb` (important for MVidarr to connect)
+- Create database: `mvidarr`
+- Create user: `mvidarr` with password
+
+**2. Redis (Cache & Job Queue)**
+- Install from Community Applications
+- Container name: `redis` (important for MVidarr to connect)
+- Recommended image: `redis:7-alpine`
+- Recommended extra parameters: `--appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru`
 
 ### Detailed Instructions
 
 For complete Unraid installation instructions including:
-- MariaDB setup and configuration
+- Step-by-step MariaDB and Redis setup
 - Container configuration and path mapping
+- Security settings and secret key generation
 - Troubleshooting common Unraid issues
 - Performance optimization tips
 - Reverse proxy configuration
 
 **See our comprehensive [Unraid Installation Guide](https://github.com/prefect421/mvidarr/blob/main/docs/UNRAID_INSTALLATION.md)**
+
+### Quick Configuration Checklist
+
+After installing dependencies, configure these required MVidarr settings:
+
+- ✅ **Database Settings:**
+  - `DB_HOST=mariadb` (your MariaDB container name)
+  - `DB_PASSWORD=` (must match MariaDB password)
+  - `DB_USER=mvidarr`
+  - `DB_NAME=mvidarr`
+
+- ✅ **Redis Settings:**
+  - `REDIS_HOST=redis` (your Redis container name)
+  - Auto-configured if using default container name
+
+- ✅ **Security:**
+  - `SECRET_KEY=` (generate with `openssl rand -base64 32`)
+
+- ✅ **Paths:**
+  - Music Videos: `/mnt/user/music-videos/`
+  - Appdata: `/mnt/user/appdata/mvidarr/`
+
+### Architecture
+
+MVidarr on Unraid uses a **3-container setup**:
+
+```
+┌─────────────┐
+│   MVidarr   │ ← Main application (FastAPI + Celery worker)
+└──────┬──────┘
+       │
+   ┌───┴────┬──────────┐
+   │        │          │
+┌──▼───┐ ┌─▼────┐ ┌───▼────┐
+│MariaDB│ │Redis │ │ Music  │
+│       │ │      │ │ Videos │
+└───────┘ └──────┘ └────────┘
+```
 
 ## 🐧 Manual Installation (Linux/macOS)
 
