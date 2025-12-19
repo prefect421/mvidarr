@@ -225,6 +225,13 @@ input:checked + .slider:before {
                         <span>Database</span>
                     </button>
                 </li>
+                <li class="advanced-tab-item">
+                    <button class="settings-tab-btn" onclick="switchTab(event, 'scheduler-tab')"
+                            role="tab" aria-selected="false" aria-controls="scheduler-tab" id="tab-scheduler">
+                        <iconify-icon icon="tabler:clock-cog" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>Scheduler (Beta)</span>
+                    </button>
+                </li>
             </ul>
         </nav>
 
@@ -1048,105 +1055,6 @@ input:checked + .slider:before {
             </div>
         </div>
 
-        <div class="settings-section">
-            <h2>Scheduled Downloads</h2>
-            <p class="section-description">Automatically download videos marked as WANTED at regular intervals</p>
-            
-            <div class="form-group">
-                <label for="auto_download_schedule_enabled">Enable Scheduled Downloads:</label>
-                <select id="auto_download_schedule_enabled" name="auto_download_schedule_enabled">
-                    <option value="false">Disabled</option>
-                    <option value="true">Enabled</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="auto_download_schedule_days">Download Frequency:</label>
-                <select id="auto_download_schedule_days" name="auto_download_schedule_days">
-                    <option value="hourly">Every Hour</option>
-                    <option value="every_2_hours">Every 2 Hours</option>
-                    <option value="every_4_hours">Every 4 Hours</option>
-                    <option value="every_6_hours">Every 6 Hours</option>
-                    <option value="every_8_hours">Every 8 Hours</option>
-                    <option value="every_12_hours">Every 12 Hours</option>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                </select>
-            </div>
-            
-            <div class="form-group" id="download_time_group">
-                <label for="auto_download_schedule_time">Schedule Time:</label>
-                <input type="time" id="auto_download_schedule_time" name="auto_download_schedule_time" title="Time to run downloads (only applies to daily/weekly)">
-                <small class="form-hint">Only used for daily and weekly schedules</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="auto_download_max_videos">Max Videos per Run:</label>
-                <input type="number" id="auto_download_max_videos" name="auto_download_max_videos" min="1" max="500" value="10" title="Maximum number of videos to download per scheduled run">
-            </div>
-        </div>
-
-        <div class="settings-section">
-            <h2>Video Discovery</h2>
-            <p class="section-description">Automatically discover new videos for monitored artists</p>
-            
-            <div class="form-group">
-                <label for="auto_discovery_schedule_enabled">Enable Video Discovery:</label>
-                <select id="auto_discovery_schedule_enabled" name="auto_discovery_schedule_enabled">
-                    <option value="false">Disabled</option>
-                    <option value="true">Enabled</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="auto_discovery_schedule_days">Discovery Frequency:</label>
-                <select id="auto_discovery_schedule_days" name="auto_discovery_schedule_days">
-                    <option value="daily">Daily</option>
-                    <option value="twice_daily">Twice Daily (12 hours apart)</option>
-                    <option value="weekly">Weekly</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="auto_discovery_schedule_time">Discovery Time:</label>
-                <input type="time" id="auto_discovery_schedule_time" name="auto_discovery_schedule_time" value="06:00" title="Time to run video discovery">
-            </div>
-            
-            <div class="form-group">
-                <label for="auto_discovery_max_videos_per_artist">Max Videos per Artist:</label>
-                <input type="number" id="auto_discovery_max_videos_per_artist" name="auto_discovery_max_videos_per_artist" min="1" max="50" value="5" title="Maximum new videos to discover per artist per run">
-            </div>
-            
-            <div class="discovery-info">
-                <p><strong>Note:</strong> Video discovery searches for new videos for artists marked as "monitored" and adds them with WANTED status for automatic download.</p>
-            </div>
-        </div>
-
-        <div class="settings-section">
-            <h2>Scheduler Status & Control</h2>
-            <div class="form-group">
-                <label>Current Status:</label>
-                <div id="scheduler-status">
-                    <span id="scheduler-loading">Loading...</span>
-                </div>
-            </div>
-            <div class="scheduler-actions">
-                <button onclick="testScheduledDownload()" class="btn btn-info">Test Download Now</button>
-                <button onclick="startScheduler()" class="btn btn-success">Start Scheduler</button>
-                <button onclick="stopScheduler()" class="btn btn-warning">Stop Scheduler</button>
-                <button onclick="reloadScheduler()" class="btn btn-secondary">Reload Schedule</button>
-                <button onclick="refreshSchedulerStatus()" class="btn btn-light">Refresh Status</button>
-            </div>
-            
-            <!-- Enhanced Scheduler Actions (shown when enhanced scheduler is active) -->
-            <div id="enhanced-scheduler-actions" class="scheduler-actions" style="display: none;">
-                <button onclick="triggerEnhancedDownload()" class="btn btn-primary">🔽 Trigger Download</button>
-                <button onclick="triggerEnhancedDiscovery()" class="btn btn-info">🔍 Trigger Discovery</button>
-                <button onclick="viewEnhancedSchedulerHealth()" class="btn btn-success">🏥 Health Check</button>
-                <button onclick="viewEnhancedSchedulerConfig()" class="btn btn-secondary">⚙️ View Config</button>
-            </div>
-        </div>
-        
             </div>
         </div>
         
@@ -1208,10 +1116,116 @@ input:checked + .slider:before {
                 <p><strong>Note:</strong> Changes require a service restart to take effect. Monitor system performance after adjusting these settings.</p>
             </div>
         </div>
-        
+
             </div>
         </div>
-        
+
+        <!-- Scheduler (Beta) Tab -->
+        <div id="scheduler-tab" class="settings-tab-panel">
+            <div class="settings-sections">
+
+        <div class="settings-section">
+            <h2>Scheduled Downloads</h2>
+            <p class="section-description">Automatically download videos marked as WANTED at regular intervals</p>
+
+            <div class="form-group">
+                <label for="auto_download_schedule_enabled">Enable Scheduled Downloads:</label>
+                <select id="auto_download_schedule_enabled" name="auto_download_schedule_enabled">
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="auto_download_schedule_days">Download Frequency:</label>
+                <select id="auto_download_schedule_days" name="auto_download_schedule_days">
+                    <option value="hourly">Every Hour</option>
+                    <option value="every_2_hours">Every 2 Hours</option>
+                    <option value="every_4_hours">Every 4 Hours</option>
+                    <option value="every_6_hours">Every 6 Hours</option>
+                    <option value="every_8_hours">Every 8 Hours</option>
+                    <option value="every_12_hours">Every 12 Hours</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="download_time_group">
+                <label for="auto_download_schedule_time">Schedule Time:</label>
+                <input type="time" id="auto_download_schedule_time" name="auto_download_schedule_time" title="Time to run downloads (only applies to daily/weekly)">
+                <small class="form-hint">Only used for daily and weekly schedules</small>
+            </div>
+
+            <div class="form-group">
+                <label for="auto_download_max_videos">Max Videos per Run:</label>
+                <input type="number" id="auto_download_max_videos" name="auto_download_max_videos" min="1" max="500" value="10" title="Maximum number of videos to download per scheduled run">
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h2>Video Discovery</h2>
+            <p class="section-description">Automatically discover new videos for monitored artists</p>
+
+            <div class="form-group">
+                <label for="auto_discovery_schedule_enabled">Enable Video Discovery:</label>
+                <select id="auto_discovery_schedule_enabled" name="auto_discovery_schedule_enabled">
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="auto_discovery_schedule_days">Discovery Frequency:</label>
+                <select id="auto_discovery_schedule_days" name="auto_discovery_schedule_days">
+                    <option value="daily">Daily</option>
+                    <option value="twice_daily">Twice Daily (12 hours apart)</option>
+                    <option value="weekly">Weekly</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="auto_discovery_schedule_time">Discovery Time:</label>
+                <input type="time" id="auto_discovery_schedule_time" name="auto_discovery_schedule_time" value="06:00" title="Time to run video discovery">
+            </div>
+
+            <div class="form-group">
+                <label for="auto_discovery_max_videos_per_artist">Max Videos per Artist:</label>
+                <input type="number" id="auto_discovery_max_videos_per_artist" name="auto_discovery_max_videos_per_artist" min="1" max="50" value="5" title="Maximum new videos to discover per artist per run">
+            </div>
+
+            <div class="discovery-info">
+                <p><strong>Note:</strong> Video discovery searches for new videos for artists marked as "monitored" and adds them with WANTED status for automatic download.</p>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h2>Scheduler Status & Control</h2>
+            <div class="form-group">
+                <label>Current Status:</label>
+                <div id="scheduler-status">
+                    <span id="scheduler-loading">Loading...</span>
+                </div>
+            </div>
+            <div class="scheduler-actions">
+                <button onclick="testScheduledDownload()" class="btn btn-info">Test Download Now</button>
+                <button onclick="startScheduler()" class="btn btn-success">Start Scheduler</button>
+                <button onclick="stopScheduler()" class="btn btn-warning">Stop Scheduler</button>
+                <button onclick="reloadScheduler()" class="btn btn-secondary">Reload Schedule</button>
+                <button onclick="refreshSchedulerStatus()" class="btn btn-light">Refresh Status</button>
+            </div>
+
+            <!-- Enhanced Scheduler Actions (shown when enhanced scheduler is active) -->
+            <div id="enhanced-scheduler-actions" class="scheduler-actions" style="display: none;">
+                <button onclick="triggerEnhancedDownload()" class="btn btn-primary">🔽 Trigger Download</button>
+                <button onclick="triggerEnhancedDiscovery()" class="btn btn-info">🔍 Trigger Discovery</button>
+                <button onclick="viewEnhancedSchedulerHealth()" class="btn btn-success">🏥 Health Check</button>
+                <button onclick="viewEnhancedSchedulerConfig()" class="btn btn-secondary">⚙️ View Config</button>
+            </div>
+        </div>
+
+            </div>
+        </div>
+
         <!-- System Tab -->
         <div id="system-tab" class="settings-tab-panel">
             <div class="settings-sections">
@@ -2588,6 +2602,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (downloadsTabBtn) {
         downloadsTabBtn.addEventListener('click', function() {
             setTimeout(loadQualityStatistics, 100);
+        });
+    }
+
+    // Load scheduler status when switching to scheduler tab
+    const schedulerTabBtn = document.getElementById('tab-scheduler');
+    if (schedulerTabBtn) {
+        schedulerTabBtn.addEventListener('click', function() {
+            setTimeout(refreshSchedulerStatus, 100);
         });
     }
 });
