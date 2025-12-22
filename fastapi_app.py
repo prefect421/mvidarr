@@ -137,13 +137,16 @@ async def lifespan(app: FastAPI):
         await start_job_scheduler()
         logger.info("✅ Advanced job scheduler started")
 
-        # Start enhanced scheduler service for scheduled downloads and video discovery
-        logger.info("🔄 Starting enhanced scheduler service for downloads/discovery...")
-        from src.services.enhanced_scheduler_service import enhanced_scheduler_service
+        # Start Scheduler V2 service for scheduled downloads and video discovery (v0.10.1)
+        logger.info("🔄 Starting Scheduler V2 service for downloads/discovery...")
+        from src.services.scheduler_service_v2 import scheduler_v2
 
-        # Run enhanced_scheduler.start() in thread executor (it's synchronous)
-        await asyncio.to_thread(enhanced_scheduler_service.start)
-        logger.info("✅ Enhanced scheduler service started successfully")
+        # Run scheduler_v2.start() in thread executor (it's synchronous)
+        result = await asyncio.to_thread(scheduler_v2.start)
+        if result.get("status") == "started":
+            logger.info("✅ Scheduler V2 service started successfully")
+        else:
+            logger.warning(f"⚠️ Scheduler V2: {result.get('message', 'Unknown status')}")
 
         # ytdlp_service is already initialized and pending downloads resumed during import
         logger.info(
@@ -166,14 +169,12 @@ async def lifespan(app: FastAPI):
             await stop_job_scheduler()
             logger.info("✅ Advanced job scheduler stopped")
 
-            # Stop enhanced scheduler service for scheduled downloads and video discovery
-            logger.info("🔄 Stopping enhanced scheduler service...")
-            from src.services.enhanced_scheduler_service import (
-                enhanced_scheduler_service,
-            )
+            # Stop Scheduler V2 service for scheduled downloads and video discovery (v0.10.1)
+            logger.info("🔄 Stopping Scheduler V2 service...")
+            from src.services.scheduler_service_v2 import scheduler_v2
 
-            await asyncio.to_thread(enhanced_scheduler_service.stop)
-            logger.info("✅ Enhanced scheduler service stopped")
+            result = await asyncio.to_thread(scheduler_v2.stop)
+            logger.info(f"✅ Scheduler V2 service stopped: {result.get('message', '')}")
 
             # Cleanup WebSocket system
             logger.info("🔄 Stopping WebSocket job progress system...")
@@ -314,10 +315,8 @@ from src.api.fastapi.youtube_playlists import router as youtube_playlists_router
 
 app.include_router(youtube_playlists_router)
 
-# Enhanced Scheduler Router
-from src.api.fastapi.enhanced_scheduler import router as enhanced_scheduler_router
-
-app.include_router(enhanced_scheduler_router)
+# Enhanced Scheduler Router - REMOVED in v0.10.1, replaced by Scheduler V2
+# Legacy enhanced_scheduler.py removed - use scheduler_v2.py and scheduled_jobs.py instead
 
 # Webhooks Router
 from src.api.fastapi.webhooks import router as webhooks_router
