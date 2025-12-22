@@ -3163,9 +3163,42 @@ function displaySchedulerV2Status(statusDiv, data) {
 
             for (const [name, schedule] of Object.entries(schedules)) {
                 if (schedule.enabled) {
+                    // Format schedule string for better readability
+                    let scheduleDisplay = schedule.schedule;
+
+                    // Parse crontab format: <crontab: 0 6 * * * (m/h/dM/MY/d)>
+                    if (scheduleDisplay.includes('<crontab:')) {
+                        const cronMatch = scheduleDisplay.match(/<crontab:\s*(\d+)\s+(\d+)\s+\*\s+\*\s+\*/);
+                        if (cronMatch) {
+                            const minute = cronMatch[1];
+                            const hour = cronMatch[2];
+                            scheduleDisplay = `Daily at ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+                        }
+                    }
+                    // Parse frequency format: <freq: 1.00 hour>
+                    else if (scheduleDisplay.includes('<freq:')) {
+                        const freqMatch = scheduleDisplay.match(/<freq:\s*([\d.]+)\s+(\w+)>/);
+                        if (freqMatch) {
+                            const value = parseFloat(freqMatch[1]);
+                            const unit = freqMatch[2];
+                            scheduleDisplay = `Every ${value} ${unit}${value !== 1 ? 's' : ''}`;
+                        }
+                    }
+                    // Timedelta format is already good: 0:30:00
+                    else if (scheduleDisplay.match(/^\d+:\d+:\d+$/)) {
+                        const parts = scheduleDisplay.split(':');
+                        const hours = parseInt(parts[0]);
+                        const minutes = parseInt(parts[1]);
+                        if (hours > 0) {
+                            scheduleDisplay = `Every ${hours} hour${hours !== 1 ? 's' : ''} ${minutes > 0 ? minutes + ' min' : ''}`.trim();
+                        } else if (minutes > 0) {
+                            scheduleDisplay = `Every ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+                        }
+                    }
+
                     statusHTML += `
                         <div class="schedule-item" style="padding: 4px 0; border-bottom: 1px solid var(--border-color);">
-                            <strong>${name}:</strong> ${schedule.schedule}
+                            <strong>${name}:</strong> ${scheduleDisplay}
                         </div>
                     `;
                 }
