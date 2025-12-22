@@ -264,6 +264,12 @@ def get_wanted_videos_for_download(limit: int = 50) -> List[Dict]:
     """
     Get videos that are marked as WANTED for downloading
 
+    Scheduler V2 enhancement (v0.10.1): Priority-based ordering
+    - Orders by artist schedule_priority (high > medium > low)
+    - Then by video priority (if available)
+    - Then by created date (oldest first for fairness)
+    - Respects artist download_enabled flag
+
     Args:
         limit: Maximum number of videos to return (default: 50)
 
@@ -272,13 +278,38 @@ def get_wanted_videos_for_download(limit: int = 50) -> List[Dict]:
     """
     try:
         with get_db() as session:
-            wanted_videos = (
+            from sqlalchemy import case
+
+            # Build query with priority ordering (Scheduler V2)
+            query = (
                 session.query(Video)
+                .join(Artist)
                 .filter(Video.status == VideoStatus.WANTED)
-                .order_by(Video.created_date.desc())
-                .limit(limit)
-                .all()
             )
+
+            # Filter by artist download_enabled if field exists (Scheduler V2)
+            if hasattr(Artist, "download_enabled"):
+                query = query.filter(Artist.download_enabled == True)
+
+            # Order by priority (Scheduler V2 enhancement)
+            if hasattr(Artist, "schedule_priority"):
+                # Priority mapping: high=1, medium=2, low=3 for sorting
+                priority_order = case(
+                    (Artist.schedule_priority == "high", 1),
+                    (Artist.schedule_priority == "medium", 2),
+                    (Artist.schedule_priority == "low", 3),
+                    else_=2,  # Default to medium priority
+                )
+                query = query.order_by(
+                    priority_order,
+                    Video.priority.desc().nullslast(),  # Higher priority videos first
+                    Video.created_at.asc(),  # Oldest videos first (fairness)
+                )
+            else:
+                # Fallback to original ordering if no priority field
+                query = query.order_by(Video.created_at.desc())
+
+            wanted_videos = query.limit(limit).all()
 
             # Convert to dict format for scheduler
             video_list = []

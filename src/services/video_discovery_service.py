@@ -24,13 +24,15 @@ class VideoDiscoveryService:
         self.discovery_interval_hours = 24
         self.rate_limit_delay = 1.0  # seconds between API calls
 
-    def discover_videos_for_artist(self, artist_id: int, limit: int = 10) -> Dict:
+    def discover_videos_for_artist(self, artist_id: int, limit: int = None) -> Dict:
         """
         Discover new videos for a specific artist
 
+        Scheduler V2 enhancement (v0.10.1): Respects per-artist max_videos_per_discovery
+
         Args:
             artist_id: Artist ID to discover videos for
-            limit: Maximum number of new videos to discover
+            limit: Maximum number of new videos to discover (overrides artist setting)
 
         Returns:
             Dictionary with discovery results
@@ -41,7 +43,18 @@ class VideoDiscoveryService:
                 if not artist:
                     return {"success": False, "error": f"Artist {artist_id} not found"}
 
-                logger.info(f"Starting video discovery for artist: {artist.name}")
+                # Use per-artist limit if not explicitly provided (Scheduler V2)
+                if limit is None:
+                    limit = (
+                        artist.max_videos_per_discovery
+                        if hasattr(artist, "max_videos_per_discovery")
+                        and artist.max_videos_per_discovery
+                        else 10
+                    )
+
+                logger.info(
+                    f"Starting video discovery for artist: {artist.name} (limit: {limit})"
+                )
 
                 # Get existing video URLs to avoid duplicates
                 existing_videos = (
@@ -275,14 +288,49 @@ class VideoDiscoveryService:
     #     return True
 
     def _should_discover_for_artist(self, artist: Artist) -> bool:
-        """Check if discovery should run for an artist based on timing"""
+        """
+        Check if discovery should run for an artist based on timing and settings
+
+        Scheduler V2 enhancement (v0.10.1): Uses per-artist discovery settings
+        """
+        # Check if discovery is enabled for this artist (Scheduler V2)
+        if hasattr(artist, "discovery_enabled") and not artist.discovery_enabled:
+            logger.debug(
+                f"Discovery disabled for artist {artist.name} (discovery_enabled=False)"
+            )
+            return False
+
+        # Check if artist is monitored
+        if not artist.monitored:
+            logger.debug(f"Artist {artist.name} is not monitored")
+            return False
+
+        # If never discovered before, allow discovery
         if not artist.last_discovery:
+            logger.debug(f"Artist {artist.name} has never been discovered - allowing")
             return True
 
-        time_since_discovery = datetime.utcnow() - artist.last_discovery
-        min_interval = timedelta(hours=self.discovery_interval_hours)
+        # Use per-artist discovery interval (Scheduler V2) or fallback to global
+        interval_hours = (
+            artist.discovery_interval_hours
+            if hasattr(artist, "discovery_interval_hours")
+            and artist.discovery_interval_hours
+            else self.discovery_interval_hours
+        )
 
-        return time_since_discovery >= min_interval
+        time_since_discovery = datetime.utcnow() - artist.last_discovery
+        min_interval = timedelta(hours=interval_hours)
+
+        should_discover = time_since_discovery >= min_interval
+
+        if not should_discover:
+            next_discovery = artist.last_discovery + min_interval
+            logger.debug(
+                f"Artist {artist.name} not ready for discovery. "
+                f"Last: {artist.last_discovery}, Next: {next_discovery}"
+            )
+
+        return should_discover
 
     def _store_discovered_video(self, session, artist_id: int, video_data: Dict):
         """Store a discovered video in the database"""
