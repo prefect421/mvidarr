@@ -1,74 +1,74 @@
 {
   "version": "0.10.1-dev",
-  "build_date": "2025-12-22T14:15:00.000000",
-  "git_commit": "5e3f028",
+  "build_date": "2025-12-22T19:15:01+00:00",
+  "git_commit": "e980a6a",
   "git_branch": "feature-schedule",
-  "release_name": "v0.10.1 - Scheduler V2: Complete Rework (In Development)",
+  "release_name": "v0.10.1 - Scheduler V2: Complete Implementation (Testing)",
   "features": [
-    "🔄 Scheduler V2: Complete overhaul of scheduled discovery and downloads",
-    "⚙️ Celery Beat Integration: Production-grade distributed task scheduling",
-    "🎯 Per-Artist Configuration: Custom discovery intervals and priority levels",
+    "🔄 Scheduler V2: Complete overhaul with Celery Beat integration",
+    "⚙️ Celery Beat: Production-grade distributed task scheduling",
+    "🎯 Per-Artist Scheduling: Custom intervals and priority levels",
     "🔁 Smart Retry Logic: Exponential backoff for failed downloads",
-    "📊 Enhanced Monitoring: Real-time job tracking and health dashboards",
-    "🚀 URL Pre-Resolution: Faster downloads with pre-validated URLs",
-    "🎛️ Priority-Based Downloads: High/Medium/Low priority ordering",
-    "📈 Job History: Comprehensive tracking of all scheduled operations",
-    "🔍 Discovery Improvements: Artist-specific intervals and settings",
-    "🧹 Code Cleanup: Removal of legacy scheduler implementations"
+    "📊 Enhanced Monitoring: Real-time job tracking and dashboards",
+    "🚀 23 REST API Endpoints: Complete scheduler and job management",
+    "🎛️ Priority-Based Processing: High/Medium/Low priority ordering",
+    "📈 Job History: Comprehensive tracking with 15+ indexed fields",
+    "🔍 Discovery Improvements: Artist-specific intervals and limits",
+    "🧹 Legacy Code Removed: Clean migration from old schedulers"
   ],
   "development_notes": [
-    "⚠️ DEVELOPMENT VERSION - NOT FOR PRODUCTION USE",
-    "This is an active development branch for v0.10.1",
-    "Breaking changes expected as implementation progresses",
-    "See docs/v0.10.1_PROJECT_PLAN.md for complete project plan",
-    "GitHub Issues: #181-#187 track implementation phases",
-    "Milestone: https://github.com/prefect421/mvidarr/milestone/15"
+    "⚠️ TESTING VERSION - Scheduler V2 Implementation Complete",
+    "All 6 development phases completed and ready for testing",
+    "Migration tools and comprehensive documentation included",
+    "See docs/SCHEDULER_V2.md and docs/MIGRATION_0.10.1.md",
+    "GitHub Issues: #181-#186 (All Closed)",
+    "Ready for Docker deployment testing"
   ],
   "project_info": {
     "milestone": "v0.10.1",
     "branch": "feature-schedule",
-    "status": "In Development",
+    "status": "Testing",
     "phases": {
       "phase_1": {
         "name": "Database Schema & Celery Configuration",
         "issue": "https://github.com/prefect421/mvidarr/issues/181",
-        "status": "Planned",
+        "status": "Complete",
         "duration": "5 days"
       },
       "phase_2": {
         "name": "Core Services - Scheduler V2, Discovery & Download",
         "issue": "https://github.com/prefect421/mvidarr/issues/182",
-        "status": "Planned",
+        "status": "Complete",
         "duration": "5 days"
       },
       "phase_3": {
         "name": "Celery Tasks Implementation",
         "issue": "https://github.com/prefect421/mvidarr/issues/183",
-        "status": "Planned",
+        "status": "Complete",
         "duration": "3 days"
       },
       "phase_4": {
         "name": "API Layer - Scheduler V2 & Job Management",
         "issue": "https://github.com/prefect421/mvidarr/issues/184",
-        "status": "Planned",
+        "status": "Complete",
         "duration": "5 days"
       },
       "phase_5": {
         "name": "Frontend - Scheduler Dashboard & Artist Config UI",
         "issue": "https://github.com/prefect421/mvidarr/issues/185",
-        "status": "Planned",
+        "status": "Complete",
         "duration": "5 days"
       },
       "phase_6": {
         "name": "Migration & Legacy Code Cleanup",
         "issue": "https://github.com/prefect421/mvidarr/issues/186",
-        "status": "Planned",
+        "status": "Complete",
         "duration": "5 days"
       },
       "phase_7": {
         "name": "Testing & Validation",
         "issue": "https://github.com/prefect421/mvidarr/issues/187",
-        "status": "Planned",
+        "status": "In Progress",
         "duration": "5 days"
       }
     },
