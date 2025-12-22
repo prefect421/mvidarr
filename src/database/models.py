@@ -367,6 +367,27 @@ class Artist(Base):
         String(50), nullable=True
     )  # Source: 'imvdb', 'spotify_import', 'manual', etc.
     last_discovery = Column(DateTime, nullable=True)  # Last time videos were discovered
+
+    # Scheduler V2 fields (v0.10.1)
+    discovery_interval_hours = Column(
+        Integer, default=24
+    )  # Per-artist discovery interval in hours
+    last_download = Column(
+        DateTime, nullable=True
+    )  # Last time a download was triggered for this artist
+    discovery_enabled = Column(
+        Boolean, default=True
+    )  # Can disable discovery independently of monitoring
+    download_enabled = Column(
+        Boolean, default=True
+    )  # Can disable auto-downloads independently
+    max_videos_per_discovery = Column(
+        Integer, default=5
+    )  # Maximum videos to discover per run for this artist
+    schedule_priority = Column(
+        String(20), default="medium"
+    )  # Scheduling priority: 'high', 'medium', 'low'
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -395,6 +416,18 @@ class Artist(Base):
         Index("idx_artist_disbanded_year", "disbanded_year"),
         Index("idx_artist_quality_profile", "quality_profile"),
         Index("idx_artist_priority", "priority"),
+        # Scheduler V2 indexes - v0.10.1
+        Index("idx_artist_discovery_enabled", "discovery_enabled"),
+        Index("idx_artist_download_enabled", "download_enabled"),
+        Index("idx_artist_schedule_priority", "schedule_priority"),
+        Index("idx_artist_last_discovery", "last_discovery"),
+        Index("idx_artist_last_download", "last_download"),
+        Index(
+            "idx_artist_scheduler_query",
+            "monitored",
+            "discovery_enabled",
+            "schedule_priority",
+        ),  # Composite for scheduler queries
         {"extend_existing": True},
     )
 
@@ -517,6 +550,15 @@ class Download(Base):
     quality = Column(String(50), nullable=True)
     format = Column(String(50), nullable=True)
     download_metadata = Column(JSON, nullable=True)
+
+    # Scheduler V2 retry fields (v0.10.1)
+    retry_count = Column(Integer, default=0)  # Number of retry attempts
+    last_attempt = Column(DateTime, nullable=True)  # Last retry attempt timestamp
+    last_error = Column(Text, nullable=True)  # Last error message encountered
+    next_retry_at = Column(
+        DateTime, nullable=True
+    )  # Scheduled time for next retry (exponential backoff)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -535,6 +577,12 @@ class Download(Base):
         Index(
             "idx_download_priority_status", "priority", "status"
         ),  # Composite index for queue ordering
+        # Scheduler V2 indexes - v0.10.1
+        Index("idx_download_retry_count", "retry_count"),
+        Index("idx_download_next_retry_at", "next_retry_at"),
+        Index(
+            "idx_download_retry_status", "status", "retry_count", "next_retry_at"
+        ),  # For finding failed downloads to retry
         {"extend_existing": True},
     )
 
@@ -575,6 +623,85 @@ class TaskQueue(Base):
 
     def __repr__(self):
         return f"<TaskQueue(task_type='{self.task_type}', status='{self.status}')>"
+
+
+class ScheduledJob(Base):
+    """Scheduled job tracking for Scheduler V2"""
+
+    __tablename__ = "scheduled_jobs"
+
+    id = Column(Integer, primary_key=True)
+    job_type = Column(
+        String(50), nullable=False
+    )  # 'discovery', 'download', 'health_check'
+    artist_id = Column(
+        Integer, ForeignKey("artists.id", ondelete="CASCADE"), nullable=True
+    )  # NULL for global jobs
+    status = Column(
+        String(50), default="pending"
+    )  # pending, running, completed, failed, retrying
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    celery_task_id = Column(String(255), nullable=True, unique=True)  # Celery task UUID
+    retry_count = Column(Integer, default=0)
+    max_retries = Column(Integer, default=3)
+    error_message = Column(Text, nullable=True)
+    result_summary = Column(
+        JSON, nullable=True
+    )  # {"discovered": 5, "downloaded": 3, "failed": 1}
+    execution_time_seconds = Column(
+        Integer, nullable=True
+    )  # How long the job took to execute
+    triggered_by = Column(
+        String(50), default="scheduler"
+    )  # 'scheduler', 'manual', 'api', 'webhook'
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    artist = relationship("Artist", backref="scheduled_jobs")
+
+    # Indexes
+    __table_args__ = (
+        Index("idx_scheduled_job_type", "job_type"),
+        Index("idx_scheduled_job_status", "status"),
+        Index("idx_scheduled_job_artist_id", "artist_id"),
+        Index("idx_scheduled_job_celery_task_id", "celery_task_id"),
+        Index("idx_scheduled_job_created_at", "created_at"),
+        Index("idx_scheduled_job_started_at", "started_at"),
+        Index(
+            "idx_scheduled_job_type_status", "job_type", "status"
+        ),  # Composite for queries
+        Index(
+            "idx_scheduled_job_artist_status", "artist_id", "status"
+        ),  # Per-artist job status
+        {"extend_existing": True},
+    )
+
+    def __repr__(self):
+        return f"<ScheduledJob(id={self.id}, type='{self.job_type}', status='{self.status}', artist_id={self.artist_id})>"
+
+    def to_dict(self):
+        """Convert to dictionary for API responses"""
+        return {
+            "id": self.id,
+            "job_type": self.job_type,
+            "artist_id": self.artist_id,
+            "status": self.status,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
+            "celery_task_id": self.celery_task_id,
+            "retry_count": self.retry_count,
+            "max_retries": self.max_retries,
+            "error_message": self.error_message,
+            "result_summary": self.result_summary,
+            "execution_time_seconds": self.execution_time_seconds,
+            "triggered_by": self.triggered_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class PlaylistMonitor(Base):

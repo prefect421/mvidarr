@@ -98,6 +98,77 @@ def init_default_settings():
             "5",
             "Maximum new videos to discover per artist per scheduled run",
         ),
+        # Scheduler V2 settings (v0.10.1)
+        (
+            "scheduler_v2_enabled",
+            "true",
+            "Enable Scheduler V2 with Celery Beat for production-grade scheduling",
+        ),
+        (
+            "scheduler_v2_worker_count",
+            "3",
+            "Number of Celery workers for scheduler tasks",
+        ),
+        (
+            "scheduler_v2_health_check_enabled",
+            "true",
+            "Enable periodic health checks for scheduler system",
+        ),
+        (
+            "scheduler_v2_health_check_interval",
+            "300",
+            "Health check interval in seconds (default: 5 minutes)",
+        ),
+        (
+            "discovery_parallel_workers",
+            "5",
+            "Number of parallel workers for video discovery tasks",
+        ),
+        (
+            "discovery_url_resolution_timeout",
+            "30",
+            "Timeout for URL resolution during discovery (seconds)",
+        ),
+        (
+            "discovery_batch_size",
+            "10",
+            "Number of artists to process in parallel during discovery",
+        ),
+        (
+            "download_max_concurrent",
+            "3",
+            "Maximum number of concurrent video downloads",
+        ),
+        (
+            "download_retry_max_attempts",
+            "3",
+            "Maximum retry attempts for failed downloads",
+        ),
+        (
+            "download_retry_backoff_base",
+            "300",
+            "Base retry backoff interval in seconds (5 minutes, exponential)",
+        ),
+        (
+            "download_priority_enabled",
+            "true",
+            "Enable priority-based download ordering (high/medium/low)",
+        ),
+        (
+            "monitoring_job_retention_days",
+            "30",
+            "Number of days to retain scheduled job history",
+        ),
+        (
+            "monitoring_alert_on_failure",
+            "true",
+            "Send alerts when scheduled jobs fail",
+        ),
+        (
+            "monitoring_alert_threshold",
+            "3",
+            "Number of consecutive failures before alerting",
+        ),
         ("spotify_client_id", "", "Spotify application client ID"),
         ("spotify_client_secret", "", "Spotify application client secret"),
         (

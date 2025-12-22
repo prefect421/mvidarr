@@ -33,6 +33,7 @@ celery_app = Celery(
         "src.jobs.ffmpeg_processing_tasks",
         "src.jobs.download_processor_task",
         "src.jobs.wizard_tasks",  # Wizard video indexing tasks
+        "src.tasks.scheduled_tasks",  # Scheduler V2 tasks (v0.10.1)
     ],
 )
 
@@ -44,6 +45,7 @@ celery_app.conf.update(
         "src.jobs.metadata_tasks.*": {"queue": "metadata"},
         "src.jobs.image_processing_tasks.*": {"queue": "image_processing"},
         "src.jobs.ffmpeg_processing_tasks.*": {"queue": "ffmpeg_processing"},
+        "src.tasks.scheduled_tasks.*": {"queue": "scheduler"},  # Scheduler V2 (v0.10.1)
     },
     # Queue definitions
     task_queues=(
@@ -51,6 +53,7 @@ celery_app.conf.update(
         Queue("metadata", routing_key="metadata"),
         Queue("image_processing", routing_key="image_processing"),
         Queue("ffmpeg_processing", routing_key="ffmpeg_processing"),
+        Queue("scheduler", routing_key="scheduler"),  # Scheduler V2 queue (v0.10.1)
         Queue("default", routing_key="default"),
     ),
     task_default_queue="default",
@@ -77,10 +80,35 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     # Beat schedule (if using celery beat for periodic tasks)
+    # NOTE: Scheduler V2 (v0.10.1) - These schedules are dynamically updated from database settings
+    # See src/services/scheduler_service_v2.py for dynamic schedule management
     beat_schedule={
         "process-downloads": {
             "task": "download_processor.process_downloads",
             "schedule": timedelta(seconds=30),
+        },
+        # Scheduler V2 tasks (v0.10.1) - Default schedules, overridden by database settings
+        "scheduled-discovery": {
+            "task": "src.tasks.scheduled_tasks.scheduled_discovery_task",
+            "schedule": timedelta(hours=6),  # Default: every 6 hours
+            "options": {"queue": "scheduler"},
+        },
+        "scheduled-downloads": {
+            "task": "src.tasks.scheduled_tasks.scheduled_downloads_task",
+            "schedule": timedelta(hours=2),  # Default: every 2 hours
+            "options": {"queue": "scheduler"},
+        },
+        "artist-discovery-check": {
+            "task": "src.tasks.scheduled_tasks.artist_discovery_check_task",
+            "schedule": timedelta(
+                minutes=30
+            ),  # Check every 30 minutes for artist-specific schedules
+            "options": {"queue": "scheduler"},
+        },
+        "scheduler-health-check": {
+            "task": "src.tasks.scheduled_tasks.scheduler_health_check_task",
+            "schedule": timedelta(minutes=5),  # Health check every 5 minutes
+            "options": {"queue": "scheduler"},
         },
     },
     beat_schedule_filename="/app/data/celerybeat-schedule",
