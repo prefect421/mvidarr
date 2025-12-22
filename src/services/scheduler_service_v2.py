@@ -133,24 +133,24 @@ class SchedulerServiceV2:
             Dict with scheduler status information
         """
         try:
-            db = self._get_db()
-
-            # Get recent job statistics
-            recent_jobs = (
-                db.query(ScheduledJob)
-                .filter(
-                    ScheduledJob.created_at >= datetime.utcnow() - timedelta(hours=24)
+            # Use get_db() as a context manager
+            with get_db() as db:
+                # Get recent job statistics
+                recent_jobs = (
+                    db.query(ScheduledJob)
+                    .filter(
+                        ScheduledJob.created_at >= datetime.utcnow() - timedelta(hours=24)
+                    )
+                    .all()
                 )
-                .all()
-            )
 
-            total_jobs = len(recent_jobs)
-            completed_jobs = len([j for j in recent_jobs if j.status == "completed"])
-            failed_jobs = len([j for j in recent_jobs if j.status == "failed"])
-            running_jobs = len([j for j in recent_jobs if j.status == "running"])
+                total_jobs = len(recent_jobs)
+                completed_jobs = len([j for j in recent_jobs if j.status == "completed"])
+                failed_jobs = len([j for j in recent_jobs if j.status == "failed"])
+                running_jobs = len([j for j in recent_jobs if j.status == "running"])
 
-            # Calculate success rate
-            success_rate = (completed_jobs / total_jobs * 100) if total_jobs > 0 else 0
+                # Calculate success rate
+                success_rate = (completed_jobs / total_jobs * 100) if total_jobs > 0 else 0
 
             return {
                 "status": "running" if self._is_running else "stopped",
