@@ -172,9 +172,21 @@ class SchedulerServiceV2:
 
         except Exception as e:
             logger.error(f"Failed to get scheduler status: {e}")
+            # Return all required fields with safe defaults
             return {
                 "status": "error",
-                "message": f"Failed to get status: {str(e)}",
+                "enabled": False,
+                "celery_connected": False,
+                "schedules": {},
+                "statistics": {
+                    "total_jobs_24h": 0,
+                    "completed": 0,
+                    "failed": 0,
+                    "running": 0,
+                    "success_rate": 0,
+                },
+                "worker_count": 0,
+                "health_check_enabled": False,
             }
 
     def update_schedule_from_settings(self) -> Dict[str, Any]:
