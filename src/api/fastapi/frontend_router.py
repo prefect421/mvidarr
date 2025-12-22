@@ -203,6 +203,45 @@ async def settings(request: Request, user=Depends(require_authentication)):
 
 
 # =====================================
+# Scheduler V2 Pages (v0.10.1)
+# =====================================
+
+
+@frontend_router.get(
+    "/scheduler/dashboard", response_class=HTMLResponse, name="scheduler_dashboard"
+)
+async def scheduler_dashboard(request: Request, user=Depends(require_authentication)):
+    """Scheduler V2 Dashboard page (authentication required)"""
+    try:
+        context = {"page_title": "Scheduler Dashboard"}
+        return await template_system.render_response(
+            "scheduler_dashboard.html", request, context
+        )
+    except Exception as e:
+        logger.error(f"Error rendering scheduler dashboard: {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to load scheduler dashboard"
+        )
+
+
+@frontend_router.get(
+    "/scheduler/jobs", response_class=HTMLResponse, name="scheduled_jobs"
+)
+async def scheduled_jobs(request: Request, user=Depends(require_authentication)):
+    """Scheduled Jobs monitoring page (authentication required)"""
+    try:
+        context = {"page_title": "Scheduled Jobs"}
+        return await template_system.render_response(
+            "scheduled_jobs.html", request, context
+        )
+    except Exception as e:
+        logger.error(f"Error rendering scheduled jobs page: {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to load scheduled jobs page"
+        )
+
+
+# =====================================
 # Service Integration Pages
 # =====================================
 

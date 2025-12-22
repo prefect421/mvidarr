@@ -1,0 +1,549 @@
+{% extends "base.html" %}
+{% set page_title = "Scheduled Jobs" %}
+
+{% block head %}
+<link rel="stylesheet" href="/css/scheduler.css">
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-primary, #333);
+}
+
+.page-header h1 {
+    margin: 0;
+    color: var(--text-primary, #fff);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.page-header .page-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.filters-bar {
+    background: var(--bg-secondary, #222);
+    border: 1px solid var(--border-secondary, #444);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    color: var(--text-secondary, #ccc);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.form-control, .form-select {
+    padding: 0.5rem;
+    background: var(--bg-tertiary, #2a2a2a);
+    border: 1px solid var(--border-secondary, #444);
+    border-radius: 6px;
+    color: var(--text-primary, #fff);
+    font-size: 0.9rem;
+}
+
+.form-control:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--accent-color, #3b82f6);
+}
+
+.jobs-table-container {
+    background: var(--bg-secondary, #222);
+    border: 1px solid var(--border-secondary, #444);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.jobs-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.jobs-table thead {
+    background: var(--bg-tertiary, #2a2a2a);
+}
+
+.jobs-table th {
+    text-align: left;
+    padding: 1rem;
+    color: var(--text-secondary, #ccc);
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-bottom: 2px solid var(--border-secondary, #444);
+    white-space: nowrap;
+}
+
+.jobs-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-secondary, #444);
+    color: var(--text-primary, #fff);
+}
+
+.jobs-table tbody tr:hover {
+    background: var(--bg-tertiary, #2a2a2a);
+}
+
+.jobs-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.job-id {
+    font-family: 'Courier New', monospace;
+    color: var(--text-secondary, #ccc);
+    font-size: 0.85rem;
+}
+
+.job-type-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.job-type-discovery {
+    background: #3b82f640;
+    color: #3b82f6;
+}
+
+.job-type-download {
+    background: #8b5cf640;
+    color: #8b5cf6;
+}
+
+.job-status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.job-status-completed {
+    background: #10b98140;
+    color: #10b981;
+}
+
+.job-status-failed {
+    background: #ef444440;
+    color: #ef4444;
+}
+
+.job-status-running {
+    background: #f59e0b40;
+    color: #f59e0b;
+}
+
+.job-status-pending {
+    background: #6b728040;
+    color: #9ca3af;
+}
+
+.job-status-cancelled {
+    background: #94a3b840;
+    color: #94a3b8;
+}
+
+.job-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    padding: 0.375rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    transform: translateY(-1px);
+}
+
+.btn-view {
+    background: #3b82f640;
+    color: #3b82f6;
+}
+
+.btn-retry {
+    background: #10b98140;
+    color: #10b981;
+}
+
+.btn-cancel {
+    background: #ef444440;
+    color: #ef4444;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+}
+
+.pagination button {
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary, #222);
+    border: 1px solid var(--border-secondary, #444);
+    border-radius: 6px;
+    color: var(--text-primary, #fff);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: var(--accent-color, #3b82f6);
+    border-color: var(--accent-color, #3b82f6);
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination .page-info {
+    color: var(--text-secondary, #ccc);
+    padding: 0 1rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary, #ccc);
+}
+
+.empty-state iconify-icon {
+    font-size: 4rem;
+    opacity: 0.3;
+    margin-bottom: 1rem;
+}
+
+/* Job Details Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+}
+
+.modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--bg-primary, #1a1a1a);
+    border: 1px solid var(--border-secondary, #444);
+    border-radius: 12px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-secondary, #444);
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: var(--text-primary, #fff);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary, #ccc);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: var(--bg-secondary, #222);
+    color: var(--text-primary, #fff);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.job-detail-section {
+    margin-bottom: 1.5rem;
+}
+
+.job-detail-section h3 {
+    color: var(--text-primary, #fff);
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.job-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.job-detail-item {
+    background: var(--bg-secondary, #222);
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-secondary, #444);
+}
+
+.job-detail-label {
+    color: var(--text-secondary, #ccc);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.job-detail-value {
+    color: var(--text-primary, #fff);
+    font-size: 0.95rem;
+}
+
+.error-box {
+    background: #7f1d1d40;
+    border: 1px solid #ef4444;
+    border-radius: 6px;
+    padding: 1rem;
+    color: #fca5a5;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--accent-color, #3b82f6);
+    color: white;
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        <iconify-icon icon="mdi:format-list-bulleted" width="32"></iconify-icon>
+        Scheduled Jobs
+    </h1>
+    <div class="page-actions">
+        <button class="btn btn-primary" onclick="scheduledJobs.refreshData()">
+            <iconify-icon icon="mdi:refresh"></iconify-icon>
+            Refresh
+        </button>
+        <button class="btn btn-primary" onclick="location.href='/scheduler/dashboard'">
+            <iconify-icon icon="mdi:view-dashboard"></iconify-icon>
+            Dashboard
+        </button>
+        <button class="btn btn-danger" onclick="scheduledJobs.cleanupOldJobs()">
+            <iconify-icon icon="mdi:delete-sweep"></iconify-icon>
+            Clean Old Jobs
+        </button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters-bar">
+    <div class="filter-group">
+        <label for="filter-status">Status</label>
+        <select id="filter-status" class="form-select" onchange="scheduledJobs.applyFilters()">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="running">Running</option>
+            <option value="completed">Completed</option>
+            <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="filter-type">Job Type</label>
+        <select id="filter-type" class="form-select" onchange="scheduledJobs.applyFilters()">
+            <option value="">All Types</option>
+            <option value="discovery">Discovery</option>
+            <option value="download">Downloads</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="filter-artist">Artist ID</label>
+        <input type="number" id="filter-artist" class="form-control" placeholder="Artist ID..." onchange="scheduledJobs.applyFilters()">
+    </div>
+    <div class="filter-group">
+        <label for="filter-limit">Results Per Page</label>
+        <select id="filter-limit" class="form-select" onchange="scheduledJobs.applyFilters()">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+        </select>
+    </div>
+</div>
+
+<!-- Jobs Table -->
+<div class="jobs-table-container">
+    <table class="jobs-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Artist</th>
+                <th>Started</th>
+                <th>Duration</th>
+                <th>Retries</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="jobs-table-body">
+            <tr>
+                <td colspan="8">
+                    <div class="empty-state">
+                        <iconify-icon icon="mdi:loading" class="spin"></iconify-icon>
+                        <p>Loading jobs...</p>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<div class="pagination">
+    <button id="btn-first-page" onclick="scheduledJobs.goToPage(0)" disabled>
+        <iconify-icon icon="mdi:page-first"></iconify-icon>
+    </button>
+    <button id="btn-prev-page" onclick="scheduledJobs.previousPage()" disabled>
+        <iconify-icon icon="mdi:chevron-left"></iconify-icon>
+        Previous
+    </button>
+    <span class="page-info">
+        Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+    </span>
+    <button id="btn-next-page" onclick="scheduledJobs.nextPage()" disabled>
+        Next
+        <iconify-icon icon="mdi:chevron-right"></iconify-icon>
+    </button>
+    <button id="btn-last-page" onclick="scheduledJobs.goToLastPage()" disabled>
+        <iconify-icon icon="mdi:page-last"></iconify-icon>
+    </button>
+</div>
+
+<!-- Job Details Modal -->
+<div id="job-details-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>
+                <iconify-icon icon="mdi:information"></iconify-icon>
+                Job Details
+            </h2>
+            <button class="modal-close" onclick="scheduledJobs.closeModal()">
+                <iconify-icon icon="mdi:close"></iconify-icon>
+            </button>
+        </div>
+        <div class="modal-body" id="job-details-content">
+            <div class="empty-state">
+                <iconify-icon icon="mdi:loading" class="spin"></iconify-icon>
+                <p>Loading job details...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/scheduled-jobs.js"></script>
+<script>
+    // Initialize scheduled jobs page
+    document.addEventListener('DOMContentLoaded', function() {
+        scheduledJobs.init();
+    });
+</script>
+{% endblock %}

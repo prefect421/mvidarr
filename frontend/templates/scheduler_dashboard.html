@@ -1,0 +1,516 @@
+{% extends "base.html" %}
+{% set page_title = "Scheduler Dashboard" %}
+
+{% block head %}
+<link rel="stylesheet" href="/css/scheduler.css">
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-primary, #333);
+}
+
+.page-header h1 {
+    margin: 0;
+    color: var(--text-primary, #fff);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.page-header .page-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.scheduler-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.scheduler-card {
+    background: var(--bg-secondary, #222);
+    border: 1px solid var(--border-secondary, #444);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.scheduler-card h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary, #fff);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.status-indicator.running {
+    background: #10b98140;
+    color: #10b981;
+    border: 1px solid #10b981;
+}
+
+.status-indicator.stopped {
+    background: #ef444440;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+}
+
+.status-indicator.degraded {
+    background: #f59e0b40;
+    color: #f59e0b;
+    border: 1px solid #f59e0b;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.scheduler-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--bg-tertiary, #2a2a2a);
+    border-radius: 6px;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-color, #3b82f6);
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #ccc);
+    margin-top: 0.25rem;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--accent-color, #3b82f6);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.schedule-info {
+    margin-top: 1rem;
+}
+
+.schedule-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-tertiary, #2a2a2a);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.schedule-item:last-child {
+    margin-bottom: 0;
+}
+
+.schedule-name {
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+}
+
+.schedule-time {
+    color: var(--text-secondary, #ccc);
+    font-size: 0.85rem;
+}
+
+.health-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.health-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--bg-tertiary, #2a2a2a);
+    border-radius: 6px;
+}
+
+.health-name {
+    font-weight: 500;
+    color: var(--text-primary, #fff);
+}
+
+.health-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.health-status.connected {
+    background: #10b98140;
+    color: #10b981;
+}
+
+.health-status.disconnected {
+    background: #ef444440;
+    color: #ef4444;
+}
+
+.recent-jobs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.recent-jobs-table th {
+    text-align: left;
+    padding: 0.75rem;
+    background: var(--bg-tertiary, #2a2a2a);
+    color: var(--text-secondary, #ccc);
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-bottom: 2px solid var(--border-secondary, #444);
+}
+
+.recent-jobs-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-secondary, #444);
+    color: var(--text-primary, #fff);
+}
+
+.recent-jobs-table tr:hover {
+    background: var(--bg-tertiary, #2a2a2a);
+}
+
+.job-type-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.job-type-discovery {
+    background: #3b82f640;
+    color: #3b82f6;
+}
+
+.job-type-download {
+    background: #8b5cf640;
+    color: #8b5cf6;
+}
+
+.job-status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.job-status-completed {
+    background: #10b98140;
+    color: #10b981;
+}
+
+.job-status-failed {
+    background: #ef444440;
+    color: #ef4444;
+}
+
+.job-status-running {
+    background: #f59e0b40;
+    color: #f59e0b;
+}
+
+.job-status-pending {
+    background: #6b728040;
+    color: #9ca3af;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary, #ccc);
+}
+
+.empty-state iconify-icon {
+    font-size: 3rem;
+    opacity: 0.3;
+    margin-bottom: 1rem;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        <iconify-icon icon="mdi:calendar-clock" width="32"></iconify-icon>
+        Scheduler Dashboard
+    </h1>
+    <div class="page-actions">
+        <button class="btn btn-primary" onclick="schedulerDashboard.refreshData()">
+            <iconify-icon icon="mdi:refresh"></iconify-icon>
+            Refresh
+        </button>
+        <button class="btn btn-primary" onclick="location.href='/scheduler/jobs'">
+            <iconify-icon icon="mdi:format-list-bulleted"></iconify-icon>
+            View All Jobs
+        </button>
+    </div>
+</div>
+
+<!-- Scheduler Status & Controls -->
+<div class="scheduler-grid">
+    <!-- Status Card -->
+    <div class="scheduler-card">
+        <h3>
+            <iconify-icon icon="mdi:heart-pulse"></iconify-icon>
+            Scheduler Status
+        </h3>
+        <div id="scheduler-status-display">
+            <div class="status-indicator running">
+                <span class="status-dot"></span>
+                <span>Loading...</span>
+            </div>
+        </div>
+        <div class="control-buttons">
+            <button class="btn btn-success" id="btn-start-scheduler" onclick="schedulerDashboard.startScheduler()" disabled>
+                <iconify-icon icon="mdi:play"></iconify-icon>
+                Start
+            </button>
+            <button class="btn btn-danger" id="btn-stop-scheduler" onclick="schedulerDashboard.stopScheduler()" disabled>
+                <iconify-icon icon="mdi:stop"></iconify-icon>
+                Stop
+            </button>
+            <button class="btn btn-primary" onclick="schedulerDashboard.reloadSettings()">
+                <iconify-icon icon="mdi:reload"></iconify-icon>
+                Reload Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- Manual Triggers -->
+    <div class="scheduler-card">
+        <h3>
+            <iconify-icon icon="mdi:play-circle"></iconify-icon>
+            Manual Triggers
+        </h3>
+        <p style="color: var(--text-secondary, #ccc); font-size: 0.9rem; margin-bottom: 1rem;">
+            Manually trigger scheduled tasks immediately
+        </p>
+        <div class="control-buttons">
+            <button class="btn btn-primary" onclick="schedulerDashboard.triggerDiscovery()">
+                <iconify-icon icon="mdi:magnify"></iconify-icon>
+                Trigger Discovery
+            </button>
+            <button class="btn btn-success" onclick="schedulerDashboard.triggerDownloads()">
+                <iconify-icon icon="mdi:download"></iconify-icon>
+                Trigger Downloads
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="scheduler-card">
+        <h3>
+            <iconify-icon icon="mdi:chart-bar"></iconify-icon>
+            Statistics (24h)
+        </h3>
+        <div class="scheduler-stats" id="scheduler-stats">
+            <div class="stat-item">
+                <span class="stat-value" id="stat-total-jobs">-</span>
+                <span class="stat-label">Total Jobs</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="stat-completed-jobs" style="color: #10b981;">-</span>
+                <span class="stat-label">Completed</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="stat-failed-jobs" style="color: #ef4444;">-</span>
+                <span class="stat-label">Failed</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="stat-success-rate" style="color: #3b82f6;">-</span>
+                <span class="stat-label">Success Rate</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Information -->
+<div class="scheduler-grid">
+    <div class="scheduler-card">
+        <h3>
+            <iconify-icon icon="mdi:calendar-check"></iconify-icon>
+            Active Schedules
+        </h3>
+        <div class="schedule-info" id="active-schedules">
+            <div class="empty-state">
+                <iconify-icon icon="mdi:calendar-blank"></iconify-icon>
+                <p>Loading schedules...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="scheduler-card">
+        <h3>
+            <iconify-icon icon="mdi:server-network"></iconify-icon>
+            Health Status
+        </h3>
+        <div class="health-grid" id="health-status">
+            <div class="health-item">
+                <span class="health-name">Celery Connection</span>
+                <span class="health-status connected">
+                    <span class="loading-spinner"></span>
+                    Checking...
+                </span>
+            </div>
+            <div class="health-item">
+                <span class="health-name">Worker Count</span>
+                <span class="health-status connected">-</span>
+            </div>
+            <div class="health-item">
+                <span class="health-name">Health Check</span>
+                <span class="health-status connected">-</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Jobs -->
+<div class="scheduler-card" style="margin-top: 1.5rem;">
+    <div class="section-header">
+        <h3>
+            <iconify-icon icon="mdi:history"></iconify-icon>
+            Recent Jobs
+        </h3>
+        <div>
+            <select id="filter-job-type" class="form-select" onchange="schedulerDashboard.filterJobs()">
+                <option value="">All Types</option>
+                <option value="discovery">Discovery</option>
+                <option value="download">Downloads</option>
+            </select>
+            <select id="filter-job-status" class="form-select" onchange="schedulerDashboard.filterJobs()" style="margin-left: 0.5rem;">
+                <option value="">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="running">Running</option>
+                <option value="pending">Pending</option>
+            </select>
+        </div>
+    </div>
+    <div id="recent-jobs-container">
+        <div class="empty-state">
+            <iconify-icon icon="mdi:file-clock-outline"></iconify-icon>
+            <p>Loading recent jobs...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/scheduler-dashboard.js"></script>
+<script>
+    // Initialize scheduler dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        schedulerDashboard.init();
+    });
+</script>
+{% endblock %}
