@@ -18,6 +18,7 @@ from fastapi import APIRouter
 from src.api.fastapi.artists_bulk import router as bulk_router
 from src.api.fastapi.artists_crud import router as crud_router
 from src.api.fastapi.artists_discovery import router as discovery_router
+from src.api.fastapi.artists_scheduling import router as scheduling_router
 from src.api.fastapi.artists_thumbnails import router as thumbnails_router
 from src.utils.logger import get_logger
 
@@ -49,12 +50,15 @@ router.include_router(bulk_router, prefix="", tags=["artists-bulk"])
 # Thumbnail management operations (has /{artist_id}/thumbnail/*, specific)
 router.include_router(thumbnails_router, prefix="", tags=["artists-thumbnails"])
 
+# Scheduling operations (has /{artist_id}/scheduling/*, specific) - Scheduler V2 (v0.10.1)
+router.include_router(scheduling_router, prefix="", tags=["artists-scheduling"])
+
 # CRUD operations (list, get, create, update, delete, search) - has generic /{artist_id}
 # MUST COME LAST because /{artist_id} will match any path
 router.include_router(crud_router, prefix="", tags=["artists-crud"])
 
 logger.info(
-    "Artists API router initialized with modular architecture (CRUD, Thumbnails, Discovery, Bulk)"
+    "Artists API router initialized with modular architecture (CRUD, Thumbnails, Discovery, Bulk, Scheduling)"
 )
 
 # ========================================================================================

@@ -574,6 +574,10 @@ from src.api.fastapi.monitoring_dashboard import router as dashboard_router
 from src.api.fastapi.performance import router as performance_router
 from src.api.fastapi.playlists import router as fastapi_playlists_router
 from src.api.fastapi.production_monitoring import router as monitoring_router
+
+# Scheduler V2 routers (v0.10.1)
+from src.api.fastapi.scheduled_jobs import router as scheduled_jobs_router
+from src.api.fastapi.scheduler_v2 import router as scheduler_v2_router
 from src.api.fastapi.settings import router as fastapi_settings_router
 from src.api.fastapi.videos import router as fastapi_videos_router
 from src.api.fastapi.videos_search import router as fastapi_videos_search_router
@@ -610,6 +614,8 @@ app.include_router(fastapi_settings_router)
 app.include_router(backups_router)  # v1.0.0 Backup & Recovery (Issue #93)
 app.include_router(wizard_router)  # v1.0.0 Installation Wizard (Issue #163)
 app.include_router(filesystem_router)  # v1.0.0 Custom Directory Import (Issue #164)
+app.include_router(scheduler_v2_router)  # v0.10.1 Scheduler V2 control API
+app.include_router(scheduled_jobs_router)  # v0.10.1 Job management API
 app.include_router(fastapi_auth_router)
 app.include_router(fastapi_auth_legacy_router)
 app.include_router(frontend_router)
