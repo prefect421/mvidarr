@@ -2927,34 +2927,23 @@ function refreshSchedulerStatus() {
         }
     }
     
-    // First try to check if enhanced scheduler is available
-    fetch('/api/enhanced-scheduler/status')
+    // Use Scheduler V2 API
+    fetch('/api/v2/scheduler/status')
     .then(response => {
-        if (response.ok) {
-            return response.json().then(data => ({ enhanced: true, data: data }));
-        } else {
-            // Enhanced scheduler not available, try standard scheduler
-            return fetch('/api/settings/scheduler/status')
-                .then(response => response.json())
-                .then(data => ({ enhanced: false, data: data }));
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        return response.json();
     })
-    .then(result => {
+    .then(data => {
         const statusDiv = document.getElementById('scheduler-status');
-        
-        if (result.enhanced) {
-            // Display enhanced scheduler status
-            displayEnhancedSchedulerStatus(statusDiv, result.data);
-        } else {
-            // Display standard scheduler status
-            displayStandardSchedulerStatus(statusDiv, result.data);
-        }
+        displaySchedulerV2Status(statusDiv, data);
     })
     .catch(error => {
         console.error('Error getting scheduler status:', error);
         const statusDiv = document.getElementById('scheduler-status');
         if (statusDiv) {
-            statusDiv.innerHTML = '<span class="error">Error loading scheduler status</span>';
+            statusDiv.innerHTML = '<span class="error">Error loading Scheduler V2 status. Please ensure Celery workers are running.</span>';
         }
     });
 }
@@ -3109,29 +3098,137 @@ function displayStandardSchedulerStatus(statusDiv, data) {
     }
 }
 
+function displaySchedulerV2Status(statusDiv, data) {
+    // Scheduler V2 status display
+    const statistics = data.statistics || {};
+    const schedules = data.schedules || {};
+    const isRunning = data.status === 'running';
+    const celeryConnected = data.celery_connected || false;
+
+    // Show scheduler V2 actions
+    const standardActions = document.getElementById('scheduler-actions') || document.querySelector('.scheduler-actions');
+    const enhancedActions = document.getElementById('enhanced-scheduler-actions');
+    if (standardActions) standardActions.style.display = 'flex';
+    if (enhancedActions) enhancedActions.style.display = 'none';
+
+    let statusHTML = `
+        <div class="status-info">
+            <div class="status-item enhanced">
+                <strong>Scheduler Type:</strong> 🚀 Scheduler V2 (Celery Beat)
+            </div>
+            <div class="status-item ${isRunning ? 'running' : 'stopped'}">
+                <strong>Service Status:</strong> ${isRunning ? '✅ Running' : '⏸️ Stopped'}
+            </div>
+            <div class="status-item ${celeryConnected ? 'running' : 'warning'}">
+                <strong>Celery Status:</strong> ${celeryConnected ? '✅ Connected' : '⚠️ Disconnected'}
+            </div>
+    `;
+
+    if (isRunning && celeryConnected) {
+        // Show statistics
+        statusHTML += `
+            <div class="status-item">
+                <strong>Worker Count:</strong> ${data.worker_count || 0}
+            </div>
+            <div class="status-item">
+                <strong>Health Checks:</strong> ${data.health_check_enabled ? 'Enabled' : 'Disabled'}
+            </div>
+        `;
+
+        // Show 24h statistics if available
+        if (statistics.total_jobs_24h !== undefined) {
+            const successRate = statistics.success_rate || 0;
+            statusHTML += `
+                <div class="status-item">
+                    <strong>24h Statistics:</strong>
+                    <div class="stats-grid" style="margin-top: 8px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                        <div>Total Jobs: ${statistics.total_jobs_24h}</div>
+                        <div>Success Rate: ${successRate.toFixed(1)}%</div>
+                        <div>Completed: ${statistics.completed || 0}</div>
+                        <div>Failed: ${statistics.failed || 0}</div>
+                        <div>Running: ${statistics.running || 0}</div>
+                        <div>Pending: ${statistics.pending || 0}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show active schedules
+        if (Object.keys(schedules).length > 0) {
+            statusHTML += `
+                <div class="status-item">
+                    <strong>Active Schedules:</strong>
+                    <div class="schedule-list" style="margin-top: 8px;">
+            `;
+
+            for (const [name, schedule] of Object.entries(schedules)) {
+                if (schedule.enabled) {
+                    statusHTML += `
+                        <div class="schedule-item" style="padding: 4px 0; border-bottom: 1px solid var(--border-color);">
+                            <strong>${name}:</strong> ${schedule.schedule}
+                        </div>
+                    `;
+                }
+            }
+
+            statusHTML += `
+                    </div>
+                </div>
+            `;
+        }
+    } else if (!celeryConnected) {
+        statusHTML += `
+            <div class="status-item warning">
+                <strong>⚠️ Note:</strong> Celery workers are not connected. Please ensure Celery workers and Beat are running.
+                <div style="margin-top: 8px; padding: 8px; background: var(--bg-secondary); border-radius: 4px; font-size: 0.9em;">
+                    Required services:<br>
+                    • Celery Worker: <code>celery -A src.jobs.celery_app worker</code><br>
+                    • Celery Beat: <code>celery -A src.jobs.celery_app beat</code><br>
+                    • Redis: <code>redis-server</code>
+                </div>
+            </div>
+        `;
+    } else {
+        statusHTML += `
+            <div class="status-item warning">
+                <strong>Note:</strong> Scheduler V2 is not running. Start it to enable scheduled tasks.
+            </div>
+        `;
+    }
+
+    statusHTML += `
+        </div>
+    `;
+
+    statusDiv.innerHTML = statusHTML;
+}
+
 function startScheduler() {
     // Update status display to show loading
     const statusDiv = document.getElementById('scheduler-status');
     if (statusDiv) {
-        statusDiv.innerHTML = '<span class="status-loading">Starting scheduler...</span>';
+        statusDiv.innerHTML = '<span class="status-loading">Starting Scheduler V2...</span>';
     }
-    
-    fetch('/api/settings/scheduler/start', {
-        method: 'POST'
+
+    fetch('/api/v2/scheduler/start', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
     .then(response => response.json())
     .then(data => {
-        if (data.message) {
-            showSuccess(data.message);
+        if (data.status === 'started' || data.message) {
+            showSuccess(data.message || 'Scheduler V2 started successfully');
             refreshSchedulerStatus();
         } else {
-            showError('Failed to start scheduler: ' + (data.error || 'Unknown error'));
+            showError('Failed to start Scheduler V2: ' + (data.error || 'Unknown error'));
             refreshSchedulerStatus();
         }
     })
     .catch(error => {
-        console.error('Error starting scheduler:', error);
-        showError('Error starting scheduler: ' + error.message);
+        console.error('Error starting Scheduler V2:', error);
+        showError('Error starting Scheduler V2: ' + error.message);
         refreshSchedulerStatus();
     });
 }
@@ -3140,211 +3237,248 @@ function stopScheduler() {
     // Update status display to show loading
     const statusDiv = document.getElementById('scheduler-status');
     if (statusDiv) {
-        statusDiv.innerHTML = '<span class="status-loading">Stopping scheduler...</span>';
+        statusDiv.innerHTML = '<span class="status-loading">Stopping Scheduler V2...</span>';
     }
-    
-    fetch('/api/settings/scheduler/stop', {
-        method: 'POST'
+
+    fetch('/api/v2/scheduler/stop', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
     .then(response => response.json())
     .then(data => {
-        if (data.message) {
-            showSuccess(data.message);
+        if (data.status === 'stopped' || data.message) {
+            showSuccess(data.message || 'Scheduler V2 stopped successfully');
             refreshSchedulerStatus();
         } else {
-            showError('Failed to stop scheduler: ' + (data.error || 'Unknown error'));
+            showError('Failed to stop Scheduler V2: ' + (data.error || 'Unknown error'));
             refreshSchedulerStatus();
         }
     })
     .catch(error => {
-        console.error('Error stopping scheduler:', error);
-        showError('Error stopping scheduler: ' + error.message);
+        console.error('Error stopping Scheduler V2:', error);
+        showError('Error stopping Scheduler V2: ' + error.message);
         refreshSchedulerStatus();
     });
 }
 
 function reloadScheduler() {
-    // Update status display to show loading
+    // Updated for Scheduler V2 - reload by restarting
     const statusDiv = document.getElementById('scheduler-status');
     if (statusDiv) {
-        statusDiv.innerHTML = '<span class="status-loading">Reloading scheduler configuration...</span>';
+        statusDiv.innerHTML = '<span class="status-loading">Restarting Scheduler V2...</span>';
     }
-    
-    fetch('/api/settings/scheduler/reload', {
-        method: 'POST'
+
+    // Stop then start the scheduler to reload configuration
+    fetch('/api/v2/scheduler/stop', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
     .then(response => response.json())
     .then(data => {
-        if (data.message) {
-            showSuccess(data.message);
+        // Now start it again
+        return fetch('/api/v2/scheduler/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'started' || data.message) {
+            showSuccess('Scheduler V2 restarted successfully');
             refreshSchedulerStatus();
         } else {
-            showError('Failed to reload scheduler: ' + (data.error || 'Unknown error'));
+            showError('Failed to restart Scheduler V2: ' + (data.error || 'Unknown error'));
             refreshSchedulerStatus();
         }
     })
     .catch(error => {
-        console.error('Error reloading scheduler:', error);
-        showError('Error reloading scheduler: ' + error.message);
+        console.error('Error restarting Scheduler V2:', error);
+        showError('Error restarting Scheduler V2: ' + error.message);
         refreshSchedulerStatus();
     });
 }
 
 function testScheduledDownload() {
-    // Update status display to show loading
+    // Trigger downloads using Scheduler V2
     const statusDiv = document.getElementById('scheduler-status');
     if (statusDiv) {
-        statusDiv.innerHTML = '<span class="status-loading">Running test download...</span>';
+        statusDiv.innerHTML = '<span class="status-loading">🔽 Triggering downloads...</span>';
     }
-    
-    fetch('/api/settings/scheduler/trigger', {
-        method: 'POST'
+
+    fetch('/api/v2/scheduler/trigger/downloads', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
     .then(response => response.json())
     .then(data => {
-        if (data.message) {
-            const result = data.result;
-            const message = `${data.message}<br>
-                           Success: ${result.success_count} videos queued<br>
-                           Failed: ${result.failed_count} videos<br>
-                           Total Wanted: ${result.total_wanted} videos`;
+        if (data.status === 'triggered' || data.task_id) {
+            const message = `${data.message || 'Downloads triggered successfully!'}<br>
+                           Task ID: ${data.task_id || 'N/A'}`;
             showSuccess(message);
             refreshSchedulerStatus();
         } else {
-            showError('Test download failed: ' + (data.error || 'Unknown error'));
+            showError('Download trigger failed: ' + (data.error || 'Unknown error'));
             refreshSchedulerStatus();
         }
     })
     .catch(error => {
-        console.error('Error running test download:', error);
-        showError('Error running test download: ' + error.message);
+        console.error('Error triggering downloads:', error);
+        showError('Error triggering downloads: ' + error.message);
         refreshSchedulerStatus();
     });
 }
 
-// Enhanced Scheduler Functions
+// Scheduler V2 Trigger Functions
 function triggerEnhancedDownload() {
-    // VERSION: 2.0 - Fixed undefined result bug
+    // Updated for Scheduler V2
     const statusDiv = document.getElementById('scheduler-status');
     if (statusDiv) {
-        statusDiv.innerHTML = '<span class="status-loading">🔽 Triggering enhanced download...</span>';
+        statusDiv.innerHTML = '<span class="status-loading">🔽 Triggering downloads...</span>';
     }
 
-    console.log('triggerEnhancedDownload VERSION 2.0 - with null checks');
+    console.log('Triggering Scheduler V2 downloads');
 
-    fetch('/api/enhanced-scheduler/trigger/download', {
-        method: 'POST'
+    fetch('/api/v2/scheduler/trigger/downloads', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Enhanced download response:', data);
+        console.log('Download trigger response:', data);
 
-        if (data.success) {
-            const result = data.result || {};
-            const downloaded = result.downloaded || 0;
-            const totalFound = result.total_found || 0;
-            const duration = result.duration_seconds ? result.duration_seconds.toFixed(1) + 's' : 'Unknown';
-
-            const message = `Download triggered successfully!<br>
-                           Downloaded: ${downloaded} videos<br>
-                           Total Found: ${totalFound} videos<br>
-                           Duration: ${duration}`;
+        if (data.status === 'triggered' || data.task_id) {
+            const message = `Downloads triggered successfully!<br>
+                           Task ID: ${data.task_id || 'N/A'}<br>
+                           ${data.message || ''}`;
             showSuccess(message);
         } else {
-            showError('Enhanced download trigger failed: ' + (data.message || 'Unknown error'));
+            showError('Download trigger failed: ' + (data.error || data.message || 'Unknown error'));
         }
         refreshSchedulerStatus();
     })
     .catch(error => {
-        console.error('Error triggering enhanced download:', error);
-        showError('Error triggering enhanced download: ' + error.message);
+        console.error('Error triggering downloads:', error);
+        showError('Error triggering downloads: ' + error.message);
         refreshSchedulerStatus();
     });
 }
 
 function triggerEnhancedDiscovery() {
+    // Updated for Scheduler V2
     const statusDiv = document.getElementById('scheduler-status');
     if (statusDiv) {
-        statusDiv.innerHTML = '<span class="status-loading">🔍 Triggering enhanced discovery...</span>';
+        statusDiv.innerHTML = '<span class="status-loading">🔍 Triggering discovery...</span>';
     }
-    
-    fetch('/api/enhanced-scheduler/trigger/discovery', {
-        method: 'POST'
+
+    fetch('/api/v2/scheduler/trigger/discovery', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            const result = data.result;
+        if (data.status === 'triggered' || data.task_id) {
             const message = `Discovery triggered successfully!<br>
-                           Result: ${JSON.stringify(result, null, 2)}`;
+                           Task ID: ${data.task_id || 'N/A'}<br>
+                           ${data.message || ''}`;
             showSuccess(message);
         } else {
-            showError('Enhanced discovery trigger failed: ' + data.message);
+            showError('Discovery trigger failed: ' + (data.error || data.message || 'Unknown error'));
         }
         refreshSchedulerStatus();
     })
     .catch(error => {
-        console.error('Error triggering enhanced discovery:', error);
-        showError('Error triggering enhanced discovery: ' + error.message);
+        console.error('Error triggering discovery:', error);
+        showError('Error triggering discovery: ' + error.message);
         refreshSchedulerStatus();
     });
 }
 
 function viewEnhancedSchedulerHealth() {
-    fetch('/api/enhanced-scheduler/health')
+    // Updated for Scheduler V2
+    fetch('/api/v2/scheduler/health')
     .then(response => response.json())
     .then(data => {
-        const healthStatus = data.status === 'healthy' ? '✅ Healthy' : '❌ Unhealthy';
-        const details = data.details || {};
+        const healthStatus = data.healthy ? '✅ Healthy' : '❌ Unhealthy';
         const message = `
             <div><strong>Health Status:</strong> ${healthStatus}</div>
-            <div><strong>Timestamp:</strong> ${data.timestamp ? new Date(data.timestamp).toLocaleString() : 'Unknown'}</div>
-            <div><strong>Scheduler Running:</strong> ${details.scheduler_running ? 'Yes' : 'No'}</div>
-            <div><strong>Thread Alive:</strong> ${details.thread_alive ? 'Yes' : 'No'}</div>
-            <div><strong>Jobs Count:</strong> ${details.jobs_count || 0}</div>
-            ${details.last_download ? `<div><strong>Last Download:</strong> ${new Date(details.last_download).toLocaleString()}</div>` : ''}
-            ${details.last_discovery ? `<div><strong>Last Discovery:</strong> ${new Date(details.last_discovery).toLocaleString()}</div>` : ''}
+            <div><strong>Scheduler Status:</strong> ${data.scheduler_status || 'Unknown'}</div>
+            <div><strong>Celery Connected:</strong> ${data.celery_connected ? 'Yes' : 'No'}</div>
+            <div><strong>Redis Connected:</strong> ${data.redis_connected ? 'Yes' : 'No'}</div>
+            <div><strong>Database Connected:</strong> ${data.database_connected ? 'Yes' : 'No'}</div>
+            <div><strong>Worker Count:</strong> ${data.worker_count || 0}</div>
+            <div><strong>Active Jobs:</strong> ${data.active_jobs || 0}</div>
+            ${data.last_check ? `<div><strong>Last Check:</strong> ${new Date(data.last_check).toLocaleString()}</div>` : ''}
         `;
-        
-        if (data.status === 'healthy') {
-            showSuccess('Enhanced Scheduler Health Check:<br>' + message);
+
+        if (data.healthy) {
+            showSuccess('Scheduler V2 Health Check:<br>' + message);
         } else {
-            showError('Enhanced Scheduler Health Check:<br>' + message);
+            showError('Scheduler V2 Health Check:<br>' + message);
         }
     })
     .catch(error => {
-        console.error('Error checking enhanced scheduler health:', error);
-        showError('Error checking enhanced scheduler health: ' + error.message);
+        console.error('Error checking Scheduler V2 health:', error);
+        showError('Error checking Scheduler V2 health: ' + error.message);
     });
 }
 
 function viewEnhancedSchedulerConfig() {
-    fetch('/api/enhanced-scheduler/config')
+    // Updated for Scheduler V2
+    fetch('/api/v2/scheduler/status')
     .then(response => response.json())
     .then(data => {
-        const envConfig = data.environment_config || {};
-        const schedulerInfo = data.scheduler_info || {};
-        const message = `
-            <div><strong>Environment Configuration:</strong></div>
+        const schedules = data.schedules || {};
+        const statistics = data.statistics || {};
+
+        let schedulesHTML = '<div><strong>Active Schedules:</strong></div><div style="margin-left: 20px;">';
+        for (const [name, schedule] of Object.entries(schedules)) {
+            schedulesHTML += `
+                <div><strong>${name}:</strong></div>
+                <div style="margin-left: 15px;">
+                    <div>Schedule: ${schedule.schedule}</div>
+                    <div>Task: ${schedule.task}</div>
+                    <div>Enabled: ${schedule.enabled ? 'Yes' : 'No'}</div>
+                </div>
+            `;
+        }
+        schedulesHTML += '</div>';
+
+        const statisticsHTML = `
+            <div><strong>24h Statistics:</strong></div>
             <div style="margin-left: 20px;">
-                <div>Auto Download Enabled: ${envConfig.auto_download_enabled ? 'Yes' : 'No'}</div>
-                <div>Download Schedule: ${envConfig.auto_download_schedule} at ${envConfig.auto_download_time}</div>
-                <div>Max Downloads/Run: ${envConfig.max_downloads_per_run}</div>
-                <div>Auto Discovery Enabled: ${envConfig.auto_discovery_enabled ? 'Yes' : 'No'}</div>
-                <div>Discovery Schedule: ${envConfig.auto_discovery_schedule} at ${envConfig.auto_discovery_time}</div>
-                <div>Health Checks: ${envConfig.scheduler_health_check ? 'Enabled' : 'Disabled'}</div>
-                <div>Log Level: ${envConfig.scheduler_log_level}</div>
-            </div>
-            <div><strong>Scheduler Info:</strong></div>
-            <div style="margin-left: 20px;">
-                <div>Jobs Count: ${schedulerInfo.jobs_count || 0}</div>
+                <div>Total Jobs: ${statistics.total_jobs_24h || 0}</div>
+                <div>Completed: ${statistics.completed || 0}</div>
+                <div>Failed: ${statistics.failed || 0}</div>
+                <div>Success Rate: ${(statistics.success_rate || 0).toFixed(1)}%</div>
             </div>
         `;
-        showInfo('Enhanced Scheduler Configuration:<br>' + message);
+
+        const message = `
+            <div><strong>Worker Count:</strong> ${data.worker_count || 0}</div>
+            <div><strong>Health Checks:</strong> ${data.health_check_enabled ? 'Enabled' : 'Disabled'}</div>
+            <div><strong>Celery Connected:</strong> ${data.celery_connected ? 'Yes' : 'No'}</div>
+            <br>
+            ${schedulesHTML}
+            <br>
+            ${statisticsHTML}
+        `;
+        showInfo('Scheduler V2 Configuration:<br>' + message);
     })
     .catch(error => {
-        console.error('Error getting enhanced scheduler config:', error);
-        showError('Error getting enhanced scheduler config: ' + error.message);
+        console.error('Error getting Scheduler V2 config:', error);
+        showError('Error getting Scheduler V2 config: ' + error.message);
     });
 }
 
