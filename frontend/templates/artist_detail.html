@@ -3225,9 +3225,72 @@ div.artist-header-actions button.btn iconify-icon {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Scheduler V2 Settings (Advanced) -->
+                        <div class="settings-subsection">
+                            <h5 class="subsection-title">
+                                <iconify-icon icon="tabler:calendar-time"></iconify-icon>
+                                Scheduler Settings (Advanced)
+                            </h5>
+                            <div class="settings-grid">
+                                <div class="setting-group">
+                                    <label for="discoveryIntervalSetting">Discovery Interval (hours):</label>
+                                    <select id="discoveryIntervalSetting" name="discovery_interval_hours">
+                                        <option value="6">Every 6 hours</option>
+                                        <option value="12">Every 12 hours</option>
+                                        <option value="24">Daily (24 hours)</option>
+                                        <option value="48">Every 2 days</option>
+                                        <option value="72">Every 3 days</option>
+                                        <option value="168">Weekly (7 days)</option>
+                                    </select>
+                                    <small class="field-hint">How often to check this artist for new videos</small>
+                                </div>
+
+                                <div class="setting-group">
+                                    <label for="maxVideosPerDiscoverySetting">Max Videos Per Discovery:</label>
+                                    <input type="number" id="maxVideosPerDiscoverySetting" name="max_videos_per_discovery"
+                                           min="1" max="50" value="5">
+                                    <small class="field-hint">Maximum videos to discover per check (1-50)</small>
+                                </div>
+
+                                <div class="setting-group">
+                                    <label for="schedulePrioritySetting">Schedule Priority:</label>
+                                    <select id="schedulePrioritySetting" name="schedule_priority">
+                                        <option value="high">High - Check first</option>
+                                        <option value="medium">Medium - Normal priority</option>
+                                        <option value="low">Low - Check last</option>
+                                    </select>
+                                    <small class="field-hint">Priority for scheduled discovery checks</small>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-grid" style="margin-top: 1rem;">
+                                <div class="setting-group checkbox-group">
+                                    <label class="checkbox-container">
+                                        <input type="checkbox" id="discoveryEnabledSetting" name="discovery_enabled">
+                                        <span class="checkmark"></span>
+                                        <div class="checkbox-content">
+                                            <span class="checkbox-label">Enable scheduled discovery</span>
+                                            <small class="field-hint">Allow automatic discovery checks for this artist</small>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="setting-group checkbox-group">
+                                    <label class="checkbox-container">
+                                        <input type="checkbox" id="downloadEnabledSetting" name="download_enabled">
+                                        <span class="checkmark"></span>
+                                        <div class="checkbox-content">
+                                            <span class="checkbox-label">Enable auto-downloads</span>
+                                            <small class="field-hint">Allow scheduled downloads for this artist's wanted videos</small>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
+
                 <div class="settings-actions">
                     <button type="submit" class="btn btn-primary">💾 Save All Changes</button>
                     <button type="button" onclick="resetSettings()" class="btn btn-secondary">🔄 Reset</button>
@@ -6938,7 +7001,14 @@ function populateSettings(artist) {
     document.getElementById('autoDownloadSetting').checked = artist.auto_download || false;
     document.getElementById('qualityProfileSetting').value = artist.quality_profile || 'any';
     document.getElementById('prioritySetting').value = artist.priority || 'normal';
-    
+
+    // Scheduler V2 Settings
+    document.getElementById('discoveryIntervalSetting').value = artist.discovery_interval_hours || 24;
+    document.getElementById('maxVideosPerDiscoverySetting').value = artist.max_videos_per_discovery || 5;
+    document.getElementById('schedulePrioritySetting').value = artist.schedule_priority || 'medium';
+    document.getElementById('discoveryEnabledSetting').checked = artist.discovery_enabled !== false;  // Default true
+    document.getElementById('downloadEnabledSetting').checked = artist.download_enabled !== false;  // Default true
+
     // Initialize thumbnail preview
     updateThumbnailPreview(artist.thumbnail_url);
 }
@@ -6976,7 +7046,14 @@ function saveArtistSettings() {
         monitored: formData.get('monitored') === 'on',
         auto_download: formData.get('auto_download') === 'on',
         quality_profile: formData.get('quality_profile'),
-        priority: formData.get('priority')
+        priority: formData.get('priority'),
+
+        // Scheduler V2 Settings
+        discovery_interval_hours: parseInt(formData.get('discovery_interval_hours')) || 24,
+        max_videos_per_discovery: parseInt(formData.get('max_videos_per_discovery')) || 5,
+        schedule_priority: formData.get('schedule_priority') || 'medium',
+        discovery_enabled: formData.get('discovery_enabled') === 'on',
+        download_enabled: formData.get('download_enabled') === 'on'
     };
     
     fetch(`/api/artists/${currentArtistId}`, {

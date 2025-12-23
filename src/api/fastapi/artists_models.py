@@ -107,6 +107,19 @@ class ArtistUpdateRequest(BaseModel):
     quality_profile: Optional[str] = None  # Quality profile for downloads
     priority: Optional[int] = Field(None, ge=0)  # Artist priority for downloads
 
+    # Scheduler V2 fields - v0.10.1
+    discovery_enabled: Optional[bool] = (
+        None  # Enable scheduled discovery for this artist
+    )
+    download_enabled: Optional[bool] = None  # Enable auto-downloads for this artist
+    discovery_interval_hours: Optional[int] = Field(
+        None, ge=1, le=720
+    )  # Discovery interval (1-720 hours / 30 days)
+    max_videos_per_discovery: Optional[int] = Field(
+        None, ge=1, le=100
+    )  # Max videos per discovery run
+    schedule_priority: Optional[str] = None  # Scheduling priority: high, medium, low
+
     @field_validator("keywords", "genres", "labels", mode="before")
     @classmethod
     def empty_str_to_none_list(cls, v):
@@ -122,7 +135,14 @@ class ArtistUpdateRequest(BaseModel):
             return v
         return v
 
-    @field_validator("priority", "formed_year", "disbanded_year", mode="before")
+    @field_validator(
+        "priority",
+        "formed_year",
+        "disbanded_year",
+        "discovery_interval_hours",
+        "max_videos_per_discovery",
+        mode="before",
+    )
     @classmethod
     def empty_str_to_none_int(cls, v):
         """Convert empty strings and invalid values to None for integer fields"""
