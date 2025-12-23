@@ -686,23 +686,9 @@ class VideoDiscoveryService:
             session.flush()  # Ensure video ID is available
             logger.debug(f"Stored new video: {video.title}")
 
-            # Download thumbnail if URL is available
-            if video.thumbnail_url:
-                try:
-                    thumbnail_path = thumbnail_service.download_video_thumbnail(
-                        video.id, video.thumbnail_url
-                    )
-                    if thumbnail_path:
-                        video.thumbnail_path = thumbnail_path
-                        logger.debug(f"Downloaded thumbnail for video: {video.title}")
-                    else:
-                        logger.warning(
-                            f"Failed to download thumbnail for video: {video.title}"
-                        )
-                except Exception as e:
-                    logger.error(
-                        f"Error downloading thumbnail for video {video.title}: {e}"
-                    )
+            # TODO: Download thumbnail - requires artist name, but artist may be detached
+            # Skipping for now to prevent discovery failures
+            # Will be implemented in a separate fix
 
         except Exception as e:
             logger.error(f"Failed to store video: {e}")
