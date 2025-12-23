@@ -51,6 +51,12 @@ class ArtistResponse(BaseModel):
     instagram_url: Optional[str] = None  # Instagram profile URL
     quality_profile: Optional[str] = None  # Quality profile for downloads
     priority: Optional[int] = None  # Artist priority for downloads
+    # Scheduler V2 fields - v0.10.1
+    discovery_enabled: Optional[bool] = None  # Enable scheduled discovery
+    download_enabled: Optional[bool] = None  # Enable auto-downloads
+    discovery_interval_hours: Optional[int] = None  # Discovery interval
+    max_videos_per_discovery: Optional[int] = None  # Max videos per discovery
+    schedule_priority: Optional[str] = None  # Scheduling priority
     video_count: int = 0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

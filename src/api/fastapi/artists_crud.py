@@ -448,6 +448,12 @@ async def get_artist(
                 artist, "quality_profile", None
             ),  # Quality profile for downloads
             priority=getattr(artist, "priority", None),  # Artist priority for downloads
+            # Scheduler V2 fields - v0.10.1
+            discovery_enabled=getattr(artist, "discovery_enabled", None),
+            download_enabled=getattr(artist, "download_enabled", None),
+            discovery_interval_hours=getattr(artist, "discovery_interval_hours", None),
+            max_videos_per_discovery=getattr(artist, "max_videos_per_discovery", None),
+            schedule_priority=getattr(artist, "schedule_priority", None),
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
@@ -477,12 +483,19 @@ async def create_artist(
             )
 
         # Create new artist
+        # Auto-sync Scheduler V2 fields with monitored/auto_download
         artist = Artist(
             name=artist_data.name,
             monitored=artist_data.monitored,
             auto_download=artist_data.auto_download,
+            discovery_enabled=artist_data.monitored,  # Sync with monitored
+            download_enabled=artist_data.auto_download,  # Sync with auto_download
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
+        )
+        logger.info(
+            f"Creating artist {artist_data.name} with discovery_enabled={artist_data.monitored}, "
+            f"download_enabled={artist_data.auto_download}"
         )
 
         # Set IMVDb ID if provided
@@ -576,6 +589,21 @@ async def update_artist(
         # Update fields if provided
         update_fields = update_data.dict(exclude_unset=True)
 
+        # Auto-sync Scheduler V2 fields when monitored/auto_download change
+        # If monitored is being updated and discovery_enabled is not explicitly set, sync it
+        if "monitored" in update_fields and "discovery_enabled" not in update_fields:
+            update_fields["discovery_enabled"] = update_fields["monitored"]
+            logger.info(
+                f"Auto-syncing discovery_enabled={update_fields['monitored']} for artist {artist_id}"
+            )
+
+        # If auto_download is being updated and download_enabled is not explicitly set, sync it
+        if "auto_download" in update_fields and "download_enabled" not in update_fields:
+            update_fields["download_enabled"] = update_fields["auto_download"]
+            logger.info(
+                f"Auto-syncing download_enabled={update_fields['auto_download']} for artist {artist_id}"
+            )
+
         for field, value in update_fields.items():
             setattr(artist, field, value)
 
@@ -640,6 +668,12 @@ async def update_artist(
                 artist, "quality_profile", None
             ),  # Quality profile for downloads
             priority=getattr(artist, "priority", None),  # Artist priority for downloads
+            # Scheduler V2 fields - v0.10.1
+            discovery_enabled=getattr(artist, "discovery_enabled", None),
+            download_enabled=getattr(artist, "download_enabled", None),
+            discovery_interval_hours=getattr(artist, "discovery_interval_hours", None),
+            max_videos_per_discovery=getattr(artist, "max_videos_per_discovery", None),
+            schedule_priority=getattr(artist, "schedule_priority", None),
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
