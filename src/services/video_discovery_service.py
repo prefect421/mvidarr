@@ -312,6 +312,9 @@ class VideoDiscoveryService:
             List of video_data dicts with standardized format
         """
         try:
+            # Capture artist name early to avoid DetachedInstanceError
+            artist_name = artist.name
+
             # Get settings
             min_score = SettingsService.get_float("youtube_discovery_min_score", 1.5)
             allow_ytdlp_fallback = SettingsService.get_bool(
@@ -321,22 +324,22 @@ class VideoDiscoveryService:
             # Try YouTube API first
             try:
                 results = youtube_search_service.search_artist_videos(
-                    artist.name, limit=limit
+                    artist_name, limit=limit
                 )
 
                 if results and "videos" in results and len(results["videos"]) > 0:
                     logger.info(
-                        f"YouTube API returned {len(results['videos'])} videos for {artist.name}"
+                        f"YouTube API returned {len(results['videos'])} videos for {artist_name}"
                     )
                     return self._process_youtube_api_results(
                         results["videos"], artist, min_score
                     )
             except Exception as e:
-                logger.warning(f"YouTube API search failed for {artist.name}: {e}")
+                logger.warning(f"YouTube API search failed for {artist_name}: {e}")
 
                 # Fall back to yt-dlp if enabled
                 if allow_ytdlp_fallback:
-                    logger.info(f"Falling back to yt-dlp search for {artist.name}")
+                    logger.info(f"Falling back to yt-dlp search for {artist_name}")
                     return self._search_youtube_with_ytdlp(artist, limit, min_score)
                 else:
                     logger.error(f"YouTube API failed and yt-dlp fallback disabled")
@@ -345,7 +348,7 @@ class VideoDiscoveryService:
             return []
 
         except Exception as e:
-            logger.error(f"YouTube search failed for {artist.name}: {e}")
+            logger.error(f"YouTube search failed for {artist_name}: {e}")
             return []
 
     def _process_youtube_api_results(
@@ -362,6 +365,8 @@ class VideoDiscoveryService:
         Returns:
             List of processed video_data dicts
         """
+        # Capture artist name early to avoid DetachedInstanceError
+        artist_name = artist.name
         processed_videos = []
 
         for video in videos:
@@ -375,7 +380,7 @@ class VideoDiscoveryService:
 
             # Map to discovery format
             video_data = {
-                "title": f"{artist.name} - {video.get('title', 'Unknown')}",
+                "title": f"{artist_name} - {video.get('title', 'Unknown')}",
                 "song_title": video.get("title", "Unknown"),
                 "youtube_id": video.get("youtube_id"),
                 "url": video.get("youtube_url"),
@@ -416,7 +421,9 @@ class VideoDiscoveryService:
             List of video_data dicts
         """
         try:
-            search_query = f"{artist.name} music video"
+            # Capture artist name early to avoid DetachedInstanceError
+            artist_name = artist.name
+            search_query = f"{artist_name} music video"
 
             cmd = [
                 get_ytdlp_path(),
@@ -443,7 +450,7 @@ class VideoDiscoveryService:
                     video_info = json.loads(line)
 
                     video_data = {
-                        "title": f"{artist.name} - {video_info.get('title', 'Unknown')}",
+                        "title": f"{artist_name} - {video_info.get('title', 'Unknown')}",
                         "song_title": video_info.get("title", "Unknown"),
                         "youtube_id": video_info.get("id"),
                         "url": video_info.get("webpage_url") or video_info.get("url"),
@@ -465,14 +472,14 @@ class VideoDiscoveryService:
                     logger.error(f"Failed to parse yt-dlp JSON: {e}")
                     continue
 
-            logger.info(f"yt-dlp returned {len(videos)} videos for {artist.name}")
+            logger.info(f"yt-dlp returned {len(videos)} videos for {artist_name}")
             return videos
 
         except subprocess.TimeoutExpired:
-            logger.error(f"yt-dlp search timed out for {artist.name}")
+            logger.error(f"yt-dlp search timed out for {artist_name}")
             return []
         except Exception as e:
-            logger.error(f"yt-dlp search error for {artist.name}: {e}")
+            logger.error(f"yt-dlp search error for {artist_name}: {e}")
             return []
 
     def _merge_duplicate_videos(self, discovered_videos: List[Dict]) -> List[Dict]:
