@@ -638,6 +638,21 @@ class VideoDiscoveryService:
                 if video_data.get("title") is not None
                 else ""
             )
+
+            # Parse published_date - YouTube returns ISO 8601 with 'Z' timezone
+            release_date = None
+            if video_data.get("published_date"):
+                try:
+                    from dateutil import parser as dateutil_parser
+
+                    # Parse and convert to timezone-naive datetime for MySQL
+                    parsed_date = dateutil_parser.parse(video_data["published_date"])
+                    release_date = parsed_date.replace(tzinfo=None)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to parse published_date '{video_data.get('published_date')}': {e}"
+                    )
+
             video = Video(
                 artist_id=artist_id,
                 title=video_title,
@@ -645,7 +660,7 @@ class VideoDiscoveryService:
                 youtube_url=video_data.get("youtube_url"),  # YouTube-specific URL
                 youtube_id=video_data.get("youtube_id"),  # YouTube video ID
                 duration=video_data.get("duration"),
-                release_date=video_data.get("published_date"),
+                release_date=release_date,
                 description=video_data.get("description", ""),
                 thumbnail_url=video_data.get("thumbnail_url"),
                 imvdb_id=video_data.get("imvdb_id"),
