@@ -621,6 +621,30 @@ async def _handle_special_setting_update(key: str, value: Any):
                 )
                 # Continue with the response even if reload fails
 
+        # Auto-reload Scheduler V2 if scheduler settings are updated
+        elif key in [
+            "auto_download_schedule_enabled",
+            "auto_download_schedule_days",
+            "auto_download_schedule_time",
+            "auto_discovery_schedule_enabled",
+            "auto_discovery_schedule_days",
+            "auto_discovery_schedule_time",
+            "scheduler_v2_enabled",
+            "scheduler_v2_worker_count",
+            "scheduler_v2_health_check_enabled",
+        ]:
+            try:
+                from src.services.scheduler_service_v2 import scheduler_v2
+
+                logger.info(f"Reloading Scheduler V2 after updating {key}")
+                result = scheduler_v2.update_schedule_from_settings()
+                logger.info(
+                    f"Scheduler V2 successfully reloaded after updating {key}. Updated {result.get('schedules_updated', 0)} schedules"
+                )
+            except Exception as e:
+                logger.error(f"Failed to reload Scheduler V2 after updating {key}: {e}")
+                # Continue with the response even if reload fails
+
         # Handle authentication setting change
         elif key == "require_authentication":
             logger.info(f"Authentication requirement changed to: {value}")
@@ -655,6 +679,39 @@ async def _handle_bulk_special_updates(settings_data: Dict[str, Any]):
                 )
             except Exception as e:
                 logger.error(f"Failed to reload Spotify service after bulk update: {e}")
+                # Continue with the response even if reload fails
+
+        # Auto-reload Scheduler V2 if any scheduler settings were updated
+        scheduler_setting_keys = [
+            "auto_download_schedule_enabled",
+            "auto_download_schedule_days",
+            "auto_download_schedule_time",
+            "auto_discovery_schedule_enabled",
+            "auto_discovery_schedule_days",
+            "auto_discovery_schedule_time",
+            "scheduler_v2_enabled",
+            "scheduler_v2_worker_count",
+            "scheduler_v2_health_check_enabled",
+        ]
+        scheduler_settings_updated = any(
+            key in scheduler_setting_keys for key in settings_data.keys()
+        )
+        if scheduler_settings_updated:
+            try:
+                from src.services.scheduler_service_v2 import scheduler_v2
+
+                updated_scheduler_keys = [
+                    key for key in settings_data.keys() if key in scheduler_setting_keys
+                ]
+                logger.info(
+                    f"Reloading Scheduler V2 after bulk update of: {updated_scheduler_keys}"
+                )
+                result = scheduler_v2.update_schedule_from_settings()
+                logger.info(
+                    f"Scheduler V2 successfully reloaded after bulk update. Updated {result.get('schedules_updated', 0)} schedules"
+                )
+            except Exception as e:
+                logger.error(f"Failed to reload Scheduler V2 after bulk update: {e}")
                 # Continue with the response even if reload fails
 
     except Exception as e:

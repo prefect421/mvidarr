@@ -1,7 +1,7 @@
 {
   "version": "0.10.1-dev",
-  "build_date": "2025-12-22T19:15:01+00:00",
-  "git_commit": "e980a6a",
+  "build_date": "2025-12-23T00:00:00+00:00",
+  "git_commit": "4a7e261",
   "git_branch": "feature-schedule",
   "release_name": "v0.10.1 - Scheduler V2: Complete Implementation (Testing)",
   "features": [
@@ -14,7 +14,8 @@
     "🎛️ Priority-Based Processing: High/Medium/Low priority ordering",
     "📈 Job History: Comprehensive tracking with 15+ indexed fields",
     "🔍 Discovery Improvements: Artist-specific intervals and limits",
-    "🧹 Legacy Code Removed: Clean migration from old schedulers"
+    "🧹 Legacy Code Removed: Clean migration from old schedulers",
+    "⚡ Auto-Reload: Scheduler settings changes instantly update Celery Beat schedule"
   ],
   "development_notes": [
     "⚠️ TESTING VERSION - Scheduler V2 Implementation Complete",
@@ -22,7 +23,8 @@
     "Migration tools and comprehensive documentation included",
     "See docs/SCHEDULER_V2.md and docs/MIGRATION_0.10.1.md",
     "GitHub Issues: #181-#186 (All Closed)",
-    "Ready for Docker deployment testing"
+    "Docker deployment testing in progress",
+    "Settings auto-reload: No restart needed for scheduler config changes"
   ],
   "project_info": {
     "milestone": "v0.10.1",
