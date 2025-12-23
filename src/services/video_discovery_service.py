@@ -251,7 +251,9 @@ class VideoDiscoveryService:
     def _search_imvdb_for_artist(self, artist: Artist, limit: int) -> List[Dict]:
         """Search IMVDb for artist videos"""
         try:
-            results = imvdb_service.search_artist_videos(artist.name, limit=limit)
+            # Capture artist name early to avoid DetachedInstanceError
+            artist_name = artist.name
+            results = imvdb_service.search_artist_videos(artist_name, limit=limit)
 
             if not results or "videos" not in results:
                 return []
@@ -265,7 +267,7 @@ class VideoDiscoveryService:
                     else "Unknown"
                 )
                 video_data = {
-                    "title": f"{artist.name} - {song_title}",
+                    "title": f"{artist_name} - {song_title}",
                     "song_title": song_title,
                     "year": video.get("year"),
                     "directors": video.get("directors", []),
@@ -291,11 +293,11 @@ class VideoDiscoveryService:
                     f"Added video: {video_data['title']} - URL: {video_data['url']}"
                 )
 
-            logger.info(f"Found {len(video_list)} IMVDb videos for {artist.name}")
+            logger.info(f"Found {len(video_list)} IMVDb videos for {artist_name}")
             return video_list
 
         except Exception as e:
-            logger.error(f"IMVDb search failed for artist {artist.name}: {e}")
+            logger.error(f"IMVDb search failed for artist {artist_name}: {e}")
             return []
 
     def _search_youtube_for_artist(self, artist: Artist, limit: int) -> List[Dict]:
