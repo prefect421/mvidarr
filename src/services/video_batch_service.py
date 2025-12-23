@@ -302,7 +302,7 @@ def get_wanted_videos_for_download(limit: int = 50) -> List[Dict]:
                 )
                 query = query.order_by(
                     priority_order,
-                    Video.priority.desc().nullslast(),  # Higher priority videos first
+                    Artist.priority.desc().nullslast(),  # Higher priority artists first
                     Video.created_at.asc(),  # Oldest videos first (fairness)
                 )
             else:
