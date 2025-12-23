@@ -48,6 +48,9 @@ class VideoDiscoveryService:
                 if not artist:
                     return {"success": False, "error": f"Artist {artist_id} not found"}
 
+                # Capture artist name early to avoid DetachedInstanceError
+                artist_name = artist.name
+
                 # Use per-artist limit if not explicitly provided (Scheduler V2)
                 if limit is None:
                     limit = (
@@ -58,7 +61,7 @@ class VideoDiscoveryService:
                     )
 
                 logger.info(
-                    f"Starting video discovery for artist: {artist.name} (limit: {limit})"
+                    f"Starting video discovery for artist: {artist_name} (limit: {limit})"
                 )
 
                 # Get existing video URLs to avoid duplicates
@@ -67,7 +70,7 @@ class VideoDiscoveryService:
                 )
                 existing_urls = {video.url for video in existing_videos if video.url}
                 logger.info(
-                    f"Found {len(existing_videos)} existing videos for {artist.name}, {len(existing_urls)} with URLs"
+                    f"Found {len(existing_videos)} existing videos for {artist_name}, {len(existing_urls)} with URLs"
                 )
 
                 discovered_videos = []
@@ -75,7 +78,7 @@ class VideoDiscoveryService:
                 # Search YouTube for new videos
                 youtube_results = self._search_youtube_for_artist(artist, limit)
                 logger.info(
-                    f"YouTube returned {len(youtube_results)} videos for {artist.name}"
+                    f"YouTube returned {len(youtube_results)} videos for {artist_name}"
                 )
 
                 for video_data in youtube_results:
@@ -94,7 +97,7 @@ class VideoDiscoveryService:
                 # Search IMVDb for additional videos
                 imvdb_results = self._search_imvdb_for_artist(artist, limit)
                 logger.info(
-                    f"IMVDb returned {len(imvdb_results)} videos for {artist.name}"
+                    f"IMVDb returned {len(imvdb_results)} videos for {artist_name}"
                 )
 
                 for video_data in imvdb_results:
@@ -183,21 +186,25 @@ class VideoDiscoveryService:
                 total_stored = 0
 
                 for artist in artists:
+                    # Capture artist attributes early to avoid DetachedInstanceError
+                    artist_id = artist.id
+                    artist_name = artist.name
+
                     try:
                         # Check if artist needs discovery (based on last discovery time)
                         if not self._should_discover_for_artist(artist):
                             logger.debug(
-                                f"Skipping discovery for {artist.name} - too recent"
+                                f"Skipping discovery for {artist_name} - too recent"
                             )
                             continue
 
                         result = self.discover_videos_for_artist(
-                            artist.id, limit_per_artist
+                            artist_id, limit_per_artist
                         )
                         results.append(
                             {
-                                "artist_id": artist.id,
-                                "artist_name": artist.name,
+                                "artist_id": artist_id,
+                                "artist_name": artist_name,
                                 "result": result,
                             }
                         )
@@ -214,11 +221,11 @@ class VideoDiscoveryService:
                         time.sleep(self.rate_limit_delay * 2)
 
                     except Exception as e:
-                        logger.error(f"Discovery failed for artist {artist.name}: {e}")
+                        logger.error(f"Discovery failed for artist {artist_name}: {e}")
                         results.append(
                             {
-                                "artist_id": artist.id,
-                                "artist_name": artist.name,
+                                "artist_id": artist_id,
+                                "artist_name": artist_name,
                                 "result": {"success": False, "error": str(e)},
                             }
                         )
