@@ -3209,6 +3209,21 @@ function displaySchedulerV2Status(statusDiv, data) {
                 </div>
             `;
         }
+
+        // Add manual trigger buttons
+        statusHTML += `
+            <div class="status-item">
+                <strong>Manual Triggers:</strong>
+                <div class="trigger-buttons" style="margin-top: 8px; display: flex; gap: 10px;">
+                    <button onclick="triggerSchedulerV2Discovery()" class="btn btn-small btn-primary" title="Manually trigger discovery for all monitored artists">
+                        🔍 Trigger Discovery Now
+                    </button>
+                    <button onclick="triggerSchedulerV2Downloads()" class="btn btn-small btn-primary" title="Manually trigger downloads for wanted videos">
+                        ⬇️ Trigger Downloads Now
+                    </button>
+                </div>
+            </div>
+        `;
     } else if (!celeryConnected) {
         statusHTML += `
             <div class="status-item warning">
@@ -3435,6 +3450,59 @@ function triggerEnhancedDiscovery() {
         console.error('Error triggering discovery:', error);
         showError('Error triggering discovery: ' + error.message);
         refreshSchedulerStatus();
+    });
+}
+
+// Scheduler V2 manual trigger functions
+function triggerSchedulerV2Discovery() {
+    console.log('Manually triggering Scheduler V2 discovery');
+
+    fetch('/api/v2/scheduler/trigger/discovery', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'triggered' || data.task_id) {
+            const message = `✅ Discovery triggered successfully!<br>Task ID: ${data.task_id}<br>${data.message || 'All monitored artists will be checked for new videos.'}`;
+            showSuccess(message);
+        } else {
+            showError('Discovery trigger failed: ' + (data.error || data.message || 'Unknown error'));
+        }
+        // Refresh status after a short delay to show updated statistics
+        setTimeout(refreshSchedulerStatus, 2000);
+    })
+    .catch(error => {
+        console.error('Error triggering discovery:', error);
+        showError('Error triggering discovery: ' + error.message);
+    });
+}
+
+function triggerSchedulerV2Downloads() {
+    console.log('Manually triggering Scheduler V2 downloads');
+
+    fetch('/api/v2/scheduler/trigger/downloads', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'triggered' || data.task_id) {
+            const message = `✅ Downloads triggered successfully!<br>Task ID: ${data.task_id}<br>${data.message || 'Wanted videos will be queued for download.'}`;
+            showSuccess(message);
+        } else {
+            showError('Download trigger failed: ' + (data.error || data.message || 'Unknown error'));
+        }
+        // Refresh status after a short delay to show updated statistics
+        setTimeout(refreshSchedulerStatus, 2000);
+    })
+    .catch(error => {
+        console.error('Error triggering downloads:', error);
+        showError('Error triggering downloads: ' + error.message);
     });
 }
 
