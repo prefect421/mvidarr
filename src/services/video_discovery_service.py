@@ -2,6 +2,8 @@
 Video discovery service for finding new music videos for tracked artists
 """
 
+import json
+import subprocess
 import time
 from datetime import datetime, timedelta
 from typing import Dict, List
@@ -9,7 +11,10 @@ from typing import Dict, List
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
 from src.services.imvdb_service import imvdb_service
+from src.services.settings_service import SettingsService
 from src.services.thumbnail_service import thumbnail_service
+from src.services.video_batch_service import get_ytdlp_path
+from src.services.youtube_search_service import youtube_search_service
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.video_discovery")
@@ -67,15 +72,24 @@ class VideoDiscoveryService:
 
                 discovered_videos = []
 
-                # Search YouTube for new videos (TODO: implement YouTube service)
-                # youtube_results = self._search_youtube_for_artist(artist, limit)
-                # for video_data in youtube_results:
-                #     if video_data['url'] not in existing_urls:
-                #         discovered_videos.append({
-                #             'source': 'youtube',
-                #             **video_data
-                #         })
-                #         time.sleep(self.rate_limit_delay)
+                # Search YouTube for new videos
+                youtube_results = self._search_youtube_for_artist(artist, limit)
+                logger.info(
+                    f"YouTube returned {len(youtube_results)} videos for {artist.name}"
+                )
+
+                for video_data in youtube_results:
+                    if video_data.get("url"):
+                        if video_data["url"] not in existing_urls:
+                            discovered_videos.append(video_data)
+                            logger.info(
+                                f"Added new YouTube video: {video_data['title']}"
+                            )
+                        else:
+                            logger.info(
+                                f"YouTube video URL already exists: {video_data['title']}"
+                            )
+                    time.sleep(self.rate_limit_delay)
 
                 # Search IMVDb for additional videos
                 imvdb_results = self._search_imvdb_for_artist(artist, limit)
@@ -90,10 +104,10 @@ class VideoDiscoveryService:
                             if not any(
                                 v["url"] == video_data["url"] for v in discovered_videos
                             ):
-                                discovered_videos.append(
-                                    {"source": "imvdb", **video_data}
+                                discovered_videos.append(video_data)
+                                logger.info(
+                                    f"Added new IMVDb video: {video_data['title']}"
                                 )
-                                logger.info(f"Added new video: {video_data['title']}")
                             else:
                                 logger.info(
                                     f"Video already in discovered list: {video_data['title']}"
@@ -108,8 +122,9 @@ class VideoDiscoveryService:
                         )
                     time.sleep(self.rate_limit_delay)
 
-                # Use discovered videos directly (TODO: implement video unification service)
-                unified_videos = discovered_videos[:limit]
+                # Merge duplicates: IMVDb base + YouTube overlay
+                merged_videos = self._merge_duplicate_videos(discovered_videos)
+                unified_videos = merged_videos[:limit]
 
                 # Store discovered videos with 'wanted' status
                 stored_count = 0
@@ -283,6 +298,260 @@ class VideoDiscoveryService:
             logger.error(f"IMVDb search failed for artist {artist.name}: {e}")
             return []
 
+    def _search_youtube_for_artist(self, artist: Artist, limit: int) -> List[Dict]:
+        """
+        Search YouTube for artist videos using API or yt-dlp fallback
+
+        Args:
+            artist: Artist object with name
+            limit: Maximum number of videos to return
+
+        Returns:
+            List of video_data dicts with standardized format
+        """
+        try:
+            # Get settings
+            min_score = SettingsService.get_float("youtube_discovery_min_score", 1.5)
+            allow_ytdlp_fallback = SettingsService.get_bool(
+                "youtube_discovery_fallback_ytdlp", True
+            )
+
+            # Try YouTube API first
+            try:
+                results = youtube_search_service.search_artist_videos(
+                    artist.name, limit=limit
+                )
+
+                if results and "videos" in results and len(results["videos"]) > 0:
+                    logger.info(
+                        f"YouTube API returned {len(results['videos'])} videos for {artist.name}"
+                    )
+                    return self._process_youtube_api_results(
+                        results["videos"], artist, min_score
+                    )
+            except Exception as e:
+                logger.warning(f"YouTube API search failed for {artist.name}: {e}")
+
+                # Fall back to yt-dlp if enabled
+                if allow_ytdlp_fallback:
+                    logger.info(f"Falling back to yt-dlp search for {artist.name}")
+                    return self._search_youtube_with_ytdlp(artist, limit, min_score)
+                else:
+                    logger.error(f"YouTube API failed and yt-dlp fallback disabled")
+                    return []
+
+            return []
+
+        except Exception as e:
+            logger.error(f"YouTube search failed for {artist.name}: {e}")
+            return []
+
+    def _process_youtube_api_results(
+        self, videos: List[Dict], artist: Artist, min_score: float
+    ) -> List[Dict]:
+        """
+        Process YouTube API results into discovery format
+
+        Args:
+            videos: Raw YouTube API results
+            artist: Artist object
+            min_score: Minimum search score threshold
+
+        Returns:
+            List of processed video_data dicts
+        """
+        processed_videos = []
+
+        for video in videos:
+            # Filter by search score
+            search_score = video.get("search_score", 0.0)
+            if search_score < min_score:
+                logger.debug(
+                    f"Skipping video '{video.get('title')}' - score {search_score} < {min_score}"
+                )
+                continue
+
+            # Map to discovery format
+            video_data = {
+                "title": f"{artist.name} - {video.get('title', 'Unknown')}",
+                "song_title": video.get("title", "Unknown"),
+                "youtube_id": video.get("youtube_id"),
+                "url": video.get("youtube_url"),
+                "youtube_url": video.get("youtube_url"),
+                "thumbnail_url": video.get("thumbnail_url"),
+                "duration": video.get("duration"),
+                "view_count": video.get("view_count", 0),
+                "like_count": video.get("like_count", 0),
+                "published_date": video.get("published_at"),
+                "description": video.get("description", ""),
+                "channel_name": video.get("channel_title", ""),
+                "source": "youtube",
+                "search_score": search_score,
+                "tags": video.get("tags", []),
+            }
+
+            processed_videos.append(video_data)
+            logger.info(
+                f"Added YouTube video: {video_data['title']} (score: {search_score:.2f})"
+            )
+
+        return processed_videos
+
+    def _search_youtube_with_ytdlp(
+        self, artist: Artist, limit: int, min_score: float
+    ) -> List[Dict]:
+        """
+        Fallback YouTube search using yt-dlp (when API unavailable)
+
+        Similar to resolve_video_url() in video_batch_service.py but for discovery
+
+        Args:
+            artist: Artist object
+            limit: Maximum videos to find
+            min_score: Minimum score (not applicable for yt-dlp, but kept for consistency)
+
+        Returns:
+            List of video_data dicts
+        """
+        try:
+            search_query = f"{artist.name} music video"
+
+            cmd = [
+                get_ytdlp_path(),
+                "--dump-json",
+                "--no-download",
+                "--playlist-items",
+                f"1-{limit}",  # Get top N results
+                f"ytsearch{limit}:{search_query}",
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+
+            if result.returncode != 0:
+                logger.error(f"yt-dlp search failed: {result.stderr}")
+                return []
+
+            # Parse JSON output (one JSON object per line)
+            videos = []
+            for line in result.stdout.strip().split("\n"):
+                if not line.strip():
+                    continue
+
+                try:
+                    video_info = json.loads(line)
+
+                    video_data = {
+                        "title": f"{artist.name} - {video_info.get('title', 'Unknown')}",
+                        "song_title": video_info.get("title", "Unknown"),
+                        "youtube_id": video_info.get("id"),
+                        "url": video_info.get("webpage_url") or video_info.get("url"),
+                        "youtube_url": video_info.get("webpage_url"),
+                        "thumbnail_url": video_info.get("thumbnail"),
+                        "duration": video_info.get("duration"),
+                        "view_count": video_info.get("view_count", 0),
+                        "like_count": video_info.get("like_count", 0),
+                        "description": video_info.get("description", ""),
+                        "channel_name": video_info.get("uploader", ""),
+                        "source": "youtube_ytdlp",
+                        "search_score": 0.0,  # yt-dlp doesn't provide scores
+                    }
+
+                    videos.append(video_data)
+                    logger.info(f"yt-dlp found: {video_data['title']}")
+
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse yt-dlp JSON: {e}")
+                    continue
+
+            logger.info(f"yt-dlp returned {len(videos)} videos for {artist.name}")
+            return videos
+
+        except subprocess.TimeoutExpired:
+            logger.error(f"yt-dlp search timed out for {artist.name}")
+            return []
+        except Exception as e:
+            logger.error(f"yt-dlp search error for {artist.name}: {e}")
+            return []
+
+    def _merge_duplicate_videos(self, discovered_videos: List[Dict]) -> List[Dict]:
+        """
+        Merge duplicate videos found in multiple sources
+
+        Strategy: IMVDb metadata as base, overlay YouTube-specific fields
+
+        Args:
+            discovered_videos: List of video_data dicts from all sources
+
+        Returns:
+            Deduplicated list with merged metadata
+        """
+        # Group by URL
+        url_map = {}
+
+        for video in discovered_videos:
+            url = video.get("url")
+            if not url:
+                continue
+
+            if url not in url_map:
+                url_map[url] = []
+            url_map[url].append(video)
+
+        # Merge duplicates
+        merged = []
+
+        for url, video_list in url_map.items():
+            if len(video_list) == 1:
+                # No duplicates, use as-is
+                merged.append(video_list[0])
+            else:
+                # Multiple sources found same video - merge
+                imvdb_data = next(
+                    (v for v in video_list if v["source"] == "imvdb"), None
+                )
+                youtube_data = next(
+                    (
+                        v
+                        for v in video_list
+                        if v["source"] in ["youtube", "youtube_ytdlp"]
+                    ),
+                    None,
+                )
+
+                if imvdb_data and youtube_data:
+                    # Merge: IMVDb base + YouTube overlay
+                    merged_video = {**imvdb_data}  # Start with IMVDb
+
+                    # Overlay YouTube-specific fields
+                    merged_video["youtube_id"] = youtube_data.get("youtube_id")
+                    merged_video["youtube_url"] = youtube_data.get("youtube_url")
+                    merged_video["view_count"] = youtube_data.get("view_count", 0)
+                    merged_video["like_count"] = youtube_data.get("like_count", 0)
+                    merged_video["tags"] = youtube_data.get("tags", [])
+                    merged_video["search_score"] = youtube_data.get("search_score", 0.0)
+
+                    # Fill missing IMVDb fields with YouTube data
+                    if not merged_video.get("duration"):
+                        merged_video["duration"] = youtube_data.get("duration")
+                    if not merged_video.get("published_date"):
+                        merged_video["published_date"] = youtube_data.get(
+                            "published_date"
+                        )
+                    if not merged_video.get("description"):
+                        merged_video["description"] = youtube_data.get("description")
+
+                    merged_video["source"] = "imvdb+youtube"  # Mark as merged
+
+                    logger.info(
+                        f"Merged duplicate: {merged_video['title']} (IMVDb + YouTube)"
+                    )
+                    merged.append(merged_video)
+                else:
+                    # Shouldn't happen, but fallback to first result
+                    merged.append(video_list[0])
+
+        return merged
+
     # def _is_likely_music_video(self, video: Dict, artist_name: str) -> bool:
     #     """Determine if a YouTube video is likely a music video (TODO: implement)"""
     #     return True
@@ -357,20 +626,28 @@ class VideoDiscoveryService:
                 artist_id=artist_id,
                 title=video_title,
                 url=video_data.get("url"),
+                youtube_url=video_data.get("youtube_url"),  # YouTube-specific URL
+                youtube_id=video_data.get("youtube_id"),  # YouTube video ID
                 duration=video_data.get("duration"),
                 release_date=video_data.get("published_date"),
                 description=video_data.get("description", ""),
                 thumbnail_url=video_data.get("thumbnail_url"),
                 imvdb_id=video_data.get("imvdb_id"),
                 view_count=video_data.get("view_count", 0),
+                like_count=video_data.get("like_count", 0),  # YouTube like count
                 status=VideoStatus.WANTED,  # New videos start as 'wanted'
                 discovered_date=datetime.utcnow(),
+                source=video_data.get("source", "discovery"),  # Track source
                 video_metadata={
                     "source": video_data.get("source", "discovery"),
                     "channel_name": video_data.get("channel_name", ""),
                     "directors": video_data.get("directors", []),
                     "year": video_data.get("year"),
                     "song_title": str(video_data.get("song_title", "")),
+                    "search_score": video_data.get(
+                        "search_score", 0.0
+                    ),  # YouTube relevance score
+                    "tags": video_data.get("tags", []),  # YouTube tags
                 },
             )
 
