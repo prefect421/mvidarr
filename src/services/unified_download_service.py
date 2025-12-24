@@ -620,7 +620,8 @@ class UnifiedDownloadService:
         """
         Get current download queue from database
 
-        Returns videos with DOWNLOADING status plus recent completions for visibility
+        Returns only videos with DOWNLOADING status (active downloads)
+        Completed videos appear in history, not queue
         """
         try:
             from datetime import datetime, timedelta
@@ -632,9 +633,8 @@ class UnifiedDownloadService:
 
             with get_db() as session:
                 recent_cutoff = datetime.utcnow() - timedelta(hours=2)
-                very_recent_cutoff = datetime.utcnow() - timedelta(minutes=5)
 
-                # Get DOWNLOADING videos
+                # Get DOWNLOADING videos only
                 downloading_videos = (
                     session.query(Video, Artist.name)
                     .join(Artist, Video.artist_id == Artist.id)
@@ -663,42 +663,6 @@ class UnifiedDownloadService:
                             "video_id": video.id,
                         }
                     )
-
-                # Also include recently DOWNLOADED videos (last 5 minutes) for visibility
-                if len(queue_items) == 0:
-                    recently_completed = (
-                        session.query(Video, Artist.name)
-                        .join(Artist, Video.artist_id == Artist.id)
-                        .filter(
-                            Video.status == VideoStatus.DOWNLOADED,
-                            Video.updated_at >= very_recent_cutoff,
-                        )
-                        .order_by(Video.updated_at.desc())
-                        .limit(20)
-                        .all()
-                    )
-
-                    for video, artist_name in recently_completed:
-                        queue_items.append(
-                            {
-                                "id": video.id,
-                                "artist": artist_name,
-                                "title": video.title,
-                                "url": video.url or video.youtube_url,
-                                "status": "completed_recently",
-                                "created_at": (
-                                    video.created_at.isoformat()
-                                    if video.created_at
-                                    else None
-                                ),
-                                "completed_at": (
-                                    video.updated_at.isoformat()
-                                    if video.updated_at
-                                    else None
-                                ),
-                                "video_id": video.id,
-                            }
-                        )
 
             return {
                 "queue": queue_items,
