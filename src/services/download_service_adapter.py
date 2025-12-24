@@ -282,6 +282,7 @@ class DownloadServiceAdapter:
     def get_history(self, limit: int = 50) -> Dict[str, Any]:
         """Get download history (backwards compatible)"""
         # Query database for completed/failed downloads instead of relying on in-memory state
+        logger.info(f"DEBUG get_history: Called with limit={limit}")
         try:
             from datetime import datetime, timedelta
 
@@ -290,9 +291,12 @@ class DownloadServiceAdapter:
 
             history_items = []
 
+            logger.info("DEBUG get_history: About to open database session")
             with get_db() as session:
                 # Get recently completed or failed videos (last 30 days)
                 recent_cutoff = datetime.utcnow() - timedelta(days=30)
+                logger.info(f"DEBUG get_history: Querying videos since {recent_cutoff}")
+
                 completed_videos = (
                     session.query(Video, Artist.name)
                     .join(Artist, Video.artist_id == Artist.id)
@@ -303,6 +307,10 @@ class DownloadServiceAdapter:
                     .order_by(Video.updated_at.desc())
                     .limit(limit)
                     .all()
+                )
+
+                logger.info(
+                    f"DEBUG get_history: Query returned {len(completed_videos)} videos"
                 )
 
                 for video, artist_name in completed_videos:
@@ -332,12 +340,20 @@ class DownloadServiceAdapter:
                         }
                     )
 
+                logger.info(
+                    f"DEBUG get_history: Built {len(history_items)} history items"
+                )
+
+            logger.info(f"DEBUG get_history: Returning {len(history_items)} items")
             return {"history": history_items, "total": len(history_items)}
         except Exception as e:
-            logger.error(f"Error getting history from database: {e}")
+            logger.error(f"Error getting history from database: {e}", exc_info=True)
             # Fallback to in-memory tracking
             limited_history = (
                 self.download_history[-limit:] if limit > 0 else self.download_history
+            )
+            logger.info(
+                f"DEBUG get_history: Exception occurred, falling back to in-memory ({len(limited_history)} items)"
             )
             return {"history": limited_history, "total": len(limited_history)}
 

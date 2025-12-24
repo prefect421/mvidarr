@@ -246,14 +246,43 @@ async def get_download_history(
             f"Getting download history (limit={limit}) for user {current_user.get('username')}"
         )
 
-        result = ytdlp_service.get_history(limit=limit)
-
-        return HistoryResponse(
-            history=result.get("history", []), total=result.get("total", 0)
+        # DEBUG: Log ytdlp_service type and method
+        logger.info(f"DEBUG: ytdlp_service type: {type(ytdlp_service)}")
+        logger.info(
+            f"DEBUG: ytdlp_service has get_history: {hasattr(ytdlp_service, 'get_history')}"
         )
 
+        # Call get_history
+        result = ytdlp_service.get_history(limit=limit)
+
+        # DEBUG: Log what get_history returned
+        logger.info(f"DEBUG: get_history returned type: {type(result)}")
+        logger.info(
+            f"DEBUG: get_history result keys: {result.keys() if isinstance(result, dict) else 'NOT A DICT'}"
+        )
+        logger.info(f"DEBUG: get_history total: {result.get('total', 'NO TOTAL KEY')}")
+        logger.info(
+            f"DEBUG: get_history history length: {len(result.get('history', []))}"
+        )
+
+        # DEBUG: Log first item if available
+        if result.get("history"):
+            logger.info(f"DEBUG: First history item: {result['history'][0]}")
+
+        # Create response
+        history_data = result.get("history", [])
+        total_count = result.get("total", 0)
+
+        logger.info(f"DEBUG: Creating HistoryResponse with {total_count} items")
+
+        response = HistoryResponse(history=history_data, total=total_count)
+
+        logger.info(f"DEBUG: Response created successfully, total={response.total}")
+
+        return response
+
     except Exception as e:
-        logger.error(f"Failed to get download history: {e}")
+        logger.error(f"Failed to get download history: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
