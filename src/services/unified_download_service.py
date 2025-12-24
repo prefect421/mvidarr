@@ -616,6 +616,171 @@ class UnifiedDownloadService:
             download_id: "downloading" for download_id in self.active_downloads.keys()
         }
 
+    def get_download_queue(self, limit: int = 50) -> Dict:
+        """
+        Get current download queue from database
+
+        Returns videos with DOWNLOADING status plus recent completions for visibility
+        """
+        try:
+            from datetime import datetime, timedelta
+
+            from src.database.connection import get_db
+            from src.database.models import Artist, Video, VideoStatus
+
+            queue_items = []
+
+            with get_db() as session:
+                recent_cutoff = datetime.utcnow() - timedelta(hours=2)
+                very_recent_cutoff = datetime.utcnow() - timedelta(minutes=5)
+
+                # Get DOWNLOADING videos
+                downloading_videos = (
+                    session.query(Video, Artist.name)
+                    .join(Artist, Video.artist_id == Artist.id)
+                    .filter(
+                        Video.status == VideoStatus.DOWNLOADING,
+                        Video.updated_at >= recent_cutoff,
+                    )
+                    .order_by(Video.updated_at.desc())
+                    .limit(50)
+                    .all()
+                )
+
+                for video, artist_name in downloading_videos:
+                    queue_items.append(
+                        {
+                            "id": video.id,
+                            "artist": artist_name,
+                            "title": video.title,
+                            "url": video.url or video.youtube_url,
+                            "status": "downloading",
+                            "created_at": (
+                                video.created_at.isoformat()
+                                if video.created_at
+                                else None
+                            ),
+                            "video_id": video.id,
+                        }
+                    )
+
+                # Also include recently DOWNLOADED videos (last 5 minutes) for visibility
+                if len(queue_items) == 0:
+                    recently_completed = (
+                        session.query(Video, Artist.name)
+                        .join(Artist, Video.artist_id == Artist.id)
+                        .filter(
+                            Video.status == VideoStatus.DOWNLOADED,
+                            Video.updated_at >= very_recent_cutoff,
+                        )
+                        .order_by(Video.updated_at.desc())
+                        .limit(20)
+                        .all()
+                    )
+
+                    for video, artist_name in recently_completed:
+                        queue_items.append(
+                            {
+                                "id": video.id,
+                                "artist": artist_name,
+                                "title": video.title,
+                                "url": video.url or video.youtube_url,
+                                "status": "completed_recently",
+                                "created_at": (
+                                    video.created_at.isoformat()
+                                    if video.created_at
+                                    else None
+                                ),
+                                "completed_at": (
+                                    video.updated_at.isoformat()
+                                    if video.updated_at
+                                    else None
+                                ),
+                                "video_id": video.id,
+                            }
+                        )
+
+            return {
+                "queue": queue_items,
+                "total": len(queue_items),
+                "active_downloads": len(self.active_downloads),
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting download queue: {e}", exc_info=True)
+            return {"queue": [], "total": 0, "active_downloads": 0}
+
+    def get_download_history(self, limit: int = 50) -> Dict:
+        """
+        Get download history from database
+
+        Returns videos with DOWNLOADED or FAILED status from last 30 days
+        """
+        try:
+            from datetime import datetime, timedelta
+
+            from src.database.connection import get_db
+            from src.database.models import Artist, Video, VideoStatus
+
+            history_items = []
+
+            with get_db() as session:
+                recent_cutoff = datetime.utcnow() - timedelta(days=30)
+
+                logger.info(
+                    f"Unified service querying download history since {recent_cutoff}"
+                )
+
+                completed_videos = (
+                    session.query(Video, Artist.name)
+                    .join(Artist, Video.artist_id == Artist.id)
+                    .filter(
+                        Video.status.in_([VideoStatus.DOWNLOADED, VideoStatus.FAILED]),
+                        Video.updated_at >= recent_cutoff,
+                    )
+                    .order_by(Video.updated_at.desc())
+                    .limit(limit)
+                    .all()
+                )
+
+                logger.info(
+                    f"Unified service found {len(completed_videos)} videos in history"
+                )
+
+                for video, artist_name in completed_videos:
+                    history_items.append(
+                        {
+                            "id": video.id,
+                            "artist": artist_name,
+                            "title": video.title,
+                            "url": video.url or video.youtube_url,
+                            "status": (
+                                "completed"
+                                if video.status == VideoStatus.DOWNLOADED
+                                else "failed"
+                            ),
+                            "file_path": video.local_path,
+                            "completed_at": (
+                                video.updated_at.isoformat()
+                                if video.updated_at
+                                else None
+                            ),
+                            "created_at": (
+                                video.created_at.isoformat()
+                                if video.created_at
+                                else None
+                            ),
+                            "video_id": video.id,
+                        }
+                    )
+
+            logger.info(f"Unified service returning {len(history_items)} history items")
+            return {"history": history_items, "total": len(history_items)}
+
+        except Exception as e:
+            logger.error(f"Error getting download history: {e}", exc_info=True)
+            return {"history": [], "total": 0}
+
     def cancel_download(self, download_id: int) -> bool:
         """Cancel active download"""
         if download_id in self.active_downloads:
