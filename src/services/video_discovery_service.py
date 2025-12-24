@@ -620,15 +620,36 @@ class VideoDiscoveryService:
     def _store_discovered_video(self, session, artist_id: int, video_data: Dict):
         """Store a discovered video in the database"""
         try:
-            # Check if video already exists
-            existing = (
-                session.query(Video)
-                .filter_by(artist_id=artist_id, url=video_data.get("url"))
-                .first()
-            )
+            # Check if video already exists by URL, YouTube URL, or YouTube ID
+            from sqlalchemy import or_
+
+            youtube_id = video_data.get("youtube_id")
+            url = video_data.get("url")
+            youtube_url = video_data.get("youtube_url")
+
+            # Build deduplication filters
+            filters = [Video.artist_id == artist_id]
+
+            # Check by YouTube ID first (most reliable)
+            if youtube_id:
+                filters.append(Video.youtube_id == youtube_id)
+            # Then check by URL or youtube_url
+            elif url or youtube_url:
+                url_filters = []
+                if url:
+                    url_filters.append(Video.url == url)
+                    url_filters.append(Video.youtube_url == url)
+                if youtube_url:
+                    url_filters.append(Video.url == youtube_url)
+                    url_filters.append(Video.youtube_url == youtube_url)
+                filters.append(or_(*url_filters))
+
+            existing = session.query(Video).filter(*filters).first()
 
             if existing:
-                logger.debug(f"Video already exists: {video_data.get('title')}")
+                logger.debug(
+                    f"Video already exists (ID: {existing.id}): {video_data.get('title')}"
+                )
                 return
 
             # Create new video record with 'wanted' status
