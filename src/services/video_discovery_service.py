@@ -617,6 +617,35 @@ class VideoDiscoveryService:
 
         return should_discover
 
+    def _clean_duplicate_artist_from_title(self, title: str, artist_name: str) -> str:
+        """
+        Remove duplicate artist name from video title
+
+        Example: "Wet Leg - Wet Leg - Oh No" -> "Wet Leg - Oh No"
+        Example: "Kid Kapichi - Kid Kapichi - Smash the Gaff" -> "Kid Kapichi - Smash the Gaff"
+
+        Args:
+            title: Original video title
+            artist_name: Artist name to check for duplication
+
+        Returns:
+            Cleaned title without duplicate artist prefix
+        """
+        if not title or not artist_name:
+            return title
+
+        # Check if title starts with "Artist - Artist - "
+        duplicate_prefix = f"{artist_name} - {artist_name} - "
+        if title.startswith(duplicate_prefix):
+            # Remove the duplicate prefix, keeping one artist name
+            cleaned = title[len(artist_name) + 3 :]  # Remove "Artist - "
+            logger.debug(
+                f"Cleaned duplicate artist from title: '{title}' -> '{cleaned}'"
+            )
+            return cleaned
+
+        return title
+
     def _store_discovered_video(self, session, artist_id: int, video_data: Dict):
         """Store a discovered video in the database"""
         try:
@@ -652,12 +681,23 @@ class VideoDiscoveryService:
                 )
                 return
 
+            # Get artist name for title cleaning
+            from src.database.models import Artist
+
+            artist = session.query(Artist).filter(Artist.id == artist_id).first()
+            artist_name = artist.name if artist else ""
+
             # Create new video record with 'wanted' status
             # Ensure title is always a string (fix for integer title issue)
             video_title = (
                 str(video_data.get("title", ""))
                 if video_data.get("title") is not None
                 else ""
+            )
+
+            # Clean duplicate artist name from title
+            video_title = self._clean_duplicate_artist_from_title(
+                video_title, artist_name
             )
 
             # Parse published_date - YouTube returns ISO 8601 with 'Z' timezone
