@@ -635,6 +635,10 @@ async def upload_cookies(
 ):
     """Upload YouTube cookies file for age-restricted video downloads"""
     try:
+        import base64
+
+        from src.services.settings_service import SettingsService
+
         user_id = current_user.get("user_id", 1)
 
         logger.info(
@@ -650,56 +654,71 @@ async def upload_cookies(
                 detail="File type not allowed. Please upload a .txt or .cookies file",
             )
 
-        # Ensure upload directory exists
-        os.makedirs(COOKIE_FOLDER, exist_ok=True)
+        # Read the file content
+        content = await file.read()
 
-        # Save as youtube_cookies.txt for yt-dlp
+        # Validate cookie file format
+        try:
+            content_str = content.decode("utf-8").strip()
+            if not content_str:
+                raise HTTPException(status_code=400, detail="Cookie file is empty")
+
+            # Basic validation - check if it looks like cookies
+            if not (
+                "youtube.com" in content_str.lower()
+                or "session_token" in content_str.lower()
+                or "\t" in content_str
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="File does not appear to contain valid cookies",
+                )
+
+        except UnicodeDecodeError:
+            raise HTTPException(
+                status_code=400, detail="Cookie file must be a valid text file"
+            )
+        except HTTPException:
+            raise
+
+        # Save to database (base64 encoded for safety)
+        cookie_content_b64 = base64.b64encode(content).decode("utf-8")
+        success = SettingsService.set(
+            "youtube_cookies_content",
+            cookie_content_b64,
+            description="YouTube cookies file content (base64 encoded) - persists across container restarts",
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=500, detail="Failed to save cookies to database"
+            )
+
+        # Also save to file for immediate use
+        os.makedirs(COOKIE_FOLDER, exist_ok=True)
         cookie_filename = "youtube_cookies.txt"
         cookie_path = os.path.join(COOKIE_FOLDER, cookie_filename)
-
-        # Read and save the file
-        content = await file.read()
 
         with open(cookie_path, "wb") as f:
             f.write(content)
 
-        # Validate cookie file format
-        try:
-            with open(cookie_path, "r") as f:
-                content_str = f.read().strip()
-                if not content_str:
-                    os.remove(cookie_path)
-                    raise HTTPException(status_code=400, detail="Cookie file is empty")
-
-                # Basic validation - check if it looks like cookies
-                if not (
-                    "youtube.com" in content_str.lower()
-                    or "session_token" in content_str.lower()
-                    or "\t" in content_str
-                ):
-                    os.remove(cookie_path)
-                    raise HTTPException(
-                        status_code=400,
-                        detail="File does not appear to contain valid cookies",
-                    )
-
-        except HTTPException:
-            raise
-        except Exception as e:
-            if os.path.exists(cookie_path):
-                os.remove(cookie_path)
-            raise HTTPException(
-                status_code=400, detail=f"Failed to validate cookie file: {e}"
-            )
+        # Store upload timestamp
+        SettingsService.set(
+            "youtube_cookies_uploaded_at",
+            str(time.time()),
+            description="Timestamp when YouTube cookies were last uploaded",
+        )
 
         # Update ytdlp service to use the uploaded cookies
         ytdlp_service.set_cookie_file(cookie_path)
 
-        logger.info(f"Cookies uploaded successfully: {file.filename}")
+        logger.info(
+            f"Cookies uploaded successfully and saved to database: {file.filename}"
+        )
 
         return CookieUploadResponse(
             success=True,
-            message="Cookies uploaded successfully",
+            message="Cookies uploaded successfully and saved to database (persists across container restarts)",
             filename=cookie_filename,
         )
 
@@ -717,17 +736,35 @@ async def cookies_status(
 ):
     """Check if cookies are uploaded and available"""
     try:
+        from src.services.settings_service import SettingsService
+
         user_id = current_user.get("user_id", 1)
 
         logger.info(f"Checking cookie status for user {current_user.get('username')}")
 
-        cookie_path = os.path.join(COOKIE_FOLDER, "youtube_cookies.txt")
+        # Check database first (source of truth)
+        cookie_content_b64 = SettingsService.get(
+            "youtube_cookies_content", default=None
+        )
+        upload_timestamp_str = SettingsService.get(
+            "youtube_cookies_uploaded_at", default=None
+        )
 
-        if os.path.exists(cookie_path):
-            # Get file info
-            stat = os.stat(cookie_path)
-            file_size = stat.st_size
-            modified_time = stat.st_mtime
+        if cookie_content_b64:
+            # Cookies exist in database
+            import base64
+
+            cookie_content = base64.b64decode(cookie_content_b64)
+            file_size = len(cookie_content)
+
+            # Get upload time
+            if upload_timestamp_str:
+                try:
+                    modified_time = float(upload_timestamp_str)
+                except (ValueError, TypeError):
+                    modified_time = time.time()
+            else:
+                modified_time = time.time()
 
             # Calculate cookie age and freshness
             age_days = (time.time() - modified_time) / 86400  # seconds to days
@@ -744,14 +781,14 @@ async def cookies_status(
             else:
                 status = "fresh"
                 action = "none"
-                message = f"Cookies are fresh ({int(age_days)} days old)."
+                message = f"Cookies are fresh ({int(age_days)} days old). Stored in database (persists across restarts)."
 
             return CookieStatusResponse(
                 success=True,
                 cookies_available=True,
                 file_size=file_size,
                 modified_time=modified_time,
-                path=cookie_path,
+                path="database (persistent storage)",
                 status=status,
                 age_days=round(age_days, 1),
                 action=action,
@@ -776,26 +813,35 @@ async def delete_cookies(
     current_user: dict = Depends(require_authentication_legacy),
     session: Session = Depends(get_db_session),
 ):
-    """Delete uploaded cookies file"""
+    """Delete uploaded cookies file from database and filesystem"""
     try:
+        from src.services.settings_service import SettingsService
+
         user_id = current_user.get("user_id", 1)
 
-        logger.info(f"Deleting cookies file for user {current_user.get('username')}")
+        logger.info(f"Deleting cookies for user {current_user.get('username')}")
 
+        # Delete from database
+        db_deleted = SettingsService.delete("youtube_cookies_content")
+        timestamp_deleted = SettingsService.delete("youtube_cookies_uploaded_at")
+
+        # Also delete from filesystem if it exists
         cookie_path = os.path.join(COOKIE_FOLDER, "youtube_cookies.txt")
-
         if os.path.exists(cookie_path):
             os.remove(cookie_path)
-            ytdlp_service.clear_cookie_file()
 
-            logger.info("Cookies deleted successfully")
+        # Clear from ytdlp service
+        ytdlp_service.clear_cookie_file()
+
+        if db_deleted or timestamp_deleted:
+            logger.info("Cookies deleted successfully from database and filesystem")
             return CookieUploadResponse(
-                success=True, message="Cookies deleted successfully"
+                success=True,
+                message="Cookies deleted successfully from database and filesystem",
             )
         else:
-            return CookieUploadResponse(
-                success=True, message="No cookies file to delete"
-            )
+            logger.info("No cookies found to delete")
+            return CookieUploadResponse(success=True, message="No cookies to delete")
 
     except Exception as e:
         logger.error(f"Failed to delete cookies: {e}")

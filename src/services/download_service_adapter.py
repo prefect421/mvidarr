@@ -34,6 +34,9 @@ class DownloadServiceAdapter:
         # Initialize with existing settings
         self._load_settings()
 
+        # Restore cookies from database if they exist
+        self._restore_cookies_from_database()
+
         logger.info(
             "Download Service Adapter initialized - providing backwards compatibility"
         )
@@ -48,6 +51,40 @@ class DownloadServiceAdapter:
         # Ensure paths exist
         if not os.path.exists(self.music_videos_path):
             os.makedirs(self.music_videos_path, exist_ok=True)
+
+    def _restore_cookies_from_database(self):
+        """Restore YouTube cookies from database to filesystem on startup"""
+        try:
+            import base64
+
+            from src.services.settings_service import SettingsService
+
+            # Check if cookies exist in database
+            cookie_content_b64 = SettingsService.get(
+                "youtube_cookies_content", default=None
+            )
+
+            if cookie_content_b64:
+                # Decode and write to file
+                cookie_content = base64.b64decode(cookie_content_b64)
+
+                # Ensure cookies directory exists
+                cookie_dir = os.path.dirname(self.cookies_path)
+                if not os.path.exists(cookie_dir):
+                    os.makedirs(cookie_dir, exist_ok=True)
+
+                # Write cookie file
+                with open(self.cookies_path, "wb") as f:
+                    f.write(cookie_content)
+
+                logger.info(
+                    f"Restored YouTube cookies from database to {self.cookies_path}"
+                )
+            else:
+                logger.debug("No YouTube cookies found in database to restore")
+
+        except Exception as e:
+            logger.error(f"Failed to restore cookies from database: {e}")
 
     def add_music_video_download(
         self,
