@@ -170,35 +170,137 @@ class DownloadServiceAdapter:
 
     def get_queue(self) -> Dict[str, Any]:
         """Get download queue status (backwards compatible)"""
-        active_from_unified = self.unified_service.get_active_downloads()
+        # Query database for currently downloading videos instead of relying on in-memory state
+        try:
+            from datetime import datetime, timedelta
 
-        # Merge with our backwards compatibility tracking
-        queue_items = []
-        for download_id, entry in self.active_downloads.items():
-            queue_items.append(
-                {
-                    **entry,
-                    "status": (
-                        "downloading"
-                        if download_id in active_from_unified
-                        else entry.get("status", "queued")
-                    ),
-                }
-            )
+            from src.database.connection import get_db
+            from src.database.models import Artist, Video, VideoStatus
 
-        return {
-            "queue": queue_items,
-            "total": len(queue_items),
-            "active_downloads": len(active_from_unified),
-        }
+            queue_items = []
+            active_from_unified = self.unified_service.get_active_downloads()
+
+            with get_db() as session:
+                # Get videos with DOWNLOADING status from last 2 hours
+                recent_cutoff = datetime.utcnow() - timedelta(hours=2)
+                downloading_videos = (
+                    session.query(Video, Artist.name)
+                    .join(Artist, Video.artist_id == Artist.id)
+                    .filter(
+                        Video.status == VideoStatus.DOWNLOADING,
+                        Video.updated_at >= recent_cutoff,
+                    )
+                    .order_by(Video.updated_at.desc())
+                    .limit(50)
+                    .all()
+                )
+
+                for video, artist_name in downloading_videos:
+                    queue_items.append(
+                        {
+                            "id": video.id,
+                            "artist": artist_name,
+                            "title": video.title,
+                            "url": video.url or video.youtube_url,
+                            "status": "downloading",
+                            "created_at": (
+                                video.created_at.isoformat()
+                                if video.created_at
+                                else None
+                            ),
+                            "video_id": video.id,
+                        }
+                    )
+
+            return {
+                "queue": queue_items,
+                "total": len(queue_items),
+                "active_downloads": len(active_from_unified),
+            }
+        except Exception as e:
+            logger.error(f"Error getting queue from database: {e}")
+            # Fallback to in-memory tracking
+            queue_items = []
+            for download_id, entry in self.active_downloads.items():
+                queue_items.append(
+                    {
+                        **entry,
+                        "status": (
+                            "downloading"
+                            if download_id in active_from_unified
+                            else entry.get("status", "queued")
+                        ),
+                    }
+                )
+
+            return {
+                "queue": queue_items,
+                "total": len(queue_items),
+                "active_downloads": len(active_from_unified),
+            }
 
     def get_history(self, limit: int = 50) -> Dict[str, Any]:
         """Get download history (backwards compatible)"""
-        limited_history = (
-            self.download_history[-limit:] if limit > 0 else self.download_history
-        )
+        # Query database for completed/failed downloads instead of relying on in-memory state
+        try:
+            from datetime import datetime, timedelta
 
-        return {"history": limited_history, "total": len(limited_history)}
+            from src.database.connection import get_db
+            from src.database.models import Artist, Video, VideoStatus
+
+            history_items = []
+
+            with get_db() as session:
+                # Get recently completed or failed videos (last 30 days)
+                recent_cutoff = datetime.utcnow() - timedelta(days=30)
+                completed_videos = (
+                    session.query(Video, Artist.name)
+                    .join(Artist, Video.artist_id == Artist.id)
+                    .filter(
+                        Video.status.in_([VideoStatus.DOWNLOADED, VideoStatus.FAILED]),
+                        Video.updated_at >= recent_cutoff,
+                    )
+                    .order_by(Video.updated_at.desc())
+                    .limit(limit)
+                    .all()
+                )
+
+                for video, artist_name in completed_videos:
+                    history_items.append(
+                        {
+                            "id": video.id,
+                            "artist": artist_name,
+                            "title": video.title,
+                            "url": video.url or video.youtube_url,
+                            "status": (
+                                "completed"
+                                if video.status == VideoStatus.DOWNLOADED
+                                else "failed"
+                            ),
+                            "file_path": video.local_path,
+                            "file_size": video.file_size,
+                            "completed_at": (
+                                video.updated_at.isoformat()
+                                if video.updated_at
+                                else None
+                            ),
+                            "created_at": (
+                                video.created_at.isoformat()
+                                if video.created_at
+                                else None
+                            ),
+                            "video_id": video.id,
+                        }
+                    )
+
+            return {"history": history_items, "total": len(history_items)}
+        except Exception as e:
+            logger.error(f"Error getting history from database: {e}")
+            # Fallback to in-memory tracking
+            limited_history = (
+                self.download_history[-limit:] if limit > 0 else self.download_history
+            )
+            return {"history": limited_history, "total": len(limited_history)}
 
     def health_check(self) -> Dict[str, Any]:
         """Health check for backwards compatibility"""
