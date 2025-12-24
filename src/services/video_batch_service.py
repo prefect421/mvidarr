@@ -300,9 +300,14 @@ def get_wanted_videos_for_download(limit: int = 50) -> List[Dict]:
                     (Artist.schedule_priority == "low", 3),
                     else_=2,  # Default to medium priority
                 )
+                # MariaDB doesn't support NULLS LAST, use CASE for null handling
+                from sqlalchemy import func
+
                 query = query.order_by(
                     priority_order,
-                    Artist.priority.desc().nullslast(),  # Higher priority artists first
+                    func.coalesce(
+                        Artist.priority, 0
+                    ).desc(),  # Higher priority artists first (null = 0)
                     Video.created_at.asc(),  # Oldest videos first (fairness)
                 )
             else:
