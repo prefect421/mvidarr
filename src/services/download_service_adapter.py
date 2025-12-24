@@ -233,6 +233,26 @@ class DownloadServiceAdapter:
         else:
             return {"cookies_available": False, "error": "Cookie file not found"}
 
+    def process_pending_downloads(self) -> Dict[str, Any]:
+        """
+        Process pending downloads - backwards compatible method
+
+        The unified download service handles pending downloads automatically,
+        so this method simply returns success for compatibility with existing
+        Celery tasks and scheduler code.
+
+        Returns:
+            Dict with success status and message
+        """
+        logger.info(
+            "process_pending_downloads() called - unified service handles this automatically"
+        )
+        return {
+            "success": True,
+            "message": "Unified download service processes downloads automatically",
+            "processed_count": 0,  # Not tracked separately in unified service
+        }
+
     def cancel_download(self, download_id: int) -> bool:
         """Cancel download (backwards compatible)"""
         success = self.unified_service.cancel_download(download_id)
