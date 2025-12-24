@@ -708,8 +708,8 @@ async def upload_cookies(
             description="Timestamp when YouTube cookies were last uploaded",
         )
 
-        # Update ytdlp service to use the uploaded cookies
-        ytdlp_service.set_cookie_file(cookie_path)
+        # Note: ytdlp_service adapter automatically loads cookies from database on startup
+        # and the file has been written to the expected path, so no manual call needed
 
         logger.info(
             f"Cookies uploaded successfully and saved to database: {file.filename}"
@@ -827,8 +827,7 @@ async def delete_cookies(
         if os.path.exists(cookie_path):
             os.remove(cookie_path)
 
-        # Clear from ytdlp service
-        ytdlp_service.clear_cookie_file()
+        # Note: ytdlp_service adapter will handle missing cookies automatically
 
         if db_deleted or timestamp_deleted:
             logger.info("Cookies deleted successfully from database and filesystem")
