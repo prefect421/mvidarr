@@ -288,52 +288,54 @@ async def queue_video_download(
 
         session.commit()
 
-        # Create background job for download processing
+        # Submit download to unified service via ytdlp_service adapter
         try:
-            from ...services.job_queue import (
-                BackgroundJob,
-                JobPriority,
-                JobType,
-                get_job_queue,
+            from src.services.download_service_adapter import ytdlp_service
+            from src.services.settings_service import settings
+
+            # Get subtitle settings
+            download_subtitles = settings.get_bool("download_subtitles", False)
+            subtitle_languages = settings.get("subtitle_languages", "en,en-US")
+
+            # Get video URL
+            video_url = (
+                video.url
+                or video.youtube_url
+                or f"https://youtube.com/watch?v={video.youtube_id}"
+                if hasattr(video, "youtube_id") and video.youtube_id
+                else None
             )
 
-            job_queue = await get_job_queue()
+            if not video_url:
+                raise ValueError("No valid URL found for video")
 
-            # Map download priority to job priority
-            job_priority_map = {
-                1: JobPriority.LOW,
-                2: JobPriority.NORMAL,
-                3: JobPriority.HIGH,
-                4: JobPriority.URGENT,
-                5: JobPriority.URGENT,
-            }
-            job_priority = job_priority_map.get(priority, JobPriority.NORMAL)
-
-            # Create download job
-            download_job = BackgroundJob(
-                type=JobType.VIDEO_DOWNLOAD,
-                priority=job_priority,
-                payload={
-                    "video_id": video_id,
-                    "download_id": download.id,
-                    "quality": "best",
-                    "force_redownload": force_redownload,
-                },
-                created_by=f"user-api-download-{video_id}",
+            # Submit to unified download service
+            result = ytdlp_service.add_music_video_download(
+                artist=video.artist.name if video.artist else "Unknown Artist",
+                title=video.title,
+                url=video_url,
+                quality="best",
+                download_subtitles=download_subtitles,
+                subtitle_languages=subtitle_languages,
+                video_id=video_id,
+                download_id=download.id,
             )
 
-            job_id = await job_queue.enqueue(download_job)
             logger.info(
-                f"Created background download job {job_id} for video {video_id}"
+                f"Submitted download to unified service for video {video_id}: {result}"
             )
 
-        except Exception as job_error:
+        except Exception as download_error:
             logger.error(
-                f"Failed to create background download job for video {video_id}: {job_error}"
+                f"Failed to submit download to unified service for video {video_id}: {download_error}"
             )
-            # Don't fail the request if job creation fails
-        # This would integrate with the Celery task system
-        logger.info(f"Queued download for video {video_id} (priority: {priority})")
+            # Rollback video status if download submission failed
+            video.status = VideoStatus.WANTED
+            session.commit()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to start download: {str(download_error)}",
+            )
 
         return {
             "message": "Video download queued",
@@ -489,17 +491,46 @@ async def queue_download_video(
 
         session.commit()
 
-        logger.info(
-            f"Successfully queued download {download.id} for video {video_id}. Celery will process it within 30 seconds."
-        )
+        # Submit download to unified service via ytdlp_service adapter
+        try:
+            from src.services.download_service_adapter import ytdlp_service
 
-        return {
-            "success": True,
-            "message": "Video download queued successfully. Processing will begin shortly.",
-            "video_id": video_id,
-            "download_id": download.id,
-            "status": "queued",
-        }
+            # Submit to unified download service
+            result = ytdlp_service.add_music_video_download(
+                artist=artist.name,
+                title=video.title,
+                url=youtube_url,
+                quality="best",
+                download_subtitles=download_subtitles,
+                subtitle_languages=subtitle_languages,
+                video_id=video_id,
+                download_id=download.id,
+            )
+
+            logger.info(
+                f"Successfully submitted download {download.id} for video {video_id} to unified service: {result}"
+            )
+
+            return {
+                "success": True,
+                "message": "Video download started successfully.",
+                "video_id": video_id,
+                "download_id": download.id,
+                "status": "downloading",
+            }
+
+        except Exception as download_error:
+            logger.error(
+                f"Failed to submit download to unified service for video {video_id}: {download_error}"
+            )
+            # Rollback video status
+            video.status = VideoStatus.WANTED
+            session.commit()
+            return {
+                "success": False,
+                "error": f"Failed to start download: {str(download_error)}",
+                "video_id": video_id,
+            }
 
     except Exception as e:
         logger.error(f"Error queuing download for video {video_id}: {e}")
