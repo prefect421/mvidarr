@@ -76,7 +76,7 @@ class VideoDiscoveryService:
                 discovered_videos = []
 
                 # Search YouTube for new videos
-                youtube_results = self._search_youtube_for_artist(artist, limit)
+                youtube_results = self._search_youtube_for_artist(artist_name, limit)
                 logger.info(
                     f"YouTube returned {len(youtube_results)} videos for {artist_name}"
                 )
@@ -95,7 +95,7 @@ class VideoDiscoveryService:
                     time.sleep(self.rate_limit_delay)
 
                 # Search IMVDb for additional videos
-                imvdb_results = self._search_imvdb_for_artist(artist, limit)
+                imvdb_results = self._search_imvdb_for_artist(artist_name, limit)
                 logger.info(
                     f"IMVDb returned {len(imvdb_results)} videos for {artist_name}"
                 )
@@ -255,11 +255,9 @@ class VideoDiscoveryService:
     #     logger.info(f"YouTube search not yet implemented for {artist.name}")
     #     return []
 
-    def _search_imvdb_for_artist(self, artist: Artist, limit: int) -> List[Dict]:
+    def _search_imvdb_for_artist(self, artist_name: str, limit: int) -> List[Dict]:
         """Search IMVDb for artist videos"""
         try:
-            # Capture artist name early to avoid DetachedInstanceError
-            artist_name = artist.name
             results = imvdb_service.search_artist_videos(artist_name, limit=limit)
 
             if not results or "videos" not in results:
@@ -307,20 +305,18 @@ class VideoDiscoveryService:
             logger.error(f"IMVDb search failed for artist {artist_name}: {e}")
             return []
 
-    def _search_youtube_for_artist(self, artist: Artist, limit: int) -> List[Dict]:
+    def _search_youtube_for_artist(self, artist_name: str, limit: int) -> List[Dict]:
         """
         Search YouTube for artist videos using API or yt-dlp fallback
 
         Args:
-            artist: Artist object with name
+            artist_name: Name of the artist to search for
             limit: Maximum number of videos to return
 
         Returns:
             List of video_data dicts with standardized format
         """
         try:
-            # Capture artist name early to avoid DetachedInstanceError
-            artist_name = artist.name
 
             # Get settings
             min_score = SettingsService.get_float("youtube_discovery_min_score", 1.5)
@@ -339,7 +335,7 @@ class VideoDiscoveryService:
                         f"YouTube API returned {len(results['videos'])} videos for {artist_name}"
                     )
                     return self._process_youtube_api_results(
-                        results["videos"], artist, min_score
+                        results["videos"], artist_name, min_score
                     )
             except Exception as e:
                 logger.warning(f"YouTube API search failed for {artist_name}: {e}")
@@ -347,7 +343,7 @@ class VideoDiscoveryService:
                 # Fall back to yt-dlp if enabled
                 if allow_ytdlp_fallback:
                     logger.info(f"Falling back to yt-dlp search for {artist_name}")
-                    return self._search_youtube_with_ytdlp(artist, limit, min_score)
+                    return self._search_youtube_with_ytdlp(artist_name, limit, min_score)
                 else:
                     logger.error(f"YouTube API failed and yt-dlp fallback disabled")
                     return []
@@ -359,21 +355,19 @@ class VideoDiscoveryService:
             return []
 
     def _process_youtube_api_results(
-        self, videos: List[Dict], artist: Artist, min_score: float
+        self, videos: List[Dict], artist_name: str, min_score: float
     ) -> List[Dict]:
         """
         Process YouTube API results into discovery format
 
         Args:
             videos: Raw YouTube API results
-            artist: Artist object
+            artist_name: Name of the artist
             min_score: Minimum search score threshold
 
         Returns:
             List of processed video_data dicts
         """
-        # Capture artist name early to avoid DetachedInstanceError
-        artist_name = artist.name
         processed_videos = []
 
         for video in videos:
@@ -412,7 +406,7 @@ class VideoDiscoveryService:
         return processed_videos
 
     def _search_youtube_with_ytdlp(
-        self, artist: Artist, limit: int, min_score: float
+        self, artist_name: str, limit: int, min_score: float
     ) -> List[Dict]:
         """
         Fallback YouTube search using yt-dlp (when API unavailable)
@@ -420,7 +414,7 @@ class VideoDiscoveryService:
         Similar to resolve_video_url() in video_batch_service.py but for discovery
 
         Args:
-            artist: Artist object
+            artist_name: Name of the artist to search for
             limit: Maximum videos to find
             min_score: Minimum score (not applicable for yt-dlp, but kept for consistency)
 
@@ -428,8 +422,6 @@ class VideoDiscoveryService:
             List of video_data dicts
         """
         try:
-            # Capture artist name early to avoid DetachedInstanceError
-            artist_name = artist.name
             search_query = f"{artist_name} music video"
 
             cmd = [

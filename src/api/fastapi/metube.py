@@ -631,7 +631,6 @@ async def health_check(
 async def upload_cookies(
     file: UploadFile = File(..., description="YouTube cookies file (.txt or .cookies)"),
     current_user: dict = Depends(require_authentication_legacy),
-    session: Session = Depends(get_db_session),
 ):
     """Upload YouTube cookies file for age-restricted video downloads"""
     try:
@@ -732,7 +731,6 @@ async def upload_cookies(
 @router.get("/cookies/status", response_model=CookieStatusResponse)
 async def cookies_status(
     current_user: dict = Depends(require_authentication_legacy),
-    session: Session = Depends(get_db_session),
 ):
     """Check if cookies are uploaded and available"""
     try:
@@ -811,7 +809,6 @@ async def cookies_status(
 @router.delete("/cookies/delete", response_model=CookieUploadResponse)
 async def delete_cookies(
     current_user: dict = Depends(require_authentication_legacy),
-    session: Session = Depends(get_db_session),
 ):
     """Delete uploaded cookies file from database and filesystem"""
     try:
