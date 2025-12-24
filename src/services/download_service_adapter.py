@@ -278,7 +278,6 @@ class DownloadServiceAdapter:
                                 else "failed"
                             ),
                             "file_path": video.local_path,
-                            "file_size": video.file_size,
                             "completed_at": (
                                 video.updated_at.isoformat()
                                 if video.updated_at
