@@ -1,89 +1,43 @@
 {
-  "version": "0.10.1-dev",
-  "build_date": "2025-12-23T02:30:00+00:00",
-  "git_commit": "e418740",
-  "git_branch": "feature-schedule",
-  "release_name": "v0.10.1 - Scheduler V2: Complete Implementation (Testing)",
+  "version": "0.11.0",
+  "build_date": "2025-12-28T17:43:11.096919",
+  "git_commit": "5359d55",
+  "git_branch": "dev",
+  "release_name": "v0.11.0 - Scheduler V2: Database-Driven Configuration",
   "features": [
-    "🔄 Scheduler V2: Complete overhaul with Celery Beat integration",
-    "⚙️ Celery Beat: Production-grade distributed task scheduling",
+    "🗄️ Scheduler V2: Complete database-driven scheduling system",
+    "🎛️ Web UI Management: Configure all schedules via Settings page",
+    "🚫 Environment Variables Removed: No more MVIDARR_USE_ENHANCED_SCHEDULER",
+    "📊 Job History: Comprehensive tracking with searchable history",
+    "🔄 Dynamic Configuration: Changes apply immediately without restart",
+    "🏥 Health Monitoring: Built-in health checks and status endpoints",
+    "🔌 REST API: 23 endpoints for complete scheduler control",
+    "⚙️ Celery Beat Integration: Production-grade task scheduling",
     "🎯 Per-Artist Scheduling: Custom intervals and priority levels",
-    "🔁 Smart Retry Logic: Exponential backoff for failed downloads",
-    "📊 Enhanced Monitoring: Real-time job tracking and dashboards",
-    "🚀 23 REST API Endpoints: Complete scheduler and job management",
-    "🎛️ Priority-Based Processing: High/Medium/Low priority ordering",
-    "📈 Job History: Comprehensive tracking with 15+ indexed fields",
-    "🔍 Discovery Improvements: Artist-specific intervals and limits",
-    "🧹 Legacy Code Removed: Clean migration from old schedulers",
-    "⚡ Auto-Reload: Scheduler settings changes instantly update Celery Beat schedule"
+    "🔁 Smart Retry Logic: Exponential backoff for failed jobs",
+    "📈 Enhanced Monitoring: Real-time job tracking and dashboards"
   ],
-  "development_notes": [
-    "⚠️ TESTING VERSION - Scheduler V2 Implementation Complete",
-    "All 6 development phases completed and ready for testing",
-    "Migration tools and comprehensive documentation included",
-    "See docs/SCHEDULER_V2.md and docs/MIGRATION_0.10.1.md",
-    "GitHub Issues: #181-#186 (All Closed)",
-    "Docker deployment testing in progress",
-    "Settings auto-reload: No restart needed for scheduler config changes"
+  "breaking_changes": [
+    "⚠️ Environment variables for scheduler configuration are NO LONGER USED",
+    "All scheduler settings must be configured via Settings page in web UI",
+    "Removed: MVIDARR_USE_ENHANCED_SCHEDULER, MVIDARR_AUTO_DOWNLOAD_*, MVIDARR_AUTO_DISCOVERY_*",
+    "Migration: Configure schedules in Settings → Scheduler after upgrade"
   ],
-  "project_info": {
-    "milestone": "v0.10.1",
-    "branch": "feature-schedule",
-    "status": "Testing",
-    "phases": {
-      "phase_1": {
-        "name": "Database Schema & Celery Configuration",
-        "issue": "https://github.com/prefect421/mvidarr/issues/181",
-        "status": "Complete",
-        "duration": "5 days"
-      },
-      "phase_2": {
-        "name": "Core Services - Scheduler V2, Discovery & Download",
-        "issue": "https://github.com/prefect421/mvidarr/issues/182",
-        "status": "Complete",
-        "duration": "5 days"
-      },
-      "phase_3": {
-        "name": "Celery Tasks Implementation",
-        "issue": "https://github.com/prefect421/mvidarr/issues/183",
-        "status": "Complete",
-        "duration": "3 days"
-      },
-      "phase_4": {
-        "name": "API Layer - Scheduler V2 & Job Management",
-        "issue": "https://github.com/prefect421/mvidarr/issues/184",
-        "status": "Complete",
-        "duration": "5 days"
-      },
-      "phase_5": {
-        "name": "Frontend - Scheduler Dashboard & Artist Config UI",
-        "issue": "https://github.com/prefect421/mvidarr/issues/185",
-        "status": "Complete",
-        "duration": "5 days"
-      },
-      "phase_6": {
-        "name": "Migration & Legacy Code Cleanup",
-        "issue": "https://github.com/prefect421/mvidarr/issues/186",
-        "status": "Complete",
-        "duration": "5 days"
-      },
-      "phase_7": {
-        "name": "Testing & Validation",
-        "issue": "https://github.com/prefect421/mvidarr/issues/187",
-        "status": "In Progress",
-        "duration": "5 days"
-      }
-    },
-    "total_estimated_duration": "~4 weeks",
-    "documentation": "docs/v0.10.1_PROJECT_PLAN.md"
-  },
-  "inherited_from_v0_10_0": [
+  "upgrade_notes": [
+    "✅ Automatic migration from old scheduler settings to database",
+    "🔄 No data loss - existing schedules will be preserved",
+    "📋 Review Settings → Scheduler page after upgrade to verify configuration",
+    "📚 See docs/CONFIGURATION_GUIDE.md for Scheduler V2 documentation"
+  ],
+  "inherited_from_v0_10_x": [
     "🔒 Security: Resolved 10 critical vulnerabilities",
     "🔧 Installation Wizard for first-run setup",
     "🎬 Reliable video import system (no duplicates)",
     "✅ API validation before configuration",
     "📊 Performance monitoring dashboard",
     "🐳 Docker support with Redis integration",
-    "🖥️ Unraid template support"
+    "🖥️ Unraid template support",
+    "♻️ 10 Large Files Refactored - 71.4% size reduction",
+    "🧹 607 Unused Imports Removed - 100% dead code elimination"
   ]
 }

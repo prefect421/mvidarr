@@ -343,7 +343,9 @@ class VideoDiscoveryService:
                 # Fall back to yt-dlp if enabled
                 if allow_ytdlp_fallback:
                     logger.info(f"Falling back to yt-dlp search for {artist_name}")
-                    return self._search_youtube_with_ytdlp(artist_name, limit, min_score)
+                    return self._search_youtube_with_ytdlp(
+                        artist_name, limit, min_score
+                    )
                 else:
                     logger.error(f"YouTube API failed and yt-dlp fallback disabled")
                     return []

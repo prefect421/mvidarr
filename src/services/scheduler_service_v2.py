@@ -139,18 +139,23 @@ class SchedulerServiceV2:
                 recent_jobs = (
                     db.query(ScheduledJob)
                     .filter(
-                        ScheduledJob.created_at >= datetime.utcnow() - timedelta(hours=24)
+                        ScheduledJob.created_at
+                        >= datetime.utcnow() - timedelta(hours=24)
                     )
                     .all()
                 )
 
                 total_jobs = len(recent_jobs)
-                completed_jobs = len([j for j in recent_jobs if j.status == "completed"])
+                completed_jobs = len(
+                    [j for j in recent_jobs if j.status == "completed"]
+                )
                 failed_jobs = len([j for j in recent_jobs if j.status == "failed"])
                 running_jobs = len([j for j in recent_jobs if j.status == "running"])
 
                 # Calculate success rate
-                success_rate = (completed_jobs / total_jobs * 100) if total_jobs > 0 else 0
+                success_rate = (
+                    (completed_jobs / total_jobs * 100) if total_jobs > 0 else 0
+                )
 
             return {
                 "status": "running" if self._is_running else "stopped",

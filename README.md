@@ -22,11 +22,20 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.10.0-beta.1 - First Beta Release**
+## 🚀 **LATEST: v0.11.0 - Scheduler V2 Release**
 
 **⚠️ BETA STATUS: Active Development - Not Yet Production-Ready**
 
 > **Note**: This is a beta release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
+
+### Scheduler V2 - Database-Driven Scheduling ✅
+- **🗄️ Database Configuration**: All scheduler settings now stored in database
+- **🎛️ Web UI Management**: Configure schedules through Settings page
+- **🚫 No More Environment Variables**: Removed MVIDARR_USE_ENHANCED_SCHEDULER and related env vars
+- **📊 Job History Tracking**: Complete history of all scheduled job executions
+- **🔄 Dynamic Updates**: Changes apply immediately without container restart
+- **🏥 Health Monitoring**: Built-in health checks and status endpoints
+- **🔌 REST API Control**: Full API for automation and integration
 
 ### Code Cleanup & Optimization ✅
 - **♻️ 10 Large Files Refactored** - Transformed 15,133 lines into 58 modular files

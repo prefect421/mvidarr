@@ -242,31 +242,53 @@ auto_organize_downloads=true
 - `bestaudio` - Audio only
 - `bestvideo` - Video only (no audio)
 
-### Automated Scheduling
+### Automated Scheduling (Scheduler V2)
+
+**NOTE:** Scheduler V2 configuration is now managed through the **database via the Settings page** in the web UI. Environment variables for scheduling are no longer used.
+
+#### Accessing Scheduler V2 Settings
+
+1. Navigate to **Settings** → **Scheduler** in the web UI
+2. Configure schedules directly through the interface
+3. Changes take effect immediately without restart
 
 #### Auto-Download Schedule
+Configure via Settings page:
+- **Enable/Disable**: Auto download scheduling toggle
+- **Schedule Time**: Time of day to run (e.g., "02:00")
+- **Schedule Frequency**: daily, hourly, weekly, or custom cron
+- **Max Videos**: Maximum videos to download per run
+
+#### Auto-Discovery Schedule
+Configure via Settings page:
+- **Enable/Disable**: Auto discovery scheduling toggle
+- **Schedule Time**: Time of day to run (e.g., "06:00")
+- **Schedule Frequency**: daily, hourly, weekly, or custom cron
+- **Max Videos per Artist**: Limit per artist
+
+#### Scheduler V2 API Endpoints
+
 ```bash
-# Scheduled download configuration
-auto_download_schedule_enabled=true
-auto_download_schedule_time="02:00"
-auto_download_schedule_days="daily"  # Options: hourly, daily, weekly
-auto_download_max_videos=10
+# Get scheduler status
+curl http://localhost:5000/api/v2/scheduler/status
+
+# Manually trigger discovery
+curl -X POST http://localhost:5000/api/v2/scheduler/trigger/discovery
+
+# Manually trigger downloads
+curl -X POST http://localhost:5000/api/v2/scheduler/trigger/downloads
+
+# Reload settings from database
+curl -X POST http://localhost:5000/api/v2/scheduler/settings/reload
 ```
 
-#### Auto-Discovery Schedule  
-```bash
-# Automated discovery configuration
-auto_discovery_schedule_enabled=true
-auto_discovery_schedule_time="06:00"
-auto_discovery_schedule_days="daily"
-auto_discovery_max_videos_per_artist=5
-```
-
-**Schedule Options:**
-- `hourly` - Every hour at specified minute
-- `daily` - Every day at specified time
-- `weekly` - Every week on specified day/time
-- `monthly` - Every month on specified date/time
+**Benefits of Scheduler V2:**
+- **Database-Driven**: All settings stored in database
+- **Web UI Management**: No need to edit environment files
+- **Dynamic Updates**: Changes apply immediately
+- **Job History**: Track all scheduled job executions
+- **Health Monitoring**: Built-in health checks and status
+- **API Control**: Full REST API for automation
 
 ## 🗄️ Database Configuration
 
@@ -392,10 +414,8 @@ DOWNLOADS_PATH=/app/downloads
 MUSIC_VIDEOS_PATH=/app/musicvideos
 THUMBNAILS_PATH=/app/thumbnails
 
-# Scheduling
-MVIDARR_USE_ENHANCED_SCHEDULER=true
-MVIDARR_AUTO_DOWNLOAD_ENABLED=true
-MVIDARR_AUTO_DOWNLOAD_SCHEDULE=daily
+# NOTE: Scheduler configuration moved to database (Scheduler V2)
+# Configure via Settings page in web UI instead of environment variables
 ```
 
 ### Docker Compose Configuration
