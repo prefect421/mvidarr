@@ -296,6 +296,64 @@ class DownloadServiceAdapter:
 
         return success
 
+    def clear_history(self) -> Dict[str, Any]:
+        """
+        Clear download history (backwards compatible)
+
+        Clears both in-memory history and database records
+
+        Returns:
+            Dict with success status and deletion counts
+        """
+        try:
+            # Clear in-memory history
+            memory_count = len(self.download_history)
+            self.download_history.clear()
+
+            # Clear database records
+            db_count = 0
+            try:
+                from src.database.connection import get_db
+                from src.database.models import Download
+
+                with get_db() as session:
+                    db_count = session.query(Download).count()
+                    session.query(Download).delete()
+                    session.commit()
+                    logger.info(f"Cleared {db_count} download records from database")
+            except Exception as db_error:
+                logger.error(
+                    f"Failed to clear download history from database: {db_error}"
+                )
+                # Continue even if DB fails - at least clear memory
+
+            # Also clear download queue to prevent re-adding completed downloads
+            cleared_queue_count = len(self.download_queue)
+            self.download_queue.clear()
+
+            total_count = memory_count + db_count
+            logger.info(
+                f"Cleared download history: {memory_count} from memory, "
+                f"{db_count} from database, {cleared_queue_count} from queue"
+            )
+
+            return {
+                "success": True,
+                "message": f"Cleared {total_count} download records",
+                "memory_count": memory_count,
+                "database_count": db_count,
+                "queue_count": cleared_queue_count,
+                "total_count": total_count,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to clear download history: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Failed to clear history: {str(e)}",
+            }
+
     # Additional methods for full backwards compatibility
     def _resume_pending_downloads(self):
         """Resume pending downloads - now handled by unified service automatically"""
