@@ -36,7 +36,7 @@ python-dateutil==2.8.2
 python-dotenv==1.0.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
-marshmallow==3.20.1
+marshmallow==3.26.2
 PyYAML==6.0.1
 
 # HTML Parsing (for AllMusic web scraping)
