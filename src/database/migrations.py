@@ -488,8 +488,8 @@ class MigrationManager:
                         results["success"] = False
                         break  # Stop on first failure
 
-                # Commit all changes
-                session.commit()
+                # Note: Commit is handled by get_db() context manager
+                # Manual commit removed to prevent double-commit error
 
                 if results["success"]:
                     logger.info(f"Successfully applied {applied_count} migrations")

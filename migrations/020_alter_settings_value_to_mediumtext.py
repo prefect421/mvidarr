@@ -59,7 +59,7 @@ def upgrade(connection):
                 """
                 )
             )
-            connection.commit()
+            # Note: Transaction is managed by migration framework - no manual commit
 
             logger.info(
                 "✅ Successfully altered settings.value column to MEDIUMTEXT"
@@ -74,7 +74,6 @@ def upgrade(connection):
 
     except Exception as e:
         logger.error(f"Migration 020 failed: {e}", exc_info=True)
-        connection.rollback()
         raise
 
 
@@ -115,14 +114,13 @@ def downgrade(connection):
             """
             )
         )
-        connection.commit()
+        # Note: Transaction is managed by migration framework - no manual commit
 
         logger.info("✅ Successfully reverted settings.value column to TEXT")
         return True
 
     except Exception as e:
         logger.error(f"Migration 020 downgrade failed: {e}", exc_info=True)
-        connection.rollback()
         raise
 
 
