@@ -188,7 +188,11 @@ def artist_specific_discovery_task(artist_id: int, **kwargs) -> Dict[str, Any]:
     Discover videos for a specific artist
 
     This task is triggered for individual artists based on their
-    custom discovery_interval_hours setting.
+    custom discovery_interval_hours setting, OR can be manually
+    triggered by users regardless of discovery_enabled status.
+
+    Note: Does NOT check discovery_enabled - allows manual discovery
+    even when auto-discovery is disabled for the artist.
 
     Args:
         artist_id: Artist ID to discover videos for
@@ -200,50 +204,6 @@ def artist_specific_discovery_task(artist_id: int, **kwargs) -> Dict[str, Any]:
     logger.info(f"Starting discovery for artist {artist_id}")
 
     try:
-        # Verify artist has discovery enabled before proceeding
-        with get_db() as db:
-            artist = db.query(Artist).filter(Artist.id == artist_id).first()
-
-            if not artist:
-                logger.warning(f"Artist {artist_id} not found, skipping discovery")
-                return {
-                    "success": False,
-                    "artist_id": artist_id,
-                    "artist_name": "Unknown",
-                    "error": "Artist not found",
-                    "discovered_count": 0,
-                    "stored_count": 0,
-                    "execution_time": 0,
-                }
-
-            if not artist.discovery_enabled:
-                logger.info(
-                    f"Discovery disabled for artist {artist_id} ({artist.name}), skipping"
-                )
-                return {
-                    "success": False,
-                    "artist_id": artist_id,
-                    "artist_name": artist.name,
-                    "error": "Discovery disabled for this artist",
-                    "discovered_count": 0,
-                    "stored_count": 0,
-                    "execution_time": 0,
-                }
-
-            if not artist.monitored:
-                logger.info(
-                    f"Artist {artist_id} ({artist.name}) is not monitored, skipping discovery"
-                )
-                return {
-                    "success": False,
-                    "artist_id": artist_id,
-                    "artist_name": artist.name,
-                    "error": "Artist not monitored",
-                    "discovered_count": 0,
-                    "stored_count": 0,
-                    "execution_time": 0,
-                }
-
         discovery_service = VideoDiscoveryService()
 
         # Run discovery for the specific artist
