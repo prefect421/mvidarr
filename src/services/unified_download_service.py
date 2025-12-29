@@ -746,12 +746,38 @@ class UnifiedDownloadService:
             return {"history": [], "total": 0}
 
     def cancel_download(self, download_id: int) -> bool:
-        """Cancel active download"""
+        """Cancel active download or mark database download as stopped"""
+        # Check in-memory active downloads first
         if download_id in self.active_downloads:
-            # Note: This is a graceful approach. For immediate cancellation,
-            # we'd need more sophisticated process management
-            logger.info(f"Download {download_id} cancellation requested")
+            logger.info(f"Download {download_id} cancellation requested (in-memory)")
             return True
+
+        # Check database for download record
+        try:
+            from src.database.connection import get_db
+            from src.database.models import Download
+
+            with get_db() as session:
+                download = (
+                    session.query(Download).filter(Download.id == download_id).first()
+                )
+                if download and download.status in ["queued", "downloading", "pending"]:
+                    download.status = "stopped"
+                    download.error_message = "Download stopped by user"
+                    download.updated_at = datetime.utcnow()
+                    session.commit()
+                    logger.info(f"Download {download_id} marked as stopped in database")
+                    return True
+                elif download:
+                    logger.info(
+                        f"Download {download_id} already in final state: {download.status}"
+                    )
+                    return False
+        except Exception as e:
+            logger.error(f"Error cancelling download {download_id}: {e}")
+            return False
+
+        logger.warning(f"Download {download_id} not found")
         return False
 
 
