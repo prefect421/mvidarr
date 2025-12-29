@@ -1,43 +1,56 @@
 {
-  "version": "0.11.0",
-  "build_date": "2025-12-28T17:43:11.096919",
-  "git_commit": "5359d55",
-  "git_branch": "dev",
-  "release_name": "v0.11.0 - Scheduler V2: Database-Driven Configuration",
+  "version": "0.11.1",
+  "build_date": "2025-12-29T16:13:42.255628",
+  "git_commit": "51075b8",
+  "git_branch": "main",
+  "release_name": "v0.11.1 - Bug Fixes & Security Updates",
   "features": [
+    "🔒 Security: Upgraded marshmallow to 3.26.2 (fixes CVE-2025-68480)",
+    "🐛 Fixed: Dynamic Playlist count now shows accurate video counts",
+    "🐛 Fixed: Clear download history now properly clears displayed history",
+    "🔧 Enhanced: Playlist stats use direct database queries for accuracy",
+    "🔧 Enhanced: Download history queries Download table (not Video table)"
+  ],
+  "bug_fixes": [
+    "#188: Security - Upgraded marshmallow to fix DoS vulnerability",
+    "#177: Dynamic Playlist count mismatch - now queries database directly",
+    "Clear download history - fixed mismatch between cleared data and display",
+    "Cookie upload endpoint - improved error handling",
+    "Session handling - fixed nested database session conflicts"
+  ],
+  "security_updates": [
+    "CVE-2025-68480: marshmallow 3.20.1 → 3.26.2 (Denial of Service fix)",
+    "Enhanced error logging with exc_info for better diagnostics"
+  ],
+  "technical_improvements": [
+    "Playlist.update_stats() now uses SQLAlchemy func.count() for accuracy",
+    "Download history queries Download table instead of Video table",
+    "clear_history() accepts optional session parameter to avoid conflicts",
+    "Added deleted_count field to DownloadResponse model"
+  ],
+  "inherited_from_v0_11_0": [
     "🗄️ Scheduler V2: Complete database-driven scheduling system",
     "🎛️ Web UI Management: Configure all schedules via Settings page",
     "🚫 Environment Variables Removed: No more MVIDARR_USE_ENHANCED_SCHEDULER",
     "📊 Job History: Comprehensive tracking with searchable history",
-    "🔄 Dynamic Configuration: Changes apply immediately without restart",
-    "🏥 Health Monitoring: Built-in health checks and status endpoints",
-    "🔌 REST API: 23 endpoints for complete scheduler control",
-    "⚙️ Celery Beat Integration: Production-grade task scheduling",
-    "🎯 Per-Artist Scheduling: Custom intervals and priority levels",
-    "🔁 Smart Retry Logic: Exponential backoff for failed jobs",
-    "📈 Enhanced Monitoring: Real-time job tracking and dashboards"
-  ],
-  "breaking_changes": [
-    "⚠️ Environment variables for scheduler configuration are NO LONGER USED",
-    "All scheduler settings must be configured via Settings page in web UI",
-    "Removed: MVIDARR_USE_ENHANCED_SCHEDULER, MVIDARR_AUTO_DOWNLOAD_*, MVIDARR_AUTO_DISCOVERY_*",
-    "Migration: Configure schedules in Settings → Scheduler after upgrade"
-  ],
-  "upgrade_notes": [
-    "✅ Automatic migration from old scheduler settings to database",
-    "🔄 No data loss - existing schedules will be preserved",
-    "📋 Review Settings → Scheduler page after upgrade to verify configuration",
-    "📚 See docs/CONFIGURATION_GUIDE.md for Scheduler V2 documentation"
+    "🔄 Dynamic Configuration: Changes apply immediately without restart"
   ],
   "inherited_from_v0_10_x": [
-    "🔒 Security: Resolved 10 critical vulnerabilities",
+    "🔒 Security: Resolved 10 critical vulnerabilities (prior to this release)",
     "🔧 Installation Wizard for first-run setup",
     "🎬 Reliable video import system (no duplicates)",
     "✅ API validation before configuration",
     "📊 Performance monitoring dashboard",
-    "🐳 Docker support with Redis integration",
-    "🖥️ Unraid template support",
-    "♻️ 10 Large Files Refactored - 71.4% size reduction",
-    "🧹 607 Unused Imports Removed - 100% dead code elimination"
+    "🐳 Docker support with Redis integration"
+  ],
+  "known_issues": [
+    "#180: Themes not automatically listed in Settings (low priority - requires database seeding)",
+    "Cookie upload may fail with 500 error in some environments (under investigation)"
+  ],
+  "upgrade_notes": [
+    "✅ No breaking changes - safe to upgrade from v0.11.0",
+    "🔄 Security patches applied automatically",
+    "📊 Dynamic playlist counts will auto-correct on next update cycle",
+    "🧹 Clear download history to test the fix"
   ]
 }
