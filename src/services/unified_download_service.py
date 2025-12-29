@@ -678,13 +678,14 @@ class UnifiedDownloadService:
         """
         Get download history from database
 
-        Returns videos with DOWNLOADED or FAILED status from last 30 days
+        Returns completed/failed download records from the Download table
+        This matches what clear_history() clears
         """
         try:
             from datetime import datetime, timedelta
 
             from src.database.connection import get_db
-            from src.database.models import Artist, Video, VideoStatus
+            from src.database.models import Artist, Download
 
             history_items = []
 
@@ -695,46 +696,45 @@ class UnifiedDownloadService:
                     f"Unified service querying download history since {recent_cutoff}"
                 )
 
-                completed_videos = (
-                    session.query(Video, Artist.name)
-                    .join(Artist, Video.artist_id == Artist.id)
+                # Query Download table for completed/failed downloads
+                completed_downloads = (
+                    session.query(Download, Artist.name)
+                    .join(Artist, Download.artist_id == Artist.id)
                     .filter(
-                        Video.status.in_([VideoStatus.DOWNLOADED, VideoStatus.FAILED]),
-                        Video.updated_at >= recent_cutoff,
+                        Download.status.in_(["completed", "failed", "cancelled"]),
+                        Download.created_at >= recent_cutoff,
                     )
-                    .order_by(Video.updated_at.desc())
+                    .order_by(Download.created_at.desc())
                     .limit(limit)
                     .all()
                 )
 
                 logger.info(
-                    f"Unified service found {len(completed_videos)} videos in history"
+                    f"Unified service found {len(completed_downloads)} downloads in history"
                 )
 
-                for video, artist_name in completed_videos:
+                for download, artist_name in completed_downloads:
                     history_items.append(
                         {
-                            "id": video.id,
+                            "id": download.id,
                             "artist": artist_name,
-                            "title": video.title,
-                            "url": video.url or video.youtube_url,
-                            "status": (
-                                "completed"
-                                if video.status == VideoStatus.DOWNLOADED
-                                else "failed"
-                            ),
-                            "file_path": video.local_path,
+                            "title": download.title,
+                            "url": download.original_url,
+                            "status": download.status,
+                            "file_path": download.file_path,
+                            "file_size": download.file_size,
                             "completed_at": (
-                                video.updated_at.isoformat()
-                                if video.updated_at
+                                download.completed_at.isoformat()
+                                if download.completed_at
                                 else None
                             ),
                             "created_at": (
-                                video.created_at.isoformat()
-                                if video.created_at
+                                download.created_at.isoformat()
+                                if download.created_at
                                 else None
                             ),
-                            "video_id": video.id,
+                            "video_id": download.video_id,
+                            "error_message": download.error_message,
                         }
                     )
 
