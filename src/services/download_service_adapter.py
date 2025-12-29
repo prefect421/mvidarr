@@ -296,6 +296,25 @@ class DownloadServiceAdapter:
 
         return success
 
+    def stop_download(self, download_id: int) -> Dict[str, Any]:
+        """Stop/cancel download (API compatibility method)"""
+        success = self.cancel_download(download_id)
+
+        if success:
+            return {
+                "success": True,
+                "message": f"Download {download_id} stopped",
+                "download_id": download_id,
+                "error": None,
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Download not found or already completed",
+                "download_id": download_id,
+                "error": "Download not found",
+            }
+
     def clear_history(self, session=None) -> Dict[str, Any]:
         """
         Clear download history (backwards compatible)
