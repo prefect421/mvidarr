@@ -315,6 +315,58 @@ class DownloadServiceAdapter:
                 "error": "Download not found",
             }
 
+    def retry_download(self, download_id: int) -> Dict[str, Any]:
+        """Retry a failed/stopped download (API compatibility method)"""
+        try:
+            from src.database.connection import get_db
+            from src.database.models import Download, Video
+
+            with get_db() as session:
+                download = (
+                    session.query(Download).filter(Download.id == download_id).first()
+                )
+
+                if not download:
+                    return {
+                        "success": False,
+                        "message": "Download not found",
+                        "download_id": download_id,
+                        "error": "Download not found",
+                    }
+
+                if download.status not in ["failed", "stopped", "cancelled"]:
+                    return {
+                        "success": False,
+                        "message": f"Download is in '{download.status}' status and cannot be retried",
+                        "download_id": download_id,
+                        "error": f"Invalid status: {download.status}",
+                    }
+
+                # Reset download status to pending for retry
+                download.status = "pending"
+                download.progress = 0
+                download.error_message = None
+                download.updated_at = datetime.utcnow()
+                session.commit()
+
+                logger.info(f"Download {download_id} queued for retry")
+
+                return {
+                    "success": True,
+                    "message": f"Download {download_id} queued for retry",
+                    "download_id": download_id,
+                    "error": None,
+                }
+
+        except Exception as e:
+            logger.error(f"Error retrying download {download_id}: {e}", exc_info=True)
+            return {
+                "success": False,
+                "message": f"Failed to retry download: {str(e)}",
+                "download_id": download_id,
+                "error": str(e),
+            }
+
     def clear_history(self, session=None) -> Dict[str, Any]:
         """
         Clear download history (backwards compatible)
