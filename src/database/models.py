@@ -862,17 +862,41 @@ class Playlist(Base):
 
     def update_stats(self):
         """Update cached statistics (video_count, total_duration)"""
-        if self.entries:
-            self.video_count = len(self.entries)
-            # Calculate total duration from videos
-            total_seconds = 0
-            for entry in self.entries:
-                if entry.video and entry.video.duration:
-                    total_seconds += entry.video.duration
-            self.total_duration = total_seconds if total_seconds > 0 else None
-        else:
-            self.video_count = 0
-            self.total_duration = None
+        from sqlalchemy import func
+        from sqlalchemy.orm import object_session
+
+        session = object_session(self)
+        if not session:
+            # Fallback to relationship-based calculation if no session
+            if self.entries:
+                self.video_count = len(self.entries)
+                total_seconds = 0
+                for entry in self.entries:
+                    if entry.video and entry.video.duration:
+                        total_seconds += entry.video.duration
+                self.total_duration = total_seconds if total_seconds > 0 else None
+            else:
+                self.video_count = 0
+                self.total_duration = None
+            return
+
+        # Query database directly for accurate count (fixes issue #177)
+        entry_count = (
+            session.query(func.count(PlaylistEntry.id))
+            .filter(PlaylistEntry.playlist_id == self.id)
+            .scalar()
+        )
+
+        # Calculate total duration from database
+        total_duration = (
+            session.query(func.sum(Video.duration))
+            .join(PlaylistEntry, PlaylistEntry.video_id == Video.id)
+            .filter(PlaylistEntry.playlist_id == self.id)
+            .scalar()
+        )
+
+        self.video_count = entry_count or 0
+        self.total_duration = int(total_duration) if total_duration else None
 
     def can_access(self, user):
         """Check if user can access this playlist"""
