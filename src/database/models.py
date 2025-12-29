@@ -79,7 +79,9 @@ class Setting(Base):
 
     id = Column(Integer, primary_key=True)
     key = Column(String(255), unique=True, nullable=False)
-    value = Column(MEDIUMTEXT, nullable=True)  # Changed from Text to MEDIUMTEXT for large values (cookies, etc)
+    value = Column(
+        MEDIUMTEXT, nullable=True
+    )  # Changed from Text to MEDIUMTEXT for large values (cookies, etc)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
