@@ -200,6 +200,50 @@ def artist_specific_discovery_task(artist_id: int, **kwargs) -> Dict[str, Any]:
     logger.info(f"Starting discovery for artist {artist_id}")
 
     try:
+        # Verify artist has discovery enabled before proceeding
+        with get_db() as db:
+            artist = db.query(Artist).filter(Artist.id == artist_id).first()
+
+            if not artist:
+                logger.warning(f"Artist {artist_id} not found, skipping discovery")
+                return {
+                    "success": False,
+                    "artist_id": artist_id,
+                    "artist_name": "Unknown",
+                    "error": "Artist not found",
+                    "discovered_count": 0,
+                    "stored_count": 0,
+                    "execution_time": 0,
+                }
+
+            if not artist.discovery_enabled:
+                logger.info(
+                    f"Discovery disabled for artist {artist_id} ({artist.name}), skipping"
+                )
+                return {
+                    "success": False,
+                    "artist_id": artist_id,
+                    "artist_name": artist.name,
+                    "error": "Discovery disabled for this artist",
+                    "discovered_count": 0,
+                    "stored_count": 0,
+                    "execution_time": 0,
+                }
+
+            if not artist.monitored:
+                logger.info(
+                    f"Artist {artist_id} ({artist.name}) is not monitored, skipping discovery"
+                )
+                return {
+                    "success": False,
+                    "artist_id": artist_id,
+                    "artist_name": artist.name,
+                    "error": "Artist not monitored",
+                    "discovered_count": 0,
+                    "stored_count": 0,
+                    "execution_time": 0,
+                }
+
         discovery_service = VideoDiscoveryService()
 
         # Run discovery for the specific artist
@@ -518,10 +562,11 @@ def artist_discovery_check_task(**kwargs) -> Dict[str, Any]:
     try:
         with get_db() as db:
             # Get all monitored artists with discovery enabled
-            query = db.query(Artist).filter(Artist.monitored == True)
-
-            if hasattr(Artist, "discovery_enabled"):
-                query = query.filter(Artist.discovery_enabled == True)
+            query = (
+                db.query(Artist)
+                .filter(Artist.monitored == True)
+                .filter(Artist.discovery_enabled == True)
+            )
 
             artists = query.all()
 
