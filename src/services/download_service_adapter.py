@@ -262,21 +262,111 @@ class DownloadServiceAdapter:
         """
         Process pending downloads - backwards compatible method
 
-        The unified download service handles pending downloads automatically,
-        so this method simply returns success for compatibility with existing
-        Celery tasks and scheduler code.
+        Queries database for pending/queued downloads and starts them
+        via the unified download service.
 
         Returns:
-            Dict with success status and message
+            Dict with success status, processed count, and any errors
         """
-        logger.info(
-            "process_pending_downloads() called - unified service handles this automatically"
-        )
-        return {
-            "success": True,
-            "message": "Unified download service processes downloads automatically",
-            "processed_count": 0,  # Not tracked separately in unified service
-        }
+        try:
+            from src.database.connection import get_db
+            from src.database.models import Download, Video
+
+            processed_count = 0
+            errors = []
+
+            with get_db() as session:
+                # Find pending/queued downloads
+                pending_downloads = (
+                    session.query(Download)
+                    .filter(Download.status.in_(["pending", "queued"]))
+                    .limit(10)  # Process in batches to avoid overwhelming the system
+                    .all()
+                )
+
+                logger.info(
+                    f"Found {len(pending_downloads)} pending downloads to process"
+                )
+
+                for download in pending_downloads:
+                    try:
+                        # Get associated video
+                        video = (
+                            session.query(Video)
+                            .filter(Video.id == download.video_id)
+                            .first()
+                        )
+
+                        if not video:
+                            logger.warning(
+                                f"Download {download.id} references non-existent video {download.video_id}"
+                            )
+                            download.status = "failed"
+                            download.error_message = "Video not found in database"
+                            session.commit()
+                            errors.append(
+                                f"Download {download.id}: Video {download.video_id} not found"
+                            )
+                            continue
+
+                        # Start download via unified service
+                        logger.info(
+                            f"Starting download {download.id}: {video.artist} - {video.title}"
+                        )
+
+                        # Use add_music_video_download to start the download
+                        result = self.add_music_video_download(
+                            artist=video.artist,
+                            title=video.title,
+                            url=video.url,
+                            quality=download.quality or "best",
+                            video_id=video.id,
+                            download_id=download.id,
+                        )
+
+                        if result.get("success"):
+                            processed_count += 1
+                            # Update download status to downloading
+                            download.status = "downloading"
+                            session.commit()
+                        else:
+                            error_msg = result.get("error", "Unknown error")
+                            logger.error(
+                                f"Failed to start download {download.id}: {error_msg}"
+                            )
+                            download.status = "failed"
+                            download.error_message = error_msg
+                            session.commit()
+                            errors.append(f"Download {download.id}: {error_msg}")
+
+                    except Exception as e:
+                        logger.error(
+                            f"Error processing download {download.id}: {e}",
+                            exc_info=True,
+                        )
+                        errors.append(f"Download {download.id}: {str(e)}")
+                        try:
+                            download.status = "failed"
+                            download.error_message = str(e)
+                            session.commit()
+                        except:
+                            pass
+
+            return {
+                "success": True,
+                "processed_count": processed_count,
+                "found_pending": len(pending_downloads),
+                "errors": errors,
+                "message": f"Processed {processed_count} pending downloads",
+            }
+
+        except Exception as e:
+            logger.error(f"Error in process_pending_downloads: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Failed to process pending downloads: {str(e)}",
+            }
 
     def cancel_download(self, download_id: int) -> bool:
         """Cancel download (backwards compatible)"""
