@@ -197,7 +197,7 @@ async def bulk_delete_artists(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/bulk/edit")
+@router.post("/bulk-edit")
 async def bulk_edit_artists(
     request: BulkEditRequest = Body(...),
     current_user: dict = Depends(require_authentication),
