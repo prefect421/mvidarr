@@ -106,18 +106,28 @@ class YouTubeSearchService:
             }
 
         except requests.RequestException as e:
-            logger.error(f"YouTube API request failed: {e}")
+            # Sanitize error message to remove API key from URL
+            error_msg = str(e)
+            if self.api_key and self.api_key in error_msg:
+                error_msg = error_msg.replace(self.api_key, "***API_KEY***")
+
+            logger.error(f"YouTube API request failed: {error_msg}")
             return {
                 "videos": [],
                 "total_results": 0,
-                "error": f"YouTube API request failed: {str(e)}",
+                "error": f"YouTube API request failed: {error_msg}",
             }
         except Exception as e:
-            logger.error(f"YouTube search failed for artist {artist_name}: {e}")
+            # Sanitize error message to remove API key
+            error_msg = str(e)
+            if self.api_key and self.api_key in error_msg:
+                error_msg = error_msg.replace(self.api_key, "***API_KEY***")
+
+            logger.error(f"YouTube search failed for artist {artist_name}: {error_msg}")
             return {
                 "videos": [],
                 "total_results": 0,
-                "error": f"YouTube search failed: {str(e)}",
+                "error": f"YouTube search failed: {error_msg}",
             }
 
     def _get_video_details(self, video_ids: List[str]) -> Dict[str, Dict]:
