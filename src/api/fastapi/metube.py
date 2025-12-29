@@ -64,6 +64,7 @@ class DownloadResponse(BaseModel):
     message: Optional[str] = None
     download_id: Optional[int] = None
     error: Optional[str] = None
+    deleted_count: Optional[int] = None  # For clear history operations
 
 
 class QueueResponse(BaseModel):
@@ -425,7 +426,8 @@ async def clear_history(
             f"Clearing download history for user {current_user.get('username')}"
         )
 
-        result = ytdlp_service.clear_history()
+        # Pass the session to avoid creating nested database sessions
+        result = ytdlp_service.clear_history(session=session)
 
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result)
@@ -435,7 +437,7 @@ async def clear_history(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to clear history: {e}")
+        logger.error(f"Failed to clear history: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
