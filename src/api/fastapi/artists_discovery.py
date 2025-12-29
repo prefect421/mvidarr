@@ -408,6 +408,7 @@ async def discover_artist_videos(
 
         async def search_youtube():
             youtube_videos = []
+            youtube_error = None
             try:
                 logger.info(f"Searching YouTube for videos by {artist_name}")
 
@@ -416,7 +417,13 @@ async def discover_artist_videos(
                     youtube_search_service.search_artist_videos, artist_name, limit
                 )
 
-                if youtube_results and youtube_results.get("videos"):
+                # Check if YouTube API returned an error
+                if youtube_results and youtube_results.get("error"):
+                    youtube_error = youtube_results.get("error")
+                    logger.error(
+                        f"YouTube API error for {artist_name}: {youtube_error}"
+                    )
+                elif youtube_results and youtube_results.get("videos"):
                     yt_video_list = youtube_results["videos"]
                     logger.info(
                         f"Found {len(yt_video_list)} videos from YouTube for {artist_name}"
@@ -449,14 +456,18 @@ async def discover_artist_videos(
                     logger.warning(f"No YouTube results found for {artist_name}")
 
             except Exception as e:
-                logger.warning(f"YouTube video search failed for {artist_name}: {e}")
-            return youtube_videos
+                youtube_error = str(e)
+                logger.error(
+                    f"YouTube video search failed for {artist_name}: {e}",
+                    exc_info=True,
+                )
+            return youtube_videos, youtube_error
 
         # Execute both searches in parallel
         logger.info(f"Starting parallel search on IMVDb and YouTube for {artist_name}")
-        imvdb_videos, youtube_videos = await asyncio.gather(
-            search_imvdb(), search_youtube()
-        )
+        results = await asyncio.gather(search_imvdb(), search_youtube())
+        imvdb_videos = results[0]
+        youtube_videos, youtube_error = results[1]
 
         # Combine IMVDb and YouTube results
         all_discovered_videos = imvdb_videos + youtube_videos
@@ -484,6 +495,7 @@ async def discover_artist_videos(
             "total_existing": len(existing_videos),
             "imvdb_results": len(imvdb_videos),
             "youtube_results": len(youtube_videos),
+            "youtube_error": youtube_error,  # Include error for debugging
             "with_thumbnails": 0,
             "high_quality": 0,
             "available_for_import": 0,
