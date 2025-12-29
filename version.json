@@ -1,13 +1,14 @@
 {
   "version": "0.11.1",
-  "build_date": "2025-12-29T16:13:42.255628",
-  "git_commit": "51075b8",
+  "build_date": "2025-12-29T17:19:26.701521",
+  "git_commit": "4bbbe6d",
   "git_branch": "main",
   "release_name": "v0.11.1 - Bug Fixes & Security Updates",
   "features": [
     "🔒 Security: Upgraded marshmallow to 3.26.2 (fixes CVE-2025-68480)",
     "🐛 Fixed: Dynamic Playlist count now shows accurate video counts",
     "🐛 Fixed: Clear download history now properly clears displayed history",
+    "🐛 Fixed: Cookie upload now supports large files (up to 16MB)",
     "🔧 Enhanced: Playlist stats use direct database queries for accuracy",
     "🔧 Enhanced: Download history queries Download table (not Video table)"
   ],
@@ -15,7 +16,8 @@
     "#188: Security - Upgraded marshmallow to fix DoS vulnerability",
     "#177: Dynamic Playlist count mismatch - now queries database directly",
     "Clear download history - fixed mismatch between cleared data and display",
-    "Cookie upload endpoint - improved error handling",
+    "Cookie upload HTTP 500 - settings.value column expanded to MEDIUMTEXT (16MB)",
+    "Migration framework double-commit bug - transaction handling fixed",
     "Session handling - fixed nested database session conflicts"
   ],
   "security_updates": [
@@ -26,7 +28,9 @@
     "Playlist.update_stats() now uses SQLAlchemy func.count() for accuracy",
     "Download history queries Download table instead of Video table",
     "clear_history() accepts optional session parameter to avoid conflicts",
-    "Added deleted_count field to DownloadResponse model"
+    "Added deleted_count field to DownloadResponse model",
+    "Migration 020: settings.value column TEXT (64KB) → MEDIUMTEXT (16MB)",
+    "Migration framework: removed manual session.commit() to prevent double-commit errors"
   ],
   "inherited_from_v0_11_0": [
     "🗄️ Scheduler V2: Complete database-driven scheduling system",
@@ -44,8 +48,7 @@
     "🐳 Docker support with Redis integration"
   ],
   "known_issues": [
-    "#180: Themes not automatically listed in Settings (low priority - requires database seeding)",
-    "Cookie upload may fail with 500 error in some environments (under investigation)"
+    "#180: Themes not automatically listed in Settings (low priority - requires database seeding)"
   ],
   "upgrade_notes": [
     "✅ No breaking changes - safe to upgrade from v0.11.0",
