@@ -1,40 +1,29 @@
 {
-  "version": "0.11.3",
-  "build_date": "2025-12-29T18:14:20.811888",
-  "git_commit": "190e5c8",
+  "version": "0.11.4",
+  "build_date": "2025-12-29T19:35:31.555290",
+  "git_commit": "9aefb6e",
   "git_branch": "main",
-  "release_name": "v0.11.3 - Download Queue & Cookie Status Fixes",
+  "release_name": "v0.11.4 - Download Error Tracking Fix",
   "features": [
-    "🐛 Fixed: Download queue processing - videos no longer stuck in 'queued' status",
-    "🐛 Fixed: Cookie status now checks database instead of only filesystem",
-    "🐛 Fixed: YouTube API errors now properly reported in artist discovery",
-    "🔧 Enhanced: Retry/stop download endpoints now fully functional"
+    "🐛 Fixed: Download errors now properly stored in database",
+    "🐛 Fixed: Failed downloads now appear in history with error messages",
+    "🔧 Enhanced: Download records created for all failures (even if history cleared)"
   ],
   "bug_fixes": [
-    "Download queue: process_pending_downloads() now actually processes queued downloads",
-    "Cookie status: get_cookie_status() checks both file and database",
-    "Artist discovery: YouTube API errors now visible in response stats",
-    "Retry download: Added missing retry_download() method to adapter",
-    "Stop download: Enhanced cancel_download() to check database"
+    "Download failure tracking: _update_database_failure() now creates/updates Download record",
+    "Error persistence: Errors stored in error_message and last_error fields",
+    "History visibility: Failed downloads now visible in download history",
+    "Previous bug: download_errors field didn't exist in Video model"
   ],
-  "inherited_from_v0_11_2": [
-    "🆕 PO token provider for YouTube bot detection bypass",
-    "🔒 Security: marshmallow 3.26.2 (CVE-2025-68480 fix)",
-    "🐛 Fixed: Dynamic Playlist count accuracy",
-    "🐛 Fixed: Clear download history functionality",
-    "🐛 Fixed: Cookie upload supports large files (16MB)"
-  ],
-  "inherited_from_v0_11_0": [
-    "🗄️ Scheduler V2: Database-driven scheduling",
-    "🎛️ Web UI Management: Configure schedules via Settings",
-    "📊 Job History: Comprehensive tracking"
-  ],
-  "known_issues": [
-    "#180: Themes not automatically listed (requires database seeding)"
+  "inherited_from_v0_11_3": [
+    "🐛 Download queue processing - videos no longer stuck in queued status",
+    "🐛 Cookie status checks both file and database",
+    "🐛 YouTube API errors properly reported in artist discovery",
+    "🔧 Retry/stop download endpoints fully functional"
   ],
   "upgrade_notes": [
-    "✅ Safe upgrade from v0.11.2",
-    "🔄 Download queue will auto-process on next Celery beat cycle",
-    "🍪 Cookie status now consistent across all pages"
+    "✅ Safe upgrade from v0.11.3",
+    "🔄 Download errors will now be visible in history",
+    "📊 Retry failed downloads to see error messages"
   ]
 }

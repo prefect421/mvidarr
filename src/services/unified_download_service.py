@@ -592,23 +592,53 @@ class UnifiedDownloadService:
         """Update database on failed download"""
         try:
             from src.database.connection import get_db
-            from src.database.models import Video, VideoStatus
+            from src.database.models import Download, Video, VideoStatus
 
             with get_db() as session:
+                # Update video status
                 video = session.query(Video).filter(Video.id == video_id).first()
                 if video:
                     video.status = VideoStatus.FAILED.value
-                    if not hasattr(video, "download_errors"):
-                        video.download_errors = []
-                    video.download_errors.append(
-                        {
-                            "timestamp": datetime.now().isoformat(),
-                            "error": error_message,
-                        }
+
+                    # Create or update Download record with error message
+                    # This ensures error is persisted even if download history is cleared
+                    download = (
+                        session.query(Download)
+                        .filter(Download.video_id == video_id)
+                        .order_by(Download.download_date.desc())
+                        .first()
                     )
+
+                    if download:
+                        # Update existing download record
+                        download.status = "failed"
+                        download.error_message = error_message
+                        download.last_error = error_message
+                        download.updated_at = datetime.utcnow()
+                        logger.info(
+                            f"Updated download {download.id} with error: {error_message}"
+                        )
+                    else:
+                        # Create new download record to preserve error
+                        download = Download(
+                            artist_id=video.artist_id,
+                            video_id=video_id,
+                            title=video.title,
+                            original_url=video.url,
+                            status="failed",
+                            error_message=error_message,
+                            last_error=error_message,
+                            download_date=datetime.utcnow(),
+                            updated_at=datetime.utcnow(),
+                        )
+                        session.add(download)
+                        logger.info(
+                            f"Created download record for video {video_id} with error: {error_message}"
+                        )
+
                     session.commit()
         except Exception as e:
-            logger.error(f"Database failure update failed: {e}")
+            logger.error(f"Database failure update failed: {e}", exc_info=True)
 
     def get_active_downloads(self) -> Dict[int, str]:
         """Get currently active downloads"""
