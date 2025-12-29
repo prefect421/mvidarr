@@ -296,11 +296,14 @@ class DownloadServiceAdapter:
 
         return success
 
-    def clear_history(self) -> Dict[str, Any]:
+    def clear_history(self, session=None) -> Dict[str, Any]:
         """
         Clear download history (backwards compatible)
 
         Clears both in-memory history and database records
+
+        Args:
+            session: Optional SQLAlchemy session to use (if None, creates its own)
 
         Returns:
             Dict with success status and deletion counts
@@ -313,17 +316,30 @@ class DownloadServiceAdapter:
             # Clear database records
             db_count = 0
             try:
-                from src.database.connection import get_db
                 from src.database.models import Download
 
-                with get_db() as session:
+                # Use provided session or create a new one
+                if session:
+                    # Use existing session (FastAPI dependency injection)
                     db_count = session.query(Download).count()
                     session.query(Download).delete()
                     session.commit()
                     logger.info(f"Cleared {db_count} download records from database")
+                else:
+                    # Create own session (backward compatibility)
+                    from src.database.connection import get_db
+
+                    with get_db() as db_session:
+                        db_count = db_session.query(Download).count()
+                        db_session.query(Download).delete()
+                        db_session.commit()
+                        logger.info(
+                            f"Cleared {db_count} download records from database"
+                        )
             except Exception as db_error:
                 logger.error(
-                    f"Failed to clear download history from database: {db_error}"
+                    f"Failed to clear download history from database: {db_error}",
+                    exc_info=True,
                 )
                 # Continue even if DB fails - at least clear memory
 
@@ -340,6 +356,7 @@ class DownloadServiceAdapter:
             return {
                 "success": True,
                 "message": f"Cleared {total_count} download records",
+                "deleted_count": total_count,  # For frontend compatibility
                 "memory_count": memory_count,
                 "database_count": db_count,
                 "queue_count": cleared_queue_count,
@@ -347,7 +364,7 @@ class DownloadServiceAdapter:
             }
 
         except Exception as e:
-            logger.error(f"Failed to clear download history: {e}")
+            logger.error(f"Failed to clear download history: {e}", exc_info=True)
             return {
                 "success": False,
                 "error": str(e),
