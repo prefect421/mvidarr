@@ -147,11 +147,11 @@ class SettingsService:
                 # Update cache
                 cls._cache[key] = value
 
-                logger.info(f"Setting '{key}' updated to '{value}'")
+                logger.info(f"Setting '{key}' updated successfully")
                 return True
 
         except Exception as e:
-            logger.error(f"Failed to set setting '{key}': {e}")
+            logger.error(f"Failed to set setting '{key}': {e}", exc_info=True)
             return False
 
     @classmethod
