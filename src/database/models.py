@@ -9,6 +9,7 @@ from enum import Enum
 from sqlalchemy import JSON, Boolean, Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from sqlalchemy.orm import relationship, validates
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -78,7 +79,7 @@ class Setting(Base):
 
     id = Column(Integer, primary_key=True)
     key = Column(String(255), unique=True, nullable=False)
-    value = Column(Text, nullable=True)
+    value = Column(MEDIUMTEXT, nullable=True)  # Changed from Text to MEDIUMTEXT for large values (cookies, etc)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
