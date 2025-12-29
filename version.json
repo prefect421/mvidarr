@@ -1,10 +1,12 @@
 {
-  "version": "0.11.1",
-  "build_date": "2025-12-29T17:19:26.701521",
-  "git_commit": "4bbbe6d",
+  "version": "0.11.2",
+  "build_date": "2025-12-29T17:34:43.999408",
+  "git_commit": "390f6f8",
   "git_branch": "main",
-  "release_name": "v0.11.1 - Bug Fixes & Security Updates",
+  "release_name": "v0.11.2 - YouTube PO Token Support",
   "features": [
+    "🆕 Added: Integrated PO token provider for YouTube bot detection bypass",
+    "🆕 Added: Automatic token generation prevents HTTP 403 download errors",
     "🔒 Security: Upgraded marshmallow to 3.26.2 (fixes CVE-2025-68480)",
     "🐛 Fixed: Dynamic Playlist count now shows accurate video counts",
     "🐛 Fixed: Clear download history now properly clears displayed history",
@@ -25,6 +27,9 @@
     "Enhanced error logging with exc_info for better diagnostics"
   ],
   "technical_improvements": [
+    "Integrated bgutil-ytdlp-pot-provider for automatic PO token generation",
+    "PO token provider runs as supervised service alongside FastAPI/Celery",
+    "yt-dlp auto-detects local provider on port 4416 (default)",
     "Playlist.update_stats() now uses SQLAlchemy func.count() for accuracy",
     "Download history queries Download table instead of Video table",
     "clear_history() accepts optional session parameter to avoid conflicts",
