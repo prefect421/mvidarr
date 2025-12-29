@@ -242,8 +242,14 @@ class DownloadServiceAdapter:
             }
 
     def get_cookie_status(self) -> Dict[str, Any]:
-        """Get cookie file status (backwards compatible)"""
+        """
+        Get cookie status (backwards compatible)
 
+        Checks both filesystem and database for cookie availability
+        Returns status from database if file doesn't exist (which is normal,
+        as cookies are now stored in database and restored to file on demand)
+        """
+        # First check if file exists (fast path)
         if os.path.exists(self.cookies_path):
             try:
                 stat = os.stat(self.cookies_path)
@@ -254,9 +260,48 @@ class DownloadServiceAdapter:
                     "modified_time": stat.st_mtime,
                 }
             except Exception as e:
-                return {"cookies_available": False, "error": str(e)}
-        else:
-            return {"cookies_available": False, "error": "Cookie file not found"}
+                logger.warning(f"Failed to stat cookie file: {e}")
+                # Fall through to database check
+
+        # If file doesn't exist, check database (where cookies are actually stored)
+        try:
+            import base64
+
+            from src.services.settings_service import SettingsService
+
+            cookie_content_b64 = SettingsService.get(
+                "youtube_cookies_content", default=None
+            )
+
+            if cookie_content_b64:
+                # Cookies exist in database
+                cookie_content = base64.b64decode(cookie_content_b64)
+                file_size = len(cookie_content)
+
+                # Get upload timestamp
+                upload_timestamp = SettingsService.get(
+                    "youtube_cookies_uploaded_at", default=None
+                )
+
+                if upload_timestamp:
+                    modified_time = float(upload_timestamp)
+                else:
+                    modified_time = 0
+
+                return {
+                    "cookies_available": True,
+                    "file_path": "database (persistent storage)",
+                    "file_size": file_size,
+                    "modified_time": modified_time,
+                }
+            else:
+                return {
+                    "cookies_available": False,
+                    "error": "No cookies found in database or filesystem",
+                }
+        except Exception as e:
+            logger.error(f"Failed to check cookie status in database: {e}")
+            return {"cookies_available": False, "error": str(e)}
 
     def process_pending_downloads(self) -> Dict[str, Any]:
         """

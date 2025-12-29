@@ -1,64 +1,40 @@
 {
-  "version": "0.11.2",
-  "build_date": "2025-12-29T17:34:43.999408",
-  "git_commit": "390f6f8",
+  "version": "0.11.3",
+  "build_date": "2025-12-29T18:14:20.811888",
+  "git_commit": "190e5c8",
   "git_branch": "main",
-  "release_name": "v0.11.2 - YouTube PO Token Support",
+  "release_name": "v0.11.3 - Download Queue & Cookie Status Fixes",
   "features": [
-    "🆕 Added: Integrated PO token provider for YouTube bot detection bypass",
-    "🆕 Added: Automatic token generation prevents HTTP 403 download errors",
-    "🔒 Security: Upgraded marshmallow to 3.26.2 (fixes CVE-2025-68480)",
-    "🐛 Fixed: Dynamic Playlist count now shows accurate video counts",
-    "🐛 Fixed: Clear download history now properly clears displayed history",
-    "🐛 Fixed: Cookie upload now supports large files (up to 16MB)",
-    "🔧 Enhanced: Playlist stats use direct database queries for accuracy",
-    "🔧 Enhanced: Download history queries Download table (not Video table)"
+    "🐛 Fixed: Download queue processing - videos no longer stuck in 'queued' status",
+    "🐛 Fixed: Cookie status now checks database instead of only filesystem",
+    "🐛 Fixed: YouTube API errors now properly reported in artist discovery",
+    "🔧 Enhanced: Retry/stop download endpoints now fully functional"
   ],
   "bug_fixes": [
-    "#188: Security - Upgraded marshmallow to fix DoS vulnerability",
-    "#177: Dynamic Playlist count mismatch - now queries database directly",
-    "Clear download history - fixed mismatch between cleared data and display",
-    "Cookie upload HTTP 500 - settings.value column expanded to MEDIUMTEXT (16MB)",
-    "Migration framework double-commit bug - transaction handling fixed",
-    "Session handling - fixed nested database session conflicts"
+    "Download queue: process_pending_downloads() now actually processes queued downloads",
+    "Cookie status: get_cookie_status() checks both file and database",
+    "Artist discovery: YouTube API errors now visible in response stats",
+    "Retry download: Added missing retry_download() method to adapter",
+    "Stop download: Enhanced cancel_download() to check database"
   ],
-  "security_updates": [
-    "CVE-2025-68480: marshmallow 3.20.1 → 3.26.2 (Denial of Service fix)",
-    "Enhanced error logging with exc_info for better diagnostics"
-  ],
-  "technical_improvements": [
-    "Integrated bgutil-ytdlp-pot-provider for automatic PO token generation",
-    "PO token provider runs as supervised service alongside FastAPI/Celery",
-    "yt-dlp auto-detects local provider on port 4416 (default)",
-    "Playlist.update_stats() now uses SQLAlchemy func.count() for accuracy",
-    "Download history queries Download table instead of Video table",
-    "clear_history() accepts optional session parameter to avoid conflicts",
-    "Added deleted_count field to DownloadResponse model",
-    "Migration 020: settings.value column TEXT (64KB) → MEDIUMTEXT (16MB)",
-    "Migration framework: removed manual session.commit() to prevent double-commit errors"
+  "inherited_from_v0_11_2": [
+    "🆕 PO token provider for YouTube bot detection bypass",
+    "🔒 Security: marshmallow 3.26.2 (CVE-2025-68480 fix)",
+    "🐛 Fixed: Dynamic Playlist count accuracy",
+    "🐛 Fixed: Clear download history functionality",
+    "🐛 Fixed: Cookie upload supports large files (16MB)"
   ],
   "inherited_from_v0_11_0": [
-    "🗄️ Scheduler V2: Complete database-driven scheduling system",
-    "🎛️ Web UI Management: Configure all schedules via Settings page",
-    "🚫 Environment Variables Removed: No more MVIDARR_USE_ENHANCED_SCHEDULER",
-    "📊 Job History: Comprehensive tracking with searchable history",
-    "🔄 Dynamic Configuration: Changes apply immediately without restart"
-  ],
-  "inherited_from_v0_10_x": [
-    "🔒 Security: Resolved 10 critical vulnerabilities (prior to this release)",
-    "🔧 Installation Wizard for first-run setup",
-    "🎬 Reliable video import system (no duplicates)",
-    "✅ API validation before configuration",
-    "📊 Performance monitoring dashboard",
-    "🐳 Docker support with Redis integration"
+    "🗄️ Scheduler V2: Database-driven scheduling",
+    "🎛️ Web UI Management: Configure schedules via Settings",
+    "📊 Job History: Comprehensive tracking"
   ],
   "known_issues": [
-    "#180: Themes not automatically listed in Settings (low priority - requires database seeding)"
+    "#180: Themes not automatically listed (requires database seeding)"
   ],
   "upgrade_notes": [
-    "✅ No breaking changes - safe to upgrade from v0.11.0",
-    "🔄 Security patches applied automatically",
-    "📊 Dynamic playlist counts will auto-correct on next update cycle",
-    "🧹 Clear download history to test the fix"
+    "✅ Safe upgrade from v0.11.2",
+    "🔄 Download queue will auto-process on next Celery beat cycle",
+    "🍪 Cookie status now consistent across all pages"
   ]
 }
