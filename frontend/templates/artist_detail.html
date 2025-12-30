@@ -5422,8 +5422,19 @@ function renderDiscoverResults(data) {
     // Render discovery statistics
     const newVideosCount = data.discovered_videos ? data.discovered_videos.filter(v => !v.already_exists && !v.imported).length : 0;
     const qualityStats = calculateQualityStats(data.discovered_videos || []);
-    
+
+    // Check for YouTube API error
+    const stats = data.stats || {};
+    const youtubeError = stats.youtube_error;
+    const youtubeErrorHtml = youtubeError ? `
+        <div class="alert alert-warning" style="margin-bottom: 15px; padding: 12px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+            <strong>⚠️ YouTube Discovery Issue:</strong> ${youtubeError}
+            ${youtubeError.includes('not configured') ? '<br><small>Configure your YouTube API key in <a href="/settings" style="color: #856404; text-decoration: underline;">Settings</a> to discover YouTube videos.</small>' : ''}
+        </div>
+    ` : '';
+
     statsDiv.innerHTML = `
+        ${youtubeErrorHtml}
         <div class="stats-grid">
             <div class="stat-card">
                 <span class="stat-value">${newVideosCount}</span>
