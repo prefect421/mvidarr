@@ -1,19 +1,23 @@
 {
   "version": "0.11.4",
-  "build_date": "2025-12-29T19:35:31.555290",
-  "git_commit": "9aefb6e",
+  "build_date": "2025-12-30T04:21:39.898111",
+  "git_commit": "4b1fcaa",
   "git_branch": "main",
-  "release_name": "v0.11.4 - Download Error Tracking Fix",
+  "release_name": "v0.11.4 - Download Error Tracking & Security Fixes",
   "features": [
     "🐛 Fixed: Download errors now properly stored in database",
     "🐛 Fixed: Failed downloads now appear in history with error messages",
-    "🔧 Enhanced: Download records created for all failures (even if history cleared)"
+    "🔧 Enhanced: Download records created for all failures (even if history cleared)",
+    "🔒 Security: YouTube API keys sanitized from error messages",
+    "🔍 Enhanced: Artist discovery respects discovery_enabled flag properly"
   ],
   "bug_fixes": [
     "Download failure tracking: _update_database_failure() now creates/updates Download record",
     "Error persistence: Errors stored in error_message and last_error fields",
     "History visibility: Failed downloads now visible in download history",
-    "Previous bug: download_errors field didn't exist in Video model"
+    "API key security: YouTube API keys removed from error messages and logs",
+    "Discovery filtering: Auto-discovery only runs on discovery_enabled artists",
+    "Manual discovery: Works regardless of discovery_enabled flag"
   ],
   "inherited_from_v0_11_3": [
     "🐛 Download queue processing - videos no longer stuck in queued status",
@@ -21,9 +25,14 @@
     "🐛 YouTube API errors properly reported in artist discovery",
     "🔧 Retry/stop download endpoints fully functional"
   ],
+  "inherited_from_v0_11_2": [
+    "🔧 PO token provider integration for YouTube bot detection bypass",
+    "📦 bgutil-ytdlp-pot-provider running as supervised service"
+  ],
   "upgrade_notes": [
     "✅ Safe upgrade from v0.11.3",
     "🔄 Download errors will now be visible in history",
-    "📊 Retry failed downloads to see error messages"
+    "📊 Retry failed downloads to see error messages",
+    "🔒 API keys are now sanitized from all error outputs"
   ]
 }
