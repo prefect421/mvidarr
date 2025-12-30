@@ -31,10 +31,10 @@ RUN curl -fsSL https://nodejs.org/dist/v20.18.1/node-v20.18.1-linux-x64.tar.xz -
 WORKDIR /app
 
 # Copy requirements first for better caching
-COPY requirements-prod.txt requirements-fastapi.txt ./
+COPY requirements.txt requirements-fastapi.txt ./
 
 # Install Python dependencies (both Flask/core and FastAPI)
-RUN pip install --no-cache-dir -r requirements-prod.txt -r requirements-fastapi.txt
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-fastapi.txt
 
 # Copy application code
 COPY . .
