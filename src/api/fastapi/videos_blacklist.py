@@ -74,7 +74,7 @@ async def get_blacklist(
 
         # Apply pagination and ordering
         blacklist_entries = (
-            query.order_by(VideoBlacklist.created_at.desc())
+            query.order_by(VideoBlacklist.blacklisted_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)
             .all()
@@ -85,13 +85,17 @@ async def get_blacklist(
         for entry in blacklist_entries:
             entries.append(
                 {
-                    "id": entry.id,
                     "youtube_url": entry.youtube_url,
                     "title": entry.title,
                     "artist_name": entry.artist_name,
-                    "reason": entry.reason,
-                    "created_at": (
-                        entry.created_at.isoformat() if entry.created_at else None
+                    "blacklisted_at": (
+                        entry.blacklisted_at.isoformat()
+                        if entry.blacklisted_at
+                        else None
+                    ),
+                    "blacklisted_by": entry.blacklisted_by,
+                    "blacklisted_by_username": (
+                        entry.user.username if entry.user else None
                     ),
                 }
             )
@@ -171,24 +175,28 @@ async def add_to_blacklist(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/blacklist/{blacklist_id}")
+@router.delete("/blacklist")
 async def remove_from_blacklist(
-    blacklist_id: int = FastAPIPath(..., ge=1),
+    request: dict = Body(...),
     current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Remove a YouTube URL from blacklist"""
     try:
+        youtube_url = request.get("youtube_url", "").strip()
+
+        if not youtube_url:
+            raise HTTPException(status_code=400, detail="youtube_url is required")
+
         blacklist_entry = (
             session.query(VideoBlacklist)
-            .filter(VideoBlacklist.id == blacklist_id)
+            .filter(VideoBlacklist.youtube_url == youtube_url)
             .first()
         )
 
         if not blacklist_entry:
             raise HTTPException(status_code=404, detail="Blacklist entry not found")
 
-        youtube_url = blacklist_entry.youtube_url
         session.delete(blacklist_entry)
         session.commit()
 

@@ -410,9 +410,15 @@ function closeConfirmRemoveModal() {
 
 function confirmRemoveFromBlacklist() {
     if (!urlToRemove) return;
-    
-    fetch(`/api/videos/blacklist/${encodeURIComponent(urlToRemove)}`, {
-        method: 'DELETE'
+
+    fetch('/api/videos/blacklist', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            youtube_url: urlToRemove
+        })
     })
     .then(response => response.json())
     .then(result => {
@@ -420,7 +426,7 @@ function confirmRemoveFromBlacklist() {
             showError('Error: ' + result.error);
             return;
         }
-        
+
         showSuccess(result.message || 'URL removed from blacklist successfully');
         closeConfirmRemoveModal();
         loadBlacklist();
