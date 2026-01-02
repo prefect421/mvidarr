@@ -686,7 +686,9 @@ async def upload_cookies(
         cookie_content_b64 = base64.b64encode(content).decode("utf-8")
 
         # Log cookie file details for debugging
-        logger.info(f"Cookie file size: {len(content)} bytes, base64 size: {len(cookie_content_b64)} bytes")
+        logger.info(
+            f"Cookie file size: {len(content)} bytes, base64 size: {len(cookie_content_b64)} bytes"
+        )
 
         success = SettingsService.set(
             "youtube_cookies_content",
@@ -695,10 +697,12 @@ async def upload_cookies(
         )
 
         if not success:
-            logger.error(f"SettingsService.set() returned False for youtube_cookies_content (size: {len(cookie_content_b64)} bytes)")
+            logger.error(
+                f"SettingsService.set() returned False for youtube_cookies_content (size: {len(cookie_content_b64)} bytes)"
+            )
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to save cookies to database. Check container logs for details. Cookie size: {len(content)} bytes"
+                detail=f"Failed to save cookies to database. Check container logs for details. Cookie size: {len(content)} bytes",
             )
 
         # Also save to file for immediate use
