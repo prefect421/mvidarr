@@ -1,7 +1,7 @@
 {
   "version": "0.10.0-beta.1",
-  "build_date": "2026-01-02T21:04:31",
-  "git_commit": "55a0f30",
+  "build_date": "2026-01-02T21:13:36",
+  "git_commit": "cfb784a",
   "git_branch": "dev",
   "release_name": "v0.10.0-beta.1 - First Beta Release",
   "features": [
@@ -9,7 +9,8 @@
     "🔧 Installation Wizard for first-run setup",
     "🎬 Reliable video import system (no duplicates)",
     "✅ API validation before configuration",
-    "🐛 Fixed blacklist pagination error"
+    "🐛 Fixed blacklist pagination error",
+    "🗑️ Removed duplicate Enhanced Artist Discovery card"
   ],
   "beta_notes": [
     "This is a BETA release - not yet production-ready",
