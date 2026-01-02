@@ -8295,7 +8295,7 @@ switchTab = function(event, tabId) {
 let currentBlacklistPage = 1;
 let totalBlacklistPages = 1;
 let currentBlacklistSearchQuery = '';
-let blacklistIdToRemove = null;
+let blacklistUrlToRemove = null;
 
 function initializeBlacklistTab() {
     if (document.getElementById('blacklist-tab').classList.contains('active')) {
@@ -8365,7 +8365,7 @@ function displayBlacklist(blacklistEntries) {
             <td>${formatDate(entry.blacklisted_at || entry.created_at)}</td>
             <td>${entry.blacklisted_by_username || '<span class="text-muted">Unknown</span>'}</td>
             <td>
-                <button onclick="removeFromBlacklist(${entry.id}, '${escapeHtml(entry.youtube_url)}', '${escapeHtml(entry.title || '')}', '${escapeHtml(entry.artist_name || '')}')"
+                <button onclick="removeFromBlacklist('${escapeHtml(entry.youtube_url)}', '${escapeHtml(entry.title || '')}', '${escapeHtml(entry.artist_name || '')}')"
                         class="btn btn-danger btn-sm" title="Remove from blacklist">
                     <iconify-icon icon="tabler:trash"></iconify-icon>
                     Remove
@@ -8502,8 +8502,8 @@ function exportBlacklist() {
         });
 }
 
-function removeFromBlacklist(blacklistId, url, title, artist) {
-    blacklistIdToRemove = blacklistId;
+function removeFromBlacklist(url, title, artist) {
+    blacklistUrlToRemove = url;
 
     document.getElementById('removePreviewUrl').textContent = url;
     document.getElementById('removePreviewTitle').textContent = title || 'Not specified';
@@ -8513,10 +8513,16 @@ function removeFromBlacklist(blacklistId, url, title, artist) {
 }
 
 function confirmRemoveFromBlacklist() {
-    if (!blacklistIdToRemove) return;
+    if (!blacklistUrlToRemove) return;
 
-    fetch(`/api/videos/blacklist/${blacklistIdToRemove}`, {
-        method: 'DELETE'
+    fetch('/api/videos/blacklist', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            youtube_url: blacklistUrlToRemove
+        })
     })
     .then(response => response.json())
     .then(result => {
@@ -8527,7 +8533,7 @@ function confirmRemoveFromBlacklist() {
 
         showSuccess(result.message || 'URL removed from blacklist successfully');
         closeConfirmRemoveModal();
-        blacklistIdToRemove = null;
+        blacklistUrlToRemove = null;
         loadBlacklist();
     })
     .catch(error => {
@@ -8602,7 +8608,7 @@ function submitAddToBlacklist(event) {
 
 function closeConfirmRemoveModal() {
     document.getElementById('confirmRemoveModal').style.display = 'none';
-    blacklistIdToRemove = null;
+    blacklistUrlToRemove = null;
 }
 
 // Modal backdrop clicks

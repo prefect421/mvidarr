@@ -1,23 +1,22 @@
 {
-  "version": "0.11.4",
-  "build_date": "2025-12-30T04:21:39.898111",
-  "git_commit": "4b1fcaa",
+  "version": "0.11.5",
+  "build_date": "2026-01-02T21:38:00",
+  "git_commit": "14b43ed",
   "git_branch": "main",
-  "release_name": "v0.11.4 - Download Error Tracking & Security Fixes",
+  "release_name": "v0.11.5 - Blacklist Fixes & Code Quality",
   "features": [
-    "🐛 Fixed: Download errors now properly stored in database",
-    "🐛 Fixed: Failed downloads now appear in history with error messages",
-    "🔧 Enhanced: Download records created for all failures (even if history cleared)",
-    "🔒 Security: YouTube API keys sanitized from error messages",
-    "🔍 Enhanced: Artist discovery respects discovery_enabled flag properly"
+    "🐛 Fixed critical blacklist API/model mismatch causing 500 errors",
+    "🐛 Fixed blacklist pagination error (pages → total_pages)",
+    "🗑️ Removed duplicate Enhanced Artist Discovery card",
+    "✅ Fixed code formatting for CI/CD compliance",
+    "🔧 Complete blacklist functionality now working"
   ],
-  "bug_fixes": [
-    "Download failure tracking: _update_database_failure() now creates/updates Download record",
-    "Error persistence: Errors stored in error_message and last_error fields",
-    "History visibility: Failed downloads now visible in download history",
-    "API key security: YouTube API keys removed from error messages and logs",
-    "Discovery filtering: Auto-discovery only runs on discovery_enabled artists",
-    "Manual discovery: Works regardless of discovery_enabled flag"
+  "inherited_from_v0_11_4": [
+    "🐛 Download errors now properly stored in database",
+    "🐛 Failed downloads now appear in history with error messages",
+    "🔧 Enhanced: Download records created for all failures",
+    "🔒 Security: YouTube API keys sanitized from error messages",
+    "🔍 Enhanced: Artist discovery respects discovery_enabled flag"
   ],
   "inherited_from_v0_11_3": [
     "🐛 Download queue processing - videos no longer stuck in queued status",
@@ -25,14 +24,10 @@
     "🐛 YouTube API errors properly reported in artist discovery",
     "🔧 Retry/stop download endpoints fully functional"
   ],
-  "inherited_from_v0_11_2": [
-    "🔧 PO token provider integration for YouTube bot detection bypass",
-    "📦 bgutil-ytdlp-pot-provider running as supervised service"
-  ],
   "upgrade_notes": [
-    "✅ Safe upgrade from v0.11.3",
-    "🔄 Download errors will now be visible in history",
-    "📊 Retry failed downloads to see error messages",
-    "🔒 API keys are now sanitized from all error outputs"
+    "✅ Safe upgrade from v0.11.4",
+    "🔄 Blacklist functionality fully restored",
+    "📊 All CI/CD checks passing",
+    "🔒 Production ready"
   ]
 }
