@@ -126,7 +126,6 @@ async def add_to_blacklist(
         youtube_url = request.get("youtube_url", "").strip()
         title = request.get("title", "").strip()
         artist_name = request.get("artist_name", "").strip()
-        reason = request.get("reason", "").strip()
 
         if not youtube_url:
             raise HTTPException(status_code=422, detail="YouTube URL is required")
@@ -148,23 +147,28 @@ async def add_to_blacklist(
             youtube_url=youtube_url,
             title=title or None,
             artist_name=artist_name or None,
-            reason=reason or "User blacklisted",
+            blacklisted_by=current_user.get("id"),
         )
 
         session.add(blacklist_entry)
         session.commit()
 
-        logger.info(f"Added {youtube_url} to blacklist")
+        logger.info(
+            f"Added {youtube_url} to blacklist by user {current_user.get('username')}"
+        )
 
         return {
             "success": True,
             "message": f"Added to blacklist: {youtube_url}",
             "blacklist_entry": {
-                "id": blacklist_entry.id,
                 "youtube_url": blacklist_entry.youtube_url,
                 "title": blacklist_entry.title,
                 "artist_name": blacklist_entry.artist_name,
-                "reason": blacklist_entry.reason,
+                "blacklisted_at": (
+                    blacklist_entry.blacklisted_at.isoformat()
+                    if blacklist_entry.blacklisted_at
+                    else None
+                ),
             },
         }
 
