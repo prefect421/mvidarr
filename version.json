@@ -1,56 +1,18 @@
 {
-  "version": "0.11.1",
-  "build_date": "2025-12-29T16:13:42.255628",
-  "git_commit": "51075b8",
-  "git_branch": "main",
-  "release_name": "v0.11.1 - Bug Fixes & Security Updates",
+  "version": "0.10.0-beta.1",
+  "build_date": "2026-01-02T21:04:31",
+  "git_commit": "55a0f30",
+  "git_branch": "dev",
+  "release_name": "v0.10.0-beta.1 - First Beta Release",
   "features": [
-    "🔒 Security: Upgraded marshmallow to 3.26.2 (fixes CVE-2025-68480)",
-    "🐛 Fixed: Dynamic Playlist count now shows accurate video counts",
-    "🐛 Fixed: Clear download history now properly clears displayed history",
-    "🔧 Enhanced: Playlist stats use direct database queries for accuracy",
-    "🔧 Enhanced: Download history queries Download table (not Video table)"
-  ],
-  "bug_fixes": [
-    "#188: Security - Upgraded marshmallow to fix DoS vulnerability",
-    "#177: Dynamic Playlist count mismatch - now queries database directly",
-    "Clear download history - fixed mismatch between cleared data and display",
-    "Cookie upload endpoint - improved error handling",
-    "Session handling - fixed nested database session conflicts"
-  ],
-  "security_updates": [
-    "CVE-2025-68480: marshmallow 3.20.1 → 3.26.2 (Denial of Service fix)",
-    "Enhanced error logging with exc_info for better diagnostics"
-  ],
-  "technical_improvements": [
-    "Playlist.update_stats() now uses SQLAlchemy func.count() for accuracy",
-    "Download history queries Download table instead of Video table",
-    "clear_history() accepts optional session parameter to avoid conflicts",
-    "Added deleted_count field to DownloadResponse model"
-  ],
-  "inherited_from_v0_11_0": [
-    "🗄️ Scheduler V2: Complete database-driven scheduling system",
-    "🎛️ Web UI Management: Configure all schedules via Settings page",
-    "🚫 Environment Variables Removed: No more MVIDARR_USE_ENHANCED_SCHEDULER",
-    "📊 Job History: Comprehensive tracking with searchable history",
-    "🔄 Dynamic Configuration: Changes apply immediately without restart"
-  ],
-  "inherited_from_v0_10_x": [
-    "🔒 Security: Resolved 10 critical vulnerabilities (prior to this release)",
+    "🔒 Security: Resolved 10 critical vulnerabilities",
     "🔧 Installation Wizard for first-run setup",
     "🎬 Reliable video import system (no duplicates)",
     "✅ API validation before configuration",
-    "📊 Performance monitoring dashboard",
-    "🐳 Docker support with Redis integration"
+    "🐛 Fixed blacklist pagination error"
   ],
-  "known_issues": [
-    "#180: Themes not automatically listed in Settings (low priority - requires database seeding)",
-    "Cookie upload may fail with 500 error in some environments (under investigation)"
-  ],
-  "upgrade_notes": [
-    "✅ No breaking changes - safe to upgrade from v0.11.0",
-    "🔄 Security patches applied automatically",
-    "📊 Dynamic playlist counts will auto-correct on next update cycle",
-    "🧹 Clear download history to test the fix"
+  "beta_notes": [
+    "This is a BETA release - not yet production-ready",
+    "Report issues: https://github.com/prefect421/mvidarr/issues"
   ]
 }
