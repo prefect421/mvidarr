@@ -7,7 +7,7 @@
   <MyIP/>
   <Shell>bash</Shell>
   <Privileged>false</Privileged>
-  <Support>https://github.com/prefect421/mvidarr/issues</Support>
+  <Support>https://forums.unraid.net/topic/196287-support-mvidarr-the-music-video-management-system/</Support>
   <Project>https://github.com/prefect421/mvidarr</Project>
   <Overview>MVidarr is a self-hosted music video collection manager and player designed for home users. Organize, discover, and play your music video library with automated metadata enrichment, playlist management, and a modern web interface.
 
