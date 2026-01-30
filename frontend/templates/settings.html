@@ -7301,7 +7301,12 @@ if (typeof window.currentMode === 'undefined') {
 
 // Initialize theme settings - now handled by Themes tab
 document.addEventListener('DOMContentLoaded', function() {
-    // Theme functionality moved to dedicated Themes tab
+    // Initialize themes tab if it's already active on page load
+    const themesTabPanel = document.getElementById('themes-tab');
+    if (themesTabPanel && themesTabPanel.classList.contains('active')) {
+        // Small delay to ensure DOM is fully ready
+        setTimeout(initializeThemesTab, 100);
+    }
 });
 
 // Legacy theme functions removed - themes now handled in dedicated Themes tab
