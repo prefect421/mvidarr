@@ -1,14 +1,17 @@
 {
   "version": "0.11.7",
   "build_date": "2026-01-30T19:38:57",
-  "git_commit": "8210ce5",
+  "git_commit": "8cc2be6",
   "git_branch": "dev",
   "release_name": "v0.11.7 - Blacklist Fix & Video Filtering",
   "features": [
     "🐛 Fixed blacklist not displaying entries (Issue #190)",
     "🐛 Fixed API/Frontend field name mismatch (blacklist vs blacklist_entries)",
     "🐛 Fixed check_blacklist endpoint accessing non-existent fields",
-    "✨ Per-artist video type filtering (Issue #191) - In Progress",
+    "✨ Per-artist video type filtering - Complete! (Issue #191)",
+    "🎬 8 video types: Official, Live, Lyric, Acoustic, Remix, Cover, Documentary, Concert",
+    "🤖 Automatic video type detection from titles and metadata",
+    "🎯 Intelligent filtering during video discovery",
     "🎨 Automatic theme discovery (Issue #180) - Planned"
   ],
   "inherited_from_v0_11_6": [
@@ -18,9 +21,10 @@
     "✅ Fixed code formatting for CI/CD compliance"
   ],
   "upgrade_notes": [
-    "⚠️ Development version - not yet released",
-    "🔄 Currently on dev branch for testing",
+    "⚠️ Development version - testing in progress",
+    "🔄 Run migrations 021 and 022 before starting application",
     "🐛 Blacklist display bug fixed - entries now visible",
-    "📊 Video filtering feature in development"
+    "📊 Video filtering feature complete and functional",
+    "🎬 Configure per-artist video types in Artist Settings"
   ]
 }
