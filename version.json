@@ -1,24 +1,26 @@
 {
-  "version": "0.11.6",
-  "build_date": "2026-01-02T22:53:39",
-  "git_commit": "167c790",
-  "git_branch": "main",
-  "release_name": "v0.11.6 - Blacklist POST Hotfix",
+  "version": "0.11.7",
+  "build_date": "2026-01-30T19:38:57",
+  "git_commit": "8210ce5",
+  "git_branch": "dev",
+  "release_name": "v0.11.7 - Blacklist Fix & Video Filtering",
   "features": [
-    "🐛 Fixed blacklist add functionality - removed non-existent 'reason' field",
-    "🐛 Fixed blacklist POST endpoint to work with actual VideoBlacklist model",
-    "✅ Blacklist add/remove now fully functional"
+    "🐛 Fixed blacklist not displaying entries (Issue #190)",
+    "🐛 Fixed API/Frontend field name mismatch (blacklist vs blacklist_entries)",
+    "🐛 Fixed check_blacklist endpoint accessing non-existent fields",
+    "✨ Per-artist video type filtering (Issue #191) - In Progress",
+    "🎨 Automatic theme discovery (Issue #180) - Planned"
   ],
-  "inherited_from_v0_11_5": [
+  "inherited_from_v0_11_6": [
     "🐛 Fixed critical blacklist API/model mismatch causing 500 errors",
     "🐛 Fixed blacklist pagination error (pages → total_pages)",
     "🗑️ Removed duplicate Enhanced Artist Discovery card",
     "✅ Fixed code formatting for CI/CD compliance"
   ],
   "upgrade_notes": [
-    "✅ Hotfix for broken blacklist add functionality",
-    "🔄 Safe upgrade from v0.11.5",
-    "📊 All CI/CD checks passing",
-    "🔒 Production ready"
+    "⚠️ Development version - not yet released",
+    "🔄 Currently on dev branch for testing",
+    "🐛 Blacklist display bug fixed - entries now visible",
+    "📊 Video filtering feature in development"
   ]
 }
