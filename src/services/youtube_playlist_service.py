@@ -15,6 +15,8 @@ from src.database.connection import get_db
 from src.database.models import Artist, PlaylistMonitor, Video, VideoStatus
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
+from src.utils.youtube_cache import get_youtube_cache
+from src.utils.youtube_quota_tracker import track_youtube_api_call
 
 logger = get_logger("mvidarr.services.youtube_playlist")
 
@@ -30,15 +32,19 @@ class YouTubePlaylistService:
         self.metube_host = os.getenv("METUBE_HOST", "localhost")
         self.metube_port = os.getenv("METUBE_PORT", "8081")
         self.metube_url = f"http://{self.metube_host}:{self.metube_port}"
+        self._cache = get_youtube_cache()
+        self._api_key = None  # Cached API key
 
     @property
     def api_key(self):
-        """Get YouTube API key from database settings"""
-        try:
-            return settings.get("youtube_api_key")
-        except Exception as e:
-            logger.error(f"Failed to get YouTube API key from settings: {e}")
-            return None
+        """Get YouTube API key from database settings (cached)"""
+        if self._api_key is None:
+            try:
+                self._api_key = settings.get("youtube_api_key")
+            except Exception as e:
+                logger.error(f"Failed to get YouTube API key from settings: {e}")
+                return None
+        return self._api_key
 
     def extract_playlist_id(self, url: str) -> Optional[str]:
         """Extract playlist ID from YouTube URL"""
@@ -78,6 +84,9 @@ class YouTubePlaylistService:
             response = requests.get(url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT)
             response.raise_for_status()
 
+            # Track quota usage for playlist info API call
+            track_youtube_api_call("playlist_info", count=1)
+
             data = response.json()
             if not data.get("items"):
                 return None
@@ -107,9 +116,16 @@ class YouTubePlaylistService:
     def get_playlist_videos(
         self, playlist_id: str, max_results: int = 50
     ) -> List[Dict]:
-        """Get all videos from a YouTube playlist"""
+        """Get all videos from a YouTube playlist (with caching - 1 hour TTL)"""
         if not self.api_key:
             raise ValueError("YouTube API key not configured")
+
+        # Check cache first (playlists cached for 1 hour)
+        cache_params = {"playlist_id": playlist_id, "max_results": max_results}
+        cached_videos = self._cache.get("playlist", cache_params)
+        if cached_videos is not None:
+            logger.info(f"Using cached playlist videos for playlist {playlist_id} ({len(cached_videos)} videos)")
+            return cached_videos
 
         videos = []
         page_token = None
@@ -131,6 +147,9 @@ class YouTubePlaylistService:
                     url, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
                 )
                 response.raise_for_status()
+
+                # Track quota usage for playlist items API call (per page)
+                track_youtube_api_call("playlist", count=1)
 
                 data = response.json()
                 items = data.get("items", [])
@@ -172,6 +191,10 @@ class YouTubePlaylistService:
             except requests.RequestException as e:
                 logger.error(f"Failed to get playlist videos: {e}")
                 break
+
+        # Cache the playlist videos for 1 hour
+        self._cache.set("playlist", cache_params, videos)
+        logger.info(f"Cached {len(videos)} videos for playlist {playlist_id}")
 
         return videos
 

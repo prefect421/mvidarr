@@ -9,6 +9,8 @@ import requests
 
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
+from src.utils.youtube_cache import get_youtube_cache
+from src.utils.youtube_quota_tracker import track_youtube_api_call
 
 logger = get_logger("mvidarr.services.youtube_search")
 
@@ -18,18 +20,22 @@ class YouTubeSearchService:
 
     def __init__(self):
         self.base_url = "https://www.googleapis.com/youtube/v3"
+        self._cache = get_youtube_cache()
+        self._api_key = None  # Cached API key
 
     @property
     def api_key(self):
-        """Get YouTube API key from database settings"""
-        try:
-            return settings.get("youtube_api_key")
-        except Exception as e:
-            logger.error(f"Failed to get YouTube API key from settings: {e}")
-            return None
+        """Get YouTube API key from database settings (cached)"""
+        if self._api_key is None:
+            try:
+                self._api_key = settings.get("youtube_api_key")
+            except Exception as e:
+                logger.error(f"Failed to get YouTube API key from settings: {e}")
+                return None
+        return self._api_key
 
     def search_artist_videos(self, artist_name: str, limit: int = 50) -> Dict:
-        """Search for music videos by artist name"""
+        """Search for music videos by artist name (with caching)"""
         if not self.api_key:
             logger.warning("YouTube API key not configured, skipping YouTube search")
             return {
@@ -37,6 +43,13 @@ class YouTubeSearchService:
                 "total_results": 0,
                 "error": "YouTube API key not configured",
             }
+
+        # Check cache first
+        cache_params = {"artist_name": artist_name, "limit": limit}
+        cached_result = self._cache.get("search", cache_params)
+        if cached_result is not None:
+            logger.info(f"Using cached search results for artist: {artist_name}")
+            return cached_result
 
         try:
             # Search for music videos by artist
@@ -56,6 +69,9 @@ class YouTubeSearchService:
 
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
+
+            # Track quota usage for search API call
+            track_youtube_api_call("search", count=1)
 
             data = response.json()
             videos = []
@@ -98,12 +114,17 @@ class YouTubeSearchService:
 
             logger.info(f"Found {len(videos)} YouTube videos for artist: {artist_name}")
 
-            return {
+            result = {
                 "videos": videos,
                 "total_results": data.get("pageInfo", {}).get("totalResults", 0),
                 "query": search_query,
                 "artist_name": artist_name,
             }
+
+            # Cache the result for 3 hours
+            self._cache.set("search", cache_params, result)
+
+            return result
 
         except requests.RequestException as e:
             # Sanitize error message to remove API key from URL
@@ -131,23 +152,43 @@ class YouTubeSearchService:
             }
 
     def _get_video_details(self, video_ids: List[str]) -> Dict[str, Dict]:
-        """Get detailed information for multiple videos"""
+        """Get detailed information for multiple videos (with caching)"""
         if not video_ids or not self.api_key:
             return {}
 
+        # Check cache for each video
+        video_details = {}
+        uncached_ids = []
+
+        for video_id in video_ids:
+            cache_params = {"video_id": video_id}
+            cached_details = self._cache.get("video_details", cache_params)
+            if cached_details is not None:
+                video_details[video_id] = cached_details
+            else:
+                uncached_ids.append(video_id)
+
+        # If all videos were cached, return immediately
+        if not uncached_ids:
+            logger.debug(f"All {len(video_ids)} video details retrieved from cache")
+            return video_details
+
+        # Fetch uncached videos from API
         try:
             url = f"{self.base_url}/videos"
             params = {
                 "part": "contentDetails,statistics,snippet",
-                "id": ",".join(video_ids),
+                "id": ",".join(uncached_ids),
                 "key": self.api_key,
             }
 
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
 
+            # Track quota usage for video details API call
+            track_youtube_api_call("video_details", count=1)
+
             data = response.json()
-            video_details = {}
 
             for video in data.get("items", []):
                 video_id = video.get("id")
@@ -155,7 +196,7 @@ class YouTubeSearchService:
                 statistics = video.get("statistics", {})
                 snippet = video.get("snippet", {})
 
-                video_details[video_id] = {
+                details = {
                     "duration": content_details.get("duration"),
                     "view_count": statistics.get("viewCount"),
                     "like_count": statistics.get("likeCount"),
@@ -164,11 +205,22 @@ class YouTubeSearchService:
                     "category_id": snippet.get("categoryId"),
                 }
 
+                video_details[video_id] = details
+
+                # Cache individual video details for 24 hours
+                cache_params = {"video_id": video_id}
+                self._cache.set("video_details", cache_params, details)
+
+            logger.info(
+                f"Fetched {len(uncached_ids)} video details from API, "
+                f"{len(video_ids) - len(uncached_ids)} from cache"
+            )
+
             return video_details
 
         except Exception as e:
             logger.error(f"Failed to get video details: {e}")
-            return {}
+            return video_details  # Return cached videos even if API call fails
 
     def _parse_duration(self, duration_str: str) -> Optional[int]:
         """Parse YouTube duration string to seconds"""
@@ -231,13 +283,20 @@ class YouTubeSearchService:
     def search_video_by_title(
         self, title: str, artist_name: str = None, limit: int = 10
     ) -> Dict:
-        """Search for a specific video by title and optionally artist"""
+        """Search for a specific video by title and optionally artist (with caching)"""
         if not self.api_key:
             return {
                 "videos": [],
                 "total_results": 0,
                 "error": "YouTube API key not configured",
             }
+
+        # Check cache first
+        cache_params = {"title": title, "artist_name": artist_name, "limit": limit}
+        cached_result = self._cache.get("search", cache_params)
+        if cached_result is not None:
+            logger.debug(f"Using cached search results for title: {title}")
+            return cached_result
 
         try:
             # Construct search query
@@ -258,6 +317,9 @@ class YouTubeSearchService:
 
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
+
+            # Track quota usage for search API call
+            track_youtube_api_call("search", count=1)
 
             data = response.json()
             videos = []
@@ -297,11 +359,16 @@ class YouTubeSearchService:
             # Sort by relevance score
             videos.sort(key=lambda x: x.get("search_score", 0), reverse=True)
 
-            return {
+            result = {
                 "videos": videos,
                 "total_results": data.get("pageInfo", {}).get("totalResults", 0),
                 "query": search_query,
             }
+
+            # Cache the result for 3 hours
+            self._cache.set("search", cache_params, result)
+
+            return result
 
         except Exception as e:
             logger.error(f"YouTube title search failed: {e}")
@@ -348,12 +415,19 @@ class YouTubeSearchService:
         return round(score, 2)
 
     def search_artist_channel_thumbnail(self, artist_name: str) -> Optional[str]:
-        """Search for artist's channel thumbnail on YouTube"""
+        """Search for artist's channel thumbnail on YouTube (with caching - 7 days TTL)"""
         if not self.api_key:
             logger.warning(
                 "YouTube API key not configured, skipping YouTube channel search"
             )
             return None
+
+        # Check cache first (thumbnails rarely change, cache for 7 days)
+        cache_params = {"artist_name": artist_name}
+        cached_thumbnail = self._cache.get("channel", cache_params)
+        if cached_thumbnail is not None:
+            logger.debug(f"Using cached channel thumbnail for: {artist_name}")
+            return cached_thumbnail
 
         try:
             # Search for channels matching the artist name
@@ -369,6 +443,9 @@ class YouTubeSearchService:
 
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
+
+            # Track quota usage for channel search
+            track_youtube_api_call("channel", count=1)
 
             data = response.json()
 
@@ -397,8 +474,12 @@ class YouTubeSearchService:
                             logger.info(
                                 f"Found YouTube channel thumbnail for {artist_name}: {thumbnail_url}"
                             )
+                            # Cache the thumbnail for 7 days
+                            self._cache.set("channel", cache_params, thumbnail_url)
                             return thumbnail_url
 
+            # Cache the "not found" result for 24 hours to avoid repeated API calls
+            self._cache.set("channel", cache_params, None, ttl=24*3600)
             return None
 
         except requests.RequestException as e:
