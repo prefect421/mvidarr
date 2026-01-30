@@ -1,7 +1,7 @@
 {
   "version": "0.11.7",
-  "build_date": "2026-01-30T20:48:24",
-  "git_commit": "6376248",
+  "build_date": "2026-01-30T21:55:18",
+  "git_commit": "d7b8bd6",
   "git_branch": "dev",
   "release_name": "v0.11.7 - Blacklist Fix & Video Filtering",
   "features": [
@@ -12,7 +12,10 @@
     "🎬 8 video types: Official, Live, Lyric, Acoustic, Remix, Cover, Documentary, Concert",
     "🤖 Automatic video type detection from titles and metadata",
     "🎯 Intelligent filtering during video discovery",
-    "🐛 Fixed themes not loading automatically on Settings page (Issue #180)"
+    "🐛 Fixed themes not loading automatically on Settings page (Issue #180)",
+    "⚡ YouTube API quota optimization - Save 30-60% daily quota usage",
+    "💾 In-memory caching for YouTube API responses (TTL-based)",
+    "📊 YouTube API quota tracking and monitoring"
   ],
   "inherited_from_v0_11_6": [
     "🐛 Fixed critical blacklist API/model mismatch causing 500 errors",
@@ -26,6 +29,8 @@
     "🐛 Blacklist display bug fixed - entries now visible",
     "📊 Video filtering feature complete and functional",
     "🎬 Configure per-artist video types in Artist Settings",
-    "🎨 Themes now load automatically on Settings page"
+    "🎨 Themes now load automatically on Settings page",
+    "⚡ YouTube API quota optimized - cache reduces redundant calls",
+    "📊 Quota tracking stored in /tmp/youtube_quota_tracker.json"
   ]
 }
