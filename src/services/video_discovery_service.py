@@ -16,6 +16,7 @@ from src.services.thumbnail_service import thumbnail_service
 from src.services.video_batch_service import get_ytdlp_path
 from src.services.youtube_search_service import youtube_search_service
 from src.utils.logger import get_logger
+from src.utils.video_type_detector import VideoTypeDetector
 
 logger = get_logger("mvidarr.video_discovery")
 
@@ -317,7 +318,6 @@ class VideoDiscoveryService:
             List of video_data dicts with standardized format
         """
         try:
-
             # Get settings
             min_score = SettingsService.get_float("youtube_discovery_min_score", 1.5)
             allow_ytdlp_fallback = SettingsService.get_bool(
@@ -708,6 +708,28 @@ class VideoDiscoveryService:
                         f"Failed to parse published_date '{video_data.get('published_date')}': {e}"
                     )
 
+            # Detect video type from title and metadata (Issue #191)
+            detected_video_type = VideoTypeDetector.detect_from_metadata(video_data)
+
+            # Check if video type matches artist's allowed types (Issue #191)
+            if artist and artist.allowed_video_types:
+                # Artist has video type filtering enabled
+                allowed_types = artist.allowed_video_types
+                if isinstance(allowed_types, list) and len(allowed_types) > 0:
+                    # Check if detected type is in allowed list
+                    if detected_video_type not in allowed_types:
+                        logger.info(
+                            f"Skipping video '{video_title}' - type '{detected_video_type}' "
+                            f"not in artist's allowed types: {allowed_types}"
+                        )
+                        return  # Skip this video
+                elif isinstance(allowed_types, list) and len(allowed_types) == 0:
+                    # Empty list means download nothing
+                    logger.info(
+                        f"Skipping video '{video_title}' - artist has empty allowed_video_types (download nothing)"
+                    )
+                    return  # Skip this video
+
             video = Video(
                 artist_id=artist_id,
                 title=video_title,
@@ -721,6 +743,7 @@ class VideoDiscoveryService:
                 imvdb_id=video_data.get("imvdb_id"),
                 view_count=video_data.get("view_count", 0),
                 like_count=video_data.get("like_count", 0),  # YouTube like count
+                video_type=detected_video_type,  # Auto-detected video type (Issue #191)
                 status=VideoStatus.WANTED,  # New videos start as 'wanted'
                 discovered_date=datetime.utcnow(),
                 source=video_data.get("source", "discovery"),  # Track source

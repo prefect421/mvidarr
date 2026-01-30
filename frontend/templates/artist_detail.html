@@ -3224,6 +3224,61 @@ div.artist-header-actions button.btn iconify-icon {
                                     <small class="field-hint">Priority level for downloads</small>
                                 </div>
                             </div>
+
+                            <!-- Video Type Filtering (Issue #191) -->
+                            <div class="settings-grid" style="grid-column: 1 / -1; margin-top: 1rem;">
+                                <div class="setting-group" style="grid-column: 1 / -1;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+                                        <iconify-icon icon="tabler:filter" style="margin-right: 0.3rem;"></iconify-icon>
+                                        Allowed Video Types:
+                                    </label>
+                                    <small class="field-hint" style="display: block; margin-bottom: 0.75rem;">
+                                        Select which types of videos to auto-download. Leave all unchecked to download all types.
+                                    </small>
+                                    <div class="video-type-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem;">
+                                        <label class="checkbox-container" style="margin: 0;">
+                                            <input type="checkbox" class="video-type-checkbox" value="official_music_video" data-label="Official Music Video">
+                                            <span class="checkmark"></span>
+                                            <span class="checkbox-label" style="font-size: 0.9rem;">Official Music Video</span>
+                                        </label>
+                                        <label class="checkbox-container" style="margin: 0;">
+                                            <input type="checkbox" class="video-type-checkbox" value="live_performance" data-label="Live Performance">
+                                            <span class="checkmark"></span>
+                                            <span class="checkbox-label" style="font-size: 0.9rem;">Live Performance</span>
+                                        </label>
+                                        <label class="checkbox-container" style="margin: 0;">
+                                            <input type="checkbox" class="video-type-checkbox" value="lyric_video" data-label="Lyric Video">
+                                            <span class="checkmark"></span>
+                                            <span class="checkbox-label" style="font-size: 0.9rem;">Lyric Video</span>
+                                        </label>
+                                        <label class="checkbox-container" style="margin: 0;">
+                                            <input type="checkbox" class="video-type-checkbox" value="acoustic_version" data-label="Acoustic">
+                                            <span class="checkmark"></span>
+                                            <span class="checkbox-label" style="font-size: 0.9rem;">Acoustic Version</span>
+                                        </label>
+                                        <label class="checkbox-container" style="margin: 0;">
+                                            <input type="checkbox" class="video-type-checkbox" value="remix_version" data-label="Remix">
+                                            <span class="checkmark"></span>
+                                            <span class="checkbox-label" style="font-size: 0.9rem;">Remix/Edit</span>
+                                        </label>
+                                        <label class="checkbox-container" style="margin: 0;">
+                                            <input type="checkbox" class="video-type-checkbox" value="cover_version" data-label="Cover">
+                                            <span class="checkmark"></span>
+                                            <span class="checkbox-label" style="font-size: 0.9rem;">Cover Version</span>
+                                        </label>
+                                        <label class="checkbox-container" style="margin: 0;">
+                                            <input type="checkbox" class="video-type-checkbox" value="music_documentary" data-label="Documentary">
+                                            <span class="checkmark"></span>
+                                            <span class="checkbox-label" style="font-size: 0.9rem;">Music Documentary</span>
+                                        </label>
+                                        <label class="checkbox-container" style="margin: 0;">
+                                            <input type="checkbox" class="video-type-checkbox" value="concert_footage" data-label="Concert">
+                                            <span class="checkmark"></span>
+                                            <span class="checkbox-label" style="font-size: 0.9rem;">Concert Footage</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Scheduler V2 Settings (Advanced) -->
@@ -6994,6 +7049,19 @@ function populateSettings(artist) {
     document.getElementById('maxVideosPerDiscoverySetting').value = artist.max_videos_per_discovery || 5;
     document.getElementById('schedulePrioritySetting').value = artist.schedule_priority || 'medium';
 
+    // Video Type Filtering (Issue #191)
+    // First uncheck all video type checkboxes
+    document.querySelectorAll('.video-type-checkbox').forEach(cb => cb.checked = false);
+    // Then check the ones that are in allowed_video_types
+    if (artist.allowed_video_types && Array.isArray(artist.allowed_video_types)) {
+        artist.allowed_video_types.forEach(type => {
+            const checkbox = document.querySelector(`.video-type-checkbox[value="${type}"]`);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+        });
+    }
+
     // Initialize thumbnail preview
     updateThumbnailPreview(artist.thumbnail_url);
 }
@@ -7039,7 +7107,10 @@ function saveArtistSettings() {
         download_enabled: formData.get('auto_download') === 'on',
         discovery_interval_hours: parseInt(formData.get('discovery_interval_hours')) || 24,
         max_videos_per_discovery: parseInt(formData.get('max_videos_per_discovery')) || 5,
-        schedule_priority: formData.get('schedule_priority') || 'medium'
+        schedule_priority: formData.get('schedule_priority') || 'medium',
+
+        // Video Type Filtering (Issue #191)
+        allowed_video_types: Array.from(document.querySelectorAll('.video-type-checkbox:checked')).map(cb => cb.value)
     };
     
     fetch(`/api/artists/${currentArtistId}`, {

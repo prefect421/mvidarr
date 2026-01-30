@@ -390,6 +390,9 @@ class Artist(Base):
     schedule_priority = Column(
         String(20), default="medium"
     )  # Scheduling priority: 'high', 'medium', 'low'
+    allowed_video_types = Column(
+        JSON, nullable=True
+    )  # List of allowed video types for auto-download filtering (Issue #191)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -485,6 +488,9 @@ class Video(Base):
         DateTime, nullable=True
     )  # Last metadata enrichment timestamp
     lyrics = Column(Text, nullable=True)  # Song lyrics
+    video_type = Column(
+        String(50), nullable=True
+    )  # Video type classification: official_music_video, live_performance, lyric_video, etc. (Issue #191)
 
     # Quality checking fields
     available_qualities = Column(JSON, nullable=True)  # Available formats from YouTube

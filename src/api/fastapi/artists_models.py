@@ -31,9 +31,9 @@ class ArtistResponse(BaseModel):
     spotify_id: Optional[str] = None
     monitored: Optional[bool] = None
     auto_download: Optional[bool] = None
-    imvdb_metadata: Optional[Dict[str, Any]] = (
-        None  # Include metadata for song recommendations
-    )
+    imvdb_metadata: Optional[
+        Dict[str, Any]
+    ] = None  # Include metadata for song recommendations
     # Category 1 fields - Issue #174: Fields in database but were missing from API
     keywords: Optional[List[str]] = None  # Video filtering keywords
     genres: Optional[List[str]] = None  # Artist genres
@@ -57,6 +57,10 @@ class ArtistResponse(BaseModel):
     discovery_interval_hours: Optional[int] = None  # Discovery interval
     max_videos_per_discovery: Optional[int] = None  # Max videos per discovery
     schedule_priority: Optional[str] = None  # Scheduling priority
+    # Video type filtering - Issue #191
+    allowed_video_types: Optional[
+        List[str]
+    ] = None  # Allowed video types for auto-download
     video_count: int = 0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -114,9 +118,9 @@ class ArtistUpdateRequest(BaseModel):
     priority: Optional[int] = Field(None, ge=0)  # Artist priority for downloads
 
     # Scheduler V2 fields - v0.10.1
-    discovery_enabled: Optional[bool] = (
-        None  # Enable scheduled discovery for this artist
-    )
+    discovery_enabled: Optional[
+        bool
+    ] = None  # Enable scheduled discovery for this artist
     download_enabled: Optional[bool] = None  # Enable auto-downloads for this artist
     discovery_interval_hours: Optional[int] = Field(
         None, ge=1, le=720
@@ -125,8 +129,14 @@ class ArtistUpdateRequest(BaseModel):
         None, ge=1, le=100
     )  # Max videos per discovery run
     schedule_priority: Optional[str] = None  # Scheduling priority: high, medium, low
+    # Video type filtering - Issue #191
+    allowed_video_types: Optional[
+        List[str]
+    ] = None  # Allowed video types for auto-download
 
-    @field_validator("keywords", "genres", "labels", mode="before")
+    @field_validator(
+        "keywords", "genres", "labels", "allowed_video_types", mode="before"
+    )
     @classmethod
     def empty_str_to_none_list(cls, v):
         """Convert empty strings to None for list fields, and strings to lists"""
