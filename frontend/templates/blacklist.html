@@ -197,11 +197,11 @@ function loadBlacklist() {
                 return;
             }
             
-            displayBlacklist(data.blacklist);
+            displayBlacklist(data.blacklist_entries);
             updatePagination(data.pagination);
             updateStats(data);
-            
-            if (data.blacklist.length === 0 && currentPage === 1 && !currentSearchQuery) {
+
+            if (data.blacklist_entries.length === 0 && currentPage === 1 && !currentSearchQuery) {
                 showEmpty();
             } else {
                 showTable();
@@ -291,7 +291,7 @@ function updateStats(data) {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
-    const recentCount = data.blacklist.filter(entry => {
+    const recentCount = data.blacklist_entries.filter(entry => {
         const blacklistedDate = new Date(entry.blacklisted_at);
         return blacklistedDate >= oneWeekAgo;
     }).length;

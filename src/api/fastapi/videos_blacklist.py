@@ -245,12 +245,12 @@ async def check_blacklist(
             response["blacklist_info"] = {
                 "title": blacklist_entry.title,
                 "artist_name": blacklist_entry.artist_name,
-                "reason": blacklist_entry.reason,
-                "created_at": (
-                    blacklist_entry.created_at.isoformat()
-                    if blacklist_entry.created_at
+                "blacklisted_at": (
+                    blacklist_entry.blacklisted_at.isoformat()
+                    if blacklist_entry.blacklisted_at
                     else None
                 ),
+                "blacklisted_by": blacklist_entry.blacklisted_by,
             }
 
         return response
