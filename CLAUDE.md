@@ -214,49 +214,45 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.10.0-beta.1 - First Beta Release
+### Current Phase: v0.11.7 - Active Development
 
-#### Versioning Policy (Updated 2025-12-01)
-- **Current Version**: 0.10.0-beta.1
+#### Versioning Policy (Updated 2026-01-30)
+- **Current Version**: 0.11.6 (Released 2026-01-02)
+- **Next Version**: 0.11.7 (In Development)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
-  - **0.x.y-beta.z**: Beta testing releases
-  - **0.x.y-rc.z**: Release candidates
   - **1.0.0**: First production-ready release (future)
 
-#### Version History
+#### Version History (Recent)
+- **v0.11.6** (2026-01-02): Blacklist POST Hotfix - Fixed non-existent fields
+- **v0.11.5**: Blacklist API/model mismatch fixes, pagination fixes
+- **v0.11.4**: Code formatting and CI/CD compliance
+- **v0.10.x**: Beta testing and security hardening phases
 - **v0.9.9** (2025-11-04): Code cleanup & optimization complete
-- **v1.0.0** (2025-11-25): Premature release - marked as pre-release
-- **v0.10.0-beta.1** (2025-12-01): First beta release with security fixes
 
-#### 0.10.0-beta.1 Release 🔒 IN PROGRESS (2025-12-01)
-- **Status**: Beta testing phase - active development
-- **Major Features**:
-  - ✅ Security: Fixed 10 critical vulnerabilities (issue #165)
-  - ✅ Installation Wizard for guided first-run setup (issue #163)
-  - ✅ Reliable video import system with duplicate detection
-  - ✅ API validation and testing before configuration
-  - ✅ Complete documentation and user guides (issue #91)
-  - ✅ Performance monitoring dashboard (issue #95)
-  - ✅ Migration tools and database upgrades (issue #92)
-  - ✅ Unraid template support (issue #97)
-  - ✅ Versioning: Migrated to SemVer 0.x conventions
-- **Beta Focus**: Docker testing, community feedback, production validation
+#### v0.11.7 Release 🎯 IN DEVELOPMENT (2026-01-30)
+- **Status**: Active development on `dev` branch
+- **Target Issues**:
+  - 🐛 **Issue #190** (Critical Bug): Blacklist not saving info - Videos added to blacklist don't persist/display
+  - ✨ **Issue #191** (Enhancement): Video Filtering - Per-artist video type filters for autodownload (Official, Live, Lyric, etc.)
+  - 🐛 **Issue #180** (Low Priority): Themes not automatically listed in Settings > Themes page
+- **Development Focus**: Bug fixes, artist filtering system, theme discovery
 - **Next Steps**:
-  - Deploy to test environments
-  - Gather community feedback
-  - Release v0.10.0-beta.2 with fixes
-  - Eventually graduate to v0.10.0 (stable)
-  - Continue development toward v1.0.0 (production)
+  - Investigate and fix blacklist persistence issue (#190)
+  - Design and implement per-artist video type filtering (#191)
+  - Fix automatic theme discovery/listing (#180)
+  - Update documentation
+  - Push to dev branch for testing
+  - Eventually merge to main and release v0.11.7
 
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.10.0-beta.1 (First Beta Release)
-- **Development Focus**: Beta testing, bug fixes, production validation
-- **Next Version**: v0.10.0-beta.2 (planned after Docker testing)
+- **Current Version**: v0.11.6 (Blacklist POST Hotfix)
+- **Development Focus**: Bug fixes (blacklist, themes), artist video filtering
+- **Next Version**: v0.11.7 (Issues #190, #191, #180)
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -353,8 +349,10 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.9.8
+- **Current Release**: Version 0.11.6 (2026-01-02)
+- **Next Release**: Version 0.11.7 (In Development)
 - **Versioning**: Milestones correlate directly to version numbers
+- **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
 
 ## Security Implementation
