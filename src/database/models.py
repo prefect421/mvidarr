@@ -731,6 +731,9 @@ class PlaylistMonitor(Base):
     keywords = Column(JSON, nullable=True)  # Keywords to filter videos
     last_check = Column(DateTime, nullable=True)  # Last time playlist was checked
     last_video_count = Column(Integer, default=0)  # Track video count changes
+    last_known_video_id = Column(
+        String(20), nullable=True
+    )  # Last known video ID for incremental sync (YouTube quota optimization)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

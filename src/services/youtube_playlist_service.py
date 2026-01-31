@@ -114,21 +114,40 @@ class YouTubePlaylistService:
             raise
 
     def get_playlist_videos(
-        self, playlist_id: str, max_results: int = 50
+        self, playlist_id: str, max_results: int = 50, last_known_video_id: str = None, incremental: bool = False
     ) -> List[Dict]:
-        """Get all videos from a YouTube playlist (with caching - 1 hour TTL)"""
+        """
+        Get videos from a YouTube playlist (with caching - 1 hour TTL)
+
+        Args:
+            playlist_id: YouTube playlist ID
+            max_results: Maximum number of videos to fetch (default: 50)
+            last_known_video_id: Last known video ID for incremental sync (optional)
+            incremental: If True, stop fetching when reaching last_known_video_id
+
+        Returns:
+            List of video dictionaries
+
+        Incremental Sync:
+            When incremental=True and last_known_video_id is provided, this method will
+            fetch new videos from the playlist until it encounters the last_known_video_id.
+            This significantly reduces API quota usage by avoiding re-fetching known videos.
+        """
         if not self.api_key:
             raise ValueError("YouTube API key not configured")
 
-        # Check cache first (playlists cached for 1 hour)
-        cache_params = {"playlist_id": playlist_id, "max_results": max_results}
-        cached_videos = self._cache.get("playlist", cache_params)
-        if cached_videos is not None:
-            logger.info(f"Using cached playlist videos for playlist {playlist_id} ({len(cached_videos)} videos)")
-            return cached_videos
+        # For incremental sync, don't use cache (we want fresh data for new videos)
+        # For full sync, check cache first
+        if not incremental:
+            cache_params = {"playlist_id": playlist_id, "max_results": max_results}
+            cached_videos = self._cache.get("playlist", cache_params)
+            if cached_videos is not None:
+                logger.info(f"Using cached playlist videos for playlist {playlist_id} ({len(cached_videos)} videos)")
+                return cached_videos
 
         videos = []
         page_token = None
+        found_last_known = False
 
         while True:
             url = f"{self.base_url}/playlistItems"
@@ -165,8 +184,19 @@ class YouTubePlaylistService:
                     ):
                         continue
 
+                    video_id = snippet.get("resourceId", {}).get("videoId")
+
+                    # Incremental sync: stop if we've reached the last known video
+                    if incremental and last_known_video_id and video_id == last_known_video_id:
+                        found_last_known = True
+                        logger.info(
+                            f"Incremental sync: Found last known video {last_known_video_id}, "
+                            f"fetched {len(videos)} new videos (saved API quota!)"
+                        )
+                        break
+
                     video_data = {
-                        "video_id": snippet.get("resourceId", {}).get("videoId"),
+                        "video_id": video_id,
                         "title": snippet.get("title"),
                         "description": snippet.get("description"),
                         "channel_title": snippet.get("videoOwnerChannelTitle"),
@@ -183,6 +213,10 @@ class YouTubePlaylistService:
 
                     videos.append(video_data)
 
+                # Break if we found the last known video during incremental sync
+                if found_last_known:
+                    break
+
                 # Check if there are more pages
                 page_token = data.get("nextPageToken")
                 if not page_token or len(videos) >= max_results:
@@ -192,9 +226,11 @@ class YouTubePlaylistService:
                 logger.error(f"Failed to get playlist videos: {e}")
                 break
 
-        # Cache the playlist videos for 1 hour
-        self._cache.set("playlist", cache_params, videos)
-        logger.info(f"Cached {len(videos)} videos for playlist {playlist_id}")
+        # Cache the playlist videos for 1 hour (only for full syncs, not incremental)
+        if not incremental:
+            cache_params = {"playlist_id": playlist_id, "max_results": max_results}
+            self._cache.set("playlist", cache_params, videos)
+            logger.info(f"Cached {len(videos)} videos for playlist {playlist_id}")
 
         return videos
 
@@ -336,8 +372,22 @@ class YouTubePlaylistService:
             if not monitor:
                 raise ValueError("Playlist monitor not found")
 
-            # Get current videos in playlist
-            playlist_videos = self.get_playlist_videos(playlist_id, max_results=1000)
+            # Incremental sync: only fetch new videos if we have a last_known_video_id
+            incremental_mode = monitor.last_known_video_id is not None
+            if incremental_mode:
+                logger.info(
+                    f"Using incremental sync for playlist {playlist_id} "
+                    f"(last known video: {monitor.last_known_video_id})"
+                )
+                playlist_videos = self.get_playlist_videos(
+                    playlist_id,
+                    max_results=1000,
+                    last_known_video_id=monitor.last_known_video_id,
+                    incremental=True
+                )
+            else:
+                logger.info(f"Using full sync for playlist {playlist_id} (first sync)")
+                playlist_videos = self.get_playlist_videos(playlist_id, max_results=1000)
 
             # Get video details
             video_ids = [v["video_id"] for v in playlist_videos if v["video_id"]]
@@ -449,9 +499,22 @@ class YouTubePlaylistService:
 
             # Update monitor last check time
             monitor.last_check = datetime.now()
+
+            # Update last_known_video_id for next incremental sync
+            # Set it to the first video ID (most recent video in the playlist)
+            if playlist_videos and len(playlist_videos) > 0:
+                first_video_id = playlist_videos[0].get("video_id")
+                if first_video_id:
+                    monitor.last_known_video_id = first_video_id
+                    logger.info(
+                        f"Updated last_known_video_id to {first_video_id} for next incremental sync"
+                    )
+
             session.commit()
 
-            logger.info(f"Synced playlist {playlist_id}: {results}")
+            logger.info(
+                f"Synced playlist {playlist_id}: {results} (incremental: {incremental_mode})"
+            )
             return results
 
         except Exception as e:
