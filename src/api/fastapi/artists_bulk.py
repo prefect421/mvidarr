@@ -687,6 +687,8 @@ async def get_artist_detailed(
                 # Settings
                 "monitored": getattr(artist, "monitored", True),
                 "auto_download": getattr(artist, "auto_download", False),
+                # Video type filtering - Issue #191
+                "allowed_video_types": getattr(artist, "allowed_video_types", None),
                 # Metadata and timestamps
                 "imvdb_metadata": artist.imvdb_metadata,
                 "created_at": (

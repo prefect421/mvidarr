@@ -454,6 +454,8 @@ async def get_artist(
             discovery_interval_hours=getattr(artist, "discovery_interval_hours", None),
             max_videos_per_discovery=getattr(artist, "max_videos_per_discovery", None),
             schedule_priority=getattr(artist, "schedule_priority", None),
+            # Video type filtering - Issue #191
+            allowed_video_types=getattr(artist, "allowed_video_types", None),
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,
@@ -674,6 +676,8 @@ async def update_artist(
             discovery_interval_hours=getattr(artist, "discovery_interval_hours", None),
             max_videos_per_discovery=getattr(artist, "max_videos_per_discovery", None),
             schedule_priority=getattr(artist, "schedule_priority", None),
+            # Video type filtering - Issue #191
+            allowed_video_types=getattr(artist, "allowed_video_types", None),
             video_count=video_count or 0,
             created_at=artist.created_at,
             updated_at=artist.updated_at,

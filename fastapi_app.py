@@ -312,8 +312,10 @@ app.include_router(enhanced_discovery_router)
 
 # YouTube Playlists Router
 from src.api.fastapi.youtube_playlists import router as youtube_playlists_router
+from src.api.fastapi.youtube_quota import router as youtube_quota_router
 
 app.include_router(youtube_playlists_router)
+app.include_router(youtube_quota_router, prefix="/api/youtube-quota", tags=["YouTube Quota"])
 
 # Enhanced Scheduler Router - REMOVED in v0.10.1, replaced by Scheduler V2
 # Legacy enhanced_scheduler.py removed - use scheduler_v2.py and scheduled_jobs.py instead
