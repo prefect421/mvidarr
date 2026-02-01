@@ -122,10 +122,20 @@ class VideoTypeDetector:
         # If no classification found, return None (unknown/other)
         return None
 
+    # Channel name patterns that indicate official artist channels
+    OFFICIAL_CHANNEL_PATTERNS = [
+        "vevo",
+        "official",
+        " - topic",  # YouTube auto-generated topic channels
+    ]
+
     @classmethod
     def detect_from_metadata(cls, video_data: dict) -> Optional[str]:
         """
         Detect video type from video metadata dictionary
+
+        Uses multiple signals: title, description, tags, channel name, and
+        contextual clues to improve classification accuracy.
 
         Args:
             video_data: Dictionary with video metadata (title, description, tags, etc.)
@@ -135,6 +145,10 @@ class VideoTypeDetector:
         """
         title = video_data.get("title", "")
         description = video_data.get("description", "")
+        channel_name = video_data.get("channel_name", "") or video_data.get(
+            "channel_title", ""
+        )
+        song_title = video_data.get("song_title", "")
 
         # First try detection from title and description
         video_type = cls.detect_from_title(title, description)
@@ -148,6 +162,43 @@ class VideoTypeDetector:
             for vtype, keywords in cls.TYPE_KEYWORDS.items():
                 if any(keyword in tags_text for keyword in keywords):
                     return vtype
+
+        # Check channel name for live indicators
+        channel_lower = channel_name.lower()
+        if any(
+            kw in channel_lower for kw in ["live", "concert", "festival", "sessions"]
+        ):
+            return "live_performance"
+
+        # Check description for type hints (first 500 chars to avoid processing huge descriptions)
+        desc_preview = description[:500].lower() if description else ""
+        for vtype, keywords in cls.TYPE_KEYWORDS.items():
+            for keyword in keywords:
+                if keyword in desc_preview:
+                    return vtype
+
+        # If from an official channel (VEVO, artist name, or Topic channel),
+        # and no other type detected, assume it's an official music video
+        if channel_name:
+            channel_lower = channel_name.lower()
+
+            # Check for VEVO or official channel patterns
+            if any(
+                pattern in channel_lower for pattern in cls.OFFICIAL_CHANNEL_PATTERNS
+            ):
+                return "official_music_video"
+
+            # Check if channel name matches or contains artist name from title
+            # Extract artist name (usually before " - " in title)
+            if " - " in title:
+                artist_from_title = title.split(" - ")[0].strip().lower()
+                # Clean up "The" prefix for matching
+                artist_clean = artist_from_title.replace("the ", "")
+                channel_clean = channel_lower.replace("the ", "")
+
+                if artist_clean in channel_clean or channel_clean in artist_clean:
+                    # Video is from artist's own channel - likely official
+                    return "official_music_video"
 
         return None
 
