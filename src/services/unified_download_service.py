@@ -587,24 +587,48 @@ class UnifiedDownloadService:
                     if result.metadata:
                         video.video_metadata = result.metadata
 
-                    # Create Download record for history tracking
-                    download = Download(
-                        artist_id=video.artist_id,
-                        video_id=video_id,
-                        title=video.title,
-                        original_url=video.url or video.youtube_url,
-                        status="completed",
-                        file_path=result.file_path,
-                        file_size=result.file_size,
-                        download_date=datetime.utcnow(),
-                        completed_at=datetime.utcnow(),
-                        progress=100,
+                    # Find existing Download record (created by endpoint) and update it
+                    existing_download = (
+                        session.query(Download)
+                        .filter(
+                            Download.video_id == video_id,
+                            Download.status.in_(["queued", "downloading", "pending"]),
+                        )
+                        .order_by(Download.created_at.desc())
+                        .first()
                     )
-                    session.add(download)
+
+                    if existing_download:
+                        # Update existing record
+                        existing_download.status = "completed"
+                        existing_download.file_path = result.file_path
+                        existing_download.file_size = result.file_size
+                        existing_download.progress = 100
+                        existing_download.updated_at = datetime.utcnow()
+                        logger.info(
+                            f"Updated download record {existing_download.id} to completed for video {video_id}"
+                        )
+                    else:
+                        # Create new Download record if none exists (fallback)
+                        download = Download(
+                            artist_id=video.artist_id,
+                            video_id=video_id,
+                            title=video.title,
+                            original_url=video.url or video.youtube_url,
+                            status="completed",
+                            file_path=result.file_path,
+                            file_size=result.file_size,
+                            download_date=datetime.utcnow(),
+                            progress=100,
+                        )
+                        session.add(download)
+                        logger.info(
+                            f"Created download history record for video {video_id}"
+                        )
+
                     session.commit()
-                    logger.info(f"Created download history record for video {video_id}")
         except Exception as e:
-            logger.error(f"Database success update failed: {e}")
+            logger.error(f"Database success update failed: {e}", exc_info=True)
 
     def _update_database_failure(self, video_id: int, error_message: str):
         """Update database on failed download"""
@@ -772,8 +796,8 @@ class UnifiedDownloadService:
                             "file_path": download.file_path,
                             "file_size": download.file_size,
                             "completed_at": (
-                                download.completed_at.isoformat()
-                                if download.completed_at
+                                download.updated_at.isoformat()
+                                if download.updated_at
                                 else None
                             ),
                             "created_at": (
