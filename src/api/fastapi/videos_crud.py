@@ -35,7 +35,7 @@ from src.api.fastapi.videos_models import (
     VideoUpdateRequest,
 )
 from src.database.connection import get_db_session
-from src.database.models import Artist, Video, VideoStatus
+from src.database.models import Artist, Video, VideoBlacklist, VideoStatus
 from src.utils.logger import get_logger
 
 # Router with NO prefix - prefix will be added by parent router
@@ -401,16 +401,22 @@ async def update_video(
 
 @router.delete("/{video_id}")
 async def delete_video(
-    video_id: int = FastAPIPath(..., ge=1), session: Session = Depends(get_db_session)
+    video_id: int = FastAPIPath(..., ge=1),
+    request: Optional[Dict] = Body(default=None),
+    session: Session = Depends(get_db_session),
 ):
     """
     Delete single video.
 
     This endpoint deletes a video from the database and optionally removes
     associated files from disk. Also removes video from any playlists.
+    Optionally adds the video's YouTube URL to the blacklist.
 
     Path Parameters:
     - video_id: Unique identifier for the video
+
+    Body Parameters (optional):
+    - add_to_blacklist: If true, add the video's YouTube URL to blacklist
 
     Returns:
     - message: Success message
@@ -423,12 +429,42 @@ async def delete_video(
     - Deletes video file from disk if it exists
     - Removes video from all playlists
     - Deletes video record from database
+    - Optionally adds URL to blacklist
     """
     try:
         video = session.query(Video).filter(Video.id == video_id).first()
 
         if not video:
             raise HTTPException(status_code=404, detail="Video not found")
+
+        # Check if we should add to blacklist
+        add_to_blacklist = False
+        if request and request.get("add_to_blacklist"):
+            add_to_blacklist = True
+
+        # Get video info before deletion for blacklist
+        video_title = video.title
+        video_url = video.youtube_url or video.url
+        artist_name = video.artist.name if video.artist else None
+
+        # Add to blacklist if requested and URL exists
+        blacklisted = False
+        if add_to_blacklist and video_url:
+            # Check if already blacklisted
+            existing = (
+                session.query(VideoBlacklist)
+                .filter(VideoBlacklist.youtube_url == video_url)
+                .first()
+            )
+            if not existing:
+                blacklist_entry = VideoBlacklist(
+                    youtube_url=video_url,
+                    title=video_title,
+                    artist_name=artist_name,
+                )
+                session.add(blacklist_entry)
+                blacklisted = True
+                logger.info(f"Added {video_url} to blacklist during video deletion")
 
         # Delete associated files if they exist
         if (
@@ -464,6 +500,10 @@ async def delete_video(
 
         logger.info(f"Deleted video {video_id}")
 
+        if blacklisted:
+            return {
+                "message": f"Video {video_id} deleted successfully and URL added to blacklist"
+            }
         return {"message": f"Video {video_id} deleted successfully"}
 
     except HTTPException:
