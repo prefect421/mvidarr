@@ -35,7 +35,12 @@ class YouTubeSearchService:
         return self._api_key
 
     def search_artist_videos(self, artist_name: str, limit: int = 50) -> Dict:
-        """Search for music videos by artist name (with caching)"""
+        """Search for music videos by artist name (with caching)
+
+        Performs two types of searches:
+        1. Music category search - for official music videos and lyric videos
+        2. Extended search (no category filter) - for live performances, acoustic, etc.
+        """
         if not self.api_key:
             logger.warning("YouTube API key not configured, skipping YouTube search")
             return {
@@ -45,27 +50,136 @@ class YouTubeSearchService:
             }
 
         # Check cache first
-        cache_params = {"artist_name": artist_name, "limit": limit}
+        cache_params = {"artist_name": artist_name, "limit": limit, "version": "v2"}
         cached_result = self._cache.get("search", cache_params)
         if cached_result is not None:
             logger.info(f"Using cached search results for artist: {artist_name}")
             return cached_result
 
-        try:
-            # Search for music videos by artist
-            search_query = f"{artist_name} music video"
+        all_videos = []
+        seen_video_ids = set()
+        total_results = 0
 
+        try:
+            # Search 1: Music category (official music videos, lyric videos)
+            music_videos = self._search_youtube_api(
+                query=f"{artist_name} official music video",
+                limit=min(limit // 2, 25),
+                use_music_category=True,
+            )
+            for video in music_videos.get("videos", []):
+                if video["youtube_id"] not in seen_video_ids:
+                    seen_video_ids.add(video["youtube_id"])
+                    all_videos.append(video)
+            total_results += music_videos.get("total_results", 0)
+
+            # Search 2: Live performances (no category filter)
+            live_videos = self._search_youtube_api(
+                query=f"{artist_name} live performance official",
+                limit=min(limit // 3, 20),
+                use_music_category=False,
+            )
+            for video in live_videos.get("videos", []):
+                if video["youtube_id"] not in seen_video_ids:
+                    seen_video_ids.add(video["youtube_id"])
+                    all_videos.append(video)
+            total_results += live_videos.get("total_results", 0)
+
+            # Search 3: Concert footage (no category filter)
+            concert_videos = self._search_youtube_api(
+                query=f"{artist_name} concert official video",
+                limit=min(limit // 4, 15),
+                use_music_category=False,
+            )
+            for video in concert_videos.get("videos", []):
+                if video["youtube_id"] not in seen_video_ids:
+                    seen_video_ids.add(video["youtube_id"])
+                    all_videos.append(video)
+            total_results += concert_videos.get("total_results", 0)
+
+            # Search 4: Acoustic/unplugged versions (no category filter)
+            acoustic_videos = self._search_youtube_api(
+                query=f"{artist_name} acoustic unplugged official",
+                limit=min(limit // 4, 10),
+                use_music_category=False,
+            )
+            for video in acoustic_videos.get("videos", []):
+                if video["youtube_id"] not in seen_video_ids:
+                    seen_video_ids.add(video["youtube_id"])
+                    all_videos.append(video)
+            total_results += acoustic_videos.get("total_results", 0)
+
+            # Calculate relevance scores for all videos
+            for video in all_videos:
+                video["search_score"] = self._calculate_relevance_score(
+                    video.get("title", ""), artist_name
+                )
+
+            # Sort by relevance score
+            all_videos.sort(key=lambda x: x.get("search_score", 0), reverse=True)
+
+            # Limit to requested number
+            all_videos = all_videos[:limit]
+
+            logger.info(
+                f"Found {len(all_videos)} YouTube videos for artist: {artist_name} "
+                f"(combined from multiple searches)"
+            )
+
+            result = {
+                "videos": all_videos,
+                "total_results": total_results,
+                "query": f"{artist_name} (combined searches)",
+                "artist_name": artist_name,
+            }
+
+            # Cache the result for 3 hours
+            self._cache.set("search", cache_params, result)
+
+            return result
+
+        except Exception as e:
+            # Sanitize error message to remove API key
+            error_msg = str(e)
+            if self.api_key and self.api_key in error_msg:
+                error_msg = error_msg.replace(self.api_key, "***API_KEY***")
+
+            logger.error(f"YouTube search failed for artist {artist_name}: {error_msg}")
+            return {
+                "videos": all_videos if all_videos else [],
+                "total_results": total_results,
+                "error": f"YouTube search failed: {error_msg}",
+            }
+
+    def _search_youtube_api(
+        self, query: str, limit: int, use_music_category: bool = True
+    ) -> Dict:
+        """Execute a single YouTube API search
+
+        Args:
+            query: Search query string
+            limit: Maximum results to return
+            use_music_category: If True, filter to Music category (videoCategoryId=10)
+                               If False, search all categories
+
+        Returns:
+            Dict with videos list and metadata
+        """
+        try:
             url = f"{self.base_url}/search"
             params = {
                 "part": "snippet",
-                "q": search_query,
+                "q": query,
                 "type": "video",
-                "videoCategoryId": "10",  # Music category
                 "videoDefinition": "any",
                 "order": "relevance",
-                "maxResults": min(limit, 50),  # YouTube API limit is 50
+                "maxResults": min(limit, 50),
                 "key": self.api_key,
             }
+
+            # Only add music category filter for official/lyric video searches
+            if use_music_category:
+                params["videoCategoryId"] = "10"
 
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
@@ -85,7 +199,6 @@ class YouTubeSearchService:
                 snippet = item["snippet"]
                 details = video_details.get(video_id, {})
 
-                # Extract video metadata
                 video_info = {
                     "youtube_id": video_id,
                     "title": snippet.get("title"),
@@ -102,54 +215,34 @@ class YouTubeSearchService:
                     "like_count": details.get("like_count"),
                     "tags": details.get("tags", []),
                     "source": "youtube_search",
-                    "search_score": self._calculate_relevance_score(
-                        snippet.get("title", ""), artist_name
-                    ),
+                    "search_query": query,
                 }
 
                 videos.append(video_info)
 
-            # Sort by relevance score
-            videos.sort(key=lambda x: x.get("search_score", 0), reverse=True)
+            logger.debug(
+                f"YouTube API search '{query}' returned {len(videos)} videos "
+                f"(category_filter={use_music_category})"
+            )
 
-            logger.info(f"Found {len(videos)} YouTube videos for artist: {artist_name}")
-
-            result = {
+            return {
                 "videos": videos,
                 "total_results": data.get("pageInfo", {}).get("totalResults", 0),
-                "query": search_query,
-                "artist_name": artist_name,
+                "query": query,
             }
-
-            # Cache the result for 3 hours
-            self._cache.set("search", cache_params, result)
-
-            return result
 
         except requests.RequestException as e:
-            # Sanitize error message to remove API key from URL
             error_msg = str(e)
             if self.api_key and self.api_key in error_msg:
                 error_msg = error_msg.replace(self.api_key, "***API_KEY***")
-
-            logger.error(f"YouTube API request failed: {error_msg}")
-            return {
-                "videos": [],
-                "total_results": 0,
-                "error": f"YouTube API request failed: {error_msg}",
-            }
+            logger.error(f"YouTube API request failed for query '{query}': {error_msg}")
+            return {"videos": [], "total_results": 0, "error": error_msg}
         except Exception as e:
-            # Sanitize error message to remove API key
             error_msg = str(e)
             if self.api_key and self.api_key in error_msg:
                 error_msg = error_msg.replace(self.api_key, "***API_KEY***")
-
-            logger.error(f"YouTube search failed for artist {artist_name}: {error_msg}")
-            return {
-                "videos": [],
-                "total_results": 0,
-                "error": f"YouTube search failed: {error_msg}",
-            }
+            logger.error(f"YouTube search failed for query '{query}': {error_msg}")
+            return {"videos": [], "total_results": 0, "error": error_msg}
 
     def _get_video_details(self, video_ids: List[str]) -> Dict[str, Dict]:
         """Get detailed information for multiple videos (with caching)"""
@@ -248,17 +341,29 @@ class YouTubeSearchService:
         title_lower = title.lower()
         artist_lower = artist_name.lower()
 
+        # Normalize artist name - remove common prefixes for matching
+        artist_normalized = artist_lower
+        for prefix in ["the ", "a "]:
+            if artist_normalized.startswith(prefix):
+                artist_normalized = artist_normalized[len(prefix) :]
+
         score = 0.0
 
-        # Exact artist name match
-        if artist_lower in title_lower:
+        # Exact artist name match (with or without prefix)
+        if artist_lower in title_lower or artist_normalized in title_lower:
             score += 1.0
 
-        # Artist name words match
-        artist_words = artist_lower.split()
-        for word in artist_words:
-            if len(word) > 2 and word in title_lower:
-                score += 0.3
+        # Artist name words match (skip common words)
+        skip_words = {"the", "a", "an", "and", "of", "in", "on", "at", "to"}
+        artist_words = [w for w in artist_lower.split() if w not in skip_words]
+        matching_words = sum(
+            1 for word in artist_words if len(word) > 2 and word in title_lower
+        )
+
+        # Bonus for matching significant words
+        if matching_words >= len(artist_words) * 0.5:
+            score += 0.5  # Most words match
+        score += matching_words * 0.2
 
         # Music video indicators
         music_indicators = [
@@ -271,6 +376,13 @@ class YouTubeSearchService:
         for indicator in music_indicators:
             if indicator in title_lower:
                 score += 0.5
+
+        # Live/concert indicators (for live performance searches)
+        live_indicators = ["live", "concert", "performance", "festival", "tour"]
+        for indicator in live_indicators:
+            if indicator in title_lower:
+                score += 0.4
+                break  # Only count once
 
         # Official channel indicators
         official_indicators = ["official", "vevo"]
@@ -479,7 +591,7 @@ class YouTubeSearchService:
                             return thumbnail_url
 
             # Cache the "not found" result for 24 hours to avoid repeated API calls
-            self._cache.set("channel", cache_params, None, ttl=24*3600)
+            self._cache.set("channel", cache_params, None, ttl=24 * 3600)
             return None
 
         except requests.RequestException as e:

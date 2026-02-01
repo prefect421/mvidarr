@@ -111,7 +111,9 @@ celery_app.conf.update(
             "options": {"queue": "scheduler"},
         },
     },
-    beat_schedule_filename="/app/data/celerybeat-schedule",
+    beat_schedule_filename=os.environ.get(
+        "CELERYBEAT_SCHEDULE_FILE", "data/celerybeat-schedule"
+    ),
 )
 
 # Task priority levels
