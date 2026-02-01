@@ -143,12 +143,12 @@ class VideoDiscoveryService:
                 session.commit()
 
                 logger.info(
-                    f"Discovery complete for {artist.name}: found {len(discovered_videos)} videos, stored {stored_count}"
+                    f"Discovery complete for {artist_name}: found {len(discovered_videos)} videos, stored {stored_count}"
                 )
 
                 return {
                     "success": True,
-                    "artist_name": artist.name,
+                    "artist_name": artist_name,
                     "discovered_count": len(discovered_videos),
                     "stored_count": stored_count,
                     "videos": unified_videos,
