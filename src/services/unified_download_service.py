@@ -572,8 +572,10 @@ class UnifiedDownloadService:
     def _update_database_success(self, video_id: int, result: DownloadResult):
         """Update database on successful download"""
         try:
+            from datetime import datetime
+
             from src.database.connection import get_db
-            from src.database.models import Video, VideoStatus
+            from src.database.models import Download, Video, VideoStatus
 
             with get_db() as session:
                 video = session.query(Video).filter(Video.id == video_id).first()
@@ -584,7 +586,23 @@ class UnifiedDownloadService:
                         video.file_size = result.file_size
                     if result.metadata:
                         video.video_metadata = result.metadata
+
+                    # Create Download record for history tracking
+                    download = Download(
+                        artist_id=video.artist_id,
+                        video_id=video_id,
+                        title=video.title,
+                        original_url=video.url or video.youtube_url,
+                        status="completed",
+                        file_path=result.file_path,
+                        file_size=result.file_size,
+                        download_date=datetime.utcnow(),
+                        completed_at=datetime.utcnow(),
+                        progress=100,
+                    )
+                    session.add(download)
                     session.commit()
+                    logger.info(f"Created download history record for video {video_id}")
         except Exception as e:
             logger.error(f"Database success update failed: {e}")
 
