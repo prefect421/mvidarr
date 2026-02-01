@@ -1,14 +1,15 @@
 {
   "version": "0.11.7",
-  "build_date": "2026-02-01T17:53:49.219146",
-  "git_commit": "8ae739a",
+  "build_date": "2026-02-01T20:42:15.101288",
+  "git_commit": "6a38d8c",
   "git_branch": "dev",
-  "release_name": "v0.11.7 - Extended Video Discovery",
+  "release_name": "v0.11.7 - Extended Video Discovery & Blacklist Fix",
   "features": [
     "🎬 YouTube discovery now finds live performances, concerts, acoustic versions",
     "🔍 Multi-search strategy bypasses Music category limitations",
     "📈 Increased default max_videos_per_discovery from 5 to 50",
     "🔧 Fixed download completion callback not updating records",
-    "📊 Fixed Download History not showing completed downloads"
+    "📊 Fixed Download History not showing completed downloads",
+    "🚫 Fixed blacklist not saving when deleting videos with 'Add to blacklist'"
   ]
 }
