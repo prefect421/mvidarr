@@ -1,38 +1,14 @@
 {
   "version": "0.11.7",
-  "build_date": "2026-01-30T22:42:35",
-  "git_commit": "648defb",
+  "build_date": "2026-02-01T17:53:49.219146",
+  "git_commit": "8ae739a",
   "git_branch": "dev",
-  "release_name": "v0.11.7 - Blacklist Fix, Video Filtering & API Optimization",
+  "release_name": "v0.11.7 - Extended Video Discovery",
   "features": [
-    "🐛 Fixed blacklist not displaying entries (Issue #190)",
-    "🐛 Fixed API/Frontend field name mismatch (blacklist vs blacklist_entries)",
-    "🐛 Fixed check_blacklist endpoint accessing non-existent fields",
-    "✨ Per-artist video type filtering - Complete! (Issue #191)",
-    "🎬 8 video types: Official, Live, Lyric, Acoustic, Remix, Cover, Documentary, Concert",
-    "🤖 Automatic video type detection from titles and metadata",
-    "🎯 Intelligent filtering during video discovery",
-    "🐛 Fixed themes not loading automatically on Settings page (Issue #180)",
-    "⚡ YouTube API quota optimization - Save 50-80% daily quota usage",
-    "💾 In-memory caching for YouTube API responses (TTL-based)",
-    "📊 YouTube API quota tracking and monitoring",
-    "🔄 Incremental playlist sync - Only fetch new videos (75% quota savings)"
-  ],
-  "inherited_from_v0_11_6": [
-    "🐛 Fixed critical blacklist API/model mismatch causing 500 errors",
-    "🐛 Fixed blacklist pagination error (pages → total_pages)",
-    "🗑️ Removed duplicate Enhanced Artist Discovery card",
-    "✅ Fixed code formatting for CI/CD compliance"
-  ],
-  "upgrade_notes": [
-    "⚠️ Development version - testing in progress",
-    "🔄 Run migrations 021, 022, and 023 before starting application",
-    "🐛 Blacklist display bug fixed - entries now visible",
-    "📊 Video filtering feature complete and functional",
-    "🎬 Configure per-artist video types in Artist Settings",
-    "🎨 Themes now load automatically on Settings page",
-    "⚡ YouTube API quota optimized - cache + incremental sync",
-    "📊 Quota tracking stored in /tmp/youtube_quota_tracker.json",
-    "🔄 Incremental playlist sync enabled - first sync is full, subsequent syncs fetch only new videos"
+    "🎬 YouTube discovery now finds live performances, concerts, acoustic versions",
+    "🔍 Multi-search strategy bypasses Music category limitations",
+    "📈 Increased default max_videos_per_discovery from 5 to 50",
+    "🔧 Fixed download completion callback not updating records",
+    "📊 Fixed Download History not showing completed downloads"
   ]
 }
