@@ -385,7 +385,7 @@ class Artist(Base):
         Boolean, default=True
     )  # Can disable auto-downloads independently
     max_videos_per_discovery = Column(
-        Integer, default=5
+        Integer, default=50
     )  # Maximum videos to discover per run for this artist
     schedule_priority = Column(
         String(20), default="medium"
