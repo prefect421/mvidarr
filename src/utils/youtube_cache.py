@@ -63,9 +63,7 @@ class YouTubeCache:
         if expired_keys:
             logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
 
-    def get(
-        self, operation: str, params: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    def get(self, operation: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Retrieve cached data if available and not expired
 
@@ -103,7 +101,11 @@ class YouTubeCache:
         return None
 
     def set(
-        self, operation: str, params: Dict[str, Any], data: Dict[str, Any], ttl: Optional[int] = None
+        self,
+        operation: str,
+        params: Dict[str, Any],
+        data: Dict[str, Any],
+        ttl: Optional[int] = None,
     ):
         """
         Store data in cache with appropriate TTL
@@ -145,7 +147,9 @@ class YouTubeCache:
         if len(self._cache) % 100 == 0:
             self._cleanup_expired()
 
-    def invalidate(self, operation: Optional[str] = None, params: Optional[Dict[str, Any]] = None):
+    def invalidate(
+        self, operation: Optional[str] = None, params: Optional[Dict[str, Any]] = None
+    ):
         """
         Invalidate cache entries
 
@@ -168,7 +172,9 @@ class YouTubeCache:
             ]
             for key in keys_to_delete:
                 del self._cache[key]
-            logger.info(f"Invalidated {len(keys_to_delete)} cache entries for {operation}")
+            logger.info(
+                f"Invalidated {len(keys_to_delete)} cache entries for {operation}"
+            )
         else:
             # Clear entire cache
             count = len(self._cache)

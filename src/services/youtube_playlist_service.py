@@ -114,7 +114,11 @@ class YouTubePlaylistService:
             raise
 
     def get_playlist_videos(
-        self, playlist_id: str, max_results: int = 50, last_known_video_id: str = None, incremental: bool = False
+        self,
+        playlist_id: str,
+        max_results: int = 50,
+        last_known_video_id: str = None,
+        incremental: bool = False,
     ) -> List[Dict]:
         """
         Get videos from a YouTube playlist (with caching - 1 hour TTL)
@@ -142,7 +146,9 @@ class YouTubePlaylistService:
             cache_params = {"playlist_id": playlist_id, "max_results": max_results}
             cached_videos = self._cache.get("playlist", cache_params)
             if cached_videos is not None:
-                logger.info(f"Using cached playlist videos for playlist {playlist_id} ({len(cached_videos)} videos)")
+                logger.info(
+                    f"Using cached playlist videos for playlist {playlist_id} ({len(cached_videos)} videos)"
+                )
                 return cached_videos
 
         videos = []
@@ -187,7 +193,11 @@ class YouTubePlaylistService:
                     video_id = snippet.get("resourceId", {}).get("videoId")
 
                     # Incremental sync: stop if we've reached the last known video
-                    if incremental and last_known_video_id and video_id == last_known_video_id:
+                    if (
+                        incremental
+                        and last_known_video_id
+                        and video_id == last_known_video_id
+                    ):
                         found_last_known = True
                         logger.info(
                             f"Incremental sync: Found last known video {last_known_video_id}, "
@@ -383,11 +393,13 @@ class YouTubePlaylistService:
                     playlist_id,
                     max_results=1000,
                     last_known_video_id=monitor.last_known_video_id,
-                    incremental=True
+                    incremental=True,
                 )
             else:
                 logger.info(f"Using full sync for playlist {playlist_id} (first sync)")
-                playlist_videos = self.get_playlist_videos(playlist_id, max_results=1000)
+                playlist_videos = self.get_playlist_videos(
+                    playlist_id, max_results=1000
+                )
 
             # Get video details
             video_ids = [v["video_id"] for v in playlist_videos if v["video_id"]]

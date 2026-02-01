@@ -25,8 +25,8 @@ async def get_quota_stats(current_user: dict = Depends(require_authentication_le
     cache_stats = cache.get_stats()
 
     # Calculate optimization effectiveness
-    total_requests = cache_stats['total_requests']
-    cache_hits = cache_stats['hit_count']
+    total_requests = cache_stats["total_requests"]
+    cache_hits = cache_stats["hit_count"]
     api_calls_saved = cache_hits
 
     return {
@@ -52,18 +52,17 @@ async def get_quota_stats(current_user: dict = Depends(require_authentication_le
             "enabled": True,
             "estimated_savings": f"{round(cache_stats['hit_rate'] * 100)}%",
             "quota_saved_today": api_calls_saved,
-        }
+        },
     }
 
 
 @router.post("/reset")
-async def reset_quota_tracker(current_user: dict = Depends(require_authentication_legacy)):
+async def reset_quota_tracker(
+    current_user: dict = Depends(require_authentication_legacy),
+):
     """Reset quota tracker (admin only)"""
 
     tracker = get_quota_tracker()
     tracker.reset()
 
-    return {
-        "success": True,
-        "message": "Quota tracker has been reset"
-    }
+    return {"success": True, "message": "Quota tracker has been reset"}
