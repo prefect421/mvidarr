@@ -26,6 +26,11 @@ Track MVidarr's development progress through our release history and upcoming mi
 - **Multi-Search Strategy**: Bypasses YouTube Music category limitations for better results
 - **Increased Discovery**: Default max_videos_per_discovery increased from 5 to 50
 
+#### API Optimization ✅
+- **Performance Improvements**: Optimized API endpoints for faster response times
+- **Reduced Latency**: Streamlined database queries and response handling
+- **Better Resource Usage**: Improved efficiency in API request processing
+
 #### Critical Bug Fixes ✅ (Issue #190)
 - **Blacklist Persistence**: Fixed blacklist not saving when deleting videos with 'Add to blacklist' option
 - **Download Callback**: Fixed download completion callback not updating records

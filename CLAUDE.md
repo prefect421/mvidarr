@@ -230,6 +230,7 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
   - ✅ Issue #191: Per-artist video type filtering for autodownload
   - Extended YouTube discovery (live performances, concerts, acoustic versions)
   - Increased max_videos_per_discovery from 5 to 50
+  - API optimization for improved performance and response times
 - **v0.11.6** (2026-01-02): Blacklist POST Hotfix - Fixed non-existent fields
 - **v0.11.5**: Blacklist API/model mismatch fixes, pagination fixes
 - **v0.11.4**: Code formatting and CI/CD compliance
