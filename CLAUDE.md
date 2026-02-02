@@ -214,45 +214,45 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.11.7 - Active Development
+### Current Phase: v0.11.8 - Planning
 
-#### Versioning Policy (Updated 2026-01-30)
-- **Current Version**: 0.11.6 (Released 2026-01-02)
-- **Next Version**: 0.11.7 (In Development)
+#### Versioning Policy (Updated 2026-02-02)
+- **Current Version**: 0.11.7 (Released 2026-02-02)
+- **Next Version**: 0.11.8 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.11.7** (2026-02-02): Video Filtering, Extended Discovery & Blacklist Fix
+  - ✅ Issue #190: Fixed blacklist not saving info
+  - ✅ Issue #191: Per-artist video type filtering for autodownload
+  - Extended YouTube discovery (live performances, concerts, acoustic versions)
+  - Increased max_videos_per_discovery from 5 to 50
 - **v0.11.6** (2026-01-02): Blacklist POST Hotfix - Fixed non-existent fields
 - **v0.11.5**: Blacklist API/model mismatch fixes, pagination fixes
 - **v0.11.4**: Code formatting and CI/CD compliance
 - **v0.10.x**: Beta testing and security hardening phases
 - **v0.9.9** (2025-11-04): Code cleanup & optimization complete
 
-#### v0.11.7 Release 🎯 IN DEVELOPMENT (2026-01-30)
-- **Status**: Active development on `dev` branch
-- **Target Issues**:
-  - 🐛 **Issue #190** (Critical Bug): Blacklist not saving info - Videos added to blacklist don't persist/display
-  - ✨ **Issue #191** (Enhancement): Video Filtering - Per-artist video type filters for autodownload (Official, Live, Lyric, etc.)
+#### v0.11.8 Release 🎯 PLANNING
+- **Status**: Planning phase
+- **Open Issues**:
   - 🐛 **Issue #180** (Low Priority): Themes not automatically listed in Settings > Themes page
-- **Development Focus**: Bug fixes, artist filtering system, theme discovery
+- **Development Focus**: Theme discovery fix, stability improvements
 - **Next Steps**:
-  - Investigate and fix blacklist persistence issue (#190)
-  - Design and implement per-artist video type filtering (#191)
   - Fix automatic theme discovery/listing (#180)
-  - Update documentation
-  - Push to dev branch for testing
-  - Eventually merge to main and release v0.11.7
+  - Address any new issues reported
+  - Continue documentation updates
 
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.11.6 (Blacklist POST Hotfix)
-- **Development Focus**: Bug fixes (blacklist, themes), artist video filtering
-- **Next Version**: v0.11.7 (Issues #190, #191, #180)
+- **Current Version**: v0.11.7 (Video Filtering, Extended Discovery & Blacklist Fix)
+- **Development Focus**: Theme discovery, stability
+- **Next Version**: v0.11.8 (Issue #180)
 
 ### Code Development Process
 1. Create feature branch from `dev` branch

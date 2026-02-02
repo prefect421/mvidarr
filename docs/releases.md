@@ -8,7 +8,55 @@ permalink: /releases/
 
 Track MVidarr's development progress through our release history and upcoming milestones.
 
-## 🚀 Current Release: v0.9.8
+## 🚀 Current Release: v0.11.7
+
+**Released**: February 2, 2026
+**Focus**: Video Filtering, Extended Video Discovery & Blacklist Fix
+
+### 🎉 What's New
+
+#### Per-Artist Video Type Filtering ✅ (Issue #191)
+- **Video Type Selection**: Users can now specify which video types to download per artist
+- **Supported Types**: Official Video, Official Music Video, Live, Lyric Video, Lyrics, Other
+- **Autodownload Integration**: Filtering preferences respected during automatic video discovery
+- **Flexible Configuration**: Checkbox/multiselect options for granular control
+
+#### Extended Video Discovery ✅
+- **Live Performances**: YouTube discovery now finds live performances, concerts, acoustic versions
+- **Multi-Search Strategy**: Bypasses YouTube Music category limitations for better results
+- **Increased Discovery**: Default max_videos_per_discovery increased from 5 to 50
+
+#### Critical Bug Fixes ✅ (Issue #190)
+- **Blacklist Persistence**: Fixed blacklist not saving when deleting videos with 'Add to blacklist' option
+- **Download Callback**: Fixed download completion callback not updating records
+- **Download History**: Fixed Download History not showing completed downloads
+
+### Resolved Issues
+- **#190**: Blacklist not saving info - Videos added to blacklist now persist correctly
+- **#191**: Video Filtering - Per-artist video type filters for autodownload
+
+### Docker Image
+```bash
+docker pull ghcr.io/prefect421/mvidarr:v0.11.7
+docker pull ghcr.io/prefect421/mvidarr:latest
+```
+
+**Git Commit**: `2f6b43e` | **Build**: 2026-02-02
+
+---
+
+## 📈 Previous Release: v0.11.6
+
+**Released**: January 2, 2026
+**Focus**: Blacklist POST Hotfix
+
+- Fixed non-existent 'reason' and 'id' fields from blacklist POST endpoint
+- Blacklist API/model mismatch fixes
+- Pagination fixes
+
+---
+
+## 📈 Previous Release: v0.9.8
 
 **Released**: October 7, 2025
 **Focus**: Subtitle System, User Testing Fixes & FastAPI Migration Completion
