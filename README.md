@@ -22,64 +22,51 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.11.0 - Scheduler V2 Release**
+## 🚀 **LATEST: v0.11.7 - Video Filtering, Extended Discovery & Blacklist Fix**
 
-**⚠️ BETA STATUS: Active Development - Not Yet Production-Ready**
+**Released**: February 2, 2026
 
-> **Note**: This is a beta release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
+> **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Scheduler V2 - Database-Driven Scheduling ✅
-- **🗄️ Database Configuration**: All scheduler settings now stored in database
-- **🎛️ Web UI Management**: Configure schedules through Settings page
-- **🚫 No More Environment Variables**: Removed MVIDARR_USE_ENHANCED_SCHEDULER and related env vars
-- **📊 Job History Tracking**: Complete history of all scheduled job executions
-- **🔄 Dynamic Updates**: Changes apply immediately without container restart
-- **🏥 Health Monitoring**: Built-in health checks and status endpoints
-- **🔌 REST API Control**: Full API for automation and integration
+### Per-Artist Video Type Filtering ✅ (Issue #191)
+- **🎛️ Video Type Selection**: Users can now specify which video types to download per artist
+- **📋 Supported Types**: Official Video, Official Music Video, Live, Lyric Video, Lyrics, Other
+- **🔄 Autodownload Integration**: Filtering preferences respected during automatic video discovery
+- **☑️ Flexible Configuration**: Checkbox/multiselect options for granular control
 
-### Code Cleanup & Optimization ✅
-- **♻️ 10 Large Files Refactored** - Transformed 15,133 lines into 58 modular files
-- **📉 71.4% Average Size Reduction** - Improved maintainability and testability
-- **🧹 607 Unused Imports Removed** - Complete dead code elimination (100%)
-- **📦 Backward Compatibility** - All functionality preserved and verified
-- **🏗️ Enterprise Architecture** - Modular design with clear separation of concerns
+### Extended Video Discovery ✅
+- **🎬 Live Performances**: YouTube discovery now finds live performances, concerts, acoustic versions
+- **🔍 Multi-Search Strategy**: Bypasses YouTube Music category limitations for better results
+- **📈 Increased Discovery**: Default max_videos_per_discovery increased from 5 to 50
 
-### Security Hardening (30 Issues Fixed) ✅
-- **🔒 SQL Injection Protection** - Parameterized queries and input validation (6 fixes)
-- **🛡️ Secure HTTP Requests** - Timeout protection on all external calls (23 fixes)
-- **🔐 Pickle Integrity** - HMAC-SHA256 signature verification (1 fix)
-- **📝 Safe Parsing** - Eliminated unsafe eval() usage (2 fixes)
-- **🗂️ Secure Temp Files** - Proper temporary directory handling (3 fixes)
-- **🌐 XML Protection** - XXE attack prevention with defusedxml (2 fixes)
+### API Optimization ✅
+- **⚡ Performance Improvements**: Optimized API endpoints for faster response times
+- **🗄️ Streamlined Queries**: Improved database queries and response handling
+- **📊 Better Resource Usage**: Enhanced efficiency in API request processing
 
-### Testing & Quality Assurance ✅
-- **🧪 222/230 E2E Tests Passing** - 96.5% pass rate with Playwright
-- **✅ 100% Critical Tests** - All smoke tests and core functionality verified
-- **📊 Zero High-Severity Issues** - Comprehensive security audit complete
-- **📚 Complete Documentation** - API, scripts, and deployment guides updated
-
-### Docker Architecture Simplification ✅
-- **🐳 3-Container Deployment** - Reduced from 6 to 3 containers for home users
-- **⚙️ Supervisord Integration** - FastAPI + Celery worker in single container
-- **📦 Lower Resource Usage** - Optimized for consumer-grade deployments
-- **🎯 Simplified Management** - Easier troubleshooting and maintenance
-- **✨ Full Functionality** - All background jobs and features preserved
+### Critical Bug Fixes ✅ (Issue #190)
+- **🚫 Blacklist Persistence**: Fixed blacklist not saving when deleting videos with 'Add to blacklist' option
+- **🔧 Download Callback**: Fixed download completion callback not updating records
+- **📊 Download History**: Fixed Download History not showing completed downloads
 
 ## 🎯 Previous Releases
+
+### v0.11.6 - Blacklist POST Hotfix (January 2, 2026)
+- Fixed non-existent fields from blacklist POST endpoint
+- Blacklist API/model mismatch fixes
+- Pagination fixes
+
+### v0.11.0 - Scheduler V2 Release
+- Database-driven scheduling with web UI management
+- Code cleanup & optimization (71.4% size reduction)
+- Security hardening (30 issues fixed)
+- Docker architecture simplification (3-container deployment)
 
 ### v0.9.8 - Subtitle System & User Testing Fixes
 - Complete subtitle implementation (WebVTT, SRT, ASS, SSA, SUB)
 - Smart YouTube language resolution
 - User testing fixes (8/8 critical issues resolved)
 - 100% Flask to FastAPI migration complete
-
-## 🆕 Previous Updates (v0.9.4-0.9.7)
-
-- **🐳 Docker Optimization** - Reduced build time from timeout failures to consistent 8-minute builds
-- **📦 Container Size Optimization** - Efficient multi-stage builds with optimized caching (1.41GB optimized size)
-- **🔍 Build Monitoring** - Comprehensive Docker build monitoring and validation infrastructure
-- **⚡ Build Reliability** - 100% build success rate with automated size monitoring and performance tracking
-- **🛠️ Infrastructure** - Enhanced CI/CD workflows with automated Docker monitoring and health checks
 
 ## 🚀 Quick Start
 
@@ -126,7 +113,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.10.0-beta.1`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.11.7`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -278,4 +265,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.10.0-beta.1** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.11.7** - Built with ❤️ for music video enthusiasts
