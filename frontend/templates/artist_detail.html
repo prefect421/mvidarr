@@ -8167,10 +8167,11 @@ function searchThumbnail() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success && data.thumbnail_url) {
-            // Auto-fill the thumbnail URL input
-            document.getElementById('newThumbnailUrl').value = data.thumbnail_url;
-            showSuccess(`Found thumbnail from ${data.source}: ${data.thumbnail_url}`);
+        if (data.thumbnails && data.thumbnails.length > 0) {
+            // Auto-fill the thumbnail URL input with the first result
+            const firstResult = data.thumbnails[0];
+            document.getElementById('newThumbnailUrl').value = firstResult.url;
+            showSuccess(`Found thumbnail from ${firstResult.source}: ${firstResult.url}`);
         } else if (data.error) {
             showError('Error: ' + data.error);
         } else {
@@ -10265,13 +10266,21 @@ function searchAllProviders() {
         showError('Artist not loaded');
         return;
     }
-    
+
+    // Get artist name - handle both data structures (direct or nested under .artist)
+    const artistName = currentArtistData.name || currentArtistData.artist?.name;
+    if (!artistName) {
+        showError('Artist name not available');
+        console.error('Artist data structure:', currentArtistData);
+        return;
+    }
+
     const resultsDiv = document.getElementById('searchResults');
     const gridDiv = document.getElementById('searchGrid');
-    
+
     resultsDiv.style.display = 'block';
     gridDiv.innerHTML = '<div class="loading-placeholder">Searching IMVDb, Wikipedia, and Google Images...</div>';
-    
+
     // Search all providers simultaneously
     const searchPromises = [
         // IMVDb and Wikipedia search
@@ -10283,9 +10292,9 @@ function searchAllProviders() {
                 query: null
             })
         }).then(response => response.json()),
-        
+
         // Google Images search (simulated for now - would need proper API integration)
-        searchGoogleImages(currentArtistData.name)
+        searchGoogleImages(artistName)
     ];
     
     Promise.allSettled(searchPromises)
@@ -10410,9 +10419,9 @@ async function searchArtistThumbnail() {
         
         const data = await response.json();
         
-        if (data.success && data.results && data.results.length > 0) {
+        if (data.thumbnails && data.thumbnails.length > 0) {
             // Use the first result (highest priority)
-            const bestResult = data.results[0];
+            const bestResult = data.thumbnails[0];
             console.log(`🔍 Found thumbnail from ${bestResult.source}: ${bestResult.url}`);
             
             // Download and set the thumbnail from URL using the correct PUT endpoint
