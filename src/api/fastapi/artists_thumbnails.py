@@ -313,19 +313,25 @@ async def set_artist_thumbnail(
 
         # Download the thumbnail using ThumbnailService (with proper headers for Wikipedia)
         try:
-            from src.services.thumbnail_service import ThumbnailService
+            from src.services.thumbnail_service import (
+                ThumbnailDownloadError,
+                ThumbnailPlaceholderError,
+                ThumbnailService,
+                ThumbnailValidationError,
+            )
 
             thumbnail_service = ThumbnailService()
 
             # Use ThumbnailService which has proper User-Agent headers for Wikipedia and other sources
+            # Use raise_on_error=True for better error messages
             downloaded_path = thumbnail_service.download_artist_thumbnail(
-                artist.name, thumbnail_url
+                artist.name, thumbnail_url, raise_on_error=True
             )
 
             if not downloaded_path:
                 raise HTTPException(
                     status_code=400,
-                    detail="Failed to download thumbnail - may be a placeholder or invalid image",
+                    detail="Failed to download thumbnail - unknown error",
                 )
 
             # Update artist record
@@ -343,6 +349,26 @@ async def set_artist_thumbnail(
                 "thumbnail_url": f"/api/artists/{artist_id}/thumbnail",
             }
 
+        except ThumbnailPlaceholderError as e:
+            logger.warning(f"Placeholder image rejected for artist {artist.name}: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot use this image: {str(e)}",
+            )
+        except ThumbnailDownloadError as e:
+            logger.error(f"Failed to download thumbnail from {thumbnail_url}: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to download thumbnail: {str(e)}",
+            )
+        except ThumbnailValidationError as e:
+            logger.error(f"Thumbnail validation failed for {thumbnail_url}: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid image: {str(e)}",
+            )
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error downloading thumbnail from {thumbnail_url}: {e}")
             raise HTTPException(
@@ -582,6 +608,21 @@ async def search_artist_thumbnail(
                     logger.debug(f"No metadata available for {search_query}")
             except Exception as e:
                 logger.warning(f"Metadata image retrieval failed: {e}")
+
+        # Log summary for debugging
+        if thumbnail_results:
+            sources_found = [r["source"] for r in thumbnail_results]
+            logger.info(
+                f"Thumbnail search for '{search_query}' found {len(thumbnail_results)} results from: {sources_found}"
+            )
+        else:
+            # Check if YouTube API is configured
+            youtube_configured = bool(youtube_search_service.api_key)
+            logger.warning(
+                f"No thumbnails found for '{search_query}'. "
+                f"YouTube API configured: {youtube_configured}. "
+                f"Source: {search_request.source}"
+            )
 
         return {
             "artist_id": artist_id,

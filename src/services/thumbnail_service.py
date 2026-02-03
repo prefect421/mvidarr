@@ -7,7 +7,7 @@ import io
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 import requests
@@ -17,6 +17,30 @@ from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.thumbnail_service")
+
+
+class ThumbnailError(Exception):
+    """Base exception for thumbnail service errors"""
+
+    pass
+
+
+class ThumbnailPlaceholderError(ThumbnailError):
+    """Raised when the URL is a known placeholder image"""
+
+    pass
+
+
+class ThumbnailDownloadError(ThumbnailError):
+    """Raised when downloading the thumbnail fails"""
+
+    pass
+
+
+class ThumbnailValidationError(ThumbnailError):
+    """Raised when the downloaded image fails validation"""
+
+    pass
 
 
 class ThumbnailService:
@@ -127,7 +151,11 @@ class ThumbnailService:
         return filename
 
     def download_thumbnail(
-        self, url: str, filename: str = None, subdirectory: str = "videos"
+        self,
+        url: str,
+        filename: str = None,
+        subdirectory: str = "videos",
+        raise_on_error: bool = False,
     ) -> Optional[str]:
         """
         Download a thumbnail from a URL
@@ -136,11 +164,18 @@ class ThumbnailService:
             url: URL of the thumbnail to download
             filename: Optional filename (will be generated if not provided)
             subdirectory: Subdirectory to save in (artists/videos)
+            raise_on_error: If True, raises specific exceptions instead of returning None
 
         Returns:
             Path to downloaded thumbnail or None if failed
+
+        Raises:
+            ThumbnailDownloadError: If download fails (when raise_on_error=True)
+            ThumbnailValidationError: If image validation fails (when raise_on_error=True)
         """
         if not url:
+            if raise_on_error:
+                raise ThumbnailDownloadError("No URL provided")
             return None
 
         try:
@@ -161,13 +196,17 @@ class ThumbnailService:
             # Download the image
             headers = {"User-Agent": "MVidarr/1.0", "Accept": "image/*"}
 
+            logger.debug(f"Downloading thumbnail from {url}")
             response = requests.get(url, headers=headers, timeout=30, stream=True)
             response.raise_for_status()
 
             # Check if it's actually an image
             content_type = response.headers.get("content-type", "").lower()
             if not content_type.startswith("image/"):
-                logger.warning(f"URL does not point to an image: {url}")
+                msg = f"URL does not point to an image (content-type: {content_type})"
+                logger.warning(f"{msg}: {url}")
+                if raise_on_error:
+                    raise ThumbnailValidationError(msg)
                 return None
 
             # Download and save the image
@@ -182,13 +221,42 @@ class ThumbnailService:
             else:
                 # Remove invalid image
                 target_path.unlink(missing_ok=True)
+                msg = "Downloaded file is not a valid image or failed processing"
+                if raise_on_error:
+                    raise ThumbnailValidationError(msg)
                 return None
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to download thumbnail from {url}: {e}")
+        except requests.exceptions.Timeout as e:
+            msg = f"Timeout downloading thumbnail (30s): {e}"
+            logger.error(f"Failed to download thumbnail from {url}: {msg}")
+            if raise_on_error:
+                raise ThumbnailDownloadError(msg)
             return None
+        except requests.exceptions.ConnectionError as e:
+            msg = f"Connection error: {e}"
+            logger.error(f"Failed to download thumbnail from {url}: {msg}")
+            if raise_on_error:
+                raise ThumbnailDownloadError(msg)
+            return None
+        except requests.exceptions.HTTPError as e:
+            msg = f"HTTP error {e.response.status_code}: {e}"
+            logger.error(f"Failed to download thumbnail from {url}: {msg}")
+            if raise_on_error:
+                raise ThumbnailDownloadError(msg)
+            return None
+        except requests.exceptions.RequestException as e:
+            msg = f"Request failed: {e}"
+            logger.error(f"Failed to download thumbnail from {url}: {msg}")
+            if raise_on_error:
+                raise ThumbnailDownloadError(msg)
+            return None
+        except (ThumbnailDownloadError, ThumbnailValidationError):
+            raise
         except Exception as e:
-            logger.error(f"Unexpected error downloading thumbnail: {e}")
+            msg = f"Unexpected error: {e}"
+            logger.error(f"Unexpected error downloading thumbnail from {url}: {e}")
+            if raise_on_error:
+                raise ThumbnailDownloadError(msg)
             return None
 
     def _validate_and_process_image(
@@ -234,23 +302,35 @@ class ThumbnailService:
             logger.error(f"Invalid image file {image_path}: {e}")
             return False
 
-    def download_artist_thumbnail(self, artist_name: str, url: str) -> Optional[str]:
+    def download_artist_thumbnail(
+        self, artist_name: str, url: str, raise_on_error: bool = False
+    ) -> Optional[str]:
         """
         Download thumbnail for an artist
 
         Args:
             artist_name: Name of the artist
             url: URL of the thumbnail
+            raise_on_error: If True, raises specific exceptions instead of returning None
 
         Returns:
             Path to downloaded thumbnail or None
+
+        Raises:
+            ThumbnailPlaceholderError: If URL is a known placeholder image
+            ThumbnailDownloadError: If download fails
+            ThumbnailValidationError: If image validation fails
         """
         # Additional safety check - don't download known placeholders
         if self._is_placeholder_url(url):
+            msg = f"URL is a known placeholder image: {url}"
             logger.info(
                 f"Refusing to download placeholder thumbnail for {artist_name}: {url}"
             )
+            if raise_on_error:
+                raise ThumbnailPlaceholderError(msg)
             return None
+
         # Sanitize artist name for filename
         safe_name = "".join(
             c for c in artist_name if c.isalnum() or c in (" ", "-", "_")
@@ -258,7 +338,9 @@ class ThumbnailService:
         safe_name = safe_name.replace(" ", "_").lower()
 
         filename = self.generate_filename(url, f"{safe_name}_")
-        return self.download_thumbnail(url, filename, "artists")
+        return self.download_thumbnail(
+            url, filename, "artists", raise_on_error=raise_on_error
+        )
 
     def download_video_thumbnail(
         self, artist_name: str, video_title: str, url: str
