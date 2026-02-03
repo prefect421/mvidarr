@@ -10340,15 +10340,17 @@ function searchAllProviders() {
         }
         
         if (allResults.length > 0) {
+            // Store results for reference by index (avoids URL escaping issues in onclick)
+            window._searchResults = allResults;
             gridDiv.innerHTML = allResults.map((result, index) => `
-                <div class="search-result-item" onclick="selectSearchResult('${result.url}')">
-                    <img src="${result.url}" alt="${result.source} result" 
+                <div class="search-result-item" onclick="selectSearchResultByIndex(${index})">
+                    <img src="${result.url}" alt="${result.source} result"
                          onerror="this.parentElement.style.display='none'"
                          loading="lazy">
                     <div class="search-result-info">
                         <span class="source">${result.source}</span>
                         <span class="quality quality-${result.quality}">${result.quality.toUpperCase()}</span>
-                        <button onclick="selectSearchResult('${result.url}')" class="btn btn-small btn-primary">Use This</button>
+                        <button onclick="selectSearchResultByIndex(${index}); event.stopPropagation();" class="btn btn-small btn-primary">Use This</button>
                     </div>
                 </div>
             `).join('');
@@ -10463,6 +10465,17 @@ function selectSearchResult(url) {
     document.getElementById('thumbnailUrlInput').value = url;
     switchUploadTab('url');
     previewUrlImage();
+}
+
+function selectSearchResultByIndex(index) {
+    if (window._searchResults && window._searchResults[index]) {
+        const url = window._searchResults[index].url;
+        console.log('Selected thumbnail URL:', url);
+        selectSearchResult(url);
+    } else {
+        console.error('Search result not found at index:', index);
+        showError('Failed to select thumbnail');
+    }
 }
 
 // Thumbnail info and management
