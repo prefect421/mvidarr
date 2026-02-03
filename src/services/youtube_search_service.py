@@ -542,55 +542,69 @@ class YouTubeSearchService:
             return cached_thumbnail
 
         try:
-            # Search for channels matching the artist name
-            url = f"{self.base_url}/search"
-            params = {
-                "part": "snippet",
-                "q": artist_name,
-                "type": "channel",
-                "order": "relevance",
-                "maxResults": 5,
-                "key": self.api_key,
-            }
+            # Build search variations for better matching
+            search_names = [artist_name]
+            # Try without "The " prefix (e.g., "The Grateful Dead" -> "Grateful Dead")
+            if artist_name.lower().startswith("the "):
+                search_names.append(artist_name[4:])
 
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
+            for search_name in search_names:
+                # Search for channels matching the artist name
+                url = f"{self.base_url}/search"
+                params = {
+                    "part": "snippet",
+                    "q": search_name,
+                    "type": "channel",
+                    "order": "relevance",
+                    "maxResults": 5,
+                    "key": self.api_key,
+                }
 
-            # Track quota usage for channel search
-            track_youtube_api_call("channel", count=1)
+                response = requests.get(url, params=params, timeout=30)
+                response.raise_for_status()
 
-            data = response.json()
+                # Track quota usage for channel search
+                track_youtube_api_call("channel", count=1)
 
-            for item in data.get("items", []):
-                snippet = item.get("snippet", {})
-                channel_title = snippet.get("title", "").lower()
-                artist_name_lower = artist_name.lower()
+                data = response.json()
 
-                # Check if channel title matches artist name closely
-                if artist_name_lower in channel_title or any(
-                    word in channel_title
-                    for word in artist_name_lower.split()
-                    if len(word) > 2
-                ):
-                    # Get channel thumbnail
-                    thumbnails = snippet.get("thumbnails", {})
-                    if thumbnails:
-                        # Prefer higher resolution: high > medium > default
-                        thumbnail_url = (
-                            thumbnails.get("high", {}).get("url")
-                            or thumbnails.get("medium", {}).get("url")
-                            or thumbnails.get("default", {}).get("url")
-                        )
+                # Build list of name variations to match against channel titles
+                match_names = [artist_name.lower()]
+                if artist_name.lower().startswith("the "):
+                    match_names.append(artist_name[4:].lower())
 
-                        if thumbnail_url:
-                            logger.info(
-                                f"Found YouTube channel thumbnail for {artist_name}: {thumbnail_url}"
+                for item in data.get("items", []):
+                    snippet = item.get("snippet", {})
+                    channel_title = snippet.get("title", "").lower()
+
+                    # Check if channel title matches any name variation
+                    matches = any(name in channel_title for name in match_names) or any(
+                        word in channel_title
+                        for word in artist_name.lower().split()
+                        if len(word) > 2
+                    )
+
+                    if matches:
+                        # Get channel thumbnail
+                        thumbnails = snippet.get("thumbnails", {})
+                        if thumbnails:
+                            # Prefer higher resolution: high > medium > default
+                            thumbnail_url = (
+                                thumbnails.get("high", {}).get("url")
+                                or thumbnails.get("medium", {}).get("url")
+                                or thumbnails.get("default", {}).get("url")
                             )
-                            # Cache the thumbnail for 7 days
-                            self._cache.set("channel", cache_params, thumbnail_url)
-                            return thumbnail_url
+
+                            if thumbnail_url:
+                                logger.info(
+                                    f"Found YouTube channel thumbnail for {artist_name} (search: '{search_name}'): {thumbnail_url}"
+                                )
+                                # Cache the thumbnail for 7 days
+                                self._cache.set("channel", cache_params, thumbnail_url)
+                                return thumbnail_url
 
             # Cache the "not found" result for 24 hours to avoid repeated API calls
+            logger.debug(f"No YouTube channel thumbnail found for: {artist_name}")
             self._cache.set("channel", cache_params, None, ttl=24 * 3600)
             return None
 

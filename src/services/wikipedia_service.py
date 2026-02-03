@@ -31,22 +31,43 @@ class WikipediaService:
             str or None: URL of the artist's thumbnail image if found
         """
         try:
-            # First, search for the artist page
-            page_title = self._search_artist_page(artist_name)
-            if not page_title:
-                logger.debug(f"No Wikipedia page found for artist: {artist_name}")
-                return None
+            # Build list of name variations to try
+            variations = [artist_name]
 
-            # Get the page's main image
-            thumbnail_url = self._get_page_thumbnail(page_title)
-            if thumbnail_url:
-                logger.info(
-                    f"Found Wikipedia thumbnail for {artist_name}: {thumbnail_url}"
-                )
-                return thumbnail_url
-            else:
-                logger.debug(f"No thumbnail found on Wikipedia page for: {artist_name}")
-                return None
+            # Try without "The " prefix (e.g., "The Grateful Dead" -> "Grateful Dead")
+            if artist_name.lower().startswith("the "):
+                variations.append(artist_name[4:])
+
+            # Try without "A " prefix
+            if artist_name.lower().startswith("a "):
+                variations.append(artist_name[2:])
+
+            # For single-word names, try adding "band" or "musician"
+            if len(artist_name.split()) == 1:
+                variations.extend([f"{artist_name} band", f"{artist_name} musician"])
+
+            # Try each variation until we find a thumbnail
+            for variation in variations:
+                logger.debug(f"Trying Wikipedia search variation: {variation}")
+
+                # First, search for the artist page
+                page_title = self._search_artist_page(variation)
+                if not page_title:
+                    logger.debug(f"No Wikipedia page found for: {variation}")
+                    continue
+
+                # Get the page's main image
+                thumbnail_url = self._get_page_thumbnail(page_title)
+                if thumbnail_url:
+                    logger.info(
+                        f"Found Wikipedia thumbnail for {artist_name} (using '{variation}'): {thumbnail_url}"
+                    )
+                    return thumbnail_url
+                else:
+                    logger.debug(f"No thumbnail on Wikipedia page for: {variation}")
+
+            logger.debug(f"No thumbnail found for any variation of: {artist_name}")
+            return None
 
         except Exception as e:
             logger.warning(f"Error searching Wikipedia for {artist_name}: {e}")
