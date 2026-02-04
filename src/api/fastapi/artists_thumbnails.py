@@ -703,8 +703,14 @@ async def scan_missing_thumbnails(
             f"({len(artists_null_path)} null/empty, {stale_count} stale paths)"
         )
 
-        # Process each artist
-        for artist_data in artists_without_thumbnails:
+        # Import time for rate limiting
+        import time
+
+        # Process each artist with rate limiting to avoid 429 errors
+        for idx, artist_data in enumerate(artists_without_thumbnails):
+            # Add delay between requests to avoid rate limiting (1 second between artists)
+            if idx > 0:
+                time.sleep(1.0)
             try:
                 artist_id, artist_name = artist_data
                 logger.info(

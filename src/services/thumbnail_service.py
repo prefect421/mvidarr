@@ -193,8 +193,20 @@ class ThumbnailService:
                 logger.debug(f"Thumbnail already exists: {target_path}")
                 return str(target_path)
 
-            # Download the image
-            headers = {"User-Agent": "MVidarr/1.0", "Accept": "image/*"}
+            # Download the image with proper User-Agent for Wikimedia compliance
+            # Wikimedia requires User-Agent with contact info per their policy
+            is_wikimedia = "wikimedia.org" in url or "wikipedia.org" in url
+            if is_wikimedia:
+                headers = {
+                    "User-Agent": "MVidarr/1.0 (https://github.com/prefect421/mvidarr; mvidarr@example.com) Python-requests",
+                    "Accept": "image/*",
+                }
+                # Add small delay for Wikimedia to avoid rate limits
+                import time
+
+                time.sleep(0.5)
+            else:
+                headers = {"User-Agent": "MVidarr/1.0", "Accept": "image/*"}
 
             logger.debug(f"Downloading thumbnail from {url}")
             response = requests.get(url, headers=headers, timeout=30, stream=True)
@@ -239,7 +251,13 @@ class ThumbnailService:
                 raise ThumbnailDownloadError(msg)
             return None
         except requests.exceptions.HTTPError as e:
-            msg = f"HTTP error {e.response.status_code}: {e}"
+            status_code = e.response.status_code if e.response else 0
+            # Special handling for rate limiting (429)
+            if status_code == 429:
+                msg = f"Rate limited (429) - server is throttling requests. Try again later."
+                logger.warning(f"Rate limited downloading thumbnail from {url}")
+            else:
+                msg = f"HTTP error {status_code}: {e}"
             logger.error(f"Failed to download thumbnail from {url}: {msg}")
             if raise_on_error:
                 raise ThumbnailDownloadError(msg)
