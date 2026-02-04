@@ -648,13 +648,12 @@ async def scan_missing_thumbnails(
     try:
         from sqlalchemy import or_
 
-        # Get artists without thumbnails
+        # Get artists without thumbnails (only check thumbnail_path, not thumbnail_url)
+        # thumbnail_url is just the API endpoint, thumbnail_path is the actual file
         artists_without_thumbnails = (
             session.query(Artist.id, Artist.name)
             .filter(
                 or_(
-                    Artist.thumbnail_url.is_(None),
-                    Artist.thumbnail_url == "",
                     Artist.thumbnail_path.is_(None),
                     Artist.thumbnail_path == "",
                 )
