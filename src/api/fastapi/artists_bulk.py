@@ -956,3 +956,111 @@ async def execute_retag_command(
     except Exception as e:
         logger.error(f"Error executing retag command: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========================================================================================
+# BULK THUMBNAIL SCAN
+# ========================================================================================
+
+
+@router.post("/bulk-thumbnail-scan")
+async def bulk_thumbnail_scan(
+    request: BulkDeleteRequest,  # Reuses artist_ids field
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
+):
+    """
+    Scan selected artists for missing thumbnails and download them.
+
+    This endpoint allows users to scan specific artists for thumbnails
+    rather than scanning all artists at once.
+    """
+    try:
+        from src.services.thumbnail_service import ThumbnailService
+        from src.services.wikipedia_service import wikipedia_service
+        from src.services.youtube_search_service import youtube_search_service
+
+        if not request.artist_ids:
+            raise HTTPException(status_code=400, detail="No artist IDs provided")
+
+        thumbnail_service = ThumbnailService()
+        scanned_count = 0
+        found_count = 0
+
+        for artist_id in request.artist_ids:
+            try:
+                artist = session.query(Artist).filter(Artist.id == artist_id).first()
+
+                if not artist:
+                    continue
+
+                scanned_count += 1
+
+                # Skip if already has thumbnail
+                if artist.thumbnail_path and Path(artist.thumbnail_path).exists():
+                    logger.debug(f"Artist {artist.name} already has thumbnail")
+                    continue
+
+                thumbnail_url = None
+
+                # Try Wikipedia first
+                try:
+                    wikipedia_url = wikipedia_service.search_artist_thumbnail(
+                        artist.name
+                    )
+                    if wikipedia_url:
+                        thumbnail_url = wikipedia_url
+                        logger.info(f"Found Wikipedia thumbnail for {artist.name}")
+                except Exception as e:
+                    logger.debug(f"Wikipedia search failed for {artist.name}: {e}")
+
+                # Try YouTube if Wikipedia didn't work
+                if not thumbnail_url:
+                    try:
+                        youtube_url = (
+                            youtube_search_service.search_artist_channel_thumbnail(
+                                artist.name
+                            )
+                        )
+                        if youtube_url:
+                            thumbnail_url = youtube_url
+                            logger.info(f"Found YouTube thumbnail for {artist.name}")
+                    except Exception as e:
+                        logger.debug(f"YouTube search failed for {artist.name}: {e}")
+
+                # Download and save thumbnail
+                if thumbnail_url:
+                    try:
+                        downloaded_path = thumbnail_service.download_artist_thumbnail(
+                            artist.name, thumbnail_url
+                        )
+
+                        if downloaded_path:
+                            artist.thumbnail_path = downloaded_path
+                            artist.thumbnail_url = f"/api/artists/{artist_id}/thumbnail"
+                            session.commit()
+                            found_count += 1
+                            logger.info(
+                                f"Successfully downloaded thumbnail for {artist.name}"
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to download thumbnail for {artist.name}: {e}"
+                        )
+
+            except Exception as e:
+                logger.error(f"Error scanning thumbnail for artist {artist_id}: {e}")
+                continue
+
+        return {
+            "success": True,
+            "scanned_count": scanned_count,
+            "found_count": found_count,
+            "message": f"Found thumbnails for {found_count} out of {scanned_count} artists",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk thumbnail scan: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

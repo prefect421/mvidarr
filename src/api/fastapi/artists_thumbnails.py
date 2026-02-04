@@ -729,6 +729,7 @@ async def scan_missing_thumbnails(
                                 .first()
                             )
                             if artist:
+                                artist.thumbnail_path = downloaded_path
                                 artist.thumbnail_url = (
                                     f"/api/artists/{artist_id}/thumbnail"
                                 )
