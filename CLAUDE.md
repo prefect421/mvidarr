@@ -214,17 +214,27 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.11.8 - Planning
+### Current Phase: v0.11.9 - Planning
 
-#### Versioning Policy (Updated 2026-02-02)
-- **Current Version**: 0.11.7 (Released 2026-02-02)
-- **Next Version**: 0.11.8 (Planning)
+#### Versioning Policy (Updated 2026-02-04)
+- **Current Version**: 0.11.8 (Released 2026-02-04)
+- **Next Version**: 0.11.9 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.11.8** (2026-02-04): Thumbnail System Overhaul
+  - ✅ Fixed artist thumbnail manual setting (was failing silently)
+  - ✅ Fixed bulk scan not finding thumbnails (0/264 → 231/264 success)
+  - ✅ Bulk scan now validates thumbnail files exist on disk
+  - ✅ Auto-cleanup of stale/missing thumbnail database paths
+  - ✅ Google Images prioritized over Wikipedia for artist thumbnails
+  - ✅ Browser-like headers for Wikimedia (fixes 403/429 errors)
+  - ✅ Rate limiting (1s delay) to avoid API throttling
+  - ✅ Frontend displays actual API error messages
+  - ✅ PR #189: Added REDIS_HOST and REDIS_PORT environment variables
 - **v0.11.7** (2026-02-02): Video Filtering, Extended Discovery & Blacklist Fix
   - ✅ Issue #190: Fixed blacklist not saving info
   - ✅ Issue #191: Per-artist video type filtering for autodownload
@@ -237,7 +247,12 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 - **v0.10.x**: Beta testing and security hardening phases
 - **v0.9.9** (2025-11-04): Code cleanup & optimization complete
 
-#### v0.11.8 Release 🎯 PLANNING
+#### v0.11.8 Release ✅ COMPLETE
+- **Status**: Released 2026-02-04
+- **Summary**: Thumbnail System Overhaul - fixed manual/bulk thumbnail setting, Google Images priority, Wikimedia compatibility
+- **Key Metrics**: Bulk scan success improved from 0% to 87% (231/264 artists)
+
+#### v0.11.9 Release 🎯 PLANNING
 - **Status**: Planning phase
 - **Open Issues**:
   - 🐛 **Issue #180** (Low Priority): Themes not automatically listed in Settings > Themes page
@@ -251,9 +266,9 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.11.7 (Video Filtering, Extended Discovery & Blacklist Fix)
+- **Current Version**: v0.11.8 (Thumbnail System Overhaul)
 - **Development Focus**: Theme discovery, stability
-- **Next Version**: v0.11.8 (Issue #180)
+- **Next Version**: v0.11.9 (Issue #180)
 
 ### Code Development Process
 1. Create feature branch from `dev` branch

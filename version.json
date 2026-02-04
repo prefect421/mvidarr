@@ -1,23 +1,30 @@
 {
   "version": "0.11.8",
-  "build_date": "2026-02-04T14:24:20.358916",
-  "git_commit": "a27525e",
+  "build_date": "2026-02-04T21:30:00.000000",
+  "git_commit": "f3d2c96",
   "git_branch": "dev",
-  "release_name": "v0.11.8 - Thumbnail Fix & Redis Configuration",
+  "release_name": "v0.11.8 - Thumbnail System Overhaul",
   "features": [
-    "🖼️ Fixed thumbnail scan not saving paths to database",
-    "🔍 Added bulk-thumbnail-scan endpoint for scanning selected artists",
-    "🔧 Added REDIS_HOST and REDIS_PORT environment variables (PR #189)",
-    "📡 External Redis server support for non-default deployments",
-    "💾 Thumbnails now properly persist across container rebuilds"
+    "🖼️ Fixed artist thumbnail setting (manual and bulk scan)",
+    "🔍 Bulk scan now validates thumbnail files actually exist on disk",
+    "🧹 Automatic cleanup of stale/missing thumbnail paths in database",
+    "🌐 Google Images prioritized over Wikipedia for artist thumbnails",
+    "🛡️ Browser-like headers for Wikimedia downloads (fixes 403/429 errors)",
+    "⏱️ Rate limiting (1s delay) to avoid API throttling",
+    "💬 Frontend now displays actual API error messages",
+    "🔧 Added REDIS_HOST and REDIS_PORT environment variables (PR #189)"
   ],
   "resolved_issues": [
-    "Thumbnail paths not saved to database during scan",
-    "Missing bulk-thumbnail-scan API endpoint",
+    "Artist thumbnail cannot be set manually",
+    "Bulk scan not replacing placeholder images (0/264 found → 231/264)",
+    "Wikimedia 403 Forbidden and 429 rate limiting errors",
+    "Frontend showing generic error instead of actual API error details",
+    "Stale thumbnail_path values preventing rescan of missing files",
     "#189 - Add missing ENV to Docker Compose"
   ],
   "upgrade_notes": [
-    "⚠️ Run 'Scan Missing Thumbnails' from Artists page if thumbnails show placeholders",
+    "⚠️ Run 'Scan Missing Thumbnails' from Artists page to find thumbnails",
+    "Scan will automatically clear stale paths and search Google Images first",
     "New REDIS_HOST and REDIS_PORT variables available for external Redis"
   ]
 }
