@@ -193,13 +193,19 @@ class ThumbnailService:
                 logger.debug(f"Thumbnail already exists: {target_path}")
                 return str(target_path)
 
-            # Download the image with proper User-Agent for Wikimedia compliance
-            # Wikimedia requires User-Agent with contact info per their policy
+            # Download the image with proper headers
             is_wikimedia = "wikimedia.org" in url or "wikipedia.org" in url
             if is_wikimedia:
+                # Wikimedia requires browser-like headers to avoid 403
                 headers = {
-                    "User-Agent": "MVidarr/1.0 (https://github.com/prefect421/mvidarr; mvidarr@example.com) Python-requests",
-                    "Accept": "image/*",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Accept-Encoding": "gzip, deflate, br",
+                    "Referer": "https://en.wikipedia.org/",
+                    "Sec-Fetch-Dest": "image",
+                    "Sec-Fetch-Mode": "no-cors",
+                    "Sec-Fetch-Site": "cross-site",
                 }
                 # Add small delay for Wikimedia to avoid rate limits
                 import time
