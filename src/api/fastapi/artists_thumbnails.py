@@ -720,20 +720,57 @@ async def scan_missing_thumbnails(
                 thumbnail_url = None
 
                 # Try multiple sources for thumbnails
-                # 1. Try Wikipedia first (usually high quality)
+                # 1. Try Google Images first (most variety)
                 try:
-                    wikipedia_url = wikipedia_service.search_artist_thumbnail(
-                        artist_name
-                    )
-                    if wikipedia_url and not _is_placeholder_url(wikipedia_url):
-                        thumbnail_url = wikipedia_url
-                        logger.info(
-                            f"Found Wikipedia thumbnail for {artist_name}: {wikipedia_url}"
-                        )
-                except Exception as e:
-                    logger.debug(f"Wikipedia search failed for {artist_name}: {e}")
+                    import re
+                    from urllib.parse import quote
 
-                # 2. Try YouTube channel thumbnail if Wikipedia didn't work
+                    image_query = f"{artist_name} musician artist photo"
+                    encoded_query = quote(image_query)
+                    search_url = f"https://www.google.com/search?q={encoded_query}&tbm=isch&safe=off"
+
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    }
+
+                    import requests
+
+                    response = requests.get(search_url, headers=headers, timeout=10)
+                    if response.status_code == 200:
+                        # Extract image URLs from the page
+                        image_pattern = r'"(https?://[^"]*\.(?:jpg|jpeg|png))"'
+                        matches = re.findall(image_pattern, response.text)
+
+                        # Filter results - skip Google's own domains and tiny images
+                        for match in matches[:10]:
+                            if (
+                                "gstatic.com" not in match
+                                and "google.com" not in match
+                                and not _is_placeholder_url(match)
+                            ):
+                                thumbnail_url = match
+                                logger.info(
+                                    f"Found Google Images thumbnail for {artist_name}: {thumbnail_url}"
+                                )
+                                break
+                except Exception as e:
+                    logger.debug(f"Google Images search failed for {artist_name}: {e}")
+
+                # 2. Try Wikipedia if Google didn't work
+                if not thumbnail_url:
+                    try:
+                        wikipedia_url = wikipedia_service.search_artist_thumbnail(
+                            artist_name
+                        )
+                        if wikipedia_url and not _is_placeholder_url(wikipedia_url):
+                            thumbnail_url = wikipedia_url
+                            logger.info(
+                                f"Found Wikipedia thumbnail for {artist_name}: {wikipedia_url}"
+                            )
+                    except Exception as e:
+                        logger.debug(f"Wikipedia search failed for {artist_name}: {e}")
+
+                # 3. Try YouTube channel thumbnail if others didn't work
                 if not thumbnail_url:
                     try:
                         from src.services.youtube_search_service import (
