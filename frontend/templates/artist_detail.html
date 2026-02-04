@@ -10241,7 +10241,14 @@ function uploadFromUrl() {
         },
         body: JSON.stringify({ thumbnail_url: url })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.detail || err.error || `HTTP ${response.status}: Failed to update thumbnail`);
+            });
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             showSuccess('Thumbnail updated from URL!');
@@ -10250,12 +10257,12 @@ function uploadFromUrl() {
             loadThumbnailInfo();
             loadArtistDetails();
         } else {
-            showError(data.error || 'Failed to update thumbnail');
+            showError(data.detail || data.error || 'Failed to update thumbnail');
         }
     })
     .catch(error => {
         console.error('URL upload error:', error);
-        showError('Failed to upload from URL');
+        showError(error.message || 'Failed to upload from URL');
     });
 }
 

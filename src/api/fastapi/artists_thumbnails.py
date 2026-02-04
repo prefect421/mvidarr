@@ -646,12 +646,13 @@ async def scan_missing_thumbnails(
 ):
     """Scan all artists missing thumbnails and try to find images"""
     try:
+        from pathlib import Path
+
         from sqlalchemy import or_
 
-        # Get artists without thumbnails (only check thumbnail_path, not thumbnail_url)
-        # thumbnail_url is just the API endpoint, thumbnail_path is the actual file
-        artists_without_thumbnails = (
-            session.query(Artist.id, Artist.name)
+        # Get artists with NULL/empty thumbnail_path
+        artists_null_path = (
+            session.query(Artist.id, Artist.name, Artist.thumbnail_path)
             .filter(
                 or_(
                     Artist.thumbnail_path.is_(None),
@@ -661,11 +662,45 @@ async def scan_missing_thumbnails(
             .all()
         )
 
+        # Also get artists with thumbnail_path set - we'll check if files exist
+        artists_with_path = (
+            session.query(Artist.id, Artist.name, Artist.thumbnail_path)
+            .filter(
+                Artist.thumbnail_path.isnot(None),
+                Artist.thumbnail_path != "",
+            )
+            .all()
+        )
+
+        # Build list of artists needing thumbnails:
+        # 1. Those with NULL/empty path
+        # 2. Those with path set but file doesn't exist
+        artists_without_thumbnails = []
+
+        for artist_id, artist_name, thumb_path in artists_null_path:
+            artists_without_thumbnails.append((artist_id, artist_name))
+
+        stale_count = 0
+        for artist_id, artist_name, thumb_path in artists_with_path:
+            if not Path(thumb_path).exists():
+                artists_without_thumbnails.append((artist_id, artist_name))
+                stale_count += 1
+                # Clear the stale path from database
+                artist = session.query(Artist).filter(Artist.id == artist_id).first()
+                if artist:
+                    artist.thumbnail_path = None
+                    artist.thumbnail_url = None
+
+        if stale_count > 0:
+            session.commit()
+            logger.info(f"Cleared {stale_count} stale thumbnail paths from database")
+
         missing_count = len(artists_without_thumbnails)
         updated_count = 0
 
         logger.info(
-            f"Starting thumbnail scan for {missing_count} artists without thumbnails"
+            f"Starting thumbnail scan for {missing_count} artists without thumbnails "
+            f"({len(artists_null_path)} null/empty, {stale_count} stale paths)"
         )
 
         # Process each artist
@@ -757,6 +792,7 @@ async def scan_missing_thumbnails(
             "success": True,
             "message": f"Thumbnail scan completed",
             "missing_count": missing_count,
+            "stale_cleared": stale_count,
             "updated_count": updated_count,
             "found_rate": (
                 f"{(updated_count/missing_count*100):.1f}%"

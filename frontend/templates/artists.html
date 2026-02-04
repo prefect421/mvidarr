@@ -1049,11 +1049,15 @@ function proceedScanMissingThumbnails() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccess(`Scan completed! Found thumbnails for ${data.updated_count} out of ${data.missing_count} artists without thumbnails.`);
+            let msg = `Scan completed! Found thumbnails for ${data.updated_count} out of ${data.missing_count} artists.`;
+            if (data.stale_cleared > 0) {
+                msg += ` (Cleared ${data.stale_cleared} stale/missing file references)`;
+            }
+            showSuccess(msg);
             // Refresh the artist list to show updated thumbnails
             loadArtists(currentPage);
         } else {
-            alert('Error: ' + data.error);
+            alert('Error: ' + (data.detail || data.error));
         }
     })
     .catch(error => {
