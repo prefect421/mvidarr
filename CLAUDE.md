@@ -254,21 +254,20 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 #### v0.11.9 Release 🎯 PLANNING
 - **Status**: Planning phase
-- **Open Issues**:
-  - 🐛 **Issue #180** (Low Priority): Themes not automatically listed in Settings > Themes page
-- **Development Focus**: Theme discovery fix, stability improvements
+- **Open Issues**: None currently tracked
+- **Development Focus**: Stability improvements, user-reported issues
 - **Next Steps**:
-  - Fix automatic theme discovery/listing (#180)
   - Address any new issues reported
   - Continue documentation updates
+  - Performance optimizations
 
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
 - **Current Version**: v0.11.8 (Thumbnail System Overhaul)
-- **Development Focus**: Theme discovery, stability
-- **Next Version**: v0.11.9 (Issue #180)
+- **Development Focus**: Stability, performance
+- **Next Version**: v0.11.9
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
