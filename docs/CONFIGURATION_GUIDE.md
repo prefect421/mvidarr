@@ -401,6 +401,14 @@ DB_NAME=mvidarr
 DB_USER=mvidarr
 DB_PASSWORD=secure-password
 
+# Redis Configuration
+# Use these when connecting to a non-default or external Redis server
+REDIS_HOST=redis           # Redis hostname (default: redis)
+REDIS_PORT=6379            # Redis port (default: 6379)
+REDIS_URL=redis://redis:6379/0         # Full Redis URL for main cache
+CELERY_BROKER_URL=redis://redis:6379/0 # Celery broker URL
+CELERY_RESULT_BACKEND=redis://redis:6379/1  # Celery results backend
+
 # External Services
 IMVDB_API_KEY=your-imvdb-api-key
 YOUTUBE_API_KEY=your-youtube-api-key

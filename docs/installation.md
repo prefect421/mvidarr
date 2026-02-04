@@ -206,8 +206,10 @@ After installing dependencies, configure these required MVidarr settings:
   - `DB_NAME=mvidarr`
 
 - ✅ **Redis Settings:**
-  - `REDIS_HOST=redis` (your Redis container name)
-  - Auto-configured if using default container name
+  - `REDIS_HOST=redis` (your Redis container name or external Redis hostname)
+  - `REDIS_PORT=6379` (Redis port, default 6379)
+  - These are used for health checks and connectivity verification
+  - For external Redis: Update both variables to match your Redis server
 
 - ✅ **Security:**
   - `SECRET_KEY=` (generate with `openssl rand -base64 32`)

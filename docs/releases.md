@@ -8,12 +8,44 @@ permalink: /releases/
 
 Track MVidarr's development progress through our release history and upcoming milestones.
 
-## 🚀 Current Release: v0.11.7
+## 🚀 Current Release: v0.11.8
+
+**Released**: February 4, 2026
+**Focus**: Thumbnail Fix & Redis Configuration
+
+### 🎉 What's New
+
+#### Artist Thumbnail Fix ✅
+- **Database Path Storage**: Fixed bug where thumbnail scan downloaded images but didn't save paths to database
+- **Bulk Thumbnail Scan**: Added new endpoint for scanning selected artists (previously missing)
+- **Persistent Thumbnails**: Thumbnails now properly persist across container rebuilds
+
+> ⚠️ **Action Required**: If your artist thumbnails are showing placeholders after updating, run a thumbnail scan:
+> 1. Go to **Artists** page
+> 2. Click **Scan Missing Thumbnails** button to scan all artists, OR
+> 3. Select specific artists and use **Bulk Actions → Scan Thumbnails**
+
+#### Redis Configuration ✅ (PR #189)
+- **New Environment Variables**: Added `REDIS_HOST` and `REDIS_PORT` for non-default Redis deployments
+- **External Redis Support**: Users can now easily configure external Redis servers
+- **Health Check Integration**: Variables used by entrypoint.sh for connectivity verification
+
+### Docker Image
+```bash
+docker pull ghcr.io/prefect421/mvidarr:v0.11.8
+docker pull ghcr.io/prefect421/mvidarr:latest
+```
+
+**Git Commit**: `a27525e` | **Build**: 2026-02-04
+
+---
+
+## 📈 Previous Release: v0.11.7
 
 **Released**: February 2, 2026
 **Focus**: Video Filtering, Extended Video Discovery & Blacklist Fix
 
-### 🎉 What's New
+### What's New
 
 #### Per-Artist Video Type Filtering ✅ (Issue #191)
 - **Video Type Selection**: Users can now specify which video types to download per artist

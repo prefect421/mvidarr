@@ -1,22 +1,23 @@
 {
-  "version": "0.11.7",
-  "build_date": "2026-02-03T16:54:47.599835",
-  "git_commit": "526eab4",
+  "version": "0.11.8",
+  "build_date": "2026-02-04T14:24:20.358916",
+  "git_commit": "a27525e",
   "git_branch": "dev",
-  "release_name": "v0.11.7 - Video Filtering, Extended Discovery & Blacklist Fix",
+  "release_name": "v0.11.8 - Thumbnail Fix & Redis Configuration",
   "features": [
-    "🎛️ Per-artist video type filtering for autodownload (Official, Live, Lyric, etc.)",
-    "🎬 YouTube discovery now finds live performances, concerts, acoustic versions",
-    "🔍 Multi-search strategy bypasses Music category limitations",
-    "📈 Increased default max_videos_per_discovery from 5 to 50",
-    "⚡ API optimization for improved performance and response times",
-    "🔧 Fixed download completion callback not updating records",
-    "📊 Fixed Download History not showing completed downloads",
-    "🚫 Fixed blacklist not saving when deleting videos with 'Add to blacklist'",
-    "🖼️ Improved thumbnail error handling with specific error messages"
+    "🖼️ Fixed thumbnail scan not saving paths to database",
+    "🔍 Added bulk-thumbnail-scan endpoint for scanning selected artists",
+    "🔧 Added REDIS_HOST and REDIS_PORT environment variables (PR #189)",
+    "📡 External Redis server support for non-default deployments",
+    "💾 Thumbnails now properly persist across container rebuilds"
   ],
   "resolved_issues": [
-    "#190 - Blacklist not saving info",
-    "#191 - Video Filtering per-artist"
+    "Thumbnail paths not saved to database during scan",
+    "Missing bulk-thumbnail-scan API endpoint",
+    "#189 - Add missing ENV to Docker Compose"
+  ],
+  "upgrade_notes": [
+    "⚠️ Run 'Scan Missing Thumbnails' from Artists page if thumbnails show placeholders",
+    "New REDIS_HOST and REDIS_PORT variables available for external Redis"
   ]
 }

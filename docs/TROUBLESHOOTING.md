@@ -412,8 +412,28 @@ A: Check database connection, API keys, and browser console for errors
 **Q: "Health check failed" error**
 A: Usually indicates service isn't running or database issues. Check logs for details
 
-**Q: Artist thumbnails not loading**
-A: Check thumbnail directory permissions and IMVDB API key
+**Q: Artist thumbnails not loading / showing placeholders**
+A: This can happen after updates or container rebuilds. Solutions:
+
+1. **Run Thumbnail Scan**: Go to Artists page → Click "Scan Missing Thumbnails"
+   - This searches Wikipedia and YouTube for artist images
+   - Downloads and saves thumbnails with proper database paths
+
+2. **Scan Selected Artists**: Select specific artists → Bulk Actions → Scan Thumbnails
+
+3. **Check Volume Mounts**: Ensure your thumbnails volume is correctly mounted:
+   ```bash
+   docker exec mvidarr ls -la /app/data/thumbnails/artists/
+   ```
+
+4. **Verify Permissions**: Thumbnail directory needs read/write access:
+   ```bash
+   # Check ownership matches PUID/PGID in your .env
+   docker exec mvidarr ls -la /app/data/thumbnails/
+   ```
+
+**Q: Thumbnails disappeared after container rebuild**
+A: The thumbnail files are stored on a Docker volume. If the volume wasn't preserved or mapped correctly, you'll need to re-download them using the "Scan Missing Thumbnails" feature
 
 **Q: Search not working**
 A: Verify database connection and check for JavaScript errors in browser console
