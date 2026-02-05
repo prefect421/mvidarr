@@ -254,12 +254,38 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 #### v0.11.9 Release 🎯 PLANNING
 - **Status**: Planning phase
-- **Open Issues**: None currently tracked
-- **Development Focus**: Stability improvements, user-reported issues
-- **Next Steps**:
-  - Address any new issues reported
-  - Continue documentation updates
-  - Performance optimizations
+- **Focus**: Security - Dependency Vulnerability Fixes
+- **Open Code Scanning Alerts**: 11 total (3 error, 4 warning, 4 note)
+
+##### Critical (Error) - Must Fix
+| CVE | Package | Current | Target | Description |
+|-----|---------|---------|--------|-------------|
+| CVE-2026-24486 | python-multipart | 0.0.20 | 0.0.22 | Arbitrary file write via path traversal |
+| CVE-2026-21441 | urllib3 | 2.6.0 | 2.6.3 | Decompression-bomb bypass on redirects |
+| CVE-2025-69223 | aiohttp | 3.12.14 | 3.13.3 | Zip bomb vulnerability |
+
+##### Warning - Should Fix
+| CVE | Package | Current | Target | Description |
+|-----|---------|---------|--------|-------------|
+| CVE-2026-21860 | werkzeug | 3.1.4 | 3.1.5 | Windows special device names bypass |
+| CVE-2025-69227 | aiohttp | 3.12.14 | 3.13.3 | DoS via crafted POST request |
+| CVE-2025-69228 | aiohttp | 3.12.14 | 3.13.3 | DoS via memory exhaustion |
+| CVE-2025-69229 | aiohttp | 3.12.14 | 3.13.3 | DoS via excessive CPU in chunked handling |
+
+##### Note - Low Priority
+| CVE | Package | Description |
+|-----|---------|-------------|
+| CVE-2025-69224 | aiohttp | Request smuggling via non-ASCII characters |
+| CVE-2025-69225 | aiohttp | Request smuggling via non-ASCII decimals |
+| CVE-2025-69226 | aiohttp | Information disclosure via path normalization |
+| CVE-2025-69230 | aiohttp | DoS via invalid cookies |
+
+##### Implementation Plan
+1. Update `requirements.txt` with patched versions
+2. Update `requirements-prod.txt` if different
+3. Test application functionality after updates
+4. Rebuild Docker image
+5. Verify code scanning alerts are resolved
 
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
