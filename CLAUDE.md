@@ -292,31 +292,49 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 ##### Problem
 Downloads consistently returning 360p instead of best available quality.
 
+##### Current Flow (Working Correctly)
+```
+Database Settings (default_video_quality, max_video_quality, min_video_quality)
+    ↓
+video_quality_service.get_user_quality_preferences()
+    ↓
+video_quality_service.generate_ytdlp_format_string()
+    ↓
+ytdlp_download_manager.start_download(quality_format_string)
+    ↓
+youtube_download_engine.download_video(quality=format_string)
+```
+
 ##### Root Cause Analysis
-- Current format string: `bestvideo[height<=1080]+bestaudio/best[height<=1080]/best`
-- Missing format sorting (`-S` flag) to prioritize resolution
+- Format string IS being generated from user settings
+- **Missing format sorting (`-S` flag)** to prioritize resolution over bitrate
+- yt-dlp may select lower quality if bitrate is higher
 - TV client may have limited format availability
-- No explicit codec preferences
+- No explicit codec preferences in yt-dlp command
 
 ##### Recommended Fixes (youtube_download_engine.py)
 
-1. **Add Format Sorting** - Explicitly prioritize resolution over bitrate:
+1. **Add Format Sorting (`-S` flag)** - CRITICAL: Prioritize resolution over bitrate
    ```python
-   cmd.extend(["-S", "res:1080,ext:mp4:m4a,vcodec:h264"])
+   # In _build_download_command() after format string:
+   # This ensures yt-dlp selects higher resolution even if lower bitrate
+   cmd.extend(["-S", "res,ext:mp4:m4a,vcodec:h264,acodec:aac"])
    ```
+   **Location**: `youtube_download_engine.py` line ~294 (after `-f` format string)
 
-2. **Improve Format String** - More robust fallback chain:
+2. **Parse User's Max Quality Setting** - Extract height from format string
    ```python
-   # Current (problematic):
-   "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
-
-   # Recommended:
-   "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best"
+   # Extract max height from quality format string for -S parameter
+   import re
+   height_match = re.search(r'height<=(\d+)', quality)
+   max_height = height_match.group(1) if height_match else "1080"
+   cmd.extend(["-S", f"res:{max_height},ext:mp4:m4a,vcodec:h264"])
    ```
 
 3. **Add Player Client Fallback** - Try multiple clients for better format availability:
    ```python
-   "--extractor-args", "youtube:player_client=tv,web"
+   # In _get_tv_client_args():
+   "--extractor-args", "youtube:player_client=tv,web"  # Fallback to web for more formats
    ```
 
 4. **Force MP4 Container** - Consistent output format:
@@ -326,7 +344,7 @@ Downloads consistently returning 360p instead of best available quality.
 
 5. **Verbose Format Debugging** - Add logging to diagnose issues:
    ```python
-   "--verbose", "-F"  # List available formats for debugging
+   "--print-to-file", "formats", "/tmp/ytdlp_formats.txt"  # Log available formats
    ```
 
 ##### Implementation Files
