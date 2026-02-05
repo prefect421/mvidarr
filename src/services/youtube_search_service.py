@@ -63,7 +63,11 @@ class YouTubeSearchService:
             }
 
         # Log API key presence (first/last 4 chars for debugging, masked middle)
-        key_preview = f"{current_api_key[:4]}...{current_api_key[-4:]}" if len(current_api_key) > 8 else "***"
+        key_preview = (
+            f"{current_api_key[:4]}...{current_api_key[-4:]}"
+            if len(current_api_key) > 8
+            else "***"
+        )
         logger.debug(f"YouTube API key present: {key_preview}")
 
         # Check cache first
