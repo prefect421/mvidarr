@@ -1,7 +1,7 @@
 {
   "version": "0.11.9",
   "build_date": "2026-02-05T19:00:00.000000",
-  "git_commit": "64d20ff",
+  "git_commit": "789a787",
   "git_branch": "dev",
   "release_name": "v0.11.9 - Security Updates, Video Quality & Discovery Fix",
   "features": [
