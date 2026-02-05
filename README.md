@@ -22,34 +22,35 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.11.7 - Video Filtering, Extended Discovery & Blacklist Fix**
+## 🚀 **LATEST: v0.11.8 - Thumbnail System Overhaul**
 
-**Released**: February 2, 2026
+**Released**: February 4, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Per-Artist Video Type Filtering ✅ (Issue #191)
-- **🎛️ Video Type Selection**: Users can now specify which video types to download per artist
-- **📋 Supported Types**: Official Video, Official Music Video, Live, Lyric Video, Lyrics, Other
-- **🔄 Autodownload Integration**: Filtering preferences respected during automatic video discovery
-- **☑️ Flexible Configuration**: Checkbox/multiselect options for granular control
+### Thumbnail System Overhaul ✅
+Complete fix of the artist thumbnail system, improving bulk scan success from **0% to 87%** (231/264 artists).
 
-### Extended Video Discovery ✅
-- **🎬 Live Performances**: YouTube discovery now finds live performances, concerts, acoustic versions
-- **🔍 Multi-Search Strategy**: Bypasses YouTube Music category limitations for better results
-- **📈 Increased Discovery**: Default max_videos_per_discovery increased from 5 to 50
+- **🖼️ Manual Thumbnail Setting Fixed**: Frontend now displays actual API error messages instead of generic failures
+- **🔍 Bulk Scan Validation**: Scan now validates thumbnail files actually exist on disk
+- **🧹 Stale Path Cleanup**: Automatic cleanup of database paths pointing to non-existent files
+- **🌐 Google Images Priority**: Searches Google Images first, then Wikipedia, then YouTube
+- **🛡️ Wikimedia Compatibility**: Browser-like headers to avoid 403/429 errors
+- **⏱️ Rate Limiting**: 1-second delay between artists to avoid API throttling
 
-### API Optimization ✅
-- **⚡ Performance Improvements**: Optimized API endpoints for faster response times
-- **🗄️ Streamlined Queries**: Improved database queries and response handling
-- **📊 Better Resource Usage**: Enhanced efficiency in API request processing
+### Redis Configuration ✅ (PR #189)
+- **🔧 REDIS_HOST**: New environment variable for external Redis server hostname
+- **🔧 REDIS_PORT**: New environment variable for external Redis server port
 
-### Critical Bug Fixes ✅ (Issue #190)
-- **🚫 Blacklist Persistence**: Fixed blacklist not saving when deleting videos with 'Add to blacklist' option
-- **🔧 Download Callback**: Fixed download completion callback not updating records
-- **📊 Download History**: Fixed Download History not showing completed downloads
+> **Action Required**: Run "Scan Missing Thumbnails" from the Artists page to populate thumbnails.
 
 ## 🎯 Previous Releases
+
+### v0.11.7 - Video Filtering, Extended Discovery & Blacklist Fix (February 2, 2026)
+- Per-artist video type filtering for autodownload (Issue #191)
+- Extended YouTube discovery (live performances, concerts, acoustic versions)
+- Increased max_videos_per_discovery from 5 to 50
+- Fixed blacklist not saving info (Issue #190)
 
 ### v0.11.6 - Blacklist POST Hotfix (January 2, 2026)
 - Fixed non-existent fields from blacklist POST endpoint
@@ -113,7 +114,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.11.7`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.11.8`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -265,4 +266,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.11.7** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.11.8** - Built with ❤️ for music video enthusiasts
