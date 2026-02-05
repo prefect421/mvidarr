@@ -1,30 +1,28 @@
 {
-  "version": "0.11.8",
-  "build_date": "2026-02-04T21:30:00.000000",
-  "git_commit": "f3d2c96",
+  "version": "0.11.9",
+  "build_date": "2026-02-05T18:30:00.000000",
+  "git_commit": "pending",
   "git_branch": "dev",
-  "release_name": "v0.11.8 - Thumbnail System Overhaul",
+  "release_name": "v0.11.9 - Security Updates & Video Quality Fix",
   "features": [
-    "🖼️ Fixed artist thumbnail setting (manual and bulk scan)",
-    "🔍 Bulk scan now validates thumbnail files actually exist on disk",
-    "🧹 Automatic cleanup of stale/missing thumbnail paths in database",
-    "🌐 Google Images prioritized over Wikipedia for artist thumbnails",
-    "🛡️ Browser-like headers for Wikimedia downloads (fixes 403/429 errors)",
-    "⏱️ Rate limiting (1s delay) to avoid API throttling",
-    "💬 Frontend now displays actual API error messages",
-    "🔧 Added REDIS_HOST and REDIS_PORT environment variables (PR #189)"
+    "🔒 Security: Updated python-multipart 0.0.20 → 0.0.22 (CVE-2026-24486)",
+    "🔒 Security: Updated urllib3 2.6.0 → 2.6.3 (CVE-2026-21441)",
+    "🔒 Security: Updated aiohttp 3.12.14 → 3.13.3 (multiple CVEs)",
+    "🔒 Security: Updated werkzeug 3.1.4 → 3.1.5 (CVE-2026-21860)",
+    "🎬 Video Quality: Added format sorting (-S) to prioritize resolution",
+    "🎬 Video Quality: TV client now falls back to web for more formats",
+    "🎬 Video Quality: Respects user's max_video_quality database setting"
   ],
   "resolved_issues": [
-    "Artist thumbnail cannot be set manually",
-    "Bulk scan not replacing placeholder images (0/264 found → 231/264)",
-    "Wikimedia 403 Forbidden and 429 rate limiting errors",
-    "Frontend showing generic error instead of actual API error details",
-    "Stale thumbnail_path values preventing rescan of missing files",
-    "#189 - Add missing ENV to Docker Compose"
+    "CVE-2026-24486: python-multipart path traversal vulnerability",
+    "CVE-2026-21441: urllib3 decompression-bomb bypass on redirects",
+    "CVE-2025-69223: aiohttp zip bomb vulnerability",
+    "CVE-2025-69227/28/29: aiohttp DoS vulnerabilities",
+    "CVE-2026-21860: werkzeug Windows device names bypass",
+    "360p video downloads instead of user's quality setting"
   ],
   "upgrade_notes": [
-    "⚠️ Run 'Scan Missing Thumbnails' from Artists page to find thumbnails",
-    "Scan will automatically clear stale paths and search Google Images first",
-    "New REDIS_HOST and REDIS_PORT variables available for external Redis"
+    "Docker image rebuild required for security updates",
+    "Video downloads will now respect format sorting for better quality"
   ]
 }

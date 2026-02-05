@@ -24,13 +24,13 @@ httpx==0.25.2
 sqlalchemy[asyncio]>=2.0.23
 aiomysql>=0.2.0
 cryptography>=3.4.8
-python-multipart>=0.0.20
+python-multipart>=0.0.22  # Security: CVE-2026-24486
 
 # Keep pymysql for Flask compatibility during migration
 pymysql>=1.0.2
 
 # Security utilities
-werkzeug>=3.1.4
+werkzeug>=3.1.5  # Security: CVE-2026-21860
 
 # Background job dependencies (already installed)
 # asyncio (built-in)

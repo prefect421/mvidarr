@@ -293,6 +293,18 @@ class YouTubeDownloadEngine:
             )
             cmd.extend(["-f", simple_format])
 
+        # Format sorting - CRITICAL for quality selection
+        # This tells yt-dlp to prioritize resolution over bitrate
+        # Extract max height from quality string if present, default to 1080
+        import re
+
+        height_match = re.search(r"height<=(\d+)", quality)
+        max_height = height_match.group(1) if height_match else "1080"
+        # Sort by: resolution (up to max), prefer mp4/m4a containers, prefer h264/aac codecs
+        format_sort = f"res:{max_height},ext:mp4:m4a,vcodec:h264,acodec:aac"
+        cmd.extend(["-S", format_sort])
+        logger.info(f"Format sorting: {format_sort}")
+
         # Metadata
         cmd.extend(["--write-info-json", "--embed-metadata", "--add-metadata"])
 
@@ -432,10 +444,10 @@ class YouTubeDownloadEngine:
             return []
 
     def _get_tv_client_args(self) -> List[str]:
-        """TV client strategy - with cookies for age-restricted content"""
+        """TV client strategy - with web fallback for more format options"""
         args = [
             "--extractor-args",
-            "youtube:player_client=tv",
+            "youtube:player_client=tv,web",  # Try TV first, fallback to web for more formats
             "--socket-timeout",
             "30",
             "--retries",
@@ -593,7 +605,6 @@ class YouTubeDownloadEngine:
             # Strategy 3: Last resort - get most recent video file (including .temp files)
             # Prioritize by: 1) Most recent, 2) Largest file size (higher quality)
             if not found_files:
-
                 video_files = []
                 for file in os.listdir(base_dir):
                     full_path = os.path.join(base_dir, file)
