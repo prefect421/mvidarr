@@ -11,24 +11,43 @@ Track MVidarr's development progress through our release history and upcoming mi
 ## 🚀 Current Release: v0.11.8
 
 **Released**: February 4, 2026
-**Focus**: Thumbnail Fix & Redis Configuration
+**Focus**: Thumbnail System Overhaul
 
 ### 🎉 What's New
 
-#### Artist Thumbnail Fix ✅
-- **Database Path Storage**: Fixed bug where thumbnail scan downloaded images but didn't save paths to database
-- **Bulk Thumbnail Scan**: Added new endpoint for scanning selected artists (previously missing)
-- **Persistent Thumbnails**: Thumbnails now properly persist across container rebuilds
+#### Thumbnail System Overhaul ✅
+Complete fix of the artist thumbnail system, improving bulk scan success from **0% to 87%** (231/264 artists).
 
-> ⚠️ **Action Required**: If your artist thumbnails are showing placeholders after updating, run a thumbnail scan:
-> 1. Go to **Artists** page
-> 2. Click **Scan Missing Thumbnails** button to scan all artists, OR
-> 3. Select specific artists and use **Bulk Actions → Scan Thumbnails**
+##### Manual Thumbnail Setting Fixed
+- **Error Display**: Frontend now properly displays actual API error messages instead of generic "Failed to update thumbnail"
+- **Wikimedia Compatibility**: Browser-like headers for Wikipedia/Wikimedia downloads (fixes 403/429 errors)
+- **Individual uploads working**: Can now manually set thumbnails via URL or file upload
+
+##### Bulk Scan Improvements
+- **File Validation**: Scan now validates that thumbnail files actually exist on disk
+- **Stale Path Cleanup**: Automatic cleanup of `thumbnail_path` values pointing to non-existent files
+- **Google Images Priority**: Google Images search runs first, then Wikipedia, then YouTube
+- **Rate Limiting**: 1-second delay between artists to avoid API throttling
+
+##### Key Metrics
+- **Before**: 0 out of 264 artists found (scan skipped all due to stale paths)
+- **After**: 231 out of 264 artists found (87% success rate)
+
+> ⚠️ **Action Required**: Run **"Scan Missing Thumbnails"** from the Artists page to populate thumbnails.
+> The scan will automatically clear stale paths and search Google Images first.
 
 #### Redis Configuration ✅ (PR #189)
 - **New Environment Variables**: Added `REDIS_HOST` and `REDIS_PORT` for non-default Redis deployments
 - **External Redis Support**: Users can now easily configure external Redis servers
 - **Health Check Integration**: Variables used by entrypoint.sh for connectivity verification
+
+### Resolved Issues
+- Artist thumbnail cannot be set manually
+- Bulk scan not replacing placeholder images
+- Wikimedia 403 Forbidden and 429 rate limiting errors
+- Frontend showing generic error instead of actual API error details
+- Stale thumbnail_path values preventing rescan of missing files
+- PR #189: Add missing ENV to Docker Compose
 
 ### Docker Image
 ```bash
@@ -36,7 +55,7 @@ docker pull ghcr.io/prefect421/mvidarr:v0.11.8
 docker pull ghcr.io/prefect421/mvidarr:latest
 ```
 
-**Git Commit**: `a27525e` | **Build**: 2026-02-04
+**Git Commit**: `f3d2c96` | **Build**: 2026-02-04
 
 ---
 

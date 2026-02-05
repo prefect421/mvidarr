@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.8] - 2026-02-04
+
+### Fixed - Thumbnail System Overhaul
+- **Manual Thumbnail Setting**: Fixed artist thumbnail setting failing silently - frontend now displays actual API error messages
+- **Bulk Scan Validation**: Scan now validates thumbnail files actually exist on disk before skipping artists
+- **Stale Path Cleanup**: Automatic cleanup of `thumbnail_path` database values pointing to non-existent files
+- **Wikimedia 403/429 Errors**: Browser-like headers for Wikipedia/Wikimedia downloads to avoid blocking
+- **Error Display**: Frontend properly shows `data.detail` from FastAPI error responses
+
+### Changed
+- **Search Priority**: Google Images now searched first for artist thumbnails, then Wikipedia, then YouTube
+- **Rate Limiting**: Added 1-second delay between artists in bulk scan to avoid API throttling
+- **Wikimedia Headers**: Uses full browser-like headers including Referer and Sec-Fetch headers
+
+### Added
+- **REDIS_HOST**: New environment variable for external Redis server hostname (PR #189)
+- **REDIS_PORT**: New environment variable for external Redis server port (PR #189)
+
+### Metrics
+- Bulk scan success improved from 0% to 87% (231/264 artists)
+
+## [0.11.7] - 2026-02-02
+
+### Added
+- Per-artist video type filtering for autodownload (Issue #191)
+- Extended YouTube discovery for live performances, concerts, acoustic versions
+- Increased max_videos_per_discovery from 5 to 50
+
+### Fixed
+- Blacklist not saving info when deleting videos (Issue #190)
+- Download completion callback not updating records
+- Download History not showing completed downloads
+
+### Changed
+- API optimization for improved performance and response times
+
 ## [0.10.1] - 2024-12-22
 
 ### Added - Scheduler V2 Complete Implementation
