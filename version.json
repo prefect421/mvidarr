@@ -1,7 +1,7 @@
 {
   "version": "0.11.9",
   "build_date": "2026-02-05T18:30:00.000000",
-  "git_commit": "pending",
+  "git_commit": "b58de46",
   "git_branch": "dev",
   "release_name": "v0.11.9 - Security Updates & Video Quality Fix",
   "features": [
