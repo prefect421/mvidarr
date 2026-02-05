@@ -280,12 +280,69 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 | CVE-2025-69226 | aiohttp | Information disclosure via path normalization |
 | CVE-2025-69230 | aiohttp | DoS via invalid cookies |
 
-##### Implementation Plan
+##### Implementation Plan - Security
 1. Update `requirements.txt` with patched versions
 2. Update `requirements-prod.txt` if different
 3. Test application functionality after updates
 4. Rebuild Docker image
 5. Verify code scanning alerts are resolved
+
+#### Video Quality Improvements (360p → 1080p)
+
+##### Problem
+Downloads consistently returning 360p instead of best available quality.
+
+##### Root Cause Analysis
+- Current format string: `bestvideo[height<=1080]+bestaudio/best[height<=1080]/best`
+- Missing format sorting (`-S` flag) to prioritize resolution
+- TV client may have limited format availability
+- No explicit codec preferences
+
+##### Recommended Fixes (youtube_download_engine.py)
+
+1. **Add Format Sorting** - Explicitly prioritize resolution over bitrate:
+   ```python
+   cmd.extend(["-S", "res:1080,ext:mp4:m4a,vcodec:h264"])
+   ```
+
+2. **Improve Format String** - More robust fallback chain:
+   ```python
+   # Current (problematic):
+   "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"
+
+   # Recommended:
+   "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best"
+   ```
+
+3. **Add Player Client Fallback** - Try multiple clients for better format availability:
+   ```python
+   "--extractor-args", "youtube:player_client=tv,web"
+   ```
+
+4. **Force MP4 Container** - Consistent output format:
+   ```python
+   "--remux-video", "mp4"
+   ```
+
+5. **Verbose Format Debugging** - Add logging to diagnose issues:
+   ```python
+   "--verbose", "-F"  # List available formats for debugging
+   ```
+
+##### Implementation Files
+- `src/services/youtube_download_engine.py` - Main download logic
+- `src/services/video_quality_service.py` - Quality settings
+- `src/services/ytdlp_service.py` - yt-dlp wrapper
+
+##### Testing
+- Test with known 1080p videos
+- Compare format listings before/after changes
+- Verify TV client + web fallback works
+
+##### References
+- [yt-dlp Format Selection](https://github.com/yt-dlp/yt-dlp#format-selection)
+- [Format Sort Issue #15110](https://github.com/yt-dlp/yt-dlp/issues/15110)
+- [yt-dlp 2026 Guide](https://www.rapidseedbox.com/blog/yt-dlp-complete-guide)
 
 ### Branch Strategy
 - **Primary Development**: All changes must be pushed to the `dev` branch
