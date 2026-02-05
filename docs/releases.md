@@ -8,52 +8,60 @@ permalink: /releases/
 
 Track MVidarr's development progress through our release history and upcoming milestones.
 
-## 🚀 Current Release: v0.11.8
+## 🚀 Current Release: v0.11.9
+
+**Released**: February 5, 2026
+**Focus**: Security Updates, Video Quality & Discovery Fix
+
+### 🎉 What's New
+
+#### Security Updates ✅ (11 CVEs Fixed)
+Critical security vulnerabilities addressed through dependency updates:
+
+| Package | Update | CVE |
+|---------|--------|-----|
+| python-multipart | 0.0.20 → 0.0.22 | CVE-2026-24486 (path traversal) |
+| urllib3 | 2.6.0 → 2.6.3 | CVE-2026-21441 (decompression-bomb bypass) |
+| aiohttp | 3.12.14 → 3.13.3 | CVE-2025-69223/24/25/26/27/28/29/30 (zip bomb + DoS) |
+| werkzeug | 3.1.4 → 3.1.5 | CVE-2026-21860 (Windows device names bypass) |
+
+#### Video Quality Fix ✅
+- **Format Sorting**: Added `-S` flag to prioritize resolution over bitrate
+- **User Settings Respected**: Downloads now honor `max_video_quality` database setting
+- **TV Client Fallback**: Falls back to web client for more format options
+- **No More 360p**: Videos now download at the quality you expect
+
+#### YouTube Discovery Fix ✅
+- **API Key Caching Bug**: Fixed issue where empty API key was cached forever
+- **Settings Updates Work**: Changing YouTube API key in Settings now takes effect immediately
+- **Cache Invalidation**: Bumped cache version to clear stale empty results
+
+### Upgrade Notes
+- Docker image rebuild required for security updates
+- Restart required for discovery fix to take effect
+- Video downloads will now respect format sorting for better quality
+
+### Docker Image
+```bash
+docker pull ghcr.io/prefect421/mvidarr:v0.11.9
+docker pull ghcr.io/prefect421/mvidarr:latest
+```
+
+**Git Commit**: `26511da` | **Build**: 2026-02-05
+
+---
+
+## 📈 Previous Release: v0.11.8
 
 **Released**: February 4, 2026
 **Focus**: Thumbnail System Overhaul
 
-### 🎉 What's New
-
-#### Thumbnail System Overhaul ✅
-Complete fix of the artist thumbnail system, improving bulk scan success from **0% to 87%** (231/264 artists).
-
-##### Manual Thumbnail Setting Fixed
-- **Error Display**: Frontend now properly displays actual API error messages instead of generic "Failed to update thumbnail"
-- **Wikimedia Compatibility**: Browser-like headers for Wikipedia/Wikimedia downloads (fixes 403/429 errors)
-- **Individual uploads working**: Can now manually set thumbnails via URL or file upload
-
-##### Bulk Scan Improvements
-- **File Validation**: Scan now validates that thumbnail files actually exist on disk
-- **Stale Path Cleanup**: Automatic cleanup of `thumbnail_path` values pointing to non-existent files
-- **Google Images Priority**: Google Images search runs first, then Wikipedia, then YouTube
-- **Rate Limiting**: 1-second delay between artists to avoid API throttling
-
-##### Key Metrics
-- **Before**: 0 out of 264 artists found (scan skipped all due to stale paths)
-- **After**: 231 out of 264 artists found (87% success rate)
-
-> ⚠️ **Action Required**: Run **"Scan Missing Thumbnails"** from the Artists page to populate thumbnails.
-> The scan will automatically clear stale paths and search Google Images first.
-
-#### Redis Configuration ✅ (PR #189)
-- **New Environment Variables**: Added `REDIS_HOST` and `REDIS_PORT` for non-default Redis deployments
-- **External Redis Support**: Users can now easily configure external Redis servers
-- **Health Check Integration**: Variables used by entrypoint.sh for connectivity verification
-
-### Resolved Issues
-- Artist thumbnail cannot be set manually
-- Bulk scan not replacing placeholder images
-- Wikimedia 403 Forbidden and 429 rate limiting errors
-- Frontend showing generic error instead of actual API error details
-- Stale thumbnail_path values preventing rescan of missing files
-- PR #189: Add missing ENV to Docker Compose
-
-### Docker Image
-```bash
-docker pull ghcr.io/prefect421/mvidarr:v0.11.8
-docker pull ghcr.io/prefect421/mvidarr:latest
-```
+### What's New
+- Complete fix of artist thumbnail system (0% → 87% bulk scan success)
+- Manual thumbnail setting fixed with proper error display
+- Google Images priority for thumbnail search
+- Wikimedia 403/429 error handling with browser-like headers
+- Redis configuration environment variables (REDIS_HOST, REDIS_PORT)
 
 **Git Commit**: `f3d2c96` | **Build**: 2026-02-04
 

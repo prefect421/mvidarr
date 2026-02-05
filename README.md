@@ -22,29 +22,35 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.11.8 - Thumbnail System Overhaul**
+## 🚀 **LATEST: v0.11.9 - Security Updates, Video Quality & Discovery Fix**
 
-**Released**: February 4, 2026
+**Released**: February 5, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Thumbnail System Overhaul ✅
-Complete fix of the artist thumbnail system, improving bulk scan success from **0% to 87%** (231/264 artists).
+### Security Updates ✅ (11 CVEs Fixed)
+- **🔒 python-multipart**: 0.0.20 → 0.0.22 (CVE-2026-24486 path traversal)
+- **🔒 urllib3**: 2.6.0 → 2.6.3 (CVE-2026-21441 decompression-bomb bypass)
+- **🔒 aiohttp**: 3.12.14 → 3.13.3 (CVE-2025-69223 + multiple DoS fixes)
+- **🔒 werkzeug**: 3.1.4 → 3.1.5 (CVE-2026-21860 Windows device names bypass)
 
-- **🖼️ Manual Thumbnail Setting Fixed**: Frontend now displays actual API error messages instead of generic failures
-- **🔍 Bulk Scan Validation**: Scan now validates thumbnail files actually exist on disk
-- **🧹 Stale Path Cleanup**: Automatic cleanup of database paths pointing to non-existent files
-- **🌐 Google Images Priority**: Searches Google Images first, then Wikipedia, then YouTube
-- **🛡️ Wikimedia Compatibility**: Browser-like headers to avoid 403/429 errors
-- **⏱️ Rate Limiting**: 1-second delay between artists to avoid API throttling
+### Video Quality Fix ✅
+- **🎬 Format Sorting**: Added `-S` flag to prioritize resolution over bitrate
+- **🎬 User Settings**: Downloads now respect `max_video_quality` database setting
+- **🎬 TV Client Fallback**: Falls back to web client for more format options
 
-### Redis Configuration ✅ (PR #189)
-- **🔧 REDIS_HOST**: New environment variable for external Redis server hostname
-- **🔧 REDIS_PORT**: New environment variable for external Redis server port
+### YouTube Discovery Fix ✅
+- **🔍 API Key Caching**: Fixed bug where empty API key was cached forever
+- **🔍 Immediate Updates**: Settings changes now take effect without restart
 
-> **Action Required**: Run "Scan Missing Thumbnails" from the Artists page to populate thumbnails.
+> **Upgrade Note**: Docker image rebuild required. Restart server after upgrade.
 
 ## 🎯 Previous Releases
+
+### v0.11.8 - Thumbnail System Overhaul (February 4, 2026)
+- Complete fix of artist thumbnail system (0% → 87% bulk scan success)
+- Manual thumbnail setting fixed, Google Images priority, Wikimedia compatibility
+- Redis configuration environment variables (REDIS_HOST, REDIS_PORT)
 
 ### v0.11.7 - Video Filtering, Extended Discovery & Blacklist Fix (February 2, 2026)
 - Per-artist video type filtering for autodownload (Issue #191)
@@ -114,7 +120,7 @@ Complete fix of the artist thumbnail system, improving bulk scan success from **
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.11.8`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.11.9`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -266,4 +272,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.11.8** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.11.9** - Built with ❤️ for music video enthusiasts

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.9] - 2026-02-05
+
+### Security
+- **CVE-2026-24486**: Updated python-multipart 0.0.20 → 0.0.22 (path traversal vulnerability)
+- **CVE-2026-21441**: Updated urllib3 2.6.0 → 2.6.3 (decompression-bomb bypass on redirects)
+- **CVE-2025-69223/24/25/26/27/28/29/30**: Updated aiohttp 3.12.14 → 3.13.3 (zip bomb + multiple DoS vulnerabilities)
+- **CVE-2026-21860**: Updated werkzeug 3.1.4 → 3.1.5 (Windows device names bypass)
+
+### Fixed
+- **Video Quality**: Downloads now respect user's `max_video_quality` database setting instead of defaulting to 360p
+- **YouTube Discovery**: Fixed API key caching bug that caused discovery to return 0 results despite valid API key
+- **Format Selection**: Added `-S` format sorting to prioritize resolution over bitrate
+
+### Changed
+- **Video Downloads**: TV client now falls back to web client for more format options
+- **YouTube Cache**: Bumped cache version to invalidate stale empty results from API key bug
+
 ## [0.11.8] - 2026-02-04
 
 ### Fixed - Thumbnail System Overhaul

@@ -214,17 +214,26 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.11.9 - Planning
+### Current Phase: v0.11.10 - Planning
 
-#### Versioning Policy (Updated 2026-02-04)
-- **Current Version**: 0.11.8 (Released 2026-02-04)
-- **Next Version**: 0.11.9 (Planning)
+#### Versioning Policy (Updated 2026-02-05)
+- **Current Version**: 0.11.9 (Released 2026-02-05)
+- **Next Version**: 0.11.10 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.11.9** (2026-02-05): Security Updates, Video Quality & Discovery Fix
+  - ✅ CVE-2026-24486: python-multipart 0.0.20 → 0.0.22 (path traversal)
+  - ✅ CVE-2026-21441: urllib3 2.6.0 → 2.6.3 (decompression-bomb bypass)
+  - ✅ CVE-2025-69223/24/25/26/27/28/29/30: aiohttp 3.12.14 → 3.13.3 (zip bomb + DoS)
+  - ✅ CVE-2026-21860: werkzeug 3.1.4 → 3.1.5 (Windows device names bypass)
+  - ✅ Video quality fix: Format sorting (-S) to prioritize resolution
+  - ✅ Video quality: TV client fallback to web for more formats
+  - ✅ Video quality: Respects user's max_video_quality database setting
+  - ✅ YouTube discovery: Fixed API key caching bug causing 0 results
 - **v0.11.8** (2026-02-04): Thumbnail System Overhaul
   - ✅ Fixed artist thumbnail manual setting (was failing silently)
   - ✅ Fixed bulk scan not finding thumbnails (0/264 → 231/264 success)
@@ -247,41 +256,18 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 - **v0.10.x**: Beta testing and security hardening phases
 - **v0.9.9** (2025-11-04): Code cleanup & optimization complete
 
-#### v0.11.8 Release ✅ COMPLETE
-- **Status**: Released 2026-02-04
-- **Summary**: Thumbnail System Overhaul - fixed manual/bulk thumbnail setting, Google Images priority, Wikimedia compatibility
-- **Key Metrics**: Bulk scan success improved from 0% to 87% (231/264 artists)
+#### v0.11.9 Release ✅ COMPLETE
+- **Status**: Released 2026-02-05
+- **Summary**: Security Updates (11 CVEs), Video Quality Fix, YouTube Discovery Fix
+- **Key Fixes**:
+  - All 11 code scanning security alerts resolved via dependency updates
+  - Video downloads now respect user's quality settings (was defaulting to 360p)
+  - YouTube discovery API key caching bug fixed (was returning 0 results)
 
-#### v0.11.9 Release 🎯 PLANNING
+#### v0.11.10 Release 🎯 PLANNING
 - **Status**: Planning phase
-- **Focus**: Security - Dependency Vulnerability Fixes
-- **Open Code Scanning Alerts**: 11 total (3 error, 4 warning, 4 note)
-
-##### Critical (Error) - Must Fix
-| CVE | Package | Current | Target | Description |
-|-----|---------|---------|--------|-------------|
-| CVE-2026-24486 | python-multipart | 0.0.20 | 0.0.22 | Arbitrary file write via path traversal |
-| CVE-2026-21441 | urllib3 | 2.6.0 | 2.6.3 | Decompression-bomb bypass on redirects |
-| CVE-2025-69223 | aiohttp | 3.12.14 | 3.13.3 | Zip bomb vulnerability |
-
-##### Warning - Should Fix
-| CVE | Package | Current | Target | Description |
-|-----|---------|---------|--------|-------------|
-| CVE-2026-21860 | werkzeug | 3.1.4 | 3.1.5 | Windows special device names bypass |
-| CVE-2025-69227 | aiohttp | 3.12.14 | 3.13.3 | DoS via crafted POST request |
-| CVE-2025-69228 | aiohttp | 3.12.14 | 3.13.3 | DoS via memory exhaustion |
-| CVE-2025-69229 | aiohttp | 3.12.14 | 3.13.3 | DoS via excessive CPU in chunked handling |
-
-##### Note - Low Priority
-| CVE | Package | Description |
-|-----|---------|-------------|
-| CVE-2025-69224 | aiohttp | Request smuggling via non-ASCII characters |
-| CVE-2025-69225 | aiohttp | Request smuggling via non-ASCII decimals |
-| CVE-2025-69226 | aiohttp | Information disclosure via path normalization |
-| CVE-2025-69230 | aiohttp | DoS via invalid cookies |
-
-##### Implementation Plan - Security
-1. Update `requirements.txt` with patched versions
+- **Open Issues**: TBD
+- **Development Focus**: Stability improvements, bug fixes
 2. Update `requirements-prod.txt` if different
 3. Test application functionality after updates
 4. Rebuild Docker image
@@ -366,7 +352,7 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.11.8 (Thumbnail System Overhaul)
+- **Current Version**: v0.11.9 (Security Updates, Video Quality & Discovery Fix)
 - **Development Focus**: Stability, performance
 - **Next Version**: v0.11.9
 
