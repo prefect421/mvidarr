@@ -21,18 +21,27 @@ class YouTubeSearchService:
     def __init__(self):
         self.base_url = "https://www.googleapis.com/youtube/v3"
         self._cache = get_youtube_cache()
-        self._api_key = None  # Cached API key
+        # Note: API key is NOT cached here - always fetch from SettingsService
+        # to ensure updates are reflected without restarting the service
 
     @property
     def api_key(self):
-        """Get YouTube API key from database settings (cached)"""
-        if self._api_key is None:
-            try:
-                self._api_key = settings.get("youtube_api_key")
-            except Exception as e:
-                logger.error(f"Failed to get YouTube API key from settings: {e}")
-                return None
-        return self._api_key
+        """Get YouTube API key from database settings (always fresh)
+
+        Note: We don't cache the API key locally because:
+        1. SettingsService already caches settings
+        2. If we cache locally, updates via Settings UI won't be reflected
+        3. This caused a bug where empty API key was cached forever
+        """
+        try:
+            key = settings.get("youtube_api_key")
+            # Return None for empty/whitespace-only values
+            if key and key.strip():
+                return key.strip()
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get YouTube API key from settings: {e}")
+            return None
 
     def search_artist_videos(self, artist_name: str, limit: int = 50) -> Dict:
         """Search for music videos by artist name (with caching)
@@ -41,16 +50,26 @@ class YouTubeSearchService:
         1. Music category search - for official music videos and lyric videos
         2. Extended search (no category filter) - for live performances, acoustic, etc.
         """
-        if not self.api_key:
-            logger.warning("YouTube API key not configured, skipping YouTube search")
+        # Get API key fresh (not cached locally)
+        current_api_key = self.api_key
+        if not current_api_key:
+            logger.warning(
+                "YouTube API key not configured - check Settings > API Keys > youtube_api_key"
+            )
             return {
                 "videos": [],
                 "total_results": 0,
                 "error": "YouTube API key not configured",
             }
 
+        # Log API key presence (first/last 4 chars for debugging, masked middle)
+        key_preview = f"{current_api_key[:4]}...{current_api_key[-4:]}" if len(current_api_key) > 8 else "***"
+        logger.debug(f"YouTube API key present: {key_preview}")
+
         # Check cache first
-        cache_params = {"artist_name": artist_name, "limit": limit, "version": "v2"}
+        # Note: Cache version bumped to v3 to invalidate any stale empty results
+        # from when API key caching bug caused empty responses to be cached
+        cache_params = {"artist_name": artist_name, "limit": limit, "version": "v3"}
         cached_result = self._cache.get("search", cache_params)
         if cached_result is not None:
             logger.info(f"Using cached search results for artist: {artist_name}")

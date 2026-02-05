@@ -1,9 +1,9 @@
 {
   "version": "0.11.9",
-  "build_date": "2026-02-05T18:30:00.000000",
-  "git_commit": "b58de46",
+  "build_date": "2026-02-05T19:00:00.000000",
+  "git_commit": "64d20ff",
   "git_branch": "dev",
-  "release_name": "v0.11.9 - Security Updates & Video Quality Fix",
+  "release_name": "v0.11.9 - Security Updates, Video Quality & Discovery Fix",
   "features": [
     "🔒 Security: Updated python-multipart 0.0.20 → 0.0.22 (CVE-2026-24486)",
     "🔒 Security: Updated urllib3 2.6.0 → 2.6.3 (CVE-2026-21441)",
@@ -11,7 +11,8 @@
     "🔒 Security: Updated werkzeug 3.1.4 → 3.1.5 (CVE-2026-21860)",
     "🎬 Video Quality: Added format sorting (-S) to prioritize resolution",
     "🎬 Video Quality: TV client now falls back to web for more formats",
-    "🎬 Video Quality: Respects user's max_video_quality database setting"
+    "🎬 Video Quality: Respects user's max_video_quality database setting",
+    "🔍 Discovery: Fixed YouTube API key caching bug causing 0 results"
   ],
   "resolved_issues": [
     "CVE-2026-24486: python-multipart path traversal vulnerability",
@@ -19,10 +20,12 @@
     "CVE-2025-69223: aiohttp zip bomb vulnerability",
     "CVE-2025-69227/28/29: aiohttp DoS vulnerabilities",
     "CVE-2026-21860: werkzeug Windows device names bypass",
-    "360p video downloads instead of user's quality setting"
+    "360p video downloads instead of user's quality setting",
+    "YouTube discovery returning 0 results despite valid API key"
   ],
   "upgrade_notes": [
     "Docker image rebuild required for security updates",
-    "Video downloads will now respect format sorting for better quality"
+    "Video downloads will now respect format sorting for better quality",
+    "Restart required for discovery fix to take effect"
   ]
 }
