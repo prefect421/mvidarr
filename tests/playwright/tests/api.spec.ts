@@ -7,7 +7,7 @@ import { test, expect, APIRequestContext } from '@playwright/test';
 
 // Helper to get authenticated API context
 async function getAuthenticatedContext(request: APIRequestContext): Promise<string> {
-  const response = await request.post('/test-login', {
+  const response = await request.post('/api/auth/simple-login', {
     data: {
       username: 'admin',
       password: 'mvidarr'

@@ -940,7 +940,7 @@ async def root(request: Request):
 
         # Check if this is coming from a successful login (check referer)
         referer = request.headers.get("referer", "")
-        if "auth/login" in referer or "test-login" in referer:
+        if "auth/login" in referer or "simple-login" in referer:
             # If coming from login page, redirect to dashboard
             return RedirectResponse(url="/dashboard", status_code=302)
 

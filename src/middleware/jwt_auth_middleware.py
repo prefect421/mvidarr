@@ -418,7 +418,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
             "/favicon.ico",
             "/login",
             "/auth/login",
-            "/test-login",
+            "/simple-login",
             "/api/auth/login",
             "/api/auth/simple-login",
             "/api/auth/register",

@@ -50,7 +50,7 @@ export async function getAuthenticatedAPIContext(
   request: APIRequestContext,
   credentials: LoginCredentials = DEFAULT_CREDENTIALS
 ): Promise<string> {
-  const response = await request.post('/test-login', {
+  const response = await request.post('/api/auth/simple-login', {
     data: credentials
   });
 
