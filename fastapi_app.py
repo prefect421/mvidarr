@@ -520,7 +520,9 @@ setup_wizard_middleware(app, wizard_redirect_url="/wizard")
 logger.info("✅ First-run wizard middleware enabled")
 
 # Security middleware - enabled
-app.add_middleware(RateLimitingMiddleware, config=RateLimitingConfig())
+# Note: RateLimitingMiddleware disabled - SecurityValidationMiddleware has built-in
+# rate limiting. Two stacked rate limiters caused 429 errors on normal page loads.
+# app.add_middleware(RateLimitingMiddleware, config=RateLimitingConfig())
 app.add_middleware(SecurityValidationMiddleware, config=SecurityValidationConfig())
 
 # TODO: Re-enable other middleware after fixing MediaCacheManager and Redis issues

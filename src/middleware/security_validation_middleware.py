@@ -30,8 +30,8 @@ class SecurityValidationConfig:
     MAX_FIELD_LENGTH = 10000
 
     # Rate limiting
-    MAX_REQUESTS_PER_MINUTE = 60
-    MAX_REQUESTS_PER_HOUR = 1000
+    MAX_REQUESTS_PER_MINUTE = 300  # Single page load uses ~20-30 requests
+    MAX_REQUESTS_PER_HOUR = 5000
 
     # Blocked patterns
     SQL_INJECTION_PATTERNS = [
@@ -289,6 +289,15 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
 
         try:
+            # Skip all validation for static assets - they're just file serving
+            path = request.url.path
+            if path.startswith(("/static/", "/css/", "/favicon")) or path.endswith(
+                (".js", ".css", ".png", ".jpg", ".ico", ".svg", ".woff", ".woff2", ".ttf")
+            ):
+                response = await call_next(request)
+                self._add_security_headers(response)
+                return response
+
             # 1. Rate limiting check
             await self._check_rate_limiting(request)
 
