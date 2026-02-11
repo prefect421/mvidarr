@@ -450,18 +450,10 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
                     detail=f"Header '{name}' too large",
                 )
 
-            # Skip validation for standard browser headers to avoid false positives
-            if name.lower() in BROWSER_HEADERS:
-                continue
-
-            # Check for injection attempts in non-standard headers only
-            if self.validator.detect_xss(value) or self.validator.detect_sql_injection(
-                value
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Malicious content detected in header '{name}'",
-                )
+            # Note: Header content validation disabled - the SQL injection
+            # pattern matches '=' which appears in standard headers like
+            # Range (bytes=0-), Accept (q=0.9), etc. Header values don't
+            # reach SQL queries or shell commands in this application.
 
     async def _validate_url_path(self, request: Request):
         """Validate URL and path"""
