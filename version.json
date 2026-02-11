@@ -1,7 +1,7 @@
 {
   "version": "0.12.0",
   "build_date": "2026-02-11T19:20:42.309441",
-  "git_commit": "PENDING",
+  "git_commit": "6d9a6ce",
   "git_branch": "dev",
   "release_name": "v0.12.0 - Security Hardening Sprint",
   "features": [
