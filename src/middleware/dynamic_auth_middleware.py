@@ -171,6 +171,25 @@ class DynamicAuthMiddleware:
 
             is_authenticated = session.get("authenticated", False)
 
+            # Also check SessionStore via session_token cookie
+            if not is_authenticated:
+                session_token = request.cookies.get("session_token")
+                if session_token:
+                    try:
+                        from src.services.session_store import SessionStore
+
+                        user_data = SessionStore.validate_session(session_token)
+                        if user_data:
+                            is_authenticated = True
+                            # Sync to Flask session for subsequent checks
+                            session["authenticated"] = True
+                            session["username"] = user_data.get("username", "admin")
+                            session["role"] = user_data.get("role", "admin")
+                            session.permanent = True
+                            session.modified = True
+                    except Exception:
+                        pass
+
             if not is_authenticated:
                 logger.debug(
                     f"Authentication required: redirecting unauthenticated request from {request.path}"

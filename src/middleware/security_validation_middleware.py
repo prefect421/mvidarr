@@ -91,7 +91,7 @@ class SecurityValidationConfig:
         "X-XSS-Protection": "1; mode=block",
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://code.iconify.design https://cdn.socket.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https:; connect-src 'self' ws: wss:; frame-ancestors 'none';",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://code.iconify.design https://cdn.socket.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https:; connect-src 'self' ws: wss: https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com; frame-ancestors 'none';",
     }
 
 
