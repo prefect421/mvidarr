@@ -146,7 +146,9 @@ async def lifespan(app: FastAPI):
         if result.get("status") == "started":
             logger.info("✅ Scheduler V2 service started successfully")
         else:
-            logger.warning(f"⚠️ Scheduler V2: {result.get('message', 'Unknown status')}")
+            logger.warning(
+                f"⚠️ Scheduler V2: {result.get('message', 'Unknown status')}"
+            )
 
         # ytdlp_service is already initialized and pending downloads resumed during import
         logger.info(
@@ -281,9 +283,9 @@ app = FastAPI(
         },
     ],
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    docs_url="/docs" if os.environ.get("MVIDARR_ENV") == "dev" else None,
+    redoc_url="/redoc" if os.environ.get("MVIDARR_ENV") == "dev" else None,
+    openapi_url="/openapi.json" if os.environ.get("MVIDARR_ENV") == "dev" else None,
 )
 
 from src.api.fastapi.mobile_access import mobile_router
@@ -315,7 +317,9 @@ from src.api.fastapi.youtube_playlists import router as youtube_playlists_router
 from src.api.fastapi.youtube_quota import router as youtube_quota_router
 
 app.include_router(youtube_playlists_router)
-app.include_router(youtube_quota_router, prefix="/api/youtube-quota", tags=["YouTube Quota"])
+app.include_router(
+    youtube_quota_router, prefix="/api/youtube-quota", tags=["YouTube Quota"]
+)
 
 # Enhanced Scheduler Router - REMOVED in v0.10.1, replaced by Scheduler V2
 # Legacy enhanced_scheduler.py removed - use scheduler_v2.py and scheduled_jobs.py instead
@@ -432,7 +436,7 @@ app.add_middleware(
 # Fixes mixed content issues when accessing via HTTPS proxy (e.g., https://mvidarr.prefect42.com)
 app.add_middleware(
     ProxyHeadersMiddleware,
-    trusted_hosts=["*"],  # Trust all proxies - adjust for production security
+    trusted_hosts=os.environ.get("TRUSTED_PROXY_HOSTS", "127.0.0.1").split(","),
 )
 logger.info("✅ Proxy headers middleware enabled for reverse proxy support")
 
@@ -515,10 +519,13 @@ structured_logger.info(
 setup_wizard_middleware(app, wizard_redirect_url="/wizard")
 logger.info("✅ First-run wizard middleware enabled")
 
+# Security middleware - enabled
+app.add_middleware(RateLimitingMiddleware, config=RateLimitingConfig())
+app.add_middleware(SecurityValidationMiddleware, config=SecurityValidationConfig())
+
 # TODO: Re-enable other middleware after fixing MediaCacheManager and Redis issues
 # app.add_middleware(CircuitBreakerMiddleware, config=CircuitBreakerConfig())
 # app.add_middleware(AutoScalingMiddleware)
-# app.add_middleware(RateLimitingMiddleware, config=RateLimitingConfig())
 # app.add_middleware(CacheInvalidationMiddleware)
 # app.add_middleware(APIResponseCacheMiddleware, cache_ttl=300)
 # app.add_middleware(ResourceMonitoringMiddleware, track_memory=True)
@@ -719,151 +726,7 @@ async def health_check():
     }
 
 
-# Simple test login endpoint for debugging
-@app.post("/test-login")
-async def test_login(request: Request):
-    """Simple test login endpoint that bypasses middleware"""
-    try:
-        body = await request.json()
-        username = body.get("username", "")
-        password = body.get("password", "")
-
-        if username == "admin" and password == "mvidarr":
-            # Create session token and set cookie
-            import secrets
-
-            session_token = secrets.token_urlsafe(32)
-
-            from fastapi.responses import JSONResponse
-
-            response_data = {
-                "success": True,
-                "message": "Login successful",
-                "user": {
-                    "id": 1,
-                    "username": username,
-                    "role": "ADMIN",
-                    "can_admin": True,
-                },
-                "redirect_url": "/dashboard",
-            }
-
-            response = JSONResponse(content=response_data)
-            response.set_cookie(
-                key="session_token",
-                value=session_token,
-                max_age=86400,  # 24 hours
-                httponly=True,
-                samesite="lax",
-            )
-            return response
-        else:
-            return {"success": False, "message": "Invalid credentials"}
-
-    except Exception as e:
-        return {"success": False, "message": f"Error: {str(e)}"}
-
-
-# Simple test endpoints to verify database connectivity
-@app.get("/api/test/artists")
-async def test_get_artists():
-    """Simple test endpoint to check artists data"""
-    try:
-        from sqlalchemy.orm import Session
-
-        from src.database.connection import get_db_session
-        from src.database.models import Artist
-
-        # Get database session
-        session_gen = get_db_session()
-        session: Session = next(session_gen)
-
-        try:
-            # Get first few artists
-            artists = session.query(Artist).limit(5).all()
-
-            result = []
-            for artist in artists:
-                result.append(
-                    {
-                        "id": artist.id,
-                        "name": artist.name,
-                        "imvdb_id": artist.imvdb_id,
-                        "monitored": getattr(artist, "monitored", True),
-                        "created_at": getattr(artist, "created_at", None),
-                        # Add all available attributes
-                        "available_fields": [
-                            attr
-                            for attr in dir(artist)
-                            if not attr.startswith("_")
-                            and not callable(getattr(artist, attr))
-                        ],
-                    }
-                )
-
-            return {"success": True, "count": len(result), "artists": result}
-        finally:
-            session.close()
-
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-@app.get("/api/test/videos")
-async def test_get_videos():
-    """Simple test endpoint to check videos data"""
-    try:
-        from sqlalchemy.orm import Session
-
-        from src.database.connection import get_db_session
-        from src.database.models import Video
-
-        # Get database session
-        session_gen = get_db_session()
-        session: Session = next(session_gen)
-
-        try:
-            # Get first few videos
-            videos = session.query(Video).limit(5).all()
-
-            result = []
-            for video in videos:
-                # Handle enum status safely
-                status_value = None
-                try:
-                    status_value = (
-                        video.status.value
-                        if hasattr(video.status, "value")
-                        else str(video.status)
-                    )
-                except Exception as e:
-                    status_value = f"enum_error: {e}"
-
-                result.append(
-                    {
-                        "id": video.id,
-                        "title": video.title,
-                        "artist_id": video.artist_id,
-                        "youtube_id": getattr(video, "youtube_id", None),
-                        "local_path": getattr(video, "local_path", None),
-                        "status": status_value,
-                        "created_at": getattr(video, "created_at", None),
-                        # Add all available attributes
-                        "available_fields": [
-                            attr
-                            for attr in dir(video)
-                            if not attr.startswith("_")
-                            and not callable(getattr(video, attr))
-                        ],
-                    }
-                )
-
-            return {"success": True, "count": len(result), "videos": result}
-        finally:
-            session.close()
-
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+# NOTE: /test-login, /api/test/artists, /api/test/videos removed in v0.12.0 security hardening
 
 
 @app.get("/api/discover")
@@ -1505,23 +1368,54 @@ async def process_queued_downloads():
 async def auth_check_simple(request: Request):
     """Check authentication status based on session cookie"""
     try:
+        from src.services.session_store import SessionStore
+
         session_token = request.cookies.get("session_token")
         if session_token:
-            return {
-                "authenticated": True,
-                "user": {"id": 1, "username": "admin", "role": "ADMIN"},
-            }
-        else:
-            return {"authenticated": False}
+            user_data = SessionStore.validate_session(session_token)
+            if user_data:
+                return {
+                    "authenticated": True,
+                    "user": {
+                        "id": user_data.get("user_id", 1),
+                        "username": user_data.get("username", "admin"),
+                        "role": "ADMIN",
+                    },
+                }
+
+        # Check Flask session fallback
+        try:
+            from flask import has_request_context
+            from flask import session as flask_session
+
+            if has_request_context() and flask_session.get("authenticated"):
+                return {
+                    "authenticated": True,
+                    "user": {
+                        "id": 1,
+                        "username": flask_session.get("username", "admin"),
+                        "role": flask_session.get("role", "ADMIN").upper(),
+                    },
+                }
+        except (ImportError, RuntimeError):
+            pass
+
+        return {"authenticated": False}
     except Exception as e:
         logger.error(f"Auth check error: {e}")
         return {"authenticated": False}
 
 
 @app.post("/auth/logout")
-async def logout():
-    """Logout endpoint - clears session cookie"""
+async def logout(request: Request):
+    """Logout endpoint - clears session cookie and destroys session"""
     from fastapi.responses import JSONResponse
+
+    from src.services.session_store import SessionStore
+
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        SessionStore.destroy_session(session_token)
 
     response = JSONResponse(
         content={

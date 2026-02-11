@@ -218,9 +218,9 @@ class LoadTestRunner:
         headers = self.config.request_headers or {}
         if self.config.authentication:
             if "bearer_token" in self.config.authentication:
-                headers["Authorization"] = (
-                    f"Bearer {self.config.authentication['bearer_token']}"
-                )
+                headers[
+                    "Authorization"
+                ] = f"Bearer {self.config.authentication['bearer_token']}"
 
         self.session = aiohttp.ClientSession(
             connector=connector, timeout=timeout, headers=headers
@@ -843,7 +843,6 @@ async def run_test_suite(
 
     # Only continue if smoke test passes
     if smoke_results.success_rate >= 95:
-
         # Load test
         load_config = LoadTestPresets.api_load_test(base_url)
         logger.info("Running load test...")

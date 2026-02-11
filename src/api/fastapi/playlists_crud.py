@@ -116,7 +116,7 @@ async def get_playlists(
 
     except Exception as e:
         logger.error(f"Error getting playlists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{playlist_id}", response_model=Dict[str, Any])
@@ -158,7 +158,7 @@ async def get_playlist(
         raise
     except Exception as e:
         logger.error(f"Error getting playlist {playlist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/", response_model=PlaylistResponse)
@@ -221,7 +221,7 @@ async def create_playlist(
     except Exception as e:
         logger.error(f"Error creating playlist: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{playlist_id}", response_model=PlaylistResponse)
@@ -246,7 +246,19 @@ async def update_playlist(
         # Note: Admin check for featured status would go here when auth is implemented
         # For now, allow featured status updates in development
 
+        # Allowlist of fields that can be updated
+        allowed_fields = {
+            "name",
+            "description",
+            "is_public",
+            "is_featured",
+            "playlist_type",
+            "filter_criteria",
+            "sort_order",
+        }
         for field, value in update_fields.items():
+            if field not in allowed_fields:
+                continue
             setattr(playlist, field, value)
 
         session.commit()
@@ -286,7 +298,7 @@ async def update_playlist(
     except Exception as e:
         logger.error(f"Error updating playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{playlist_id}")
@@ -318,7 +330,7 @@ async def delete_playlist(
     except Exception as e:
         logger.error(f"Error deleting playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -416,7 +428,7 @@ async def add_videos_to_playlist(
     except Exception as e:
         logger.error(f"Error adding videos to playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{playlist_id}/videos/{entry_id}")
@@ -472,7 +484,7 @@ async def remove_video_from_playlist(
     except Exception as e:
         logger.error(f"Error removing video from playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{playlist_id}/videos/reorder")
@@ -554,7 +566,7 @@ async def reorder_videos_in_playlist(
     except Exception as e:
         logger.error(f"Error reordering videos in playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -618,4 +630,4 @@ async def bulk_delete_playlists(
     except Exception as e:
         logger.error(f"Error in bulk delete: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

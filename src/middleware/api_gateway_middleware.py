@@ -168,10 +168,12 @@ class APIGatewayMiddleware(BaseHTTPMiddleware):
             gateway = await get_api_gateway()
 
             # Process through gateway
-            status_code, response_headers, response_body = (
-                await gateway.process_request(
-                    path, method, headers, body, query_params, client_ip
-                )
+            (
+                status_code,
+                response_headers,
+                response_body,
+            ) = await gateway.process_request(
+                path, method, headers, body, query_params, client_ip
             )
 
             # Create response

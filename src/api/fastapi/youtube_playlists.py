@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.services.youtube_playlist_service import youtube_playlist_service
 
@@ -135,7 +135,7 @@ class YouTubeStatusResponse(BaseModel):
 
 @router.get("/", response_model=Dict[str, Any])
 async def get_monitored_playlists(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get all monitored playlists"""
@@ -152,13 +152,13 @@ async def get_monitored_playlists(
 
     except Exception as e:
         logger.error(f"Failed to get monitored playlists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/")
 async def create_playlist_monitor(
     monitor_request: PlaylistMonitorRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Create a new playlist monitor"""
@@ -200,13 +200,13 @@ async def create_playlist_monitor(
         raise
     except Exception as e:
         logger.error(f"Failed to create playlist monitor: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/monitor/{monitor_id}")
 async def get_playlist_monitor(
     monitor_id: int,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get a specific playlist monitor"""
@@ -229,14 +229,14 @@ async def get_playlist_monitor(
         raise
     except Exception as e:
         logger.error(f"Failed to get playlist monitor: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/monitor/{monitor_id}")
 async def update_playlist_monitor(
     monitor_id: int,
     update_request: PlaylistMonitorUpdate,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Update playlist monitor settings"""
@@ -261,14 +261,14 @@ async def update_playlist_monitor(
         raise
     except Exception as e:
         logger.error(f"Failed to update playlist monitor: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/monitor/{monitor_id}")
 async def delete_playlist_monitor(
     monitor_id: int,
     delete_videos: bool = Query(default=False),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Delete playlist monitor"""
@@ -287,7 +287,7 @@ async def delete_playlist_monitor(
 
     except Exception as e:
         logger.error(f"Failed to delete playlist monitor: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -298,7 +298,7 @@ async def delete_playlist_monitor(
 @router.post("/monitor/{monitor_id}/sync")
 async def sync_playlist(
     monitor_id: int,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Sync a specific playlist"""
@@ -328,12 +328,12 @@ async def sync_playlist(
         raise
     except Exception as e:
         logger.error(f"Failed to sync playlist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/sync-all")
 async def sync_all_playlists(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Sync all monitored playlists"""
@@ -352,12 +352,12 @@ async def sync_all_playlists(
 
     except Exception as e:
         logger.error(f"Failed to sync all playlists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/sync")
 async def sync_playlists(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Sync all monitored playlists for settings page"""
@@ -389,7 +389,7 @@ async def sync_playlists(
         raise
     except Exception as e:
         logger.error(f"Failed to sync playlists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -400,7 +400,7 @@ async def sync_playlists(
 @router.post("/extract-id")
 async def extract_playlist_id(
     url_request: PlaylistUrlRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Extract playlist ID from YouTube URL"""
@@ -420,13 +420,13 @@ async def extract_playlist_id(
         raise
     except Exception as e:
         logger.error(f"Failed to extract playlist ID: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/info", response_model=Dict[str, Any])
 async def get_playlist_info(
     url_request: PlaylistUrlRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get playlist information without creating monitor"""
@@ -462,13 +462,13 @@ async def get_playlist_info(
         raise
     except Exception as e:
         logger.error(f"Failed to get playlist info: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/preview", response_model=PlaylistPreviewResponse)
 async def preview_playlist_videos(
     preview_request: PlaylistPreviewRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Preview videos in a playlist without creating monitor"""
@@ -525,7 +525,7 @@ async def preview_playlist_videos(
         raise
     except Exception as e:
         logger.error(f"Failed to preview playlist videos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -535,7 +535,7 @@ async def preview_playlist_videos(
 
 @router.get("/status", response_model=YouTubeStatusResponse)
 async def get_youtube_status(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get YouTube integration status"""
@@ -554,12 +554,12 @@ async def get_youtube_status(
 
     except Exception as e:
         logger.error(f"Failed to get YouTube status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/test")
 async def test_youtube_integration(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Test YouTube API connection"""
@@ -624,7 +624,7 @@ async def test_youtube_integration(
 @router.get("/{monitor_id}")
 async def get_playlist_monitor_alias(
     monitor_id: int,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get a specific playlist monitor (alias route for frontend)"""
@@ -635,7 +635,7 @@ async def get_playlist_monitor_alias(
 async def update_playlist_monitor_alias(
     monitor_id: int,
     update_request: PlaylistMonitorUpdate,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Update playlist monitor settings (alias route for frontend)"""
@@ -648,7 +648,7 @@ async def update_playlist_monitor_alias(
 async def delete_playlist_monitor_alias(
     monitor_id: int,
     delete_videos: bool = Query(default=False),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Delete playlist monitor (alias route for frontend)"""
@@ -660,7 +660,7 @@ async def delete_playlist_monitor_alias(
 @router.post("/{monitor_id}/sync")
 async def sync_playlist_alias(
     monitor_id: int,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Sync a specific playlist (alias route for frontend)"""

@@ -13,10 +13,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from src.api.fastapi.auth_dependencies import get_current_user as _get_current_user
 from src.database.connection import get_db_session
 from src.database.models import SessionStatus, User, UserRole, UserSession
 from src.services.auth_service import AuthService
@@ -48,11 +49,9 @@ class UserInfo:
         return self.role in [UserRole.ADMIN.value, UserRole.MANAGER.value]
 
 
-async def get_current_user() -> UserInfo:
+async def get_current_user(request: Request) -> UserInfo:
     """Get current authenticated user"""
-    from src.api.fastapi.auth_dependencies import get_current_user_legacy
-
-    user_data = await get_current_user_legacy()
+    user_data = await _get_current_user(request)
     return UserInfo(
         id=user_data.get("user_id", 1),
         username=user_data.get("username", "admin"),

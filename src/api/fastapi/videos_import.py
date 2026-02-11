@@ -16,20 +16,13 @@ from datetime import datetime
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy
+from src.api.fastapi.auth_dependencies import get_current_user
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video, VideoStatus
 from src.utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_import")
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
 # ========================================================================================
 # IMPORT OPERATIONS
 # ========================================================================================
@@ -154,7 +147,7 @@ async def import_from_youtube(
     except Exception as e:
         logger.error(f"Error importing YouTube video: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/import-from-imvdb")
@@ -317,4 +310,4 @@ async def import_from_imvdb(
     except Exception as e:
         logger.error(f"Error importing IMVDb video: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

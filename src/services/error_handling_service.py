@@ -270,18 +270,18 @@ class EnhancedErrorHandler:
             if strategy == ErrorRecoveryStrategy.RETRY.value:
                 # Implement retry logic
                 recovery_result["strategy_used"] = strategy
-                recovery_result["message"] = (
-                    "Retry recommended - operation should be attempted again"
-                )
+                recovery_result[
+                    "message"
+                ] = "Retry recommended - operation should be attempted again"
                 recovery_result["successful"] = True
                 break
 
             elif strategy == ErrorRecoveryStrategy.FALLBACK.value:
                 # Implement fallback logic
                 recovery_result["strategy_used"] = strategy
-                recovery_result["message"] = (
-                    "Fallback available - alternative approach recommended"
-                )
+                recovery_result[
+                    "message"
+                ] = "Fallback available - alternative approach recommended"
                 recovery_result["successful"] = True
                 break
 
@@ -294,9 +294,9 @@ class EnhancedErrorHandler:
 
             elif strategy == ErrorRecoveryStrategy.MANUAL_INTERVENTION.value:
                 recovery_result["strategy_used"] = strategy
-                recovery_result["message"] = (
-                    "Manual intervention required - please check system configuration"
-                )
+                recovery_result[
+                    "message"
+                ] = "Manual intervention required - please check system configuration"
                 recovery_result["successful"] = False
                 break
 

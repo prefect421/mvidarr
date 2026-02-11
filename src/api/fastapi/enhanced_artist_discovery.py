@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import Artist
 from src.services.enhanced_artist_discovery_service import (
@@ -102,7 +102,7 @@ class DiscoveryStats(BaseModel):
 @router.post("/search", response_model=List[ArtistDiscoveryResult])
 async def discover_artists_multi_source(
     search_request: DiscoverySearchRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -158,13 +158,13 @@ async def discover_artists_multi_source(
 
     except Exception as e:
         logger.error(f"Error in multi-source artist discovery: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/enrich", response_model=List[EnrichmentResult])
 async def enrich_artists_metadata(
     enrichment_request: EnrichmentRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -220,13 +220,13 @@ async def enrich_artists_metadata(
         raise
     except Exception as e:
         logger.error(f"Error in artist enrichment: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/duplicates")
 async def detect_duplicate_artists(
     threshold: float = Query(default=0.8, ge=0.0, le=1.0),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -290,13 +290,13 @@ async def detect_duplicate_artists(
 
     except Exception as e:
         logger.error(f"Error in duplicate detection: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/recommendations", response_model=List[ArtistDiscoveryResult])
 async def get_artist_recommendations(
     recommendation_request: RecommendationRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -361,13 +361,13 @@ async def get_artist_recommendations(
         raise
     except Exception as e:
         logger.error(f"Error getting artist recommendations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/stats", response_model=DiscoveryStats)
 async def get_discovery_statistics(
     days: int = Query(default=30, ge=1, le=365),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -399,4 +399,4 @@ async def get_discovery_statistics(
 
     except Exception as e:
         logger.error(f"Error getting discovery statistics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

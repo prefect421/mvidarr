@@ -569,7 +569,7 @@ async def authorize_spotify(request: Request):
         raise
     except Exception as e:
         logger.error(f"Failed to get Spotify authorization URL: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/callback")
@@ -687,7 +687,7 @@ async def disconnect_spotify():
 
     except Exception as e:
         logger.error(f"Failed to disconnect from Spotify: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/playlists/{playlist_id}/import")
@@ -717,7 +717,7 @@ async def import_playlist(playlist_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to import playlist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/import-playlists")
@@ -747,7 +747,7 @@ async def import_all_playlists():
         raise
     except Exception as e:
         logger.error(f"Failed to import playlists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/followed/sync")
@@ -776,7 +776,7 @@ async def sync_followed_artists():
         raise
     except Exception as e:
         logger.error(f"Failed to sync followed artists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/top/artists")
@@ -810,4 +810,4 @@ async def get_top_artists(
         raise
     except Exception as e:
         logger.error(f"Failed to get top artists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

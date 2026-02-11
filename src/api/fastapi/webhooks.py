@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field, HttpUrl, validator
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.services.webhook_service import (
     WebhookEndpoint,
@@ -157,7 +157,7 @@ class WebhookStatsResponse(BaseModel):
 
 @router.get("/")
 async def get_webhooks(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get all webhook endpoints"""
@@ -172,13 +172,13 @@ async def get_webhooks(
 
     except Exception as e:
         logger.error(f"Failed to get webhooks: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/")
 async def create_webhook(
     webhook_request: WebhookEndpointRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Create a new webhook endpoint"""
@@ -221,14 +221,14 @@ async def create_webhook(
         raise
     except Exception as e:
         logger.error(f"Failed to create webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{url:path}")
 async def update_webhook(
     url: str = Path(..., description="Webhook URL to update"),
     update_request: WebhookEndpointUpdate = None,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Update webhook endpoint configuration"""
@@ -256,13 +256,13 @@ async def update_webhook(
         raise
     except Exception as e:
         logger.error(f"Failed to update webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{url:path}")
 async def delete_webhook(
     url: str = Path(..., description="Webhook URL to delete"),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Delete webhook endpoint"""
@@ -282,7 +282,7 @@ async def delete_webhook(
 
     except Exception as e:
         logger.error(f"Failed to delete webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -293,7 +293,7 @@ async def delete_webhook(
 @router.post("/test")
 async def test_webhook(
     test_request: WebhookTestRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Test webhook endpoint"""
@@ -312,13 +312,13 @@ async def test_webhook(
 
     except Exception as e:
         logger.error(f"Failed to test webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/validate")
 async def validate_webhook(
     validation_request: WebhookValidationRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Validate webhook configuration"""
@@ -374,7 +374,7 @@ async def validate_webhook(
         raise
     except Exception as e:
         logger.error(f"Failed to validate webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -384,7 +384,7 @@ async def validate_webhook(
 
 @router.get("/events")
 async def get_event_types(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get available webhook event types"""
@@ -401,13 +401,13 @@ async def get_event_types(
 
     except Exception as e:
         logger.error(f"Failed to get event types: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/trigger")
 async def trigger_webhook(
     trigger_request: WebhookTriggerRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Trigger a webhook event manually (for testing)"""
@@ -435,12 +435,12 @@ async def trigger_webhook(
 
     except Exception as e:
         logger.error(f"Failed to trigger webhook: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/stats", response_model=WebhookStatsResponse)
 async def get_webhook_stats(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get webhook statistics"""
@@ -474,4 +474,4 @@ async def get_webhook_stats(
 
     except Exception as e:
         logger.error(f"Failed to get webhook stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

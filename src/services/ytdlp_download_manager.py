@@ -428,9 +428,9 @@ def _download_video(service_state: Dict, download_entry: Dict):
                     f"Download {download_id} rate limited, will retry later: {error_message}"
                 )
                 download_entry["status"] = "pending"
-                download_entry["error_message"] = (
-                    f"Rate limited - will retry: {error_message}"
-                )
+                download_entry[
+                    "error_message"
+                ] = f"Rate limited - will retry: {error_message}"
 
                 # Update database to pending for retry (don't mark video as FAILED)
                 _update_database_download_status(

@@ -6,7 +6,7 @@ Provides real-time visibility into YouTube API quota usage.
 
 from fastapi import APIRouter, Depends
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.utils.youtube_cache import get_youtube_cache
 from src.utils.youtube_quota_tracker import get_quota_tracker
 
@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.get("")
-async def get_quota_stats(current_user: dict = Depends(require_authentication_legacy)):
+async def get_quota_stats(current_user: dict = Depends(require_authentication)):
     """Get current YouTube API quota usage statistics"""
 
     # Get quota tracker stats
@@ -59,7 +59,7 @@ async def get_quota_stats(current_user: dict = Depends(require_authentication_le
 
 @router.post("/reset")
 async def reset_quota_tracker(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Reset quota tracker (admin only)"""
 

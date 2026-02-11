@@ -294,7 +294,7 @@ async def stream_video(
         raise
     except Exception as e:
         logger.error(f"Error streaming video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{video_id}/stream-transcode")
@@ -464,7 +464,7 @@ async def stream_video_transcode(
         raise
     except Exception as e:
         logger.error(f"Error in transcode streaming for video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -678,10 +678,7 @@ async def serve_subtitle(
 
             response = Response(content=content, media_type=mimetype)
 
-            # Add CORS headers
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "GET"
-            response.headers["Access-Control-Allow-Headers"] = "*"
+            # Cache-Control for subtitle files (CORS handled by global middleware)
             response.headers["Cache-Control"] = "public, max-age=3600"
 
             logger.debug(
@@ -694,11 +691,7 @@ async def serve_subtitle(
             path=subtitle_path, media_type=mimetype, filename=decoded_filename
         )
 
-        # Add CORS headers to allow video player to access subtitles
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-
+        # CORS handled by global middleware
         return response
 
     except HTTPException:

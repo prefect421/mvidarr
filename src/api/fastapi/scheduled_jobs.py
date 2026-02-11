@@ -114,7 +114,7 @@ async def get_all_scheduled_jobs(
 
     except Exception as e:
         logger.error(f"Failed to get scheduled jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/scheduled/{job_id}")
@@ -154,7 +154,7 @@ async def get_scheduled_job(job_id: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to get job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/scheduled/{job_id}/retry")
@@ -201,7 +201,7 @@ async def retry_scheduled_job(job_id: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to retry job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/scheduled/{job_id}/cancel")
@@ -245,7 +245,7 @@ async def cancel_scheduled_job(job_id: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to cancel job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/history")
@@ -296,7 +296,7 @@ async def get_job_history(
 
     except Exception as e:
         logger.error(f"Failed to get job history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/statistics", response_model=JobStatisticsResponse)
@@ -376,7 +376,7 @@ async def get_job_statistics(
 
     except Exception as e:
         logger.error(f"Failed to get job statistics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/history/cleanup")
@@ -409,4 +409,4 @@ async def cleanup_old_jobs(
 
     except Exception as e:
         logger.error(f"Failed to cleanup old jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

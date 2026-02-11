@@ -242,9 +242,7 @@ async def auto_match_services(
                         f"🎵 ❌ Spotify auto-match failed for {artist.name}: {e}"
                     )
             except Exception as e:
-                logger.warning(
-                    f"🎵 ❌ Spotify auto-match failed for {artist.name}: {e}"
-                )
+                logger.warning(f"🎵 ❌ Spotify auto-match failed for {artist.name}: {e}")
                 import traceback
 
                 traceback.print_exc()
@@ -765,9 +763,7 @@ async def auto_match_all_artists(
 
                 if any(matches_found.values()):
                     success_count += 1
-                    logger.info(
-                        f"✅ Auto-matched artist {artist.name}: {matches_found}"
-                    )
+                    logger.info(f"✅ Auto-matched artist {artist.name}: {matches_found}")
                 else:
                     logger.info(f"⚠️ No matches found for artist {artist.name}")
 

@@ -69,7 +69,7 @@ async def get_backup_service_status():
 
     except Exception as e:
         logger.error(f"Failed to get backup service status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.post("/configure/{provider}")
@@ -96,7 +96,7 @@ async def configure_cloud_provider(
 
     except Exception as e:
         logger.error(f"Failed to configure cloud provider {provider}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.post("/create")
@@ -148,7 +148,7 @@ async def create_backup_job(
 
     except Exception as e:
         logger.error(f"Failed to create backup job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/jobs")
@@ -162,7 +162,7 @@ async def list_backup_jobs(limit: int = 20, user=Depends(require_auth)):
 
     except Exception as e:
         logger.error(f"Failed to list backup jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/jobs/{job_id}")
@@ -179,7 +179,7 @@ async def get_backup_job_status(job_id: str, user=Depends(require_auth)):
 
     except Exception as e:
         logger.error(f"Failed to get backup job status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # YouTube Import API
@@ -289,7 +289,7 @@ async def get_youtube_import_status():
 
     except Exception as e:
         logger.error(f"Failed to get YouTube import status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @youtube_router.post("/import")
@@ -343,7 +343,7 @@ async def create_youtube_import(
 
     except Exception as e:
         logger.error(f"Failed to create YouTube import: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @youtube_router.get("/jobs")
@@ -357,7 +357,7 @@ async def list_youtube_jobs(limit: int = 20, user=Depends(require_auth)):
 
     except Exception as e:
         logger.error(f"Failed to list YouTube jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @youtube_router.get("/jobs/{job_id}")
@@ -374,7 +374,7 @@ async def get_youtube_job_status(job_id: str, user=Depends(require_auth)):
 
     except Exception as e:
         logger.error(f"Failed to get YouTube job status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @youtube_router.post("/jobs/{job_id}/cancel")
@@ -388,7 +388,7 @@ async def cancel_youtube_job(job_id: str, user=Depends(require_auth)):
 
     except Exception as e:
         logger.error(f"Failed to cancel YouTube job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Local Network Sharing API
@@ -405,7 +405,7 @@ async def get_network_sharing_status():
 
     except Exception as e:
         logger.error(f"Failed to get network sharing status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @network_router.get("/shares")
@@ -419,7 +419,7 @@ async def list_network_shares(user=Depends(require_auth)):
 
     except Exception as e:
         logger.error(f"Failed to list network shares: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @network_router.get("/devices")
@@ -433,7 +433,7 @@ async def get_connected_devices(user=Depends(require_auth)):
 
     except Exception as e:
         logger.error(f"Failed to get connected devices: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @network_router.get("/shares/{share_id}/qr")
@@ -454,7 +454,7 @@ async def get_share_qr_code(share_id: str, user=Depends(require_auth)):
 
     except Exception as e:
         logger.error(f"Failed to generate QR code for share {share_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Sync Manager API
@@ -485,7 +485,7 @@ async def get_sync_service_status():
 
     except Exception as e:
         logger.error(f"Failed to get sync service status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @sync_router.get("/profiles")
@@ -499,7 +499,7 @@ async def list_sync_profiles(user=Depends(require_auth)):
 
     except Exception as e:
         logger.error(f"Failed to list sync profiles: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @sync_router.post("/profiles")
@@ -550,7 +550,7 @@ async def create_sync_profile(
 
     except Exception as e:
         logger.error(f"Failed to create sync profile: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @sync_router.post("/profiles/{profile_id}/sync")
@@ -581,7 +581,7 @@ async def start_sync_job(
 
     except Exception as e:
         logger.error(f"Failed to start sync job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Combined Week 29 Status API
@@ -656,4 +656,4 @@ async def get_week29_status():
 
     except Exception as e:
         logger.error(f"Failed to get Week 29 status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -84,9 +84,9 @@ class VideoUpdateRequest(BaseModel):
     # NOTE: thumbnail_url removed - use dedicated thumbnail endpoints instead
     status: Optional[str] = None
     year: Optional[int] = None
-    release_date: Optional[str] = (
-        None  # Allow updating release date (YYYY-MM-DD format)
-    )
+    release_date: Optional[
+        str
+    ] = None  # Allow updating release date (YYYY-MM-DD format)
     album: Optional[str] = None  # Allow updating album name
     genres: Optional[List[str]] = None
 

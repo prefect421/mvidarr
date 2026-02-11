@@ -169,7 +169,9 @@ async def extract_video_metadata(
         )
 
     except FileNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Internal server error"
+        )
     except Exception as e:
         logger.error(f"Error submitting metadata extraction task: {e}")
         raise HTTPException(
@@ -233,7 +235,9 @@ async def convert_video_format(
         )
 
     except FileNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Internal server error"
+        )
     except Exception as e:
         logger.error(f"Error submitting video conversion task: {e}")
         raise HTTPException(
@@ -351,7 +355,9 @@ async def validate_video_file(
         )
 
     except FileNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Internal server error"
+        )
     except Exception as e:
         logger.error(f"Error submitting video validation task: {e}")
         raise HTTPException(

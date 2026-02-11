@@ -425,9 +425,7 @@ class VevoService:
             processing_time = time.time() - start_time
             await track_media_processing_time("vevo_channel_videos", processing_time)
 
-            logger.info(
-                f"🎬 Found {len(videos)} videos on {artist_name}'s Vevo channel"
-            )
+            logger.info(f"🎬 Found {len(videos)} videos on {artist_name}'s Vevo channel")
             return videos
 
         except Exception as e:

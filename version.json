@@ -1,31 +1,42 @@
 {
-  "version": "0.11.9",
-  "build_date": "2026-02-05T19:00:00.000000",
-  "git_commit": "03ee6eb",
+  "version": "0.12.0",
+  "build_date": "2026-02-11T19:20:42.309441",
+  "git_commit": "PENDING",
   "git_branch": "dev",
-  "release_name": "v0.11.9 - Security Updates, Video Quality & Discovery Fix",
+  "release_name": "v0.12.0 - Security Hardening Sprint",
   "features": [
-    "🔒 Security: Updated python-multipart 0.0.20 → 0.0.22 (CVE-2026-24486)",
-    "🔒 Security: Updated urllib3 2.6.0 → 2.6.3 (CVE-2026-21441)",
-    "🔒 Security: Updated aiohttp 3.12.14 → 3.13.3 (multiple CVEs)",
-    "🔒 Security: Updated werkzeug 3.1.4 → 3.1.5 (CVE-2026-21860)",
-    "🎬 Video Quality: Added format sorting (-S) to prioritize resolution",
-    "🎬 Video Quality: TV client now falls back to web for more formats",
-    "🎬 Video Quality: Respects user's max_video_quality database setting",
-    "🔍 Discovery: Fixed YouTube API key caching bug causing 0 results"
+    "Auth: Consolidated to single auth system (SimpleAuth + SessionStore)",
+    "Auth: Real session token validation replacing accept-any-token bypass",
+    "Auth: Removed backdoor endpoints (/test-login, credential reset)",
+    "Auth: Fail-closed authentication middleware (deny on error)",
+    "Auth: Added auth to filesystem browse, settings, and image processing",
+    "Passwords: Upgraded from SHA-256 to bcrypt with lazy migration",
+    "Passwords: Minimum password length increased to 8 characters",
+    "Input: Safe tar extraction with path traversal prevention",
+    "Input: Upload filename sanitization against directory traversal",
+    "Input: SQL sort_by allowlists and LIKE wildcard escaping",
+    "Input: Mass assignment prevention via field allowlists",
+    "Network: SSRF protection blocking private/loopback IPs",
+    "Network: Redis authentication enabled with password",
+    "Network: Secure session cookies when behind HTTPS",
+    "Network: Restricted proxy trusted hosts from wildcard",
+    "Network: Replaced pickle cache serialization with JSON-only",
+    "Network: Sanitized error responses (no stack traces in API)",
+    "Network: Swagger/ReDoc disabled in production",
+    "Network: Rate limiting and security validation middleware enabled"
   ],
   "resolved_issues": [
-    "CVE-2026-24486: python-multipart path traversal vulnerability",
-    "CVE-2026-21441: urllib3 decompression-bomb bypass on redirects",
-    "CVE-2025-69223: aiohttp zip bomb vulnerability",
-    "CVE-2025-69227/28/29: aiohttp DoS vulnerabilities",
-    "CVE-2026-21860: werkzeug Windows device names bypass",
-    "360p video downloads instead of user's quality setting",
-    "YouTube discovery returning 0 results despite valid API key"
+    "8 critical auth bypass vulnerabilities closed",
+    "12 high-severity issues (password security, input validation)",
+    "16 medium-severity issues (network, infrastructure, error handling)",
+    "13 low-severity issues (debug logging, dead code)"
   ],
   "upgrade_notes": [
-    "Docker image rebuild required for security updates",
-    "Video downloads will now respect format sorting for better quality",
-    "Restart required for discovery fix to take effect"
+    "Docker image rebuild required",
+    "Set REDIS_PASSWORD env var (default: mvidarr_redis_default)",
+    "Existing SHA-256 passwords auto-migrate to bcrypt on next login",
+    "Minimum password length now 8 characters",
+    "Filesystem browse restricted to /data, /media, /mnt, /home dirs",
+    "API error responses no longer expose internal details"
   ]
 }

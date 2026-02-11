@@ -21,7 +21,7 @@ from fastapi import Path as FastAPIPath
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy
+from src.api.fastapi.auth_dependencies import get_current_user
 from src.api.fastapi.videos_models import BulkRefreshMetadataRequest
 from src.database.connection import get_db_session
 from src.database.models import Video
@@ -29,13 +29,6 @@ from src.utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_metadata")
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
 # ========================================================================================
 # METADATA REFRESH OPERATIONS
 # ========================================================================================
@@ -144,7 +137,7 @@ async def bulk_refresh_metadata(
     except Exception as e:
         logger.error(f"Error in bulk metadata refresh: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk/enhanced-refresh-metadata")
@@ -228,7 +221,7 @@ async def bulk_enhanced_refresh_metadata(
     except Exception as e:
         logger.error(f"Error in bulk enhanced metadata refresh: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/enhanced-refresh-all-metadata")
@@ -322,7 +315,7 @@ async def enhanced_refresh_all_metadata(
         raise
     except Exception as e:
         logger.error(f"Error queueing bulk metadata refresh: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{video_id}/enhanced-refresh-metadata")
@@ -414,7 +407,7 @@ async def enhanced_refresh_metadata(
     except Exception as e:
         logger.error(f"Error in enhanced metadata refresh for video {video_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -597,7 +590,7 @@ async def extract_video_year(
     except Exception as e:
         logger.error(f"Error extracting year for video {video_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk/extract-years")
@@ -747,4 +740,4 @@ async def bulk_extract_years(
     except Exception as e:
         logger.error(f"Error in bulk year extraction: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

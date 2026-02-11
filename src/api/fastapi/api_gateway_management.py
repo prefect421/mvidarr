@@ -161,7 +161,7 @@ async def register_service(service_request: ServiceRegistrationRequest):
 
     except Exception as e:
         logger.error(f"Service registration error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/services", response_model=Dict[str, Any])
@@ -210,7 +210,7 @@ async def list_services():
 
     except Exception as e:
         logger.error(f"List services error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/services/{service_id}")
@@ -236,7 +236,7 @@ async def deregister_service(service_id: str):
         raise
     except Exception as e:
         logger.error(f"Service deregistration error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/services/{service_id}/health")
@@ -267,7 +267,7 @@ async def check_service_health(service_id: str):
         raise
     except Exception as e:
         logger.error(f"Service health check error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Route Management Endpoints
@@ -316,7 +316,7 @@ async def create_route_rule(route_request: RouteRuleRequest):
         raise
     except Exception as e:
         logger.error(f"Route creation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/routes", response_model=Dict[str, Any])
@@ -345,7 +345,7 @@ async def list_routes():
 
     except Exception as e:
         logger.error(f"List routes error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/routes/{rule_id}")
@@ -375,7 +375,7 @@ async def delete_route_rule(rule_id: str):
         raise
     except Exception as e:
         logger.error(f"Route deletion error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Gateway Statistics and Monitoring
@@ -412,7 +412,7 @@ async def get_gateway_statistics():
 
     except Exception as e:
         logger.error(f"Gateway stats error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/health")
@@ -477,7 +477,7 @@ async def list_api_versions():
 
     except Exception as e:
         logger.error(f"List versions error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/versions/{version}/info", response_model=VersionInfoResponse)
@@ -498,7 +498,7 @@ async def get_version_info(version: str):
         raise
     except Exception as e:
         logger.error(f"Version info error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/versions/{version}/migration", response_model=Dict[str, Any])
@@ -520,7 +520,7 @@ async def get_migration_recommendations(version: str):
         raise
     except Exception as e:
         logger.error(f"Migration recommendations error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/test-route")
@@ -555,4 +555,4 @@ async def test_route_matching(
 
     except Exception as e:
         logger.error(f"Route testing error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

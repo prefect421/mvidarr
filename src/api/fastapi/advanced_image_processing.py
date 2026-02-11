@@ -165,7 +165,7 @@ async def bulk_image_analysis(
 
     except Exception as e:
         logger.error(f"❌ Bulk analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/convert/formats", response_model=FormatConversionResponse)
@@ -248,7 +248,7 @@ async def convert_image_formats(
 
     except Exception as e:
         logger.error(f"❌ Format conversion failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/enhance/quality", response_model=QualityEnhancementResponse)
@@ -336,7 +336,7 @@ async def enhance_image_quality(
 
     except Exception as e:
         logger.error(f"❌ Quality enhancement failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/formats/supported")
@@ -379,7 +379,7 @@ async def get_supported_formats():
 
     except Exception as e:
         logger.error(f"❌ Failed to get supported formats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/enhancement/options")
@@ -425,7 +425,7 @@ async def get_enhancement_options():
 
     except Exception as e:
         logger.error(f"❌ Failed to get enhancement options: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/analyze/quality-only")
@@ -505,4 +505,4 @@ async def analyze_image_quality_only(
 
     except Exception as e:
         logger.error(f"❌ Quality analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -26,10 +26,9 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 # ====================================
 
 
-async def get_current_admin():
-    """Mock admin authentication - replace with actual authentication"""
-    return {"id": 1, "username": "admin", "role": "admin"}
-
+from src.api.fastapi.auth_dependencies import (  # noqa: E402
+    require_admin as get_current_admin,
+)
 
 # ====================================
 # Pydantic Models
@@ -106,7 +105,8 @@ async def get_all_settings():
     except Exception as e:
         logger.error(f"Failed to get settings: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -136,7 +136,8 @@ async def get_database_config():
     except Exception as e:
         logger.error(f"Failed to get database config: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -165,7 +166,8 @@ async def get_setting(key: str):
     except Exception as e:
         logger.error(f"Failed to get setting '{key}': {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -202,7 +204,8 @@ async def update_multiple_settings(
     except Exception as e:
         logger.error(f"Failed to update multiple settings: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -237,7 +240,8 @@ async def update_setting(
     except Exception as e:
         logger.error(f"Failed to update setting '{key}': {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -259,7 +263,8 @@ async def delete_setting(key: str, admin_user=Depends(get_current_admin)):
     except Exception as e:
         logger.error(f"Failed to delete setting '{key}': {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -400,7 +405,8 @@ async def restart_application(admin_user=Depends(get_current_admin)):
     except Exception as e:
         logger.error(f"Failed to restart application: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -442,7 +448,8 @@ async def restart_systemd_service(admin_user=Depends(get_current_admin)):
     except Exception as e:
         logger.error(f"Emergency restart failed: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -500,7 +507,8 @@ async def get_scheduler_status():
     except Exception as e:
         logger.error(f"Failed to get scheduler status: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -519,7 +527,8 @@ async def start_scheduler():
     except Exception as e:
         logger.error(f"Failed to start scheduler: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -538,7 +547,8 @@ async def stop_scheduler():
     except Exception as e:
         logger.error(f"Failed to stop scheduler: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -554,7 +564,8 @@ async def reload_scheduler():
     except Exception as e:
         logger.error(f"Failed to reload scheduler: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -588,7 +599,8 @@ async def trigger_scheduled_download():
     except Exception as e:
         logger.error(f"Failed to trigger scheduled download: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 

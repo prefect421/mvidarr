@@ -386,7 +386,7 @@ async def search_videos(
 
     except Exception as e:
         logger.error(f"Error searching videos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/search-artists")
@@ -426,7 +426,7 @@ async def search_artists(
 
     except Exception as e:
         logger.error(f"Error searching artists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{video_id}/lyrics/search")
@@ -560,4 +560,4 @@ async def search_video_lyrics(
         raise
     except Exception as e:
         logger.error(f"Error searching lyrics for video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

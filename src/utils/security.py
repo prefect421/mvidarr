@@ -455,9 +455,9 @@ class SecurityHeaders:
 
             if hsts_enabled and ssl_required:
                 max_age = SettingsService.get("ssl_hsts_max_age", "31536000")
-                headers["Strict-Transport-Security"] = (
-                    f"max-age={max_age}; includeSubDomains"
-                )
+                headers[
+                    "Strict-Transport-Security"
+                ] = f"max-age={max_age}; includeSubDomains"
 
         except Exception:
             # Fallback to default HSTS if settings not available

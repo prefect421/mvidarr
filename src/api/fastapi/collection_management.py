@@ -116,7 +116,7 @@ async def detect_single_music_video(request: MusicVideoDetectionRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to detect music video: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @collection_router.post("/detect/batch", response_model=CollectionResponse)
@@ -170,7 +170,7 @@ async def detect_batch_music_videos(
         raise
     except Exception as e:
         logger.error(f"Failed to batch detect music videos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @collection_router.get(
@@ -275,7 +275,7 @@ async def detect_directory_music_videos(
         raise
     except Exception as e:
         logger.error(f"Failed to detect directory music videos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Collection Organization Endpoints
@@ -335,7 +335,7 @@ async def create_organization_plan(request: OrganizationRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to create organization plan: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @collection_router.post("/organize/execute", response_model=CollectionResponse)
@@ -403,7 +403,7 @@ async def execute_organization(
         raise
     except Exception as e:
         logger.error(f"Failed to execute organization: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Duplicate Detection Endpoints
@@ -453,7 +453,7 @@ async def scan_for_duplicates(request: DuplicateScanRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to scan for duplicates: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @collection_router.post("/duplicates/remove", response_model=CollectionResponse)
@@ -482,7 +482,7 @@ async def remove_duplicates(
         raise
     except Exception as e:
         logger.error(f"Failed to remove duplicates: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Collection Statistics and Information
@@ -580,7 +580,7 @@ async def get_collection_statistics(directory_path: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get collection statistics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @collection_router.get("/health", response_model=CollectionResponse)
@@ -622,7 +622,7 @@ async def get_collection_service_health():
 
     except Exception as e:
         logger.error(f"Failed to get service health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Utility Endpoints
@@ -694,4 +694,4 @@ async def preview_organization_path(
 
     except Exception as e:
         logger.error(f"Failed to preview organization: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

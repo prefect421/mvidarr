@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import WizardState, WizardStatus, WizardStep
 from src.services.imvdb_service import imvdb_service
@@ -234,7 +234,7 @@ async def get_wizard_status(
 
     except Exception as e:
         logger.error(f"Error getting wizard status: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/start", response_model=WizardStateResponse)
@@ -269,7 +269,7 @@ async def start_wizard(
 
     except Exception as e:
         logger.error(f"Error starting wizard: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/create-admin", response_model=CreateAdminResponse)
@@ -327,9 +327,7 @@ async def create_admin_user(
                     user_id = created_user.id
                     username = created_user.username
 
-                    logger.info(
-                        f"✅ First admin user created during wizard: {username}"
-                    )
+                    logger.info(f"✅ First admin user created during wizard: {username}")
                     return CreateAdminResponse(
                         success=True,
                         message=message,
@@ -425,10 +423,10 @@ async def complete_wizard_step(
         # Re-raise HTTP exceptions unchanged (validation errors, 404s, etc.)
         raise
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Internal server error")
     except Exception as e:
         logger.error(f"Error completing wizard step: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/skip", response_model=WizardStateResponse)
@@ -462,7 +460,7 @@ async def skip_wizard(
 
     except Exception as e:
         logger.error(f"Error skipping wizard: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/validate-directory", response_model=DirectoryValidationResponse)
@@ -704,7 +702,7 @@ async def start_video_import(
 
     except Exception as e:
         logger.error(f"Error starting video import: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Note: Job status for wizard imports is now handled by the standard
@@ -794,7 +792,7 @@ async def start_custom_directory_import(
 
     except Exception as e:
         logger.error(f"Error starting custom directory import: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 class UploadResponse(BaseModel):
@@ -868,12 +866,16 @@ async def upload_videos(
         # Save each file to temp directory
         for upload_file in video_files:
             try:
-                logger.info(f"Processing file: {upload_file.filename}")
-                file_path = temp_dir / upload_file.filename
-                logger.info(f"Target path: {file_path}")
+                # Sanitize filename to prevent path traversal
+                from pathlib import PurePosixPath
 
-                # Create parent directories if filename contains subdirectories
-                file_path.parent.mkdir(parents=True, exist_ok=True)
+                safe_name = PurePosixPath(upload_file.filename or "upload").name
+                if safe_name.startswith("."):
+                    logger.warning(f"Rejecting hidden file: {safe_name}")
+                    continue
+                logger.info(f"Processing file: {safe_name}")
+                file_path = temp_dir / safe_name
+                logger.info(f"Target path: {file_path}")
 
                 # Read and save file
                 contents = await upload_file.read()
@@ -924,4 +926,4 @@ async def upload_videos(
         raise
     except Exception as e:
         logger.error(f"Error during video upload: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -167,7 +167,7 @@ async def generate_thumbnails(
             "/api/image-processing/thumbnails/generate", response_time, 500
         )
         logger.error(f"❌ Thumbnail generation request failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/images/optimize", response_model=Dict[str, str])
@@ -209,7 +209,7 @@ async def optimize_images(
 
     except Exception as e:
         logger.error(f"❌ Image optimization request failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/images/analyze", response_model=Dict[str, str])
@@ -248,7 +248,7 @@ async def analyze_images(
 
     except Exception as e:
         logger.error(f"❌ Image analysis request failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/stats", response_model=ImageProcessingStatsResponse)
@@ -266,7 +266,7 @@ async def get_processing_stats():
 
     except Exception as e:
         logger.error(f"❌ Failed to get processing stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/presets", response_model=Dict[str, Dict])
@@ -294,7 +294,7 @@ async def get_thumbnail_presets():
 
     except Exception as e:
         logger.error(f"❌ Failed to get thumbnail presets: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/thumbnails/generate-preset")
@@ -354,7 +354,7 @@ async def generate_preset_thumbnails(
 
     except Exception as e:
         logger.error(f"❌ Preset thumbnail generation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/cache/thumbnails")
@@ -377,7 +377,7 @@ async def clear_thumbnail_cache(
 
     except Exception as e:
         logger.error(f"❌ Failed to clear thumbnail cache: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/cache/stats")
@@ -397,4 +397,4 @@ async def get_cache_stats(
 
     except Exception as e:
         logger.error(f"❌ Failed to get cache stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.services.search_optimization_service import search_optimization_service
 from src.services.thumbnail_optimization_service import thumbnail_optimization_service
@@ -88,7 +88,7 @@ class OptimizationStatus(BaseModel):
 
 @router.get("/search/performance", response_model=SearchPerformanceStats)
 async def get_search_performance(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get search performance statistics"""
@@ -109,12 +109,12 @@ async def get_search_performance(
 
     except Exception as e:
         logger.error(f"Failed to get search performance stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/search/cache/clear")
 async def clear_search_cache(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Clear search cache"""
@@ -129,12 +129,12 @@ async def clear_search_cache(
 
     except Exception as e:
         logger.error(f"Failed to clear search cache: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/search/cache/cleanup")
 async def cleanup_search_cache(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Clean up expired cache entries"""
@@ -149,7 +149,7 @@ async def cleanup_search_cache(
 
     except Exception as e:
         logger.error(f"Failed to cleanup cache: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -159,7 +159,7 @@ async def cleanup_search_cache(
 
 @router.get("/thumbnails/analyze", response_model=ThumbnailAnalysis)
 async def analyze_thumbnail_storage(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Analyze thumbnail storage usage"""
@@ -181,12 +181,12 @@ async def analyze_thumbnail_storage(
 
     except Exception as e:
         logger.error(f"Failed to analyze thumbnail storage: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/thumbnails/recommendations")
 async def get_optimization_recommendations(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get optimization recommendations"""
@@ -205,13 +205,13 @@ async def get_optimization_recommendations(
 
     except Exception as e:
         logger.error(f"Failed to get optimization recommendations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/thumbnails/optimize", response_model=OptimizationResponse)
 async def optimize_thumbnails(
     optimize_request: OptimizeRequest = OptimizeRequest(),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Optimize existing thumbnails by converting to WebP"""
@@ -243,12 +243,12 @@ async def optimize_thumbnails(
 
     except Exception as e:
         logger.error(f"Failed to optimize thumbnails: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/thumbnails/cleanup-duplicates", response_model=OptimizationResponse)
 async def cleanup_duplicate_thumbnails(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Find and remove duplicate thumbnails"""
@@ -278,7 +278,7 @@ async def cleanup_duplicate_thumbnails(
 
     except Exception as e:
         logger.error(f"Failed to cleanup duplicate thumbnails: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -288,7 +288,7 @@ async def cleanup_duplicate_thumbnails(
 
 @router.post("/database/indexes")
 async def optimize_database_indexes(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Optimize database indexes for better performance"""
@@ -312,7 +312,7 @@ async def optimize_database_indexes(
         raise
     except Exception as e:
         logger.error(f"Failed to optimize database indexes: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -322,7 +322,7 @@ async def optimize_database_indexes(
 
 @router.get("/status", response_model=OptimizationStatus)
 async def get_optimization_status(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get overall optimization status"""
@@ -375,4 +375,4 @@ async def get_optimization_status(
 
     except Exception as e:
         logger.error(f"Failed to get optimization status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

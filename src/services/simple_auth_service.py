@@ -1,8 +1,9 @@
 """
 Simple single-user authentication service for MVidarr
-Replaces complex multi-user system with simple username/password authentication
+Uses bcrypt for password hashing with lazy migration from SHA-256.
 """
 
+import hashlib
 from typing import Optional, Tuple
 
 from flask import session as flask_session
@@ -13,17 +14,27 @@ from src.utils.logger import get_logger
 logger = get_logger("mvidarr.simple_auth")
 
 
+def _is_bcrypt_hash(hash_value: str) -> bool:
+    """Check if a hash string is a bcrypt hash."""
+    return hash_value.startswith(("$2b$", "$2a$", "$2y$"))
+
+
+def _is_sha256_hash(hash_value: str) -> bool:
+    """Check if a hash string is a SHA-256 hex digest."""
+    return len(hash_value) == 64 and all(c in "0123456789abcdef" for c in hash_value)
+
+
 class SimpleAuthService:
     """Simple single-user authentication service"""
 
     @staticmethod
     def set_credentials(username: str, password: str) -> Tuple[bool, str]:
         """
-        Set username and password for single-user authentication
+        Set username and password for single-user authentication.
 
         Args:
             username: Username to set
-            password: Password to set (will be hashed)
+            password: Password to set (will be hashed with bcrypt)
 
         Returns:
             Tuple of (success, message)
@@ -35,15 +46,15 @@ class SimpleAuthService:
             if len(username) < 3:
                 return False, "Username must be at least 3 characters long"
 
-            if len(password) < 6:
-                return False, "Password must be at least 6 characters long"
+            if len(password) < 8:
+                return False, "Password must be at least 8 characters long"
 
-            # Hash password using SHA-256 to match init_db.py format
-            import hashlib
+            # Hash password using bcrypt
+            import bcrypt
 
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
-            # Store in settings using same keys as init_db.py
+            # Store in settings
             SettingsService.set("simple_auth_username", username)
             SettingsService.set("simple_auth_password", password_hash)
 
@@ -57,7 +68,8 @@ class SimpleAuthService:
     @staticmethod
     def authenticate(username: str, password: str) -> Tuple[bool, str]:
         """
-        Authenticate user with username and password
+        Authenticate user with username and password.
+        Supports lazy migration from SHA-256 to bcrypt.
 
         Args:
             username: Username to authenticate
@@ -70,17 +82,8 @@ class SimpleAuthService:
             if not username or not password:
                 return False, "Username and password are required"
 
-            # Get stored credentials using same keys as init_db.py
             stored_username = SettingsService.get("simple_auth_username")
             stored_password_hash = SettingsService.get("simple_auth_password")
-
-            # Debug logging to understand what's stored
-            logger.info(
-                f"DEBUG: stored_username='{stored_username}', stored_password_hash='{stored_password_hash}'"
-            )
-            logger.info(
-                f"DEBUG: provided username='{username}', provided password length={len(password) if password else 0}"
-            )
 
             if not stored_username or not stored_password_hash:
                 logger.warning("No credentials configured in database")
@@ -88,35 +91,38 @@ class SimpleAuthService:
 
             # Check username
             if username != stored_username:
-                logger.warning(
-                    f"Username mismatch: provided '{username}' != stored '{stored_username}'"
-                )
                 return False, "Invalid username or password"
 
-            # Check password using SHA-256 to match init_db.py format
-            import hashlib
+            # Verify password based on hash format
+            import bcrypt
 
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
-            logger.info(f"DEBUG: provided password hash='{password_hash}'")
-
-            if password_hash != stored_password_hash:
-                # Check if this is the default password and stored hash is wrong
-                if username == "admin" and password == "mvidarr":
-                    logger.info("Auto-fixing corrupted default credentials...")
-                    # Reset the password to correct hash
-                    SettingsService.set("simple_auth_password", password_hash)
-                    logger.info("Default credentials auto-fixed")
+            if _is_bcrypt_hash(stored_password_hash):
+                # bcrypt hash - verify directly
+                if bcrypt.checkpw(password.encode(), stored_password_hash.encode()):
                     logger.info(f"User authenticated: {username}")
                     return True, "Authentication successful"
+                else:
+                    return False, "Invalid username or password"
 
-                logger.warning(f"Password hash mismatch for user: {username}")
-                logger.info(
-                    f"DEBUG: provided hash='{password_hash}', stored hash='{stored_password_hash}'"
-                )
+            elif _is_sha256_hash(stored_password_hash):
+                # Legacy SHA-256 hash - verify then migrate to bcrypt
+                password_sha256 = hashlib.sha256(password.encode()).hexdigest()
+                if password_sha256 == stored_password_hash:
+                    # Password matches - migrate to bcrypt
+                    new_hash = bcrypt.hashpw(
+                        password.encode(), bcrypt.gensalt()
+                    ).decode()
+                    SettingsService.set("simple_auth_password", new_hash)
+                    logger.info(
+                        f"User authenticated and password migrated to bcrypt: {username}"
+                    )
+                    return True, "Authentication successful"
+                else:
+                    return False, "Invalid username or password"
+
+            else:
+                logger.error("Unknown password hash format in database")
                 return False, "Invalid username or password"
-
-            logger.info(f"User authenticated: {username}")
-            return True, "Authentication successful"
 
         except Exception as e:
             logger.error(f"Error authenticating user: {e}")
@@ -125,7 +131,7 @@ class SimpleAuthService:
     @staticmethod
     def login_user(username: str) -> bool:
         """
-        Set user as logged in using Flask session
+        Set user as logged in using Flask session.
 
         Args:
             username: Username to log in
@@ -146,7 +152,7 @@ class SimpleAuthService:
     @staticmethod
     def logout_user() -> bool:
         """
-        Log out current user by clearing Flask session
+        Log out current user by clearing Flask session.
 
         Returns:
             True if successful
@@ -162,22 +168,12 @@ class SimpleAuthService:
 
     @staticmethod
     def is_authenticated() -> bool:
-        """
-        Check if current user is authenticated
-
-        Returns:
-            True if authenticated, False otherwise
-        """
+        """Check if current user is authenticated."""
         return flask_session.get("authenticated", False)
 
     @staticmethod
     def get_current_username() -> Optional[str]:
-        """
-        Get current logged in username
-
-        Returns:
-            Username if authenticated, None otherwise
-        """
+        """Get current logged in username."""
         if SimpleAuthService.is_authenticated():
             return flask_session.get("username")
         return None
@@ -185,7 +181,7 @@ class SimpleAuthService:
     @staticmethod
     def get_credentials() -> Tuple[Optional[str], bool]:
         """
-        Get current stored username and whether credentials are configured
+        Get current stored username and whether credentials are configured.
 
         Returns:
             Tuple of (username, has_credentials)
@@ -197,30 +193,29 @@ class SimpleAuthService:
 
     @staticmethod
     def _is_default_password() -> bool:
-        """
-        Check if current password is still the default 'mvidarr'
-
-        Returns:
-            True if password is still default, False otherwise
-        """
+        """Check if current password is still the default 'mvidarr'."""
         try:
             stored_password_hash = SettingsService.get("simple_auth_password")
             if not stored_password_hash:
-                return True  # No password set, assume default
+                return True
 
-            # Test if default password matches stored hash using SHA-256
-            import hashlib
+            import bcrypt
 
-            default_hash = hashlib.sha256("mvidarr".encode()).hexdigest()
-            return default_hash == stored_password_hash
+            if _is_bcrypt_hash(stored_password_hash):
+                return bcrypt.checkpw(b"mvidarr", stored_password_hash.encode())
+            elif _is_sha256_hash(stored_password_hash):
+                default_hash = hashlib.sha256(b"mvidarr").hexdigest()
+                return default_hash == stored_password_hash
+
+            return True
 
         except Exception:
-            return True  # Assume default on error
+            return True
 
     @staticmethod
     def initialize_default_credentials() -> Tuple[bool, str, str, str]:
         """
-        Initialize default credentials if none exist
+        Initialize default credentials if none exist.
 
         Returns:
             Tuple of (created, username, password, message)
@@ -231,24 +226,25 @@ class SimpleAuthService:
             if has_credentials:
                 return False, username, "", "Credentials already configured"
 
-            # Create default credentials
             default_username = "admin"
             default_password = "mvidarr"
 
-            success, message = SimpleAuthService.set_credentials(
-                default_username, default_password
-            )
+            # Use bcrypt for default credentials too
+            import bcrypt
 
-            if success:
-                logger.info("Default credentials initialized")
-                return (
-                    True,
-                    default_username,
-                    default_password,
-                    "Default credentials created",
-                )
-            else:
-                return False, "", "", message
+            password_hash = bcrypt.hashpw(
+                default_password.encode(), bcrypt.gensalt()
+            ).decode()
+            SettingsService.set("simple_auth_username", default_username)
+            SettingsService.set("simple_auth_password", password_hash)
+
+            logger.info("Default credentials initialized with bcrypt")
+            return (
+                True,
+                default_username,
+                default_password,
+                "Default credentials created",
+            )
 
         except Exception as e:
             logger.error(f"Error initializing default credentials: {e}")
@@ -272,7 +268,6 @@ class SimpleAuthService:
 
             logger.info("No authentication credentials found, creating defaults...")
 
-            # Create default credentials using the existing method
             (
                 created,
                 username,

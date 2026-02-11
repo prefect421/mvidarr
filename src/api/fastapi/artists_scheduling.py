@@ -116,7 +116,7 @@ async def get_artist_scheduling(artist_id: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to get scheduling for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{artist_id}/scheduling", response_model=ArtistSchedulingConfig)
@@ -164,7 +164,7 @@ async def update_artist_scheduling(
         raise
     except Exception as e:
         logger.error(f"Failed to update scheduling for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{artist_id}/trigger-discovery")
@@ -199,7 +199,7 @@ async def trigger_artist_discovery(artist_id: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to trigger discovery for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get(
@@ -293,7 +293,7 @@ async def get_artist_scheduling_status(artist_id: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to get scheduling status for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{artist_id}/scheduling/history")
@@ -334,4 +334,4 @@ async def get_artist_scheduling_history(
         raise
     except Exception as e:
         logger.error(f"Failed to get scheduling history for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

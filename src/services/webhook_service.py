@@ -284,6 +284,11 @@ class WebhookService:
                 )
                 headers["X-Webhook-Signature"] = signature
 
+            # SSRF protection - validate webhook URL
+            from src.utils.url_validator import validate_url_or_raise
+
+            validate_url_or_raise(endpoint.url, allow_local_network=True)
+
             # Retry logic
             for attempt in range(endpoint.max_retries + 1):
                 try:
@@ -359,6 +364,11 @@ class WebhookService:
             if secret:
                 signature = self._generate_signature(secret, json.dumps(payload))
                 headers["X-Webhook-Signature"] = signature
+
+            # SSRF protection
+            from src.utils.url_validator import validate_url_or_raise
+
+            validate_url_or_raise(url, allow_local_network=True)
 
             response = requests.post(url, json=payload, headers=headers, timeout=10)
 

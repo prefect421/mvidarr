@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.services.ytdlp_service import ytdlp_service
 
@@ -70,7 +70,7 @@ class HistoryResponse(BaseModel):
 
 @router.get("/cookie-status", response_model=CookieStatusResponse)
 async def get_cookie_status(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get current cookie file status for SABR workarounds"""
@@ -105,7 +105,7 @@ async def get_cookie_status(
 
 @router.get("/health", response_model=HealthStatusResponse)
 async def health_check(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Check yt-dlp service health and version"""
@@ -129,7 +129,7 @@ async def health_check(
 
 @router.get("/queue", response_model=QueueStatusResponse)
 async def get_download_queue(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get current download queue status"""
@@ -150,7 +150,7 @@ async def get_download_queue(
 
     except Exception as e:
         logger.error(f"Error getting download queue: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/history", response_model=HistoryResponse)
@@ -158,7 +158,7 @@ async def get_download_history(
     limit: int = Query(
         default=50, ge=1, le=500, description="Maximum number of history items"
     ),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get download history"""
@@ -177,4 +177,4 @@ async def get_download_history(
 
     except Exception as e:
         logger.error(f"Error getting download history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

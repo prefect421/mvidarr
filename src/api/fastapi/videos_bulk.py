@@ -25,7 +25,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy
+from src.api.fastapi.auth_dependencies import get_current_user
 from src.api.fastapi.videos_models import (
     BulkDeleteRequest,
     BulkEditRequest,
@@ -37,13 +37,6 @@ from src.utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_bulk")
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
 # ========================================================================================
 # BULK OPERATIONS
 # ========================================================================================
@@ -105,7 +98,7 @@ async def bulk_delete_videos(
     except Exception as e:
         logger.error(f"Error in bulk delete: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk/status")
@@ -173,7 +166,7 @@ async def bulk_update_status(
     except Exception as e:
         logger.error(f"Error in bulk status update: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk/status-debug")
@@ -325,7 +318,7 @@ async def bulk_edit_videos(
     except Exception as e:
         logger.error(f"Error in bulk edit: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk/organize")
@@ -459,7 +452,7 @@ async def bulk_organize_videos(
     except Exception as e:
         logger.error(f"Error in bulk organize: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/refresh-thumbnails")
@@ -556,7 +549,7 @@ async def refresh_video_thumbnails(
         raise
     except Exception as e:
         logger.error(f"Error refreshing thumbnails: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk/refresh-all-thumbnails")
@@ -637,4 +630,4 @@ async def bulk_refresh_all_thumbnails(
         raise
     except Exception as e:
         logger.error(f"Error in bulk refresh all thumbnails: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

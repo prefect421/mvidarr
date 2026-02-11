@@ -9,8 +9,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.services.plex_service import plex_service
 from src.utils.logger import get_logger
@@ -25,23 +25,6 @@ router = APIRouter(
 )
 
 logger = get_logger("mvidarr.api.fastapi.plex")
-
-
-# ========================================================================================
-# AUTHENTICATION
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================
@@ -215,7 +198,8 @@ async def get_status(current_user: dict = Depends(require_authentication)):
     except Exception as e:
         logger.error(f"Failed to get Plex status: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -230,7 +214,8 @@ async def test_connection(current_user: dict = Depends(require_authentication)):
     except Exception as e:
         logger.error(f"Failed to test Plex connection: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -286,7 +271,8 @@ async def get_libraries(current_user: dict = Depends(require_authentication)):
     except Exception as e:
         logger.error(f"Failed to get Plex libraries: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -306,7 +292,8 @@ async def get_music_library(current_user: dict = Depends(require_authentication)
     except Exception as e:
         logger.error(f"Failed to get music library: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -329,7 +316,8 @@ async def get_artists(
     except Exception as e:
         logger.error(f"Failed to get Plex artists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -346,7 +334,8 @@ async def get_artist_albums(
     except Exception as e:
         logger.error(f"Failed to get artist albums: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -363,7 +352,8 @@ async def get_album_tracks(
     except Exception as e:
         logger.error(f"Failed to get album tracks: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -382,7 +372,8 @@ async def search_library(
     except Exception as e:
         logger.error(f"Failed to search Plex library: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -411,7 +402,8 @@ async def sync_from_plex(
     except Exception as e:
         logger.error(f"Failed to sync from Plex: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -432,7 +424,8 @@ async def sync_to_plex(current_user: dict = Depends(require_authentication)):
     except Exception as e:
         logger.error(f"Failed to sync to Plex: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -510,7 +503,8 @@ async def get_artist_stats(
     except Exception as e:
         logger.error(f"Failed to get artist stats: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -530,7 +524,8 @@ async def get_recently_played(
     except Exception as e:
         logger.error(f"Failed to get recently played: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -545,7 +540,8 @@ async def get_library_stats(current_user: dict = Depends(require_authentication)
     except Exception as e:
         logger.error(f"Failed to get library stats: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -577,5 +573,6 @@ async def create_playlist(
     except Exception as e:
         logger.error(f"Failed to create playlist: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )

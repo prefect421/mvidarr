@@ -10,8 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.database.connection import get_db
 from src.database.models import Video
@@ -28,23 +28,6 @@ router = APIRouter(
 )
 
 logger = get_logger("mvidarr.api.fastapi.vlc_streaming")
-
-
-# ========================================================================================
-# AUTHENTICATION
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================
@@ -133,7 +116,8 @@ async def start_video_stream(
     except Exception as e:
         logger.error(f"Error starting VLC stream for video {video_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -159,7 +143,8 @@ async def stop_video_stream(
     except Exception as e:
         logger.error(f"Error stopping VLC stream for video {video_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -191,7 +176,8 @@ async def get_stream_info(
     except Exception as e:
         logger.error(f"Error getting VLC stream info for video {video_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -205,7 +191,8 @@ async def list_active_streams(current_user: dict = Depends(require_authenticatio
     except Exception as e:
         logger.error(f"Error listing VLC streams: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -219,5 +206,6 @@ async def cleanup_old_streams(current_user: dict = Depends(require_authenticatio
     except Exception as e:
         logger.error(f"Error cleaning up VLC streams: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.services.imvdb_service import imvdb_service
 from src.services.job_queue import (
@@ -143,7 +143,7 @@ class ConnectionTestResponse(BaseModel):
 @router.post("/index-all", response_model=JobResponse)
 async def index_all_videos(
     index_request: IndexAllRequest = IndexAllRequest(),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Index all videos in the music videos directory (background job)"""
@@ -179,13 +179,13 @@ async def index_all_videos(
 
     except Exception as e:
         logger.error(f"Failed to queue video indexing job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/index-single", response_model=JobResponse)
 async def index_single_video(
     index_request: IndexSingleRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Index a specific video file (background job)"""
@@ -223,7 +223,7 @@ async def index_single_video(
 
     except Exception as e:
         logger.error(f"Failed to queue single video indexing job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -233,7 +233,7 @@ async def index_single_video(
 
 @router.get("/stats", response_model=IndexingStats)
 async def get_indexing_stats(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get video indexing statistics"""
@@ -263,13 +263,13 @@ async def get_indexing_stats(
 
     except Exception as e:
         logger.error(f"Failed to get indexing stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/scan-files", response_model=VideoFilesScan)
 async def scan_video_files(
     directory: Optional[str] = Query(None, description="Directory to scan (optional)"),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Scan directory for video files without indexing"""
@@ -295,13 +295,13 @@ async def scan_video_files(
 
     except Exception as e:
         logger.error(f"Failed to scan video files: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/preview", response_model=IndexingPreview)
 async def preview_indexing(
     preview_request: IndexingPreviewRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Preview what would be indexed without actually indexing"""
@@ -338,7 +338,7 @@ async def preview_indexing(
 
     except Exception as e:
         logger.error(f"Failed to preview indexing: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -349,7 +349,7 @@ async def preview_indexing(
 @router.post("/metadata/search", response_model=MetadataSearchResponse)
 async def search_metadata(
     search_request: MetadataSearchRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Search IMVDb for metadata"""
@@ -384,13 +384,13 @@ async def search_metadata(
 
     except Exception as e:
         logger.error(f"Failed to search metadata: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/thumbnails/download", response_model=ThumbnailDownloadResponse)
 async def download_thumbnail(
     download_request: ThumbnailDownloadRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Download thumbnail for a video"""
@@ -420,12 +420,12 @@ async def download_thumbnail(
 
     except Exception as e:
         logger.error(f"Failed to download thumbnail: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/thumbnails/stats")
 async def get_thumbnail_stats(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get thumbnail storage statistics"""
@@ -442,7 +442,7 @@ async def get_thumbnail_stats(
 
     except Exception as e:
         logger.error(f"Failed to get thumbnail stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -452,7 +452,7 @@ async def get_thumbnail_stats(
 
 @router.get("/imvdb/test", response_model=ConnectionTestResponse)
 async def test_imvdb_connection(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Test IMVDb API connection"""
@@ -479,7 +479,7 @@ async def test_imvdb_connection(
 
 @router.post("/bulk-automatch-artists")
 async def bulk_automatch_artists(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Queue background job to auto-match all artists with external services"""

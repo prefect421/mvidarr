@@ -35,12 +35,18 @@ from src.api.fastapi.artists_models import (
     ArtistUpdateRequest,
 )
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video
 from src.utils.logger import get_logger
+
+
+def _escape_like(value: str) -> str:
+    """Escape special LIKE wildcard characters in user input."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 
 router = APIRouter(
     prefix="",
@@ -51,23 +57,6 @@ router = APIRouter(
     },
 )
 logger = get_logger("mvidarr.api.fastapi.artists_crud")
-
-
-# ========================================================================================
-# AUTHENTICATION - PROPER IMPLEMENTATION
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # UTILITY FUNCTIONS
 # ========================================================================================
@@ -199,9 +188,10 @@ async def list_artists(
 
         # Apply search filter
         if search_query:
+            escaped = _escape_like(search_query)
             search_filter = or_(
-                Artist.name.ilike(f"%{search_query}%"),
-                Artist.name.ilike(f"%{search_query}%"),
+                Artist.name.ilike(f"%{escaped}%"),
+                Artist.name.ilike(f"%{escaped}%"),
             )
             base_query = base_query.filter(search_filter)
 
@@ -375,7 +365,7 @@ async def list_artists(
 
     except Exception as e:
         logger.error(f"Error listing artists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{artist_id}", response_model=ArtistResponse)
@@ -465,7 +455,7 @@ async def get_artist(
         raise
     except Exception as e:
         logger.error(f"Error getting artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/", response_model=ArtistResponse)
@@ -571,7 +561,7 @@ async def create_artist(
     except Exception as e:
         logger.error(f"Error creating artist: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{artist_id}")
@@ -606,7 +596,27 @@ async def update_artist(
                 f"Auto-syncing download_enabled={update_fields['auto_download']} for artist {artist_id}"
             )
 
+        # Allowlist of fields that can be updated
+        allowed_fields = {
+            "name",
+            "imvdb_id",
+            "musicbrainz_id",
+            "discogs_id",
+            "spotify_id",
+            "monitored",
+            "auto_download",
+            "download_enabled",
+            "overview",
+            "biography",
+            "genres",
+            "status",
+            "video_type_filter",
+        }
+
         for field, value in update_fields.items():
+            if field not in allowed_fields:
+                logger.debug(f"Skipping non-updatable field '{field}' in artist update")
+                continue
             setattr(artist, field, value)
 
         artist.updated_at = datetime.utcnow()
@@ -694,7 +704,7 @@ async def update_artist(
     except Exception as e:
         logger.error(f"Error updating artist {artist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{artist_id}")
@@ -760,7 +770,7 @@ async def delete_artist(
     except Exception as e:
         logger.error(f"Error deleting artist {artist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -800,8 +810,12 @@ async def advanced_search(
 
         # Apply filters
         if name:
+            escaped_name = _escape_like(name)
             query = query.filter(
-                or_(Artist.name.ilike(f"%{name}%"), Artist.sort_name.ilike(f"%{name}%"))
+                or_(
+                    Artist.name.ilike(f"%{escaped_name}%"),
+                    Artist.sort_name.ilike(f"%{escaped_name}%"),
+                )
             )
 
         if has_videos is not None:
@@ -827,7 +841,8 @@ async def advanced_search(
             query = query.filter(Artist.formed_year <= formed_before)
 
         if location:
-            query = query.filter(Artist.location.ilike(f"%{location}%"))
+            escaped_loc = _escape_like(location)
+            query = query.filter(Artist.location.ilike(f"%{escaped_loc}%"))
 
         # Apply sorting
         if sort_by == "name":
@@ -912,7 +927,7 @@ async def advanced_search(
 
     except Exception as e:
         logger.error(f"Error in advanced search: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/search/suggestions")
@@ -924,9 +939,10 @@ async def get_search_suggestions(
     """Get search suggestions for artist names"""
     try:
         # Search for artists matching the query
+        escaped_q = _escape_like(q)
         suggestions = (
             session.query(Artist.name)
-            .filter(Artist.name.ilike(f"%{q}%"))
+            .filter(Artist.name.ilike(f"%{escaped_q}%"))
             .limit(limit)
             .all()
         )
@@ -938,4 +954,4 @@ async def get_search_suggestions(
 
     except Exception as e:
         logger.error(f"Error getting search suggestions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

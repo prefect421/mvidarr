@@ -121,7 +121,7 @@ async def preview_dynamic_playlist(
         raise
     except Exception as e:
         logger.error(f"Error previewing dynamic playlist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/dynamic", response_model=PlaylistResponse)
@@ -210,7 +210,7 @@ async def create_dynamic_playlist(
     except Exception as e:
         logger.error(f"Error creating dynamic playlist: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{playlist_id}/refresh")
@@ -260,7 +260,7 @@ async def refresh_dynamic_playlist(
     except Exception as e:
         logger.error(f"Error refreshing dynamic playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{playlist_id}/filters")
@@ -355,7 +355,7 @@ async def update_dynamic_playlist_filters(
     except Exception as e:
         logger.error(f"Error updating dynamic playlist filters {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -406,7 +406,7 @@ async def get_playlist_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Error getting thumbnail for playlist {playlist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{playlist_id}/thumbnail/upload")
@@ -450,7 +450,7 @@ async def upload_playlist_thumbnail_url(
         raise
     except Exception as e:
         logger.error(f"Error uploading thumbnail for playlist {playlist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{playlist_id}/thumbnail/file")
@@ -508,7 +508,7 @@ async def upload_playlist_thumbnail_file(
         raise
     except Exception as e:
         logger.error(f"Error uploading thumbnail file for playlist {playlist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -570,4 +570,4 @@ async def get_user_playlists(
 
     except Exception as e:
         logger.error(f"Error getting playlists for user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

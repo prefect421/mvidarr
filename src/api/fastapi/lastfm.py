@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.lastfm")
@@ -176,7 +176,7 @@ async def get_auth_url():
         raise
     except Exception as e:
         logger.error(f"Failed to generate Last.fm auth URL: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/callback")
@@ -213,7 +213,7 @@ async def handle_callback(token: Optional[str] = Query(None)):
         raise
     except Exception as e:
         logger.error(f"Last.fm callback error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # User profile and data endpoints
@@ -243,7 +243,7 @@ async def get_profile(username: Optional[str] = Query(None)):
         raise
     except Exception as e:
         logger.error(f"Failed to get Last.fm profile: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/top/artists")
@@ -286,7 +286,7 @@ async def get_top_artists(
         raise
     except Exception as e:
         logger.error(f"Failed to get top artists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/top/tracks")
@@ -329,7 +329,7 @@ async def get_top_tracks(
         raise
     except Exception as e:
         logger.error(f"Failed to get top tracks: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/recent")
@@ -369,7 +369,7 @@ async def get_recent_tracks(
         raise
     except Exception as e:
         logger.error(f"Failed to get recent tracks: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/loved")
@@ -405,7 +405,7 @@ async def get_loved_tracks(
         raise
     except Exception as e:
         logger.error(f"Failed to get loved tracks: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/artist/{artist_name}")
@@ -426,7 +426,7 @@ async def get_artist_info(artist_name: str, username: Optional[str] = Query(None
         raise
     except Exception as e:
         logger.error(f"Failed to get artist info: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/stats")
@@ -455,14 +455,14 @@ async def get_listening_stats(
         raise
     except Exception as e:
         logger.error(f"Failed to get listening stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Import and synchronization endpoints
 @router.post("/import/top-artists")
 async def import_top_artists(
     request: ImportArtistsRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Import user's top artists to MVidarr"""
     try:
@@ -509,7 +509,7 @@ async def import_top_artists(
         raise
     except Exception as e:
         logger.error(f"Failed to import top artists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/import/loved-tracks")
@@ -551,7 +551,7 @@ async def import_loved_tracks(request: ImportTracksRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to import loved tracks: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/sync-history")
@@ -594,7 +594,7 @@ async def sync_history(request: SyncHistoryRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to sync history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/disconnect")
@@ -616,4 +616,4 @@ async def disconnect():
         raise
     except Exception as e:
         logger.error(f"Failed to disconnect from Last.fm: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

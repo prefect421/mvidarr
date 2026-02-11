@@ -553,9 +553,9 @@ async def enrich_video_metadata(
                                     updated_fields.extend(
                                         ["thumbnail_url", "thumbnail_source"]
                                     )
-                                    metadata_sources["Spotify Album Art"] = (
-                                        "Thumbnail extraction"
-                                    )
+                                    metadata_sources[
+                                        "Spotify Album Art"
+                                    ] = "Thumbnail extraction"
                                     logger.info(
                                         f"Added Spotify album art thumbnail for video {video_id}: {spotify_thumbnail_url}"
                                     )

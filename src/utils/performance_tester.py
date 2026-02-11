@@ -290,10 +290,10 @@ class PerformanceTester:
             if not test_name:
                 test_name = endpoint.split("/")[-2]
 
-            benchmark_results["concurrent_benchmarks"][test_name] = (
-                self.benchmark_concurrent_requests(
-                    endpoint, concurrent_users=3, requests_per_user=5
-                )
+            benchmark_results["concurrent_benchmarks"][
+                test_name
+            ] = self.benchmark_concurrent_requests(
+                endpoint, concurrent_users=3, requests_per_user=5
             )
 
         end_time = time.time()

@@ -575,7 +575,9 @@ class ImageAnalysisTask(ImageProcessingTask):
                     analysis["sharpness_quality"] = (
                         "high"
                         if blur_metric > 100
-                        else "medium" if blur_metric > 30 else "low"
+                        else "medium"
+                        if blur_metric > 30
+                        else "low"
                     )
 
                     # Calculate brightness and contrast

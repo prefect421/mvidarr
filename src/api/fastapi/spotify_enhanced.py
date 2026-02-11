@@ -11,8 +11,8 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.database.connection import get_db
 from src.database.models import Artist
@@ -30,23 +30,6 @@ router = APIRouter(
 )
 
 logger = get_logger("mvidarr.api.fastapi.spotify_enhanced")
-
-
-# ========================================================================================
-# AUTHENTICATION
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================
@@ -270,7 +253,8 @@ async def sync_user_playlists(
     except Exception as e:
         logger.error(f"Failed to sync Spotify playlists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -315,7 +299,8 @@ async def export_playlist_to_spotify(
     except Exception as e:
         logger.error(f"Failed to export playlist to Spotify: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -335,7 +320,8 @@ async def get_music_video_recommendations(
     except Exception as e:
         logger.error(f"Failed to get music video recommendations: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -352,7 +338,8 @@ async def check_new_releases(current_user: dict = Depends(require_authentication
     except Exception as e:
         logger.error(f"Failed to check for new releases: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -372,7 +359,8 @@ async def handle_spotify_webhook(
     except Exception as e:
         logger.error(f"Failed to process Spotify webhook: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -387,7 +375,8 @@ async def get_sync_status(current_user: dict = Depends(require_authentication)):
     except Exception as e:
         logger.error(f"Failed to get sync status: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -402,7 +391,8 @@ async def clear_sync_cache(current_user: dict = Depends(require_authentication))
     except Exception as e:
         logger.error(f"Failed to clear sync cache: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -426,7 +416,8 @@ async def search_tracks(
     except Exception as e:
         logger.error(f"Failed to search Spotify tracks: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -443,7 +434,8 @@ async def get_track_audio_features(
     except Exception as e:
         logger.error(f"Failed to get track audio features: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -480,7 +472,8 @@ async def generate_recommendations(
     except Exception as e:
         logger.error(f"Failed to generate Spotify recommendations: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -512,7 +505,8 @@ async def create_spotify_playlist(
     except Exception as e:
         logger.error(f"Failed to create Spotify playlist: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -603,7 +597,8 @@ async def discover_artists_from_library(
     except Exception as e:
         logger.error(f"Failed to discover artists from Spotify library: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -685,7 +680,8 @@ async def enhanced_metadata_matching(
     except Exception as e:
         logger.error(f"Failed to perform enhanced metadata matching: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -712,7 +708,8 @@ async def get_spotify_connect_devices(
     except Exception as e:
         logger.error(f"Failed to get Spotify Connect devices: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -744,7 +741,8 @@ async def spotify_connect_play(
     except Exception as e:
         logger.error(f"Failed to control Spotify Connect playback: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -789,7 +787,8 @@ async def get_listening_analytics(
     except Exception as e:
         logger.error(f"Failed to get listening analytics: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -850,5 +849,6 @@ async def discover_similar_artists(
     except Exception as e:
         logger.error(f"Failed to discover similar artists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )

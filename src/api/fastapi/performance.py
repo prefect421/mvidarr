@@ -220,7 +220,7 @@ async def get_performance_overview():
 
     except Exception as e:
         logger.error(f"Error getting performance overview: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/system", response_model=SystemMetrics)
@@ -324,7 +324,7 @@ async def clear_performance_cache():
 
     except Exception as e:
         logger.error(f"Error clearing performance cache: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/health")

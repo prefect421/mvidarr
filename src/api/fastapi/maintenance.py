@@ -37,7 +37,7 @@ async def get_summary() -> Dict:
         return get_maintenance_summary()
     except Exception as e:
         logger.error(f"Error getting maintenance summary: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/logs/cleanup")
@@ -72,7 +72,7 @@ async def cleanup_logs(
         raise
     except Exception as e:
         logger.error(f"Error cleaning logs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/database/optimize")
@@ -96,7 +96,7 @@ async def optimize_db() -> Dict:
         raise
     except Exception as e:
         logger.error(f"Error optimizing database: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/thumbnails/cleanup")
@@ -130,7 +130,7 @@ async def cleanup_thumbnails(
         raise
     except Exception as e:
         logger.error(f"Error cleaning thumbnails: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/temp-files/cleanup")
@@ -157,7 +157,7 @@ async def cleanup_temp(dry_run: bool = False) -> Dict:
         raise
     except Exception as e:
         logger.error(f"Error cleaning temp files: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/jobs/cleanup")
@@ -185,7 +185,7 @@ async def cleanup_jobs(days_to_keep: int = 30, dry_run: bool = False) -> Dict:
         raise
     except Exception as e:
         logger.error(f"Error cleaning job history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Create a separate router for the web page (without /api prefix)
