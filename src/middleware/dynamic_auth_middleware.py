@@ -190,6 +190,36 @@ class DynamicAuthMiddleware:
                     except Exception:
                         pass
 
+            # If Flask session is valid but no session_token cookie exists,
+            # create a SessionStore session and set the cookie so FastAPI
+            # endpoints (which can't access Flask sessions) also work.
+            if is_authenticated and not request.cookies.get("session_token"):
+                try:
+                    from flask import after_this_request
+
+                    from src.services.session_store import SessionStore
+
+                    username = session.get("username", "admin")
+                    ip = request.remote_addr or "unknown"
+                    token = SessionStore.create_session(username, ip)
+
+                    @after_this_request
+                    def set_session_cookie(response):
+                        response.set_cookie(
+                            "session_token",
+                            token,
+                            max_age=86400,
+                            httponly=True,
+                            samesite="Lax",
+                        )
+                        return response
+
+                    logger.debug(
+                        f"Created SessionStore session for Flask-authenticated user: {username}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to create SessionStore session: {e}")
+
             if not is_authenticated:
                 logger.debug(
                     f"Authentication required: redirecting unauthenticated request from {request.path}"
