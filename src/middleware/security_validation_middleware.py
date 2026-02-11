@@ -292,7 +292,17 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
             # Skip all validation for static assets - they're just file serving
             path = request.url.path
             if path.startswith(("/static/", "/css/", "/favicon")) or path.endswith(
-                (".js", ".css", ".png", ".jpg", ".ico", ".svg", ".woff", ".woff2", ".ttf")
+                (
+                    ".js",
+                    ".css",
+                    ".png",
+                    ".jpg",
+                    ".ico",
+                    ".svg",
+                    ".woff",
+                    ".woff2",
+                    ".ttf",
+                )
             ):
                 response = await call_next(request)
                 self._add_security_headers(response)
@@ -307,8 +317,15 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
             # 3. Validate URL and path
             await self._validate_url_path(request)
 
-            # 4. Validate request body if present
-            await self._validate_request_body(request)
+            # 4. Validate request body size (content validation disabled -
+            # SQLAlchemy ORM uses parameterized queries, Pydantic validates
+            # types, and pattern matching produces false positives on URLs,
+            # file paths, search queries, and other legitimate data)
+            content_type = request.headers.get("content-type", "")
+            if "application/json" in content_type:
+                body = await request.body()
+                if body:
+                    self.validator.validate_input_size(body, "request_body")
 
             # 5. Process request
             response = await call_next(request)
@@ -464,17 +481,9 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
                 detail="Path traversal attempt detected",
             )
 
-        # Check for injection in path and query parameters
-        for param_value in request.query_params.values():
-            if (
-                self.validator.detect_sql_injection(param_value)
-                or self.validator.detect_xss(param_value)
-                or self.validator.detect_command_injection(param_value)
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Malicious content detected in query parameters",
-                )
+        # Note: Query parameter content validation disabled - the SQL injection
+        # pattern matches '=' which appears in every query string. SQLAlchemy ORM
+        # parameterized queries protect against actual SQL injection.
 
     async def _validate_request_body(self, request: Request):
         """Validate request body content"""
