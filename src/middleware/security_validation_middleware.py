@@ -394,10 +394,26 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
             "host",
             "content-type",
             "content-length",
+            "cookie",  # Session cookies - validated by auth layer, not WAF
+            "authorization",  # Auth tokens - validated by auth layer, not WAF
+            "x-forwarded-for",
+            "x-forwarded-proto",
+            "x-forwarded-host",
+            "x-real-ip",
             "priority",  # HTTP/2 priority header
             "sec-ch-ua",
             "sec-ch-ua-mobile",
             "sec-ch-ua-platform",  # Client Hints headers
+            "if-none-match",
+            "if-modified-since",
+            "upgrade",  # WebSocket upgrade
+            "sec-websocket-key",
+            "sec-websocket-version",
+            "sec-websocket-extensions",
+            "sec-websocket-protocol",
+            "pragma",
+            "dnt",
+            "te",
         }
 
         # Check header sizes
