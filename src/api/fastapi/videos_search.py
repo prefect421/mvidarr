@@ -246,7 +246,17 @@ async def universal_search(
                         f"Found {len(youtube_results)} YouTube results for: {query}"
                     )
                 else:
-                    logger.info(f"No YouTube results found for: {query}")
+                    yt_error = (
+                        youtube_search_result.get("error", "")
+                        if youtube_search_result
+                        else ""
+                    )
+                    if yt_error:
+                        logger.warning(
+                            f"YouTube search returned 0 results with error: {yt_error}"
+                        )
+                    else:
+                        logger.info(f"No YouTube results found for: {query}")
             else:
                 logger.warning(
                     "YouTube API key not configured, skipping YouTube search"
