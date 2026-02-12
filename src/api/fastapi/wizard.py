@@ -327,7 +327,9 @@ async def create_admin_user(
                     user_id = created_user.id
                     username = created_user.username
 
-                    logger.info(f"✅ First admin user created during wizard: {username}")
+                    logger.info(
+                        f"✅ First admin user created during wizard: {username}"
+                    )
                     return CreateAdminResponse(
                         success=True,
                         message=message,

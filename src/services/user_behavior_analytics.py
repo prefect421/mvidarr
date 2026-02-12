@@ -470,9 +470,9 @@ class UserBehaviorAnalytics:
                         end_time - start_time
                     ) / 60  # minutes
                 else:
-                    session_durations[
-                        session_id
-                    ] = 1.0  # Default 1 minute for single-action sessions
+                    session_durations[session_id] = (
+                        1.0  # Default 1 minute for single-action sessions
+                    )
 
                 # Pages per session
                 pages = set(a.page_url for a in session_actions)

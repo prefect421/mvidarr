@@ -152,9 +152,9 @@ def extract_metadata(video_data: Dict) -> Dict:
                 if source_type == "youtube" and source_data:
                     # IMVDb provides the YouTube ID directly in source_data
                     metadata["youtube_id"] = str(source_data)
-                    metadata[
-                        "youtube_url"
-                    ] = f"https://www.youtube.com/watch?v={source_data}"
+                    metadata["youtube_url"] = (
+                        f"https://www.youtube.com/watch?v={source_data}"
+                    )
 
                     # If this is the primary source, use it and stop looking
                     if source_is_primary:

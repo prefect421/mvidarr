@@ -672,9 +672,7 @@ TARGET RESULTS:
             status_emoji = (
                 "✅"
                 if result["status"] == "PASS"
-                else "⚠️"
-                if result["status"] == "PARTIAL"
-                else "❌"
+                else "⚠️" if result["status"] == "PARTIAL" else "❌"
             )
 
             summary += f"\n{status_emoji} {target_name}:\n"

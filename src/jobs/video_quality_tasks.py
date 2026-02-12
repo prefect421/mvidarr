@@ -686,9 +686,9 @@ class VideoThumbnailGenerationTask(BaseTask):
 
             # Store all thumbnail information
             video_metadata["generated_thumbnails"] = thumbnails
-            video_metadata[
-                "thumbnail_generation_date"
-            ] = asyncio.get_event_loop().time()
+            video_metadata["thumbnail_generation_date"] = (
+                asyncio.get_event_loop().time()
+            )
 
             video.video_metadata = video_metadata
             session.commit()

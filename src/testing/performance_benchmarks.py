@@ -698,9 +698,9 @@ class PerformanceBenchmarkRunner:
                 else 0
             )
         else:
-            min_duration = (
-                max_duration
-            ) = avg_duration = median_duration = p95_duration = p99_duration = 0
+            min_duration = max_duration = avg_duration = median_duration = (
+                p95_duration
+            ) = p99_duration = 0
 
         # Memory statistics
         memory_values = [r.memory_used_mb for r in results]

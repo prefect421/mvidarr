@@ -641,9 +641,9 @@ class APIVersioningService:
                 recommendations["migration_required"] = True
 
                 if current.sunset_date:
-                    recommendations[
-                        "migration_deadline"
-                    ] = current.sunset_date.isoformat()
+                    recommendations["migration_deadline"] = (
+                        current.sunset_date.isoformat()
+                    )
 
             # Add migration steps
             if recommendations["migration_required"]:

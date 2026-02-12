@@ -598,9 +598,9 @@ class MusicVideoDetector:
                 organization["filename_format"] = f"{clean_artist} - {clean_title}"
 
                 # Suggest full path
-                organization[
-                    "suggested_path"
-                ] = f"Music Videos/{clean_artist}/{clean_artist} - {clean_title}"
+                organization["suggested_path"] = (
+                    f"Music Videos/{clean_artist}/{clean_artist} - {clean_title}"
+                )
 
         # Metadata suggestions
         organization["metadata_suggestions"] = {

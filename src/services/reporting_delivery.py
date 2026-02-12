@@ -47,7 +47,9 @@ async def deliver_via_webhook(report: GeneratedReport):
                         webhook_url, json=payload, timeout=10
                     ) as response:
                         if response.status == 200:
-                            logger.info(f"📊 Report delivered to webhook: {webhook_url}")
+                            logger.info(
+                                f"📊 Report delivered to webhook: {webhook_url}"
+                            )
                         else:
                             logger.warning(
                                 f"Webhook delivery failed: {webhook_url} - Status {response.status}"

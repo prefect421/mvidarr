@@ -73,9 +73,9 @@ class AsyncAdminService(AsyncBaseService):
                 )
                 if script_path.exists() and os.access(script_path, os.X_OK):
                     status_info["restart_available"] = True
-                    status_info[
-                        "service_details"
-                    ] = "Restart available via manage_service.sh"
+                    status_info["service_details"] = (
+                        "Restart available via manage_service.sh"
+                    )
 
             return status_info
 

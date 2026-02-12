@@ -259,9 +259,7 @@ class CacheInvalidationMiddleware(BaseHTTPMiddleware):
                             cache_pattern
                         )
                         if invalidated:
-                            logger.info(
-                                f"🗑️ Invalidated cache pattern: {cache_pattern}"
-                            )
+                            logger.info(f"🗑️ Invalidated cache pattern: {cache_pattern}")
                     break
 
         except Exception as e:

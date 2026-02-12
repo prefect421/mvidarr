@@ -283,9 +283,9 @@ def extract_external_links(metadata: ArtistMetadata) -> Dict:
 
             # Generate Spotify URL from ID if not present
             if not external_links.get("spotify_url") and metadata.spotify_id:
-                external_links[
-                    "spotify_url"
-                ] = f"https://open.spotify.com/artist/{metadata.spotify_id}"
+                external_links["spotify_url"] = (
+                    f"https://open.spotify.com/artist/{metadata.spotify_id}"
+                )
 
         # Extract from Last.fm data
         if "lastfm" in sources:

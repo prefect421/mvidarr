@@ -169,7 +169,9 @@ class AsyncDatabaseManager:
 
             if query_time > 0.1:  # Log slow queries (>100ms)
                 self.connection_stats["slow_queries"] += 1
-                logger.warning(f"🐌 Slow query: {query[:100]}... took {query_time:.3f}s")
+                logger.warning(
+                    f"🐌 Slow query: {query[:100]}... took {query_time:.3f}s"
+                )
 
             return data
 

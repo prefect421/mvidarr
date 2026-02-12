@@ -134,9 +134,9 @@ class CacheHeadersMiddleware(BaseHTTPMiddleware):
 
         else:
             # Default cache behavior
-            response.headers[
-                "Cache-Control"
-            ] = f"public, max-age={self.default_cache_ttl}"
+            response.headers["Cache-Control"] = (
+                f"public, max-age={self.default_cache_ttl}"
+            )
             response.headers["X-Cache-Strategy"] = "default"
 
         # Add cache timestamp

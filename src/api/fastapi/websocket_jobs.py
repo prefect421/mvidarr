@@ -696,9 +696,7 @@ async def init_websocket_system(app: FastAPI):
         )
     except Exception as e:
         logger.error(f"❌ Failed to start Redis subscriber during app startup: {e}")
-        logger.info(
-            "⚠️ WebSocket job progress will start when first connection is made"
-        )
+        logger.info("⚠️ WebSocket job progress will start when first connection is made")
 
 
 # Cleanup on app shutdown

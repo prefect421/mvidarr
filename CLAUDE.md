@@ -214,17 +214,32 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.11.10 - Planning
+### Current Phase: v0.12.1 - Released
 
-#### Versioning Policy (Updated 2026-02-05)
-- **Current Version**: 0.11.9 (Released 2026-02-05)
-- **Next Version**: 0.11.10 (Planning)
+#### Versioning Policy (Updated 2026-02-12)
+- **Current Version**: 0.12.1 (Released 2026-02-12)
+- **Next Version**: 0.12.2 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.1** (2026-02-12): Security Hardening Stabilization
+  - ✅ Fixed login page POSTing to removed /test-login endpoint
+  - ✅ Fixed WAF false positives blocking URLs, cookies, Range headers
+  - ✅ Fixed video streaming (Range header no longer blocked)
+  - ✅ Fixed YouTube playlist sync not detecting new videos
+  - ✅ Fixed Flask-to-FastAPI session bridge for consistent auth
+  - ✅ Fixed rate limiting (300/min, static files exempt)
+  - ✅ CI/CD: 28 files reformatted with black 24.3.0
+- **v0.12.0** (2026-02-11): Security Hardening Sprint
+  - ✅ Consolidated auth system (SimpleAuth + SessionStore)
+  - ✅ Removed backdoor endpoints (/test-login, credential reset)
+  - ✅ Upgraded passwords from SHA-256 to bcrypt with lazy migration
+  - ✅ SSRF protection, safe tar extraction, upload sanitization
+  - ✅ Redis authentication, secure cookies, restricted proxy hosts
+  - ✅ 49 vulnerabilities fixed (8 critical, 12 high, 16 medium, 13 low)
 - **v0.11.9** (2026-02-05): Security Updates, Video Quality & Discovery Fix
   - ✅ CVE-2026-24486: python-multipart 0.0.20 → 0.0.22 (path traversal)
   - ✅ CVE-2026-21441: urllib3 2.6.0 → 2.6.3 (decompression-bomb bypass)
@@ -264,14 +279,9 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
   - Video downloads now respect user's quality settings (was defaulting to 360p)
   - YouTube discovery API key caching bug fixed (was returning 0 results)
 
-#### v0.11.10 Release 🎯 PLANNING
-- **Status**: Planning phase
-- **Open Issues**: TBD
-- **Development Focus**: Stability improvements, bug fixes
-2. Update `requirements-prod.txt` if different
-3. Test application functionality after updates
-4. Rebuild Docker image
-5. Verify code scanning alerts are resolved
+#### v0.12.1 Release ✅ COMPLETE
+- **Status**: Released 2026-02-12
+- **Summary**: Stabilization of v0.12.0 security hardening - fixed WAF false positives, auth bridge, playlist sync, CI/CD formatting
 
 #### Video Quality Improvements (360p → 1080p)
 
@@ -352,9 +362,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.11.9 (Security Updates, Video Quality & Discovery Fix)
+- **Current Version**: v0.12.1 (Security Hardening Stabilization)
 - **Development Focus**: Stability, performance
-- **Next Version**: v0.11.9
+- **Next Version**: v0.12.2
 
 ### Code Development Process
 1. Create feature branch from `dev` branch

@@ -414,7 +414,9 @@ class LastFmService:
                     }
                 )
 
-            logger.debug(f"🎵 LAST.FM: Found {len(tracks)} top tracks for {artist_name}")
+            logger.debug(
+                f"🎵 LAST.FM: Found {len(tracks)} top tracks for {artist_name}"
+            )
             return {
                 "toptracks": {
                     "track": tracks,

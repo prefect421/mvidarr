@@ -1,42 +1,27 @@
 {
-  "version": "0.12.0",
-  "build_date": "2026-02-11T19:20:42.309441",
-  "git_commit": "6d9a6ce",
+  "version": "0.12.1",
+  "build_date": "2026-02-12T15:43:17.720579",
+  "git_commit": "d0e4db2",
   "git_branch": "dev",
-  "release_name": "v0.12.0 - Security Hardening Sprint",
+  "release_name": "v0.12.1 - Security Hardening Stabilization",
   "features": [
-    "Auth: Consolidated to single auth system (SimpleAuth + SessionStore)",
-    "Auth: Real session token validation replacing accept-any-token bypass",
-    "Auth: Removed backdoor endpoints (/test-login, credential reset)",
-    "Auth: Fail-closed authentication middleware (deny on error)",
-    "Auth: Added auth to filesystem browse, settings, and image processing",
-    "Passwords: Upgraded from SHA-256 to bcrypt with lazy migration",
-    "Passwords: Minimum password length increased to 8 characters",
-    "Input: Safe tar extraction with path traversal prevention",
-    "Input: Upload filename sanitization against directory traversal",
-    "Input: SQL sort_by allowlists and LIKE wildcard escaping",
-    "Input: Mass assignment prevention via field allowlists",
-    "Network: SSRF protection blocking private/loopback IPs",
-    "Network: Redis authentication enabled with password",
-    "Network: Secure session cookies when behind HTTPS",
-    "Network: Restricted proxy trusted hosts from wildcard",
-    "Network: Replaced pickle cache serialization with JSON-only",
-    "Network: Sanitized error responses (no stack traces in API)",
-    "Network: Swagger/ReDoc disabled in production",
-    "Network: Rate limiting and security validation middleware enabled"
+    "Fix: Login page updated to use correct auth endpoint (was POSTing to removed /test-login)",
+    "Fix: WAF false positives disabled - SQL injection regex blocked URLs, cookies, Range headers",
+    "Fix: Video streaming restored (Range header no longer blocked by security middleware)",
+    "Fix: YouTube playlist sync now detects new videos (broken incremental sync replaced with full fetch)",
+    "Fix: Playlist add error messages now show actual server detail instead of generic HTTP 400",
+    "Fix: Flask-to-FastAPI session bridge for consistent auth across both frameworks",
+    "Fix: Rate limiting tuned for normal page loads (300/min, static files exempt)",
+    "Fix: Migration 023 guarded against duplicate column error",
+    "CI/CD: Code formatted with black 24.3.0 (28 files reformatted to match CI)"
   ],
   "resolved_issues": [
-    "8 critical auth bypass vulnerabilities closed",
-    "12 high-severity issues (password security, input validation)",
-    "16 medium-severity issues (network, infrastructure, error handling)",
-    "13 low-severity issues (debug logging, dead code)"
-  ],
-  "upgrade_notes": [
-    "Docker image rebuild required",
-    "Set REDIS_PASSWORD env var (default: mvidarr_redis_default)",
-    "Existing SHA-256 passwords auto-migrate to bcrypt on next login",
-    "Minimum password length now 8 characters",
-    "Filesystem browse restricted to /data, /media, /mnt, /home dirs",
-    "API error responses no longer expose internal details"
+    "Login page POST to removed /test-login endpoint",
+    "SecurityValidationMiddleware blocking legitimate requests (URLs, cookies, headers)",
+    "Video stream 400 errors from Range header WAF false positive",
+    "YouTube playlist sync returning 0 new videos (broken incremental logic)",
+    "429 Too Many Requests from dual stacked rate limiters",
+    "401 on FastAPI endpoints when logged in via Flask session",
+    "CI/CD black formatting check failure (28 files)"
   ]
 }
