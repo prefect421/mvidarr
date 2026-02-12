@@ -407,7 +407,9 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         self.config = config or TokenConfig()
         self.jwt_manager = JWTManager(self.config)
 
-        # Paths that don't require authentication
+        # Paths that don't require authentication at middleware level.
+        # API endpoints use route-level Depends(require_authentication) instead.
+        # Frontend pages handle auth via their own template/redirect logic.
         self.public_paths = {
             "/health",
             "/docs",
@@ -417,16 +419,23 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
             "/css/",
             "/favicon.ico",
             "/login",
-            "/auth/login",
+            "/auth/",
             "/simple-login",
-            "/api/auth/login",
-            "/api/auth/simple-login",
-            "/api/auth/register",
-            "/api/auth/refresh",
-            "/api/auth/reset-password",
-            "/api/auth/verify-email",
+            "/api/auth/",
+            "/api/health",
             "/",
-            "/dashboard",  # Allow root and dashboard to handle their own authentication
+            "/dashboard",
+            "/artists",
+            "/videos",
+            "/video/",
+            "/discover",
+            "/settings",
+            "/youtube-playlists",
+            "/mvtv",
+            "/downloads",
+            "/artist/",
+            "/admin",
+            "/ws/",
         }
 
         # Paths that require specific roles
@@ -491,13 +500,29 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         if self._is_public_path(path):
             return await call_next(request)
 
-        # Extract token
+        # Extract JWT token
         token = self._extract_token(request)
         if not token:
-            # Redirect browser requests to login page
+            # Fallback: check session_token cookie (SessionStore-based auth)
+            # This bridges session-based auth with JWT middleware so both work
+            session_token = request.cookies.get("session_token")
+            if session_token:
+                try:
+                    from src.services.session_store import SessionStore
+
+                    user_data = SessionStore.validate_session(session_token)
+                    if user_data:
+                        # Session is valid - let the request through
+                        # Route-level dependencies handle fine-grained auth
+                        request.state.authenticated = True
+                        request.state.session_user = user_data
+                        return await call_next(request)
+                except Exception as e:
+                    logger.debug(f"SessionStore validation failed: {e}")
+
+            # No valid JWT or session token found
             if self._is_browser_request(request):
                 return RedirectResponse(url="/auth/login", status_code=302)
-            # Return JSON for API requests
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={"detail": "Missing authentication token"},
