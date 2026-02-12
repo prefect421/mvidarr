@@ -1,7 +1,7 @@
 {
   "version": "0.12.1",
-  "build_date": "2026-02-12T15:43:17.720579",
-  "git_commit": "d0e4db2",
+  "build_date": "2026-02-12T15:53:13.056793",
+  "git_commit": "ad67971",
   "git_branch": "dev",
   "release_name": "v0.12.1 - Security Hardening Stabilization",
   "features": [
