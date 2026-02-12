@@ -472,9 +472,7 @@ class YouTubePlaylistService:
 
             session.commit()
 
-            logger.info(
-                f"Synced playlist {playlist_id}: {results} (incremental: {incremental_mode})"
-            )
+            logger.info(f"Synced playlist {playlist_id}: {results}")
             return results
 
         except Exception as e:
