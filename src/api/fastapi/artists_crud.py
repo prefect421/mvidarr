@@ -736,6 +736,7 @@ async def delete_artist(
         if delete_videos and video_count > 0:
             # Delete all videos by this artist
             videos = session.query(Video).filter(Video.artist_id == artist_id).all()
+            video_ids = [v.id for v in videos]
 
             for video in videos:
                 # Delete video files if they exist
@@ -747,8 +748,25 @@ async def delete_artist(
                             f"Failed to delete video file {video.local_path}: {e}"
                         )
 
+            # Clean up foreign key references before deleting videos
+            from src.database.models import Download, PlaylistEntry
+
+            session.query(PlaylistEntry).filter(
+                PlaylistEntry.video_id.in_(video_ids)
+            ).delete(synchronize_session=False)
+            session.query(Download).filter(Download.video_id.in_(video_ids)).delete(
+                synchronize_session=False
+            )
+
+            # Also clean up downloads linked to the artist directly
+            session.query(Download).filter(Download.artist_id == artist_id).delete(
+                synchronize_session=False
+            )
+
             # Delete video records
-            session.query(Video).filter(Video.artist_id == artist_id).delete()
+            session.query(Video).filter(Video.artist_id == artist_id).delete(
+                synchronize_session=False
+            )
             logger.info(f"Deleted {video_count} videos for artist {artist_name}")
         else:
             video_count = 0
