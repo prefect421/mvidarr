@@ -1,7 +1,7 @@
 {
   "version": "0.12.1",
-  "build_date": "2026-02-12T16:24:07.929110",
-  "git_commit": "35841c2",
+  "build_date": "2026-02-13T00:40:14.202654",
+  "git_commit": "bf2673e",
   "git_branch": "dev",
   "release_name": "v0.12.1 - Security Hardening Stabilization",
   "features": [
@@ -10,7 +10,7 @@
     "Fix: Video streaming restored (Range header no longer blocked by security middleware)",
     "Fix: YouTube playlist sync now detects new videos (broken incremental sync replaced with full fetch)",
     "Fix: Playlist add error messages now show actual server detail instead of generic HTTP 400",
-    "Fix: Flask-to-FastAPI session bridge for consistent auth across both frameworks",
+    "Fix: JWT middleware now accepts session_token cookies (was blocking authenticated API requests)",
     "Fix: Rate limiting tuned for normal page loads (300/min, static files exempt)",
     "Fix: Migration 023 guarded against duplicate column error",
     "Fix: YouTube search no longer caches empty results from API quota exhaustion",
@@ -21,8 +21,8 @@
     "SecurityValidationMiddleware blocking legitimate requests (URLs, cookies, headers)",
     "Video stream 400 errors from Range header WAF false positive",
     "YouTube playlist sync returning 0 new videos (broken incremental logic)",
+    "JWT middleware blocking session-authenticated API requests (401 on /api/artists, /api/themes)",
     "429 Too Many Requests from dual stacked rate limiters",
-    "401 on FastAPI endpoints when logged in via Flask session",
     "CI/CD black formatting check failure (28 files)",
     "YouTube search caching empty results from API quota exhaustion"
   ]
