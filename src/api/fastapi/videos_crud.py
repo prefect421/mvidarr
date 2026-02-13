@@ -84,6 +84,7 @@ async def list_videos(
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     status: Optional[str] = Query(None),
     artist_id: Optional[int] = Query(None),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -193,7 +194,9 @@ async def list_videos(
 
 @router.get("/{video_id}", response_model=VideoResponse)
 async def get_video(
-    video_id: int = FastAPIPath(..., ge=1), session: Session = Depends(get_db_session)
+    video_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """
     Get single video details by ID.
@@ -260,6 +263,7 @@ async def get_video(
 async def update_video(
     video_id: int = FastAPIPath(..., ge=1),
     update_data: VideoUpdateRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -403,6 +407,7 @@ async def update_video(
 async def delete_video(
     video_id: int = FastAPIPath(..., ge=1),
     request: Optional[Dict] = Body(default=None),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -518,6 +523,7 @@ async def delete_video(
 async def update_video_status(
     video_id: int = FastAPIPath(..., ge=1),
     status_data: VideoStatusUpdateRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """

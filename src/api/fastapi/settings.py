@@ -29,6 +29,9 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 from src.api.fastapi.auth_dependencies import (  # noqa: E402
     require_admin as get_current_admin,
 )
+from src.api.fastapi.auth_dependencies import (
+    require_authentication,
+)
 
 # ====================================
 # Pydantic Models
@@ -95,7 +98,9 @@ class DatabaseConfigResponse(BaseModel):
 
 
 @router.get("/", response_model=AllSettingsResponse)
-async def get_all_settings():
+async def get_all_settings(
+    current_user: dict = Depends(require_authentication),
+):
     """Get all application settings"""
     try:
         settings_dict = settings.get_all()
@@ -111,7 +116,9 @@ async def get_all_settings():
 
 
 @router.get("/database-config", response_model=DatabaseConfigResponse)
-async def get_database_config():
+async def get_database_config(
+    current_user: dict = Depends(require_authentication),
+):
     """Get current database configuration (read-only)"""
     try:
         from src.config.config import Config
@@ -142,7 +149,10 @@ async def get_database_config():
 
 
 @router.get("/{key}", response_model=SettingResponse)
-async def get_setting(key: str):
+async def get_setting(
+    key: str,
+    current_user: dict = Depends(require_authentication),
+):
     """Get a specific setting by key"""
     try:
         all_settings = settings.get_all()
@@ -459,7 +469,9 @@ async def restart_systemd_service(admin_user=Depends(get_current_admin)):
 
 
 @router.get("/scheduler/status", response_model=Dict)
-async def get_scheduler_status():
+async def get_scheduler_status(
+    current_user: dict = Depends(require_authentication),
+):
     """Get current scheduler status and configuration"""
     try:
         from src.services.scheduler_service import scheduler_service
@@ -513,7 +525,9 @@ async def get_scheduler_status():
 
 
 @router.post("/scheduler/start")
-async def start_scheduler():
+async def start_scheduler(
+    current_user: dict = Depends(get_current_admin),
+):
     """Start the scheduler service"""
     try:
         from src.services.scheduler_service import scheduler_service
@@ -533,7 +547,9 @@ async def start_scheduler():
 
 
 @router.post("/scheduler/stop")
-async def stop_scheduler():
+async def stop_scheduler(
+    current_user: dict = Depends(get_current_admin),
+):
     """Stop the scheduler service"""
     try:
         from src.services.scheduler_service import scheduler_service
@@ -553,7 +569,9 @@ async def stop_scheduler():
 
 
 @router.post("/scheduler/reload")
-async def reload_scheduler():
+async def reload_scheduler(
+    current_user: dict = Depends(get_current_admin),
+):
     """Reload scheduler configuration from settings"""
     try:
         from src.services.scheduler_service import scheduler_service
@@ -570,7 +588,9 @@ async def reload_scheduler():
 
 
 @router.post("/scheduler/trigger")
-async def trigger_scheduled_download():
+async def trigger_scheduled_download(
+    current_user: dict = Depends(get_current_admin),
+):
     """Manually trigger a scheduled download"""
     try:
         from src.services.scheduler_service import scheduler_service

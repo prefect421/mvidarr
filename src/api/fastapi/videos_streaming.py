@@ -24,6 +24,7 @@ from fastapi import Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.config.config import Config
 from src.database.connection import get_db_session
 from src.database.models import Video
@@ -161,6 +162,7 @@ def is_browser_compatible(video_codec: str, audio_codec: str) -> bool:
 async def stream_video(
     request: Request,
     video_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Stream video with HTTP range support"""
@@ -302,6 +304,7 @@ async def stream_video(
 async def stream_video_transcode(
     request: Request,
     video_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -475,6 +478,7 @@ async def stream_video_transcode(
 @router.get("/{video_id}/subtitles")
 async def get_subtitles(
     video_id: int = FastAPIPath(..., description="Video ID"),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get available subtitle tracks for a video"""
@@ -533,6 +537,7 @@ async def get_subtitles(
 async def serve_subtitle(
     video_id: int = FastAPIPath(..., description="Video ID"),
     subtitle_filename: str = FastAPIPath(..., description="Subtitle filename"),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Serve subtitle file for a video with positioning stripped for proper centering"""

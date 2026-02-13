@@ -22,6 +22,7 @@ from fastapi import Query, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video
 from src.utils.logger import get_logger
@@ -70,6 +71,7 @@ def _safe_parse_genres(genres: Union[str, List[str], None]) -> List[str]:
 async def universal_search(
     q: str = Query(..., min_length=1),
     extended: bool = Query(False),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Universal search endpoint that searches across videos, artists, IMVDb, and YouTube"""
@@ -293,6 +295,7 @@ async def search_videos(
     offset: int = Query(0, ge=0),
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Search videos with filters"""
@@ -401,7 +404,9 @@ async def search_videos(
 
 @router.get("/search-artists")
 async def search_artists(
-    q: str = Query("", min_length=0), session: Session = Depends(get_db_session)
+    q: str = Query("", min_length=0),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Search for existing artists by name"""
     try:
@@ -441,7 +446,9 @@ async def search_artists(
 
 @router.post("/{video_id}/lyrics/search")
 async def search_video_lyrics(
-    video_id: int = FastAPIPath(..., ge=1), session: Session = Depends(get_db_session)
+    video_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Search and retrieve lyrics for a video"""
     try:
