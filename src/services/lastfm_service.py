@@ -593,7 +593,11 @@ class LastFmService:
                                                     producers=video_data.get(
                                                         "producers", []
                                                     ),
-                                                    status=VideoStatus.WANTED,
+                                                    status=(
+                                                        VideoStatus.WANTED
+                                                        if new_artist.auto_download
+                                                        else VideoStatus.MONITORED
+                                                    ),
                                                     source="lastfm_import",
                                                     imvdb_metadata=video_data,
                                                     created_at=datetime.now(),
@@ -717,7 +721,11 @@ class LastFmService:
                                                 producers=video_data.get(
                                                     "producers", []
                                                 ),
-                                                status=VideoStatus.WANTED,
+                                                status=(
+                                                    VideoStatus.WANTED
+                                                    if artist.auto_download
+                                                    else VideoStatus.MONITORED
+                                                ),
                                                 source="lastfm_loved",
                                                 imvdb_metadata=video_data,
                                                 created_at=datetime.now(),
