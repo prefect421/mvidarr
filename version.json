@@ -1,29 +1,24 @@
 {
-  "version": "0.12.1",
-  "build_date": "2026-02-13T00:40:14.202654",
-  "git_commit": "bf2673e",
+  "version": "0.12.2",
+  "build_date": "2026-02-14T19:57:12.141482",
+  "git_commit": "20abc92",
   "git_branch": "dev",
-  "release_name": "v0.12.1 - Security Hardening Stabilization",
+  "release_name": "v0.12.2 - Authentication & Stability",
   "features": [
-    "Fix: Login page updated to use correct auth endpoint (was POSTing to removed /test-login)",
-    "Fix: WAF false positives disabled - SQL injection regex blocked URLs, cookies, Range headers",
-    "Fix: Video streaming restored (Range header no longer blocked by security middleware)",
-    "Fix: YouTube playlist sync now detects new videos (broken incremental sync replaced with full fetch)",
-    "Fix: Playlist add error messages now show actual server detail instead of generic HTTP 400",
-    "Fix: JWT middleware now accepts session_token cookies (was blocking authenticated API requests)",
-    "Fix: Rate limiting tuned for normal page loads (300/min, static files exempt)",
-    "Fix: Migration 023 guarded against duplicate column error",
-    "Fix: YouTube search no longer caches empty results from API quota exhaustion",
-    "CI/CD: Code formatted with black 24.3.0 (28 files reformatted to match CI)"
+    "Security: Added authentication to 36 unprotected API endpoints across 6 files",
+    "Security: Global 401 interceptor redirects unauthenticated users to login page",
+    "Fix: Discovery no longer sets videos to WANTED when artist auto_download is disabled",
+    "Fix: Artist deletion 500 error from orphaned playlist/download foreign key references",
+    "Fix: YouTube monitored playlists now auto-sync every 6 hours via scheduled task",
+    "Fix: Removed obsolete po-token-provider process causing FATAL crashes on startup",
+    "Infra: bgutil-ytdlp-pot-provider updated to v1.2.2 (Rust-based yt-dlp plugin)"
   ],
   "resolved_issues": [
-    "Login page POST to removed /test-login endpoint",
-    "SecurityValidationMiddleware blocking legitimate requests (URLs, cookies, headers)",
-    "Video stream 400 errors from Range header WAF false positive",
-    "YouTube playlist sync returning 0 new videos (broken incremental logic)",
-    "JWT middleware blocking session-authenticated API requests (401 on /api/artists, /api/themes)",
-    "429 Too Many Requests from dual stacked rate limiters",
-    "CI/CD black formatting check failure (28 files)",
-    "YouTube search caching empty results from API quota exhaustion"
+    "36 API endpoints missing authentication (videos, search, settings, streaming, playlists, scheduling)",
+    "Unauthenticated users seeing error counts instead of login redirect",
+    "Video discovery setting status to WANTED regardless of artist auto_download setting",
+    "Artist deletion failing with 500 when videos referenced by playlists or downloads",
+    "YouTube monitored playlists not auto-updating (missing scheduled task)",
+    "po-token-provider FATAL crash loop on container startup (module removed in v1.2.2)"
   ]
 }
