@@ -13,6 +13,7 @@ Tasks:
 - retry_failed_downloads_task: Retry failed downloads with exponential backoff
 - scheduler_health_check_task: Monitor scheduler system health
 - artist_discovery_check_task: Check which artists need discovery
+- playlist_sync_task: Sync all monitored YouTube playlists
 """
 
 from datetime import datetime, timedelta
@@ -576,4 +577,51 @@ def artist_discovery_check_task(**kwargs) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Artist discovery check failed: {e}")
+        raise
+
+
+@celery_app.task(
+    base=ScheduledTaskBase,
+    name="src.tasks.scheduled_tasks.playlist_sync_task",
+)
+def playlist_sync_task(**kwargs) -> Dict[str, Any]:
+    """
+    Sync all monitored YouTube playlists
+
+    This task runs on a schedule (default: every 6 hours) and syncs
+    all monitored YouTube playlists, adding new videos and optionally
+    queuing downloads based on each monitor's auto_download setting.
+
+    Returns:
+        Dict with sync results
+    """
+    start_time = datetime.utcnow()
+    logger.info("Starting scheduled YouTube playlist sync")
+
+    try:
+        from src.services.youtube_playlist_service import youtube_playlist_service
+
+        result = youtube_playlist_service.sync_all_playlists()
+
+        execution_time = (datetime.utcnow() - start_time).total_seconds()
+
+        logger.info(
+            f"Scheduled playlist sync completed in {execution_time:.2f}s: "
+            f"{result.get('synced_playlists', 0)}/{result.get('total_playlists', 0)} playlists synced, "
+            f"{result.get('total_new_videos', 0)} new videos found"
+        )
+
+        return {
+            "success": True,
+            "total_playlists": result.get("total_playlists", 0),
+            "synced_playlists": result.get("synced_playlists", 0),
+            "total_new_videos": result.get("total_new_videos", 0),
+            "total_downloads": result.get("total_downloads", 0),
+            "errors": result.get("errors", []),
+            "execution_time": execution_time,
+            "triggered_at": start_time.isoformat(),
+        }
+
+    except Exception as e:
+        logger.error(f"Scheduled playlist sync failed: {e}")
         raise

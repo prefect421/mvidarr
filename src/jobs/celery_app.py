@@ -110,6 +110,11 @@ celery_app.conf.update(
             "schedule": timedelta(minutes=5),  # Health check every 5 minutes
             "options": {"queue": "scheduler"},
         },
+        "playlist-sync": {
+            "task": "src.tasks.scheduled_tasks.playlist_sync_task",
+            "schedule": timedelta(hours=6),  # Sync monitored playlists every 6 hours
+            "options": {"queue": "scheduler"},
+        },
     },
     beat_schedule_filename=os.environ.get(
         "CELERYBEAT_SCHEDULE_FILE", "data/celerybeat-schedule"
