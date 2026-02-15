@@ -48,7 +48,7 @@ def setup_logging(app):
     werkzeug_logger.addHandler(file_handler)
 
     # Configure application loggers
-    for logger_name in ["mvidarr", "imvdb", "metube", "youtube"]:
+    for logger_name in ["mvidarr", "imvdb", "metube", "youtube", "src"]:
         logger = logging.getLogger(logger_name)
         logger.setLevel(log_level)
         logger.addHandler(file_handler)

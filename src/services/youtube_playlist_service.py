@@ -535,26 +535,76 @@ class YouTubePlaylistService:
 
         return None
 
+    @staticmethod
+    def _clean_channel_name(channel_title: str) -> str:
+        """Strip common YouTube channel suffixes like VEVO, Official, etc.
+
+        Examples:
+            KornVEVO -> Korn
+            tenaciousDVEVO -> tenaciousD
+            ToolOfficial -> Tool
+            FooFightersMusic -> FooFighters
+        """
+        if not channel_title:
+            return channel_title
+
+        # Strip suffixes in priority order (longest/most specific first)
+        # Case-insensitive matching but preserve original casing of the base name
+        suffixes = [
+            "Official Music Channel",
+            "Official Channel",
+            "Music Official",
+            "VEVO",
+            "Official",
+            "Records",
+            "Channel",
+            "Music",
+            "TV",
+        ]
+        cleaned = channel_title.strip()
+        for suffix in suffixes:
+            if cleaned.lower().endswith(suffix.lower()) and len(cleaned) > len(suffix):
+                cleaned = cleaned[: -len(suffix)].strip(" -_")
+                break  # Only strip one suffix to avoid over-cleaning
+
+        return cleaned or channel_title  # Fallback to original if cleaning emptied it
+
     def _find_or_create_artist(self, channel_title: str, session: Session) -> Artist:
-        """Find existing artist or create new one"""
-        # Try to find existing artist
+        """Find existing artist or create new one.
+
+        Cleans YouTube channel suffixes (VEVO, Official, etc.) before
+        searching for or creating artists.
+        """
+        cleaned_name = self._clean_channel_name(channel_title)
+        if cleaned_name != channel_title:
+            logger.info(f"Cleaned channel name: '{channel_title}' -> '{cleaned_name}'")
+
+        # Try to find existing artist with cleaned name first
         existing_artist = (
-            session.query(Artist)
-            .filter(Artist.name.ilike(f"%{channel_title}%"))
-            .first()
+            session.query(Artist).filter(Artist.name.ilike(f"%{cleaned_name}%")).first()
         )
 
         if existing_artist:
             return existing_artist
 
-        # Generate default folder path
+        # Fallback: try original name if different from cleaned
+        if cleaned_name != channel_title:
+            existing_artist = (
+                session.query(Artist)
+                .filter(Artist.name.ilike(f"%{channel_title}%"))
+                .first()
+            )
+            if existing_artist:
+                return existing_artist
+
+        # Generate default folder path using cleaned name
         from src.utils.filename_cleanup import FilenameCleanup
 
-        folder_path = FilenameCleanup.sanitize_folder_name(channel_title)
+        folder_path = FilenameCleanup.sanitize_folder_name(cleaned_name)
 
-        # Create new artist
+        # Create new artist with cleaned name
         new_artist = Artist(
-            name=channel_title,
+            name=cleaned_name,
             monitored=True,
             auto_download=False,
             source="youtube_playlist",
