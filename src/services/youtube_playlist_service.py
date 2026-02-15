@@ -564,6 +564,7 @@ class YouTubePlaylistService:
 
         session.add(new_artist)
         session.flush()  # Get the ID
+        artist_id = new_artist.id  # Save ID before auto-processing may detach it
 
         # Run auto-processing for newly created artist
         try:
@@ -571,24 +572,16 @@ class YouTubePlaylistService:
                 artist_auto_processing_service,
             )
 
-            # Ensure artist is bound to session for auto-processing
-            session.refresh(new_artist)
-            auto_processing_results = artist_auto_processing_service.process_new_artist(
-                new_artist, session
-            )
-            # Refresh artist after auto-processing to get any metadata enrichment updates
-            session.refresh(new_artist)
-            match_count = auto_processing_results.get("auto_match", {}).get(
-                "match_count", 0
-            )
-            logger.info(
-                f"Auto-processing completed for {channel_title} - {match_count} services matched"
-            )
+            artist_auto_processing_service.process_new_artist(new_artist, session)
+            logger.info(f"Auto-processing completed for {channel_title}")
         except Exception as e:
             logger.warning(
                 f"Auto-processing failed for newly created artist {channel_title}: {e}"
             )
 
+        # Re-fetch artist from session to ensure it's properly bound
+        # (auto-processing may detach the object by opening its own session)
+        new_artist = session.query(Artist).filter(Artist.id == artist_id).first()
         return new_artist
 
     def download_video(self, video_id: str, quality: str = "720p") -> Dict:
