@@ -1,15 +1,17 @@
 {
-  "version": "0.12.2",
-  "build_date": "2026-02-14T19:57:12.141482",
-  "git_commit": "20abc92",
+  "version": "0.12.3",
+  "build_date": "2026-02-15T18:08:37.950632",
+  "git_commit": "6d55c2c",
   "git_branch": "dev",
-  "release_name": "v0.12.2 - Authentication & Stability",
+  "release_name": "v0.12.3 - Playlist Sync & Logging",
   "features": [
     "Security: Added authentication to 36 unprotected API endpoints across 6 files",
     "Security: Global 401 interceptor redirects unauthenticated users to login page",
     "Fix: Discovery no longer sets videos to WANTED when artist auto_download is disabled",
     "Fix: Artist deletion 500 error from orphaned playlist/download foreign key references",
     "Fix: YouTube monitored playlists now auto-sync every 6 hours via scheduled task",
+    "Fix: Playlist sync strips VEVO/Official suffixes from YouTube channel names",
+    "Fix: Celery scheduled task logging now routed to file and console handlers",
     "Fix: Removed obsolete po-token-provider process causing FATAL crashes on startup",
     "Infra: bgutil-ytdlp-pot-provider updated to v1.2.2 (Rust-based yt-dlp plugin)"
   ],
