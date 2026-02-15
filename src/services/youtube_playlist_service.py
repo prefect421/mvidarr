@@ -353,10 +353,18 @@ class YouTubePlaylistService:
 
             # Always do a full fetch with cache bypass - the database comparison
             # below handles deduplication. Sync must see fresh YouTube data.
-            logger.info(f"Syncing playlist {playlist_id}")
+            logger.info(f"Syncing playlist {playlist_id} (monitor: {monitor.name})")
             playlist_videos = self.get_playlist_videos(
                 playlist_id, max_results=1000, skip_cache=True
             )
+
+            logger.info(
+                f"YouTube API returned {len(playlist_videos)} videos for playlist {playlist_id}"
+            )
+            for i, pv in enumerate(playlist_videos):
+                logger.info(
+                    f"  YouTube video [{i}]: {pv.get('video_id')} - {pv.get('title')}"
+                )
 
             # Get video details
             video_ids = [v["video_id"] for v in playlist_videos if v["video_id"]]
@@ -368,6 +376,11 @@ class YouTubePlaylistService:
                 session.query(Video).filter(Video.youtube_id.in_(video_ids)).all()
             ):
                 existing_videos[video.youtube_id] = video
+
+            logger.info(
+                f"Found {len(existing_videos)} existing videos in database, "
+                f"{len(video_ids) - len(existing_videos)} are new"
+            )
 
             results = {
                 "total_videos": len(playlist_videos),
@@ -403,6 +416,10 @@ class YouTubePlaylistService:
                     # Update existing video or create new one
                     if video_id in existing_videos:
                         video = existing_videos[video_id]
+                        logger.info(
+                            f"  Video {video_id} exists in DB (id={video.id}, "
+                            f"playlist_id={video.playlist_id}), updating metadata"
+                        )
                         # Update metadata
                         video.title = video_data["title"]
                         video.description = video_data.get("description", "")
@@ -445,6 +462,10 @@ class YouTubePlaylistService:
 
                         session.add(video)
                         results["new_videos"] += 1
+                        logger.info(
+                            f"  New video added: {video_id} - {video_data['title']} "
+                            f"(artist: {artist.name}, status: {video.status.value})"
+                        )
 
                         # Auto-download if enabled
                         if monitor.auto_download:
