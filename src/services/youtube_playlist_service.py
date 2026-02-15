@@ -411,6 +411,9 @@ class YouTubePlaylistService:
                         video.duration = self._parse_duration(details.get("duration"))
                         video.view_count = details.get("view_count")
                         video.updated_at = datetime.now()
+                        # Ensure playlist association for videos added via other sources
+                        if not video.playlist_id:
+                            video.playlist_id = playlist_id
 
                         results["updated_videos"] += 1
                     else:
