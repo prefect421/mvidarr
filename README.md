@@ -22,22 +22,17 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.11.9 - Security Updates, Video Quality & Discovery Fix**
+## 🚀 **LATEST: v0.12.3 - Playlist Sync & Logging**
 
-**Released**: February 5, 2026
+**Released**: February 16, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Security Updates ✅ (11 CVEs Fixed)
-- **🔒 python-multipart**: 0.0.20 → 0.0.22 (CVE-2026-24486 path traversal)
-- **🔒 urllib3**: 2.6.0 → 2.6.3 (CVE-2026-21441 decompression-bomb bypass)
-- **🔒 aiohttp**: 3.12.14 → 3.13.3 (CVE-2025-69223 + multiple DoS fixes)
-- **🔒 werkzeug**: 3.1.4 → 3.1.5 (CVE-2026-21860 Windows device names bypass)
-
-### Video Quality Fix ✅
-- **🎬 Format Sorting**: Added `-S` flag to prioritize resolution over bitrate
-- **🎬 User Settings**: Downloads now respect `max_video_quality` database setting
-- **🎬 TV Client Fallback**: Falls back to web client for more format options
+### Playlist Sync Fixes ✅
+- **🎵 VEVO Name Cleanup**: YouTube channel suffixes (VEVO, Official, Music, etc.) stripped before artist lookup/creation
+- **📋 Celery Task Logging**: Scheduled task logs no longer silently dropped - all worker output now visible
+- **🔐 Authentication**: 36 API endpoints secured, global 401 interceptor added
+- **🛡️ Security Hardening**: 49 vulnerabilities fixed across v0.12.0-v0.12.3
 
 ### YouTube Discovery Fix ✅
 - **🔍 API Key Caching**: Fixed bug where empty API key was cached forever

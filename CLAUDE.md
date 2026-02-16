@@ -214,17 +214,28 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.1 - Released
+### Current Phase: v0.12.3 - Released
 
-#### Versioning Policy (Updated 2026-02-12)
-- **Current Version**: 0.12.1 (Released 2026-02-12)
-- **Next Version**: 0.12.2 (Planning)
+#### Versioning Policy (Updated 2026-02-16)
+- **Current Version**: 0.12.3 (Released 2026-02-16)
+- **Next Version**: 0.12.4 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.3** (2026-02-16): Playlist Sync & Logging
+  - ✅ VEVO/Official channel name cleanup during playlist sync
+  - ✅ Celery worker logging fix (mvidarr.* loggers via after_setup_logger signal)
+  - ✅ Added "src" to configured logger namespaces
+- **v0.12.2** (2026-02-14): Authentication & Stability
+  - ✅ Authentication added to 36 unprotected API endpoints
+  - ✅ Global 401 interceptor for unauthenticated users
+  - ✅ Fixed discovery setting videos to WANTED regardless of auto_download
+  - ✅ Fixed artist deletion 500 error from orphaned foreign keys
+  - ✅ YouTube playlist auto-sync every 6 hours via scheduled task
+  - ✅ Removed obsolete po-token-provider process
 - **v0.12.1** (2026-02-12): Security Hardening Stabilization
   - ✅ Fixed login page POSTing to removed /test-login endpoint
   - ✅ Fixed WAF false positives blocking URLs, cookies, Range headers
@@ -362,9 +373,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.1 (Security Hardening Stabilization)
+- **Current Version**: v0.12.3 (Playlist Sync & Logging)
 - **Development Focus**: Stability, performance
-- **Next Version**: v0.12.2
+- **Next Version**: v0.12.4
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -461,8 +472,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.11.6 (2026-01-02)
-- **Next Release**: Version 0.11.7 (In Development)
+- **Current Release**: Version 0.12.3 (2026-02-16)
+- **Next Release**: Version 0.12.4 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment

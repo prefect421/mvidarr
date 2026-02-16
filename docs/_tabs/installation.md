@@ -81,7 +81,7 @@ Use our production image:
 docker pull ghcr.io/prefect421/mvidarr:latest
 
 # Or specific version
-docker pull ghcr.io/prefect421/mvidarr:v0.10.0-beta.1
+docker pull ghcr.io/prefect421/mvidarr:v0.12.3
 ```
 
 The `docker-compose.yml` automatically uses the `:latest` tag for production deployments.

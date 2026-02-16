@@ -8,177 +8,95 @@ order: 5
 
 Track MVidarr's development progress through our release history and upcoming milestones.
 
-## 🚀 Current Release: v0.9.5
+## 🚀 Current Release: v0.12.3
 
-**Released**: August 11, 2025  
-**Focus**: UI/UX Excellence & Documentation Complete
+**Released**: February 16, 2026
+**Focus**: Playlist Sync & Logging
 
-### Major Improvements
-- **🎨 Streamlined UI Design**: Clean, professional headers and improved navigation across all pages
-- **📚 Complete Documentation Portfolio**: Comprehensive guides for developers, users, and operations
-- **📄 Artists Page Pagination**: Full navigation controls with customizable page sizes
-- **⚡ Performance Optimizations**: 60% CI time reduction and enhanced system reliability
-- **🔧 Enhanced Scheduler Service**: Flexible time intervals and improved error handling
+### Key Fixes
+- **🎵 VEVO Name Cleanup**: YouTube channel suffixes (VEVO, Official, Music, Records, etc.) automatically stripped during playlist sync to prevent duplicate artists
+- **📋 Celery Task Logging**: Scheduled task logs were silently dropped because worker process lacked logger configuration. Fixed via `after_setup_logger` signal
+- **🔐 Authentication**: 36 API endpoints secured with session-based auth
+- **🛡️ Security**: 49 vulnerabilities fixed across v0.12.0-v0.12.3 (bcrypt passwords, SSRF protection, secure cookies)
 
-### Key Features
-- 35 comprehensive features including all core functionality
-- Complete dual-source video discovery (IMVDb + YouTube)
-- Professional thumbnail management with multi-source search
-- Advanced artist management with bulk operations
-- Enterprise-grade security with automated vulnerability scanning
-- Multi-user authentication with role-based access control
-- MvTV continuous player with cinematic mode
-- Enhanced Docker-native scheduler service
-
-### Technical Enhancements
-- Fixed Video Indexing Database Statistics with SQLAlchemy compatibility
-- Resolved Themes API Authentication for seamless settings management
-- Verified Scheduled Download System functionality for YouTube videos
-- Complete Duplicate Video Merge functionality with enhanced UI
-- Docker build optimization with consistent 8-minute build times
-- Container size optimization to 1.41GB production images
-- **Fixed GitHub Actions Release Automation**: Resolved tar archive and permissions issues
-- **Modernized CI/CD Pipeline**: Updated to use GitHub CLI with proper workflow permissions
-- **Reliable Release Asset Generation**: Automated source code and installation package creation
-
-### Download v0.9.5
-- **[GitHub Release](https://github.com/prefect421/mvidarr/releases/tag/v0.9.5)** - Source code and installation packages
-- **[Docker Image](https://ghcr.io/prefect421/mvidarr:v0.9.5)** - Production-ready container
+### Download v0.12.3
+- **[GitHub Release](https://github.com/prefect421/mvidarr/releases)** - Source code and installation packages
+- **[Docker Image](https://ghcr.io/prefect421/mvidarr:latest)** - Production-ready container
 - **[Documentation](https://prefect421.github.io/mvidarr)** - Complete user and developer guides
 
-## 📋 Previous Release: v0.9.4
+## 📋 Recent Releases
 
-**Released**: August 6, 2025  
-**Focus**: Docker Optimization and Build Reliability
+### v0.12.2 - Authentication & Stability
+**Released**: February 14, 2026
 
-### Major Improvements
-- **🐳 Docker Build Optimization**: Reduced build time from timeout failures to consistent 8m6s builds
-- **📦 Container Size Reduction**: Optimized Docker image layers and dependencies (1.41GB production images)
-- **⚡ Build Reliability**: Fixed timeout issues with build-essential package installation
-- **🔍 Monitoring Infrastructure**: Added comprehensive Docker build monitoring and validation tools
+- Authentication added to 36 unprotected API endpoints
+- Global 401 interceptor redirects unauthenticated users
+- Fixed discovery setting videos to WANTED regardless of artist auto_download
+- Fixed artist deletion 500 error from orphaned foreign key references
+- YouTube monitored playlists auto-sync every 6 hours
 
-### Key Features
-- Multi-stage Docker builds with optimized caching
-- Automated Docker size monitoring and validation
-- Enhanced .dockerignore for build context optimization
-- Production-ready container configurations
-- Build performance monitoring and analysis tools
+### v0.12.1 - Security Hardening Stabilization
+**Released**: February 12, 2026
 
-### Technical Enhancements
-- Fixed Docker build timeout issues by replacing build-essential with gcc+g++
-- Implemented --timeout=1000 for pip installations of heavy packages
-- Added comprehensive Docker monitoring workflows
-- Created build context analysis and optimization tools
-- Enhanced container layer caching strategies
+- Fixed WAF false positives blocking URLs, cookies, Range headers
+- Fixed video streaming (Range header no longer blocked)
+- Fixed Flask-to-FastAPI session bridge for consistent auth
+- Rate limiting set to 300/min with static files exempt
 
-## 🗓️ Release History
+### v0.12.0 - Security Hardening Sprint
+**Released**: February 11, 2026
 
-### v0.9.3 - Theme System & UI Improvements
-**Released**: August 4, 2025
+- Consolidated auth system (SimpleAuth + SessionStore)
+- Removed backdoor endpoints (/test-login, credential reset)
+- Upgraded passwords from SHA-256 to bcrypt with lazy migration
+- 49 vulnerabilities fixed (8 critical, 12 high, 16 medium, 13 low)
 
-- **🎨 Complete Theme Export/Import**: Export individual themes or all themes as JSON files
-- **🔧 Simplified Theme Management**: Streamlined single-variant theme system
-- **📹 Enhanced Video Management**: Bulk refresh metadata with preserved navigation context
-- **🏗️ Major Code Refactoring**: Videos page reduced by 98.7% through modular components
-- **🎯 API-Based Themes**: 7 built-in themes with real-time switching
+### v0.11.9 - Security Updates & Video Quality
+**Released**: February 5, 2026
 
-### v0.9.2 - Performance & Security
-**Released**: July 28, 2025
+- 11 CVEs fixed via dependency updates
+- Video downloads now respect user quality settings
+- YouTube discovery API key caching bug fixed
 
-- **🛡️ Comprehensive Security Audit**: Fixed 17 vulnerabilities (1 Critical, 2 High, 12 Medium, 2 Low)
-- **🔒 Enhanced Authentication**: Multi-user support with role-based access control
-- **⚡ Performance Optimizations**: Database query optimization and intelligent caching
-- **🔍 Advanced Search**: Real-time suggestions and fuzzy matching capabilities
-- **📊 System Health Monitoring**: Comprehensive diagnostics and reporting
+### v0.11.8 - Thumbnail System Overhaul
+**Released**: February 4, 2026
 
-### v0.9.1 - Core Functionality
-**Released**: July 15, 2025
+- Bulk scan success improved from 0% to 87% (231/264 artists)
+- Google Images prioritized for artist thumbnails
+- Added REDIS_HOST and REDIS_PORT environment variables
 
-- **🎯 Advanced Artist Management**: Multi-criteria search and bulk operations
-- **🔍 Video Discovery Integration**: Dual-source support (IMVDb + YouTube)
-- **📺 MvTV Player**: Continuous playback with cinematic mode
-- **📥 Download Management**: Queue system with progress tracking
-- **🖼️ Thumbnail Management**: Multi-source search and optimization
+## 🗓️ Earlier Release History
 
-### v0.9.0 - Initial Release
-**Released**: June 30, 2025
+### v0.11.7 - Video Filtering & Discovery (February 2, 2026)
+- Per-artist video type filtering for autodownload
+- Extended YouTube discovery (live, concerts, acoustic)
 
-- **🏗️ Core Architecture**: Flask-based backend with modern frontend
-- **🐳 Docker Support**: Containerized deployment with Docker Compose
-- **📊 Database Integration**: MySQL/MariaDB with SQLAlchemy ORM
-- **🔐 Basic Authentication**: User management and session handling
-- **📱 Responsive UI**: Mobile-friendly interface design
+### v0.10.1 - Scheduler V2 (December 22, 2025)
+- Complete Celery-based distributed task scheduling
+- 23 REST API endpoints for scheduler management
+- Per-artist discovery scheduling
 
-## 🔮 Upcoming Releases
+### v0.10.0-beta.1 - First Beta (December 1, 2025)
+- Security fixes, installation wizard, video import system
 
-### v0.9.6 - Advanced Testing & Mobile Optimization
-**Planned**: Q4 2025
+### v0.9.x (June-August 2025)
+- Core architecture, Docker support, theme system, security audit
 
-#### Planned Features
-- **🧪 Advanced Testing Framework**: Comprehensive test coverage and automation
-- **📱 Enhanced Mobile Design**: Improved responsive layouts and touch interactions
-- **⚡ Video Quality Management**: Automatic quality detection and optimization
-- **🔌 Extended API Functionality**: Additional endpoints for third-party integrations
-- **📊 Performance Dashboard**: Real-time monitoring and metrics visualization
+## 🔮 Future: v1.0.0 - Stable Production Release
 
-#### Technical Improvements
-- **🔧 Plugin System**: Support for custom extensions and integrations
-- **📈 Analytics Engine**: Advanced reporting and usage statistics
-- **☁️ Cloud Integration**: Support for cloud storage providers
-- **🎨 Advanced Theming**: Enhanced customization capabilities
-- **🔍 Search Improvements**: AI-powered search suggestions and recommendations
-
-### v0.10.0-beta.1 - First Beta Release (Current)
-
-**Release Date**: December 1, 2025
-**Status**: Beta Testing - Active Development
-
-This is the first beta release following SemVer 0.x conventions. The software is feature-complete but undergoing testing before production deployment.
-
-**Key Features**:
-- 🔒 Security: Fixed 10 critical vulnerabilities
-- 📋 Versioning: Migrated to SemVer 0.x for pre-production
-- 🔧 Installation Wizard with validation
-- 🎬 Reliable video import with duplicate detection
-- 📊 Performance monitoring dashboard
-
-**Beta Notes**: This is not yet production-ready. Report issues at [GitHub Issues](https://github.com/prefect421/mvidarr/issues).
-
----
-
-### v1.0.0 - Pre-release Milestone (Superseded)
-
-**Release Date**: November 25, 2025
-**Status**: Development Milestone - Marked as Pre-release
-
-Originally tagged as v1.0.0, this release predates the beta testing phase and has been superseded by v0.10.0-beta.1.
-
----
-
-### Future: v1.0.0 - Stable Production Release
-**Target**: Q1 2026
-
-#### Goals
-- **🎯 Production Ready**: Enterprise-grade stability and performance
+### Goals
+- **🎯 Production Ready**: Stability and performance validation
 - **📚 Complete Documentation**: Comprehensive guides and API documentation
-- **🔒 Security Certification**: Professional security audit and certification
-- **🌐 Multi-language Support**: Internationalization and localization
-- **🤝 Community Features**: Plugin marketplace and community contributions
+- **🔒 Security Certification**: Professional security audit
+- **🤝 Community Features**: Plugin system and community contributions
 
 ## 📊 Release Statistics
 
 ### Development Metrics
-- **Total Releases**: 6 major versions
+- **Total Releases**: 15+ versions from v0.9.0 to v0.12.3
 - **Features Implemented**: 35+ comprehensive capabilities
-- **Security Fixes**: 17 vulnerabilities resolved
-- **Performance Improvements**: 60% CI time reduction
-- **Docker Optimizations**: 8-minute consistent build times
-
-### Community Engagement
-- **GitHub Stars**: Growing community interest
-- **Issues Resolved**: Active issue tracking and resolution
-- **Documentation Pages**: 25+ comprehensive guides
-- **Test Coverage**: Expanding automated test suite
+- **Security Fixes**: 60+ vulnerabilities resolved across all releases
+- **Docker Architecture**: Simplified 3-container deployment
 
 ## 🔗 Release Resources
 
