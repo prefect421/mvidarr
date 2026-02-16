@@ -34,13 +34,38 @@
 - **🔐 Authentication**: 36 API endpoints secured, global 401 interceptor added
 - **🛡️ Security Hardening**: 49 vulnerabilities fixed across v0.12.0-v0.12.3
 
-### YouTube Discovery Fix ✅
-- **🔍 API Key Caching**: Fixed bug where empty API key was cached forever
-- **🔍 Immediate Updates**: Settings changes now take effect without restart
-
 > **Upgrade Note**: Docker image rebuild required. Restart server after upgrade.
 
 ## 🎯 Previous Releases
+
+### v0.12.2 - Authentication & Stability (February 14, 2026)
+- **🔐 API Security**: Added authentication to 36 unprotected API endpoints across 6 files
+- **🔐 Global 401 Interceptor**: Unauthenticated users redirected to login instead of seeing error counts
+- **🎬 Discovery Fix**: Videos no longer set to WANTED when artist `auto_download` is disabled
+- **🗑️ Artist Deletion**: Fixed 500 error from orphaned playlist/download foreign key references
+- **📺 Playlist Auto-Sync**: YouTube monitored playlists now auto-sync every 6 hours via Celery scheduled task
+- **🧹 Cleanup**: Removed obsolete po-token-provider process causing FATAL crashes on startup
+
+### v0.12.1 - Security Hardening Stabilization (February 12, 2026)
+- **🛡️ WAF Fixes**: Resolved false positives blocking URLs, cookies, and Range headers
+- **📺 Video Streaming**: Range header no longer blocked by security middleware
+- **🔐 Auth Bridge**: Fixed Flask-to-FastAPI session bridge for consistent authentication
+- **📺 Playlist Sync**: Fixed not detecting new videos in YouTube playlists
+- **⚡ Rate Limiting**: Set to 300/min with static files exempt
+- **🔧 CI/CD**: 28 files reformatted with black 24.3.0
+
+### v0.12.0 - Security Hardening Sprint (February 11, 2026)
+- **🔐 Auth Consolidation**: Unified SimpleAuth + SessionStore authentication system
+- **🚫 Backdoors Removed**: Eliminated `/test-login` and credential reset endpoints
+- **🔒 Bcrypt Passwords**: Upgraded from SHA-256 to bcrypt with lazy migration on login
+- **🛡️ SSRF Protection**: Safe tar extraction, upload sanitization, restricted proxy hosts
+- **🔑 Redis Auth**: Redis authentication enabled, secure cookies enforced
+- **🐛 49 Vulnerabilities Fixed**: 8 critical, 12 high, 16 medium, 13 low
+
+### v0.11.9 - Security Updates & Video Quality (February 5, 2026)
+- 11 CVEs fixed via dependency updates
+- Video downloads now respect user quality settings (was defaulting to 360p)
+- YouTube discovery API key caching bug fixed
 
 ### v0.11.8 - Thumbnail System Overhaul (February 4, 2026)
 - Complete fix of artist thumbnail system (0% → 87% bulk scan success)
