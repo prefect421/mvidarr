@@ -1,27 +1,38 @@
 'Area: API':
-  - src/api/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'src/api/**/*'
 
 'Area: Database':
-  - src/database/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'src/database/**/*'
 
 'Area: Services':
-  - src/services/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'src/services/**/*'
 
 'Area: Configuration':
-  - src/config/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'src/config/**/*'
 
 'Area: Utils':
-  - src/utils/**/*
+  - changed-files:
+      - any-glob-to-any-file: 'src/utils/**/*'
 
 'Area: UI':
-  - static/**/*
-  - templates/**/*
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'static/**/*'
+          - 'templates/**/*'
 
 'Area: Docker':
-  - docker-compose*.yml
-  - Dockerfile*
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docker-compose*.yml'
+          - 'Dockerfile*'
 
 'Area: Documentation':
-  - docs/**/*
-  - README.md
-  - '*.md'
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**/*'
+          - 'README.md'
+          - '*.md'
