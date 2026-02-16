@@ -3,11 +3,12 @@ Celery Application Configuration for Background Job Processing
 Phase 2: Media Processing Optimization - Redis & Celery Infrastructure
 """
 
+import logging
 import os
 from datetime import timedelta
 
 from celery import Celery
-from celery.signals import worker_ready, worker_shutting_down
+from celery.signals import after_setup_logger, worker_ready, worker_shutting_down
 from kombu import Queue
 
 from src.utils.logger import get_logger
@@ -127,6 +128,29 @@ TASK_PRIORITIES = {
     "NORMAL": 5,
     "LOW": 1,
 }
+
+
+@after_setup_logger.connect
+def setup_mvidarr_loggers(
+    logger=None, loglevel=None, logfile=None, format=None, **kwargs
+):
+    """Configure mvidarr loggers in the Celery worker process.
+
+    setup_logging() is only called by the FastAPI process. Without this,
+    all mvidarr.* loggers (used by services like youtube_playlist_service)
+    silently drop their output in the Celery worker.
+    """
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    handler.setLevel(loglevel or logging.INFO)
+
+    for name in ["mvidarr", "imvdb", "metube", "youtube", "src"]:
+        app_logger = logging.getLogger(name)
+        app_logger.setLevel(loglevel or logging.INFO)
+        app_logger.addHandler(handler)
 
 
 @worker_ready.connect
