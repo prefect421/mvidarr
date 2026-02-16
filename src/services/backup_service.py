@@ -21,6 +21,31 @@ from src.utils.logger import get_logger
 logger = get_logger("mvidarr.backup_service")
 
 
+def _safe_tar_extract(tar: tarfile.TarFile, path: str) -> None:
+    """Safely extract tar archive, filtering out dangerous members."""
+    import sys
+
+    if sys.version_info >= (3, 12):
+        tar.extractall(path=path, filter="data")
+    else:
+        safe_members = []
+        for member in tar.getmembers():
+            # Block absolute paths
+            if member.name.startswith("/") or member.name.startswith("\\"):
+                logger.warning(f"Skipping absolute path in tar: {member.name}")
+                continue
+            # Block path traversal
+            if ".." in member.name.split("/"):
+                logger.warning(f"Skipping path traversal in tar: {member.name}")
+                continue
+            # Block symlinks and hardlinks
+            if member.issym() or member.islnk():
+                logger.warning(f"Skipping symlink/hardlink in tar: {member.name}")
+                continue
+            safe_members.append(member)
+        tar.extractall(path=path, members=safe_members)
+
+
 class BackupType(Enum):
     """Types of backups supported"""
 
@@ -175,26 +200,29 @@ class BackupService:
         file_path = self.backup_dir / filename
 
         try:
-            # Build mysqldump command
+            # Build mysqldump command (password via env var to avoid process list exposure)
             dump_cmd = [
                 "mysqldump",
                 f"--host={self.config.DB_HOST}",
                 f"--port={self.config.DB_PORT}",
                 f"--user={self.config.DB_USER}",
-                f"--password={self.config.DB_PASSWORD}",
                 "--single-transaction",
                 "--routines",
                 "--triggers",
                 "--events",
                 self.config.DB_NAME,
             ]
+            dump_env = {**os.environ, "MYSQL_PWD": self.config.DB_PASSWORD}
 
             logger.info(f"Creating database dump: {filename}")
 
             # Execute mysqldump and compress with gzip
             with gzip.open(file_path, "wb") as gz_file:
                 process = subprocess.Popen(
-                    dump_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                    dump_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=dump_env,
                 )
                 stdout, stderr = process.communicate()
 
@@ -391,19 +419,22 @@ class BackupService:
         try:
             logger.info(f"Restoring database from: {backup_file}")
 
-            # Decompress and restore
+            # Decompress and restore (password via env var)
             restore_cmd = [
                 "mysql",
                 f"--host={self.config.DB_HOST}",
                 f"--port={self.config.DB_PORT}",
                 f"--user={self.config.DB_USER}",
-                f"--password={self.config.DB_PASSWORD}",
                 self.config.DB_NAME,
             ]
+            restore_env = {**os.environ, "MYSQL_PWD": self.config.DB_PASSWORD}
 
             with gzip.open(backup_file, "rb") as gz_file:
                 process = subprocess.Popen(
-                    restore_cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE
+                    restore_cmd,
+                    stdin=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=restore_env,
                 )
                 stdout, stderr = process.communicate(input=gz_file.read())
 
@@ -425,7 +456,7 @@ class BackupService:
             logger.info(f"Restoring configuration from: {backup_file}")
 
             with tarfile.open(backup_file, "r:gz") as tar:
-                tar.extractall(path=".")
+                _safe_tar_extract(tar, ".")
 
             logger.info("Configuration restored successfully")
             return True
@@ -442,7 +473,7 @@ class BackupService:
             thumbnails_path = Path(self.config.THUMBNAILS_PATH or "data/thumbnails")
 
             with tarfile.open(backup_file, "r:gz") as tar:
-                tar.extractall(path=thumbnails_path.parent)
+                _safe_tar_extract(tar, str(thumbnails_path.parent))
 
             logger.info("Thumbnails restored successfully")
             return True
@@ -461,7 +492,7 @@ class BackupService:
             temp_dir.mkdir(exist_ok=True)
 
             with tarfile.open(backup_file, "r:gz") as tar:
-                tar.extractall(path=temp_dir)
+                _safe_tar_extract(tar, str(temp_dir))
 
             # Restore each component
             success = True

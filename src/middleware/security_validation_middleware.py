@@ -30,8 +30,8 @@ class SecurityValidationConfig:
     MAX_FIELD_LENGTH = 10000
 
     # Rate limiting
-    MAX_REQUESTS_PER_MINUTE = 60
-    MAX_REQUESTS_PER_HOUR = 1000
+    MAX_REQUESTS_PER_MINUTE = 300  # Single page load uses ~20-30 requests
+    MAX_REQUESTS_PER_HOUR = 5000
 
     # Blocked patterns
     SQL_INJECTION_PATTERNS = [
@@ -91,7 +91,7 @@ class SecurityValidationConfig:
         "X-XSS-Protection": "1; mode=block",
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https:; connect-src 'self'; frame-ancestors 'none';",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://code.iconify.design https://cdn.socket.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https:; connect-src 'self' ws: wss: https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com; frame-ancestors 'none';",
     }
 
 
@@ -289,6 +289,25 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
 
         try:
+            # Skip all validation for static assets - they're just file serving
+            path = request.url.path
+            if path.startswith(("/static/", "/css/", "/favicon")) or path.endswith(
+                (
+                    ".js",
+                    ".css",
+                    ".png",
+                    ".jpg",
+                    ".ico",
+                    ".svg",
+                    ".woff",
+                    ".woff2",
+                    ".ttf",
+                )
+            ):
+                response = await call_next(request)
+                self._add_security_headers(response)
+                return response
+
             # 1. Rate limiting check
             await self._check_rate_limiting(request)
 
@@ -298,8 +317,15 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
             # 3. Validate URL and path
             await self._validate_url_path(request)
 
-            # 4. Validate request body if present
-            await self._validate_request_body(request)
+            # 4. Validate request body size (content validation disabled -
+            # SQLAlchemy ORM uses parameterized queries, Pydantic validates
+            # types, and pattern matching produces false positives on URLs,
+            # file paths, search queries, and other legitimate data)
+            content_type = request.headers.get("content-type", "")
+            if "application/json" in content_type:
+                body = await request.body()
+                if body:
+                    self.validator.validate_input_size(body, "request_body")
 
             # 5. Process request
             response = await call_next(request)
@@ -394,10 +420,26 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
             "host",
             "content-type",
             "content-length",
+            "cookie",  # Session cookies - validated by auth layer, not WAF
+            "authorization",  # Auth tokens - validated by auth layer, not WAF
+            "x-forwarded-for",
+            "x-forwarded-proto",
+            "x-forwarded-host",
+            "x-real-ip",
             "priority",  # HTTP/2 priority header
             "sec-ch-ua",
             "sec-ch-ua-mobile",
             "sec-ch-ua-platform",  # Client Hints headers
+            "if-none-match",
+            "if-modified-since",
+            "upgrade",  # WebSocket upgrade
+            "sec-websocket-key",
+            "sec-websocket-version",
+            "sec-websocket-extensions",
+            "sec-websocket-protocol",
+            "pragma",
+            "dnt",
+            "te",
         }
 
         # Check header sizes
@@ -408,18 +450,10 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
                     detail=f"Header '{name}' too large",
                 )
 
-            # Skip validation for standard browser headers to avoid false positives
-            if name.lower() in BROWSER_HEADERS:
-                continue
-
-            # Check for injection attempts in non-standard headers only
-            if self.validator.detect_xss(value) or self.validator.detect_sql_injection(
-                value
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Malicious content detected in header '{name}'",
-                )
+            # Note: Header content validation disabled - the SQL injection
+            # pattern matches '=' which appears in standard headers like
+            # Range (bytes=0-), Accept (q=0.9), etc. Header values don't
+            # reach SQL queries or shell commands in this application.
 
     async def _validate_url_path(self, request: Request):
         """Validate URL and path"""
@@ -439,17 +473,9 @@ class SecurityValidationMiddleware(BaseHTTPMiddleware):
                 detail="Path traversal attempt detected",
             )
 
-        # Check for injection in path and query parameters
-        for param_value in request.query_params.values():
-            if (
-                self.validator.detect_sql_injection(param_value)
-                or self.validator.detect_xss(param_value)
-                or self.validator.detect_command_injection(param_value)
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Malicious content detected in query parameters",
-                )
+        # Note: Query parameter content validation disabled - the SQL injection
+        # pattern matches '=' which appears in every query string. SQLAlchemy ORM
+        # parameterized queries protect against actual SQL injection.
 
     async def _validate_request_body(self, request: Request):
         """Validate request body content"""

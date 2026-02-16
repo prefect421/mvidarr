@@ -843,7 +843,6 @@ async def run_test_suite(
 
     # Only continue if smoke test passes
     if smoke_results.success_rate >= 95:
-
         # Load test
         load_config = LoadTestPresets.api_load_test(base_url)
         logger.info("Running load test...")

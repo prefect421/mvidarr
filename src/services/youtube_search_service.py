@@ -156,8 +156,15 @@ class YouTubeSearchService:
                 "artist_name": artist_name,
             }
 
-            # Cache the result for 3 hours
-            self._cache.set("search", cache_params, result)
+            # Only cache if we actually got results - don't cache empty results
+            # from API quota exhaustion or other transient failures
+            if all_videos:
+                self._cache.set("search", cache_params, result)
+            else:
+                logger.warning(
+                    f"Not caching empty YouTube results for '{artist_name}' "
+                    f"(likely API quota exhaustion or transient error)"
+                )
 
             return result
 

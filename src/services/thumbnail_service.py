@@ -214,6 +214,12 @@ class ThumbnailService:
             else:
                 headers = {"User-Agent": "MVidarr/1.0", "Accept": "image/*"}
 
+            # SSRF protection (allow local network for self-hosted setups)
+            from src.utils.url_validator import is_url_safe
+
+            if not is_url_safe(url, allow_local_network=True):
+                return False, "URL blocked by security policy"
+
             logger.debug(f"Downloading thumbnail from {url}")
             response = requests.get(url, headers=headers, timeout=30, stream=True)
             response.raise_for_status()

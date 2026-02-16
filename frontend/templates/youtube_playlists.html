@@ -401,9 +401,11 @@ function addPlaylist() {
         },
         body: JSON.stringify(data)
     })
-    .then(response => {
+    .then(async response => {
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorData = await response.json().catch(() => null);
+            const detail = errorData?.detail || errorData?.message || response.statusText;
+            throw new Error(detail);
         }
         return response.json();
     })
@@ -418,11 +420,8 @@ function addPlaylist() {
     })
     .catch(error => {
         console.error('Error adding playlist:', error);
-        // If we get a network error, the playlist might still have been added
-        // Reload playlists to check
+        showYouTubeError(error.message || 'Error adding playlist');
         loadPlaylists();
-        showYouTubeError('Unable to confirm playlist addition. Reloading list...');
-        // Show success after a delay since it likely worked
         setTimeout(() => {
             showYouTubeSuccess('If the playlist appears below, it was added successfully despite the error.');
         }, 2000);

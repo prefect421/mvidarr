@@ -26,8 +26,8 @@ from fastapi import Query
 from sqlalchemy.orm import Session, joinedload
 
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.api.fastapi.videos_models import (
     VideoResponse,
@@ -48,23 +48,6 @@ router = APIRouter(
 )
 
 logger = get_logger("mvidarr.api.fastapi.videos_crud")
-
-
-# ========================================================================================
-# AUTHENTICATION DEPENDENCIES
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # HELPER FUNCTIONS
 # ========================================================================================
@@ -101,6 +84,7 @@ async def list_videos(
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     status: Optional[str] = Query(None),
     artist_id: Optional[int] = Query(None),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -128,7 +112,17 @@ async def list_videos(
         if artist_id:
             query = query.filter(Video.artist_id == artist_id)
 
-        # Apply sorting
+        # Apply sorting (allowlist to prevent SQL injection)
+        ALLOWED_SORT_FIELDS = {
+            "created_at",
+            "title",
+            "artist_id",
+            "duration",
+            "status",
+            "updated_at",
+        }
+        if sort_by not in ALLOWED_SORT_FIELDS:
+            sort_by = "created_at"
         sort_column = getattr(Video, sort_by, Video.created_at)
         if sort_order == "desc":
             query = query.order_by(sort_column.desc())
@@ -195,12 +189,14 @@ async def list_videos(
 
     except Exception as e:
         logger.error(f"Error listing videos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{video_id}", response_model=VideoResponse)
 async def get_video(
-    video_id: int = FastAPIPath(..., ge=1), session: Session = Depends(get_db_session)
+    video_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """
     Get single video details by ID.
@@ -260,13 +256,14 @@ async def get_video(
         raise
     except Exception as e:
         logger.error(f"Error getting video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{video_id}", response_model=VideoResponse)
 async def update_video(
     video_id: int = FastAPIPath(..., ge=1),
     update_data: VideoUpdateRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -324,22 +321,29 @@ async def update_video(
                     f"Updated video {video_id} artist to: {artist_name} (ID: {artist.id})"
                 )
 
-        # Fields that should NOT be updated through this endpoint
-        # (they have dedicated endpoints)
-        protected_fields = {
-            "thumbnail_url",
-            "thumbnail_path",
-            "thumbnail_source",
-            "thumbnail_metadata",
-            "thumbnail_uploaded_at",
+        # Allowlist of fields that can be updated through this endpoint
+        allowed_fields = {
+            "title",
+            "youtube_id",
+            "youtube_url",
+            "local_path",
+            "status",
+            "duration",
+            "description",
+            "genres",
+            "artist_id",
+            "release_date",
+            "video_type",
+            "quality",
+            "file_size",
+            "codec",
+            "resolution",
+            "bitrate",
         }
 
         for field, value in update_fields.items():
-            # Skip thumbnail fields - they should only be updated through thumbnail endpoints
-            if field in protected_fields:
-                logger.warning(
-                    f"Skipping thumbnail field '{field}' in video update - use thumbnail endpoints instead"
-                )
+            if field not in allowed_fields:
+                logger.debug(f"Skipping non-updatable field '{field}' in video update")
                 continue
 
             if field == "genres" and value:
@@ -396,13 +400,14 @@ async def update_video(
     except Exception as e:
         logger.error(f"Error updating video {video_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{video_id}")
 async def delete_video(
     video_id: int = FastAPIPath(..., ge=1),
     request: Optional[Dict] = Body(default=None),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -511,13 +516,14 @@ async def delete_video(
     except Exception as e:
         logger.error(f"Error deleting video {video_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{video_id}/status")
 async def update_video_status(
     video_id: int = FastAPIPath(..., ge=1),
     status_data: VideoStatusUpdateRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -559,4 +565,4 @@ async def update_video_status(
     except Exception as e:
         logger.error(f"Error updating video status {video_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

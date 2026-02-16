@@ -56,7 +56,7 @@ MVidarr is developed and maintained by a dedicated team focused on delivering ex
 
 ## 📊 **Project Statistics**
 
-- **Version**: 0.9.5 (Latest Stable Release)
+- **Version**: 0.12.3 (Latest Release)
 - **Features**: 35+ comprehensive capabilities
 - **Development**: Active since 2024
 - **License**: Open Source
@@ -64,8 +64,8 @@ MVidarr is developed and maintained by a dedicated team focused on delivering ex
 
 ## 🚀 **What's Next**
 
-### **Upcoming Features (v0.9.6)**
-- Advanced testing framework implementation
+### **Upcoming Features**
+- Performance optimizations and stability improvements
 - Enhanced video quality management
 - Extended API functionality for integrations
 - Mobile-responsive design improvements

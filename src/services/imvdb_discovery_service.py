@@ -425,7 +425,6 @@ class IMVDbDiscoveryService:
                         and artist_name.lower() not in existing_names
                         and artist_name.lower() != artist.name.lower()
                     ):
-
                         similar_artists.append(
                             {
                                 "imvdb_id": artist_data.get("id"),

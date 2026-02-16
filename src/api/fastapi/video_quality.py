@@ -52,14 +52,14 @@ class BulkUpgradeRequest(BaseModel):
 
 
 # Authentication dependencies
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 
 
 @router.post("/upgrade/{video_id}")
 async def upgrade_video_quality(
     video_id: int,
     upgrade_request: VideoUpgradeRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Upgrade a video to higher quality (background job)"""
     try:
@@ -98,7 +98,7 @@ async def upgrade_video_quality(
 
 @router.post("/analyze/{video_id}")
 async def analyze_video_quality(
-    video_id: int, current_user: dict = Depends(require_authentication_legacy)
+    video_id: int, current_user: dict = Depends(require_authentication)
 ):
     """Analyze the quality of a specific video (background job)"""
     try:
@@ -171,7 +171,7 @@ async def find_upgradeable_videos() -> UpgradeableVideosResponse:
 @router.post("/bulk-upgrade")
 async def bulk_upgrade_videos(
     request: BulkUpgradeRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Upgrade multiple videos to higher quality (background job)"""
     try:

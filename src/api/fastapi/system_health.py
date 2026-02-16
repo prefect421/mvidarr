@@ -38,7 +38,7 @@ async def get_health_summary() -> Dict:
         return get_overall_health()
     except Exception as e:
         logger.error(f"Error getting health summary: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/disk")
@@ -57,7 +57,7 @@ async def get_disk_health(paths: Optional[str] = None) -> Dict:
         return {"disk_usage": get_disk_usage(path_list)}
     except Exception as e:
         logger.error(f"Error getting disk health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/memory")
@@ -67,7 +67,7 @@ async def get_memory_health() -> Dict:
         return {"memory": get_memory_usage()}
     except Exception as e:
         logger.error(f"Error getting memory health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/cpu")
@@ -77,7 +77,7 @@ async def get_cpu_health() -> Dict:
         return {"cpu": get_cpu_usage(interval=0.1)}
     except Exception as e:
         logger.error(f"Error getting CPU health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/database")
@@ -87,7 +87,7 @@ async def get_db_health() -> Dict:
         return {"database": get_database_status()}
     except Exception as e:
         logger.error(f"Error getting database health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/celery")
@@ -97,7 +97,7 @@ async def get_celery_health() -> Dict:
         return {"celery": get_celery_status()}
     except Exception as e:
         logger.error(f"Error getting Celery health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/redis")
@@ -107,7 +107,7 @@ async def get_redis_health() -> Dict:
         return {"redis": get_redis_status()}
     except Exception as e:
         logger.error(f"Error getting Redis health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/logs")
@@ -135,7 +135,7 @@ async def get_logs(lines: int = 100, log_file: Optional[str] = None) -> Dict:
         }
     except Exception as e:
         logger.error(f"Error getting logs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Create a separate router for the web page (without /api prefix)

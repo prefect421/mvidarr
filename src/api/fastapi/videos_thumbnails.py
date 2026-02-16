@@ -28,8 +28,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.api.fastapi.videos_models import ThumbnailSearchRequest
 from src.config.config import Config
@@ -49,23 +49,6 @@ router = APIRouter(
 )
 
 logger = get_logger("mvidarr.api.fastapi.videos_thumbnails")
-
-
-# ========================================================================================
-# AUTHENTICATION DEPENDENCIES
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # THUMBNAIL OPERATIONS
 # ========================================================================================
@@ -190,7 +173,7 @@ async def get_video_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Error getting thumbnail for video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{video_id}/thumbnail/info")
@@ -244,7 +227,7 @@ async def get_thumbnail_info(
         raise
     except Exception as e:
         logger.error(f"Failed to get thumbnail info for video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{video_id}/thumbnail/search")
@@ -497,7 +480,7 @@ async def search_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Failed to search thumbnails for video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{video_id}/thumbnail/upload")
@@ -569,7 +552,7 @@ async def upload_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Error uploading thumbnail for video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{video_id}/thumbnail")
@@ -638,4 +621,4 @@ async def set_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Failed to update thumbnail for video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

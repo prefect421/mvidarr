@@ -26,25 +26,10 @@ router = APIRouter(
     },
 )
 
-# ========================================================================================
-# AUTHENTICATION - PROPER IMPLEMENTATION
-# ========================================================================================
-
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
 
 # ========================================================================================
 # PYDANTIC MODELS FOR REQUEST/RESPONSE VALIDATION
@@ -98,7 +83,7 @@ async def get_users(
         raise
     except Exception as e:
         logger.error(f"Error getting users: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("", response_model=Dict[str, Any])
@@ -153,7 +138,7 @@ async def create_user(
     except Exception as e:
         logger.error(f"Error creating user: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -182,7 +167,7 @@ async def get_user(
         raise
     except Exception as e:
         logger.error(f"Error getting user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{user_id}/role")
@@ -221,7 +206,7 @@ async def update_user_role(
     except Exception as e:
         logger.error(f"Error updating user role: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{user_id}/deactivate")
@@ -261,7 +246,7 @@ async def deactivate_user(
     except Exception as e:
         logger.error(f"Error deactivating user: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{user_id}/activate")
@@ -297,4 +282,4 @@ async def activate_user(
     except Exception as e:
         logger.error(f"Error activating user: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

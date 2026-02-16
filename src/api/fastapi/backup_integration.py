@@ -101,7 +101,7 @@ async def configure_cloud_provider(request: CloudProviderConfigRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to configure cloud provider: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.post("/cloud/backup", response_model=IntegrationResponse)
@@ -152,7 +152,7 @@ async def create_backup_job(
         raise
     except Exception as e:
         logger.error(f"Failed to create backup job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/cloud/status/{job_id}", response_model=IntegrationResponse)
@@ -176,7 +176,7 @@ async def get_backup_job_status(job_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get backup job status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/cloud/jobs", response_model=IntegrationResponse)
@@ -195,7 +195,7 @@ async def list_backup_jobs(limit: int = Query(20, ge=1, le=100)):
 
     except Exception as e:
         logger.error(f"Failed to list backup jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.delete("/cloud/jobs/{job_id}", response_model=IntegrationResponse)
@@ -214,7 +214,7 @@ async def cancel_backup_job(job_id: str):
 
     except Exception as e:
         logger.error(f"Failed to cancel backup job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # YouTube Import Endpoints
@@ -269,7 +269,7 @@ async def create_youtube_import_job(
         raise
     except Exception as e:
         logger.error(f"Failed to create YouTube import job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/youtube/status/{job_id}", response_model=IntegrationResponse)
@@ -293,7 +293,7 @@ async def get_youtube_import_status(job_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get YouTube import status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/youtube/jobs", response_model=IntegrationResponse)
@@ -312,7 +312,7 @@ async def list_youtube_import_jobs(limit: int = Query(20, ge=1, le=100)):
 
     except Exception as e:
         logger.error(f"Failed to list YouTube import jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.delete("/youtube/jobs/{job_id}", response_model=IntegrationResponse)
@@ -331,7 +331,7 @@ async def cancel_youtube_import_job(job_id: str):
 
     except Exception as e:
         logger.error(f"Failed to cancel YouTube import job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Network Sharing Endpoints
@@ -382,7 +382,7 @@ async def create_network_share(request: NetworkShareRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to create network share: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/network/shares", response_model=IntegrationResponse)
@@ -401,7 +401,7 @@ async def list_network_shares():
 
     except Exception as e:
         logger.error(f"Failed to list network shares: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.put("/network/shares/{share_id}", response_model=IntegrationResponse)
@@ -427,7 +427,7 @@ async def update_network_share(share_id: str, updates: Dict[str, Any]):
 
     except Exception as e:
         logger.error(f"Failed to update network share: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.delete("/network/shares/{share_id}", response_model=IntegrationResponse)
@@ -453,7 +453,7 @@ async def delete_network_share(share_id: str):
 
     except Exception as e:
         logger.error(f"Failed to delete network share: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/network/devices", response_model=IntegrationResponse)
@@ -472,7 +472,7 @@ async def get_network_devices():
 
     except Exception as e:
         logger.error(f"Failed to get network devices: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/network/status", response_model=IntegrationResponse)
@@ -489,7 +489,7 @@ async def get_network_sharing_status():
 
     except Exception as e:
         logger.error(f"Failed to get network sharing status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/network/qr/{share_id}")
@@ -516,7 +516,7 @@ async def get_share_qr_code(share_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to generate QR code: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Integration Status and Health
@@ -564,7 +564,7 @@ async def get_backup_integration_health():
 
     except Exception as e:
         logger.error(f"Failed to get service health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @backup_router.get("/capabilities")
@@ -687,4 +687,4 @@ async def create_quick_backup(
         raise
     except Exception as e:
         logger.error(f"Failed to create quick backup: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

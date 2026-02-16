@@ -286,7 +286,6 @@ class AsyncSpotifyService:
                 self._token_info.expires_at
                 and datetime.now() >= self._token_info.expires_at
             ):
-
                 if self._token_info.refresh_token:
                     await self.refresh_access_token()
                 else:

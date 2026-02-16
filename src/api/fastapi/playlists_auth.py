@@ -41,9 +41,9 @@ class UserInfo:
 
 async def get_current_user_from_session(request: Request) -> UserInfo:
     """Get current user from session for simple auth system"""
-    from src.api.fastapi.auth_dependencies import get_current_user_legacy
+    from src.api.fastapi.auth_dependencies import get_current_user as _auth_get_user
 
-    user_data = await get_current_user_legacy()
+    user_data = await _auth_get_user(request)
     username = user_data.get("username", "admin")
 
     # Look up the actual user ID from the database based on username

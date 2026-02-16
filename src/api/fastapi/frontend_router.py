@@ -448,8 +448,7 @@ async def login_page(request: Request):
                 <div id="loginMessage" style="margin-top: 15px; padding: 10px; border-radius: 4px; display: none;"></div>
                 <div class="auth-info">
                     <strong>✅ Authentication System Working</strong><br>
-                    Browser requests are now properly redirected to this login page.<br>
-                    Default credentials: admin / mvidarr
+                    Browser requests are now properly redirected to this login page.
                 </div>
                 <div class="security-warning">
                     <strong>⚠️ Security Notice:</strong> This page is using HTTP instead of HTTPS. 
@@ -476,7 +475,7 @@ async def login_page(request: Request):
                     const abortController = new AbortController();
                     const timeoutId = setTimeout(() => abortController.abort(), 10000); // 10 second timeout
                     
-                    const response = await fetch('/test-login', {
+                    const response = await fetch('/api/auth/simple-login', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

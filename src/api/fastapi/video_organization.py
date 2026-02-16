@@ -12,7 +12,7 @@ from fastapi import Path as PathParam
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.services.job_queue import (
     BackgroundJob,
@@ -118,7 +118,7 @@ class OrganizationStatus(BaseModel):
 
 @router.post("/organize-all", response_model=JobResponse)
 async def organize_all_videos(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Organize all videos in downloads directory (background job)"""
@@ -151,13 +151,13 @@ async def organize_all_videos(
 
     except Exception as e:
         logger.error(f"Failed to queue organize all videos job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/organize/{filename}", response_model=JobResponse)
 async def organize_single_video(
     filename: str = PathParam(..., description="Filename to organize"),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Organize a specific video file (background job)"""
@@ -190,12 +190,12 @@ async def organize_single_video(
 
     except Exception as e:
         logger.error(f"Failed to queue organize video job for {filename}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/reorganize-existing", response_model=JobResponse)
 async def reorganize_existing_videos(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Reorganize existing videos in the music videos directory (background job)"""
@@ -228,7 +228,7 @@ async def reorganize_existing_videos(
 
     except Exception as e:
         logger.error(f"Failed to queue reorganize existing videos job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -238,7 +238,7 @@ async def reorganize_existing_videos(
 
 @router.get("/artists", response_model=ArtistDirectoriesResponse)
 async def get_artist_directories(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get list of artist directories and video counts"""
@@ -268,12 +268,12 @@ async def get_artist_directories(
 
     except Exception as e:
         logger.error(f"Failed to get artist directories: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/downloads/scan", response_model=FileListResponse)
 async def scan_downloads(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Scan downloads directory for video files"""
@@ -293,12 +293,12 @@ async def scan_downloads(
 
     except Exception as e:
         logger.error(f"Failed to scan downloads directory: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/existing/scan", response_model=ExistingVideosResponse)
 async def scan_existing_videos(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Scan existing music videos directory for video files"""
@@ -330,13 +330,13 @@ async def scan_existing_videos(
 
     except Exception as e:
         logger.error(f"Failed to scan existing videos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/preview/{filename}", response_model=OrganizationPreview)
 async def preview_organization(
     filename: str = PathParam(..., description="Filename to preview organization for"),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Preview how a file would be organized without actually moving it"""
@@ -377,7 +377,7 @@ async def preview_organization(
 
     except Exception as e:
         logger.error(f"Failed to preview organization for {filename}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -387,7 +387,7 @@ async def preview_organization(
 
 @router.post("/cleanup", response_model=CleanupResponse)
 async def cleanup_empty_directories(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Remove empty artist directories"""
@@ -408,12 +408,12 @@ async def cleanup_empty_directories(
 
     except Exception as e:
         logger.error(f"Failed to cleanup directories: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/status", response_model=OrganizationStatus)
 async def get_organization_status(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get current organization status and statistics"""
@@ -450,4 +450,4 @@ async def get_organization_status(
 
     except Exception as e:
         logger.error(f"Failed to get organization status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

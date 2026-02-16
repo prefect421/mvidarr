@@ -16,9 +16,10 @@ Endpoints:
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db
 from src.database.models import Artist, ScheduledJob
 from src.services.scheduler_service_v2 import scheduler_v2
@@ -71,7 +72,10 @@ class ArtistSchedulingStatusResponse(BaseModel):
 
 
 @router.get("/{artist_id}/scheduling", response_model=ArtistSchedulingConfig)
-async def get_artist_scheduling(artist_id: int) -> Dict[str, Any]:
+async def get_artist_scheduling(
+    artist_id: int,
+    current_user: dict = Depends(require_authentication),
+) -> Dict[str, Any]:
     """
     Get artist scheduling configuration
 
@@ -116,12 +120,14 @@ async def get_artist_scheduling(artist_id: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to get scheduling for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{artist_id}/scheduling", response_model=ArtistSchedulingConfig)
 async def update_artist_scheduling(
-    artist_id: int, config: ArtistSchedulingConfig
+    artist_id: int,
+    config: ArtistSchedulingConfig,
+    current_user: dict = Depends(require_authentication),
 ) -> Dict[str, Any]:
     """
     Update artist scheduling configuration
@@ -164,11 +170,14 @@ async def update_artist_scheduling(
         raise
     except Exception as e:
         logger.error(f"Failed to update scheduling for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{artist_id}/trigger-discovery")
-async def trigger_artist_discovery(artist_id: int) -> Dict[str, Any]:
+async def trigger_artist_discovery(
+    artist_id: int,
+    current_user: dict = Depends(require_authentication),
+) -> Dict[str, Any]:
     """
     Manually trigger discovery for specific artist
 
@@ -199,13 +208,16 @@ async def trigger_artist_discovery(artist_id: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to trigger discovery for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get(
     "/{artist_id}/scheduling/status", response_model=ArtistSchedulingStatusResponse
 )
-async def get_artist_scheduling_status(artist_id: int) -> Dict[str, Any]:
+async def get_artist_scheduling_status(
+    artist_id: int,
+    current_user: dict = Depends(require_authentication),
+) -> Dict[str, Any]:
     """
     Get artist scheduling status
 
@@ -293,12 +305,14 @@ async def get_artist_scheduling_status(artist_id: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to get scheduling status for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{artist_id}/scheduling/history")
 async def get_artist_scheduling_history(
-    artist_id: int, limit: int = 50
+    artist_id: int,
+    limit: int = 50,
+    current_user: dict = Depends(require_authentication),
 ) -> Dict[str, Any]:
     """
     Get scheduling job history for artist
@@ -334,4 +348,4 @@ async def get_artist_scheduling_history(
         raise
     except Exception as e:
         logger.error(f"Failed to get scheduling history for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

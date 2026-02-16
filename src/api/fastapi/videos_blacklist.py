@@ -20,8 +20,8 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.database.connection import get_db_session
 from src.database.models import VideoBlacklist
@@ -29,18 +29,6 @@ from src.utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_blacklist")
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # BLACKLIST OPERATIONS
 # ========================================================================================
@@ -112,7 +100,7 @@ async def get_blacklist(
 
     except Exception as e:
         logger.error(f"Error getting blacklist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/blacklist")
@@ -176,7 +164,7 @@ async def add_to_blacklist(
         raise
     except Exception as e:
         logger.error(f"Error adding to blacklist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/blacklist")
@@ -212,7 +200,7 @@ async def remove_from_blacklist(
         raise
     except Exception as e:
         logger.error(f"Error removing from blacklist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/blacklist/check")
@@ -259,4 +247,4 @@ async def check_blacklist(
         raise
     except Exception as e:
         logger.error(f"Error checking blacklist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

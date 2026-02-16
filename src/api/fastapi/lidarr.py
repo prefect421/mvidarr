@@ -10,8 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.database.connection import get_db
 from src.database.models import Artist
@@ -28,23 +28,6 @@ router = APIRouter(
 )
 
 logger = get_logger("mvidarr.api.fastapi.lidarr")
-
-
-# ========================================================================================
-# AUTHENTICATION
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================

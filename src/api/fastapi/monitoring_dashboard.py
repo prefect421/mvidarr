@@ -237,7 +237,7 @@ async def get_dashboard_summary():
 
     except Exception as e:
         logger.error(f"Dashboard summary error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/metrics/{metric_name}/history", response_model=MetricHistoryResponse)
@@ -272,7 +272,7 @@ async def get_metric_history(
 
     except Exception as e:
         logger.error(f"Metric history error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/metrics/available")
@@ -319,7 +319,7 @@ async def get_active_alerts():
 
     except Exception as e:
         logger.error(f"Active alerts error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/alerts/rules")
@@ -348,7 +348,7 @@ async def create_alert_rule(rule_request: AlertRuleRequest):
 
     except Exception as e:
         logger.error(f"Create alert rule error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/config", response_model=DashboardConfigResponse)

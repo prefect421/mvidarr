@@ -99,4 +99,4 @@ humanize==4.9.0
 
 # Video processing (legacy support)
 yt-dlp>=2024.12.0
-bgutil-ytdlp-pot-provider>=0.6.0  # PO token provider for YouTube bot detection bypass
+bgutil-ytdlp-pot-provider>=1.0.0  # yt-dlp plugin for YouTube PO token bot detection bypass

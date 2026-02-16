@@ -28,8 +28,8 @@ from src.api.fastapi.artists_models import (
     RetagCommandRequest,
 )
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video, VideoStatus
@@ -48,22 +48,6 @@ router = APIRouter(
     },
 )
 logger = get_logger("mvidarr.api.fastapi.artists_bulk")
-
-# ========================================================================================
-# AUTHENTICATION DEPENDENCIES
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # UTILITY FUNCTIONS
 # ========================================================================================
@@ -194,7 +178,7 @@ async def bulk_delete_artists(
     except Exception as e:
         logger.error(f"Error in bulk delete: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk-edit")
@@ -261,7 +245,7 @@ async def bulk_edit_artists(
     except Exception as e:
         logger.error(f"Error in bulk edit: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk-validate-metadata")
@@ -356,7 +340,7 @@ async def bulk_validate_metadata(
         raise
     except Exception as e:
         logger.error(f"Error validating artist metadata: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk-refresh-metadata")
@@ -431,7 +415,7 @@ async def bulk_refresh_metadata(
         raise
     except Exception as e:
         logger.error(f"Error in bulk metadata refresh: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/merge")
@@ -533,7 +517,7 @@ async def merge_artists(
     except Exception as e:
         logger.error(f"Error merging artists: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/cleanup-zero-videos")
@@ -574,7 +558,7 @@ async def cleanup_zero_video_artists(
     except Exception as e:
         logger.error(f"Error in cleanup zero videos: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -747,7 +731,7 @@ async def get_artist_detailed(
         raise
     except Exception as e:
         logger.error(f"Error getting detailed artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{artist_id}/navigation")
@@ -816,7 +800,7 @@ async def get_artist_navigation(
         raise
     except Exception as e:
         logger.error(f"Error getting artist navigation for {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk/update-monitoring")
@@ -869,7 +853,7 @@ async def bulk_update_monitoring(
     except Exception as e:
         logger.error(f"Error in bulk update monitoring: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/command/rename")
@@ -912,7 +896,7 @@ async def execute_rename_command(
         raise
     except Exception as e:
         logger.error(f"Error executing rename command: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/command/retag")
@@ -955,7 +939,7 @@ async def execute_retag_command(
         raise
     except Exception as e:
         logger.error(f"Error executing retag command: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -1063,4 +1047,4 @@ async def bulk_thumbnail_scan(
         raise
     except Exception as e:
         logger.error(f"Error in bulk thumbnail scan: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

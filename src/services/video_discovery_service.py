@@ -744,7 +744,11 @@ class VideoDiscoveryService:
                 view_count=video_data.get("view_count", 0),
                 like_count=video_data.get("like_count", 0),  # YouTube like count
                 video_type=detected_video_type,  # Auto-detected video type (Issue #191)
-                status=VideoStatus.WANTED,  # New videos start as 'wanted'
+                status=(
+                    VideoStatus.WANTED
+                    if artist and artist.auto_download
+                    else VideoStatus.MONITORED
+                ),
                 discovered_date=datetime.utcnow(),
                 source=video_data.get("source", "discovery"),  # Track source
                 video_metadata={

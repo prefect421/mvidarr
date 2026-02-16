@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.search_models import SearchPresetType
 from src.services.advanced_search_service import advanced_search_service
@@ -102,7 +102,7 @@ class ExportRequestModel(BaseModel):
 @router.post("/videos")
 async def search_videos(
     search_request: SearchRequestModel,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -143,7 +143,7 @@ async def search_videos(
 
     except Exception as e:
         logger.error(f"Error in advanced video search: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -154,7 +154,7 @@ async def search_videos(
 @router.get("/presets")
 async def get_search_presets(
     preset_type: Optional[str] = Query(None, pattern="^(user|public|system)$"),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get search presets for current user"""
@@ -177,13 +177,13 @@ async def get_search_presets(
 
     except Exception as e:
         logger.error(f"Error getting search presets: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/presets")
 async def create_search_preset(
     preset_data: PresetCreateModel,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Create new search preset"""
@@ -212,13 +212,13 @@ async def create_search_preset(
 
     except Exception as e:
         logger.error(f"Error creating search preset: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/presets/{preset_id}")
 async def get_search_preset(
     preset_id: int,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get specific search preset"""
@@ -236,14 +236,14 @@ async def get_search_preset(
         raise
     except Exception as e:
         logger.error(f"Error getting search preset {preset_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/presets/{preset_id}")
 async def update_search_preset(
     preset_id: int,
     preset_update: PresetUpdateModel,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Update search preset"""
@@ -288,13 +288,13 @@ async def update_search_preset(
         raise
     except Exception as e:
         logger.error(f"Error updating search preset {preset_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/presets/{preset_id}")
 async def delete_search_preset(
     preset_id: int,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Delete search preset"""
@@ -318,7 +318,7 @@ async def delete_search_preset(
         raise
     except Exception as e:
         logger.error(f"Error deleting search preset {preset_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/presets/{preset_id}/use")
@@ -326,7 +326,7 @@ async def use_search_preset(
     preset_id: int,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=50, ge=1, le=100),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Execute search using saved preset"""
@@ -366,7 +366,7 @@ async def use_search_preset(
         raise
     except Exception as e:
         logger.error(f"Error using search preset {preset_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -377,7 +377,7 @@ async def use_search_preset(
 @router.get("/presets/popular")
 async def get_popular_presets(
     limit: int = Query(default=10, ge=1, le=50),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get popular public search presets"""
@@ -391,13 +391,13 @@ async def get_popular_presets(
 
     except Exception as e:
         logger.error(f"Error getting popular presets: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/presets/search")
 async def search_presets(
     query: str = Query(..., min_length=1),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Search for presets by name or description"""
@@ -414,13 +414,13 @@ async def search_presets(
 
     except Exception as e:
         logger.error(f"Error searching presets: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/export")
 async def export_search_results(
     export_request: ExportRequestModel,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Export search results to various formats"""
@@ -459,7 +459,7 @@ async def export_search_results(
 
     except Exception as e:
         logger.error(f"Error exporting search results: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/suggestions")
@@ -467,7 +467,7 @@ async def get_search_suggestions(
     query: str = Query(..., min_length=1),
     field: str = Query(default="title", pattern="^(title|artist|genre|description)$"),
     limit: int = Query(default=10, ge=1, le=50),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get search suggestions for autocomplete"""
@@ -485,13 +485,13 @@ async def get_search_suggestions(
 
     except Exception as e:
         logger.error(f"Error getting search suggestions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/analytics")
 async def get_search_analytics(
     days: int = Query(default=30, ge=1, le=365),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get search analytics and usage statistics"""
@@ -510,4 +510,4 @@ async def get_search_analytics(
 
     except Exception as e:
         logger.error(f"Error getting search analytics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

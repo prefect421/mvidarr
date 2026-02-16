@@ -201,7 +201,6 @@ class MusicRecommendationService:
 
             # Generate recommendations from different sources
             for rec_type in request.recommendation_types:
-
                 if (
                     rec_type == RecommendationType.SIMILAR_ARTISTS
                     and request.artist_name

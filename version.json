@@ -1,31 +1,26 @@
 {
-  "version": "0.11.9",
-  "build_date": "2026-02-05T19:00:00.000000",
-  "git_commit": "03ee6eb",
+  "version": "0.12.3",
+  "build_date": "2026-02-16T13:40:21.393739",
+  "git_commit": "b3292f3",
   "git_branch": "dev",
-  "release_name": "v0.11.9 - Security Updates, Video Quality & Discovery Fix",
+  "release_name": "v0.12.3 - Playlist Sync & Logging",
   "features": [
-    "🔒 Security: Updated python-multipart 0.0.20 → 0.0.22 (CVE-2026-24486)",
-    "🔒 Security: Updated urllib3 2.6.0 → 2.6.3 (CVE-2026-21441)",
-    "🔒 Security: Updated aiohttp 3.12.14 → 3.13.3 (multiple CVEs)",
-    "🔒 Security: Updated werkzeug 3.1.4 → 3.1.5 (CVE-2026-21860)",
-    "🎬 Video Quality: Added format sorting (-S) to prioritize resolution",
-    "🎬 Video Quality: TV client now falls back to web for more formats",
-    "🎬 Video Quality: Respects user's max_video_quality database setting",
-    "🔍 Discovery: Fixed YouTube API key caching bug causing 0 results"
+    "Security: Added authentication to 36 unprotected API endpoints across 6 files",
+    "Security: Global 401 interceptor redirects unauthenticated users to login page",
+    "Fix: Discovery no longer sets videos to WANTED when artist auto_download is disabled",
+    "Fix: Artist deletion 500 error from orphaned playlist/download foreign key references",
+    "Fix: YouTube monitored playlists now auto-sync every 6 hours via scheduled task",
+    "Fix: Playlist sync strips VEVO/Official suffixes from YouTube channel names",
+    "Fix: Celery scheduled task logging now routed to file and console handlers",
+    "Fix: Removed obsolete po-token-provider process causing FATAL crashes on startup",
+    "Infra: bgutil-ytdlp-pot-provider updated to v1.2.2 (Rust-based yt-dlp plugin)"
   ],
   "resolved_issues": [
-    "CVE-2026-24486: python-multipart path traversal vulnerability",
-    "CVE-2026-21441: urllib3 decompression-bomb bypass on redirects",
-    "CVE-2025-69223: aiohttp zip bomb vulnerability",
-    "CVE-2025-69227/28/29: aiohttp DoS vulnerabilities",
-    "CVE-2026-21860: werkzeug Windows device names bypass",
-    "360p video downloads instead of user's quality setting",
-    "YouTube discovery returning 0 results despite valid API key"
-  ],
-  "upgrade_notes": [
-    "Docker image rebuild required for security updates",
-    "Video downloads will now respect format sorting for better quality",
-    "Restart required for discovery fix to take effect"
+    "36 API endpoints missing authentication (videos, search, settings, streaming, playlists, scheduling)",
+    "Unauthenticated users seeing error counts instead of login redirect",
+    "Video discovery setting status to WANTED regardless of artist auto_download setting",
+    "Artist deletion failing with 500 when videos referenced by playlists or downloads",
+    "YouTube monitored playlists not auto-updating (missing scheduled task)",
+    "po-token-provider FATAL crash loop on container startup (module removed in v1.2.2)"
   ]
 }

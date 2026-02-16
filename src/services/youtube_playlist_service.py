@@ -117,8 +117,7 @@ class YouTubePlaylistService:
         self,
         playlist_id: str,
         max_results: int = 50,
-        last_known_video_id: str = None,
-        incremental: bool = False,
+        skip_cache: bool = False,
     ) -> List[Dict]:
         """
         Get videos from a YouTube playlist (with caching - 1 hour TTL)
@@ -126,23 +125,16 @@ class YouTubePlaylistService:
         Args:
             playlist_id: YouTube playlist ID
             max_results: Maximum number of videos to fetch (default: 50)
-            last_known_video_id: Last known video ID for incremental sync (optional)
-            incremental: If True, stop fetching when reaching last_known_video_id
+            skip_cache: If True, bypass cache and fetch fresh data from YouTube API
 
         Returns:
             List of video dictionaries
-
-        Incremental Sync:
-            When incremental=True and last_known_video_id is provided, this method will
-            fetch new videos from the playlist until it encounters the last_known_video_id.
-            This significantly reduces API quota usage by avoiding re-fetching known videos.
         """
         if not self.api_key:
             raise ValueError("YouTube API key not configured")
 
-        # For incremental sync, don't use cache (we want fresh data for new videos)
-        # For full sync, check cache first
-        if not incremental:
+        # Check cache first (unless explicitly skipping for sync operations)
+        if not skip_cache:
             cache_params = {"playlist_id": playlist_id, "max_results": max_results}
             cached_videos = self._cache.get("playlist", cache_params)
             if cached_videos is not None:
@@ -153,7 +145,6 @@ class YouTubePlaylistService:
 
         videos = []
         page_token = None
-        found_last_known = False
 
         while True:
             url = f"{self.base_url}/playlistItems"
@@ -181,29 +172,12 @@ class YouTubePlaylistService:
 
                 for item in items:
                     snippet = item.get("snippet", {})
-                    content_details = item.get("contentDetails", {})
 
                     # Skip private or deleted videos
-                    if (
-                        snippet.get("title") == "Private video"
-                        or snippet.get("title") == "Deleted video"
-                    ):
+                    if snippet.get("title") in ("Private video", "Deleted video"):
                         continue
 
                     video_id = snippet.get("resourceId", {}).get("videoId")
-
-                    # Incremental sync: stop if we've reached the last known video
-                    if (
-                        incremental
-                        and last_known_video_id
-                        and video_id == last_known_video_id
-                    ):
-                        found_last_known = True
-                        logger.info(
-                            f"Incremental sync: Found last known video {last_known_video_id}, "
-                            f"fetched {len(videos)} new videos (saved API quota!)"
-                        )
-                        break
 
                     video_data = {
                         "video_id": video_id,
@@ -223,10 +197,6 @@ class YouTubePlaylistService:
 
                     videos.append(video_data)
 
-                # Break if we found the last known video during incremental sync
-                if found_last_known:
-                    break
-
                 # Check if there are more pages
                 page_token = data.get("nextPageToken")
                 if not page_token or len(videos) >= max_results:
@@ -236,11 +206,10 @@ class YouTubePlaylistService:
                 logger.error(f"Failed to get playlist videos: {e}")
                 break
 
-        # Cache the playlist videos for 1 hour (only for full syncs, not incremental)
-        if not incremental:
-            cache_params = {"playlist_id": playlist_id, "max_results": max_results}
-            self._cache.set("playlist", cache_params, videos)
-            logger.info(f"Cached {len(videos)} videos for playlist {playlist_id}")
+        # Cache the results for 1 hour
+        cache_params = {"playlist_id": playlist_id, "max_results": max_results}
+        self._cache.set("playlist", cache_params, videos)
+        logger.info(f"Cached {len(videos)} videos for playlist {playlist_id}")
 
         return videos
 
@@ -382,23 +351,19 @@ class YouTubePlaylistService:
             if not monitor:
                 raise ValueError("Playlist monitor not found")
 
-            # Incremental sync: only fetch new videos if we have a last_known_video_id
-            incremental_mode = monitor.last_known_video_id is not None
-            if incremental_mode:
+            # Always do a full fetch with cache bypass - the database comparison
+            # below handles deduplication. Sync must see fresh YouTube data.
+            logger.info(f"Syncing playlist {playlist_id} (monitor: {monitor.name})")
+            playlist_videos = self.get_playlist_videos(
+                playlist_id, max_results=1000, skip_cache=True
+            )
+
+            logger.info(
+                f"YouTube API returned {len(playlist_videos)} videos for playlist {playlist_id}"
+            )
+            for i, pv in enumerate(playlist_videos):
                 logger.info(
-                    f"Using incremental sync for playlist {playlist_id} "
-                    f"(last known video: {monitor.last_known_video_id})"
-                )
-                playlist_videos = self.get_playlist_videos(
-                    playlist_id,
-                    max_results=1000,
-                    last_known_video_id=monitor.last_known_video_id,
-                    incremental=True,
-                )
-            else:
-                logger.info(f"Using full sync for playlist {playlist_id} (first sync)")
-                playlist_videos = self.get_playlist_videos(
-                    playlist_id, max_results=1000
+                    f"  YouTube video [{i}]: {pv.get('video_id')} - {pv.get('title')}"
                 )
 
             # Get video details
@@ -411,6 +376,11 @@ class YouTubePlaylistService:
                 session.query(Video).filter(Video.youtube_id.in_(video_ids)).all()
             ):
                 existing_videos[video.youtube_id] = video
+
+            logger.info(
+                f"Found {len(existing_videos)} existing videos in database, "
+                f"{len(video_ids) - len(existing_videos)} are new"
+            )
 
             results = {
                 "total_videos": len(playlist_videos),
@@ -446,6 +416,10 @@ class YouTubePlaylistService:
                     # Update existing video or create new one
                     if video_id in existing_videos:
                         video = existing_videos[video_id]
+                        logger.info(
+                            f"  Video {video_id} exists in DB (id={video.id}, "
+                            f"playlist_id={video.playlist_id}), updating metadata"
+                        )
                         # Update metadata
                         video.title = video_data["title"]
                         video.description = video_data.get("description", "")
@@ -454,6 +428,9 @@ class YouTubePlaylistService:
                         video.duration = self._parse_duration(details.get("duration"))
                         video.view_count = details.get("view_count")
                         video.updated_at = datetime.now()
+                        # Ensure playlist association for videos added via other sources
+                        if not video.playlist_id:
+                            video.playlist_id = playlist_id
 
                         results["updated_videos"] += 1
                     else:
@@ -485,6 +462,10 @@ class YouTubePlaylistService:
 
                         session.add(video)
                         results["new_videos"] += 1
+                        logger.info(
+                            f"  New video added: {video_id} - {video_data['title']} "
+                            f"(artist: {artist.name}, status: {video.status.value})"
+                        )
 
                         # Auto-download if enabled
                         if monitor.auto_download:
@@ -509,24 +490,13 @@ class YouTubePlaylistService:
                     )
                     results["errors"].append(f"Error processing video: {str(e)}")
 
-            # Update monitor last check time
+            # Update monitor last check time and video count
             monitor.last_check = datetime.now()
-
-            # Update last_known_video_id for next incremental sync
-            # Set it to the first video ID (most recent video in the playlist)
-            if playlist_videos and len(playlist_videos) > 0:
-                first_video_id = playlist_videos[0].get("video_id")
-                if first_video_id:
-                    monitor.last_known_video_id = first_video_id
-                    logger.info(
-                        f"Updated last_known_video_id to {first_video_id} for next incremental sync"
-                    )
+            monitor.last_video_count = len(playlist_videos)
 
             session.commit()
 
-            logger.info(
-                f"Synced playlist {playlist_id}: {results} (incremental: {incremental_mode})"
-            )
+            logger.info(f"Synced playlist {playlist_id}: {results}")
             return results
 
         except Exception as e:
@@ -565,26 +535,76 @@ class YouTubePlaylistService:
 
         return None
 
+    @staticmethod
+    def _clean_channel_name(channel_title: str) -> str:
+        """Strip common YouTube channel suffixes like VEVO, Official, etc.
+
+        Examples:
+            KornVEVO -> Korn
+            tenaciousDVEVO -> tenaciousD
+            ToolOfficial -> Tool
+            FooFightersMusic -> FooFighters
+        """
+        if not channel_title:
+            return channel_title
+
+        # Strip suffixes in priority order (longest/most specific first)
+        # Case-insensitive matching but preserve original casing of the base name
+        suffixes = [
+            "Official Music Channel",
+            "Official Channel",
+            "Music Official",
+            "VEVO",
+            "Official",
+            "Records",
+            "Channel",
+            "Music",
+            "TV",
+        ]
+        cleaned = channel_title.strip()
+        for suffix in suffixes:
+            if cleaned.lower().endswith(suffix.lower()) and len(cleaned) > len(suffix):
+                cleaned = cleaned[: -len(suffix)].strip(" -_")
+                break  # Only strip one suffix to avoid over-cleaning
+
+        return cleaned or channel_title  # Fallback to original if cleaning emptied it
+
     def _find_or_create_artist(self, channel_title: str, session: Session) -> Artist:
-        """Find existing artist or create new one"""
-        # Try to find existing artist
+        """Find existing artist or create new one.
+
+        Cleans YouTube channel suffixes (VEVO, Official, etc.) before
+        searching for or creating artists.
+        """
+        cleaned_name = self._clean_channel_name(channel_title)
+        if cleaned_name != channel_title:
+            logger.info(f"Cleaned channel name: '{channel_title}' -> '{cleaned_name}'")
+
+        # Try to find existing artist with cleaned name first
         existing_artist = (
-            session.query(Artist)
-            .filter(Artist.name.ilike(f"%{channel_title}%"))
-            .first()
+            session.query(Artist).filter(Artist.name.ilike(f"%{cleaned_name}%")).first()
         )
 
         if existing_artist:
             return existing_artist
 
-        # Generate default folder path
+        # Fallback: try original name if different from cleaned
+        if cleaned_name != channel_title:
+            existing_artist = (
+                session.query(Artist)
+                .filter(Artist.name.ilike(f"%{channel_title}%"))
+                .first()
+            )
+            if existing_artist:
+                return existing_artist
+
+        # Generate default folder path using cleaned name
         from src.utils.filename_cleanup import FilenameCleanup
 
-        folder_path = FilenameCleanup.sanitize_folder_name(channel_title)
+        folder_path = FilenameCleanup.sanitize_folder_name(cleaned_name)
 
-        # Create new artist
+        # Create new artist with cleaned name
         new_artist = Artist(
-            name=channel_title,
+            name=cleaned_name,
             monitored=True,
             auto_download=False,
             source="youtube_playlist",
@@ -594,6 +614,7 @@ class YouTubePlaylistService:
 
         session.add(new_artist)
         session.flush()  # Get the ID
+        artist_id = new_artist.id  # Save ID before auto-processing may detach it
 
         # Run auto-processing for newly created artist
         try:
@@ -601,24 +622,16 @@ class YouTubePlaylistService:
                 artist_auto_processing_service,
             )
 
-            # Ensure artist is bound to session for auto-processing
-            session.refresh(new_artist)
-            auto_processing_results = artist_auto_processing_service.process_new_artist(
-                new_artist, session
-            )
-            # Refresh artist after auto-processing to get any metadata enrichment updates
-            session.refresh(new_artist)
-            match_count = auto_processing_results.get("auto_match", {}).get(
-                "match_count", 0
-            )
-            logger.info(
-                f"Auto-processing completed for {channel_title} - {match_count} services matched"
-            )
+            artist_auto_processing_service.process_new_artist(new_artist, session)
+            logger.info(f"Auto-processing completed for {channel_title}")
         except Exception as e:
             logger.warning(
                 f"Auto-processing failed for newly created artist {channel_title}: {e}"
             )
 
+        # Re-fetch artist from session to ensure it's properly bound
+        # (auto-processing may detach the object by opening its own session)
+        new_artist = session.query(Artist).filter(Artist.id == artist_id).first()
         return new_artist
 
     def download_video(self, video_id: str, quality: str = "720p") -> Dict:

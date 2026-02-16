@@ -9,8 +9,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.services.imvdb_analytics_service import imvdb_analytics_service
 from src.services.imvdb_discovery_service import imvdb_discovery_service
@@ -27,23 +27,6 @@ router = APIRouter(
 )
 
 logger = get_logger("mvidarr.api.fastapi.imvdb")
-
-
-# ========================================================================================
-# AUTHENTICATION
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # PYDANTIC MODELS
 # ========================================================================================
@@ -224,7 +207,8 @@ async def search_artist(
     except Exception as e:
         logger.error(f"Error searching IMVDb artists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -257,7 +241,8 @@ async def search_videos(
     except Exception as e:
         logger.error(f"Error searching IMVDb videos: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -281,7 +266,8 @@ async def get_artist_details(
     except Exception as e:
         logger.error(f"Error getting IMVDb artist details: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -305,7 +291,8 @@ async def get_video_details(
     except Exception as e:
         logger.error(f"Error getting IMVDb video details: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -341,7 +328,8 @@ async def advanced_search(
     except Exception as e:
         logger.error(f"Error in advanced search: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -370,7 +358,8 @@ async def search_by_genre(
     except Exception as e:
         logger.error(f"Error searching by genre: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -405,7 +394,8 @@ async def search_by_year(
     except Exception as e:
         logger.error(f"Error searching by year: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -437,7 +427,8 @@ async def search_by_director(
     except Exception as e:
         logger.error(f"Error searching by director: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -461,7 +452,8 @@ async def get_trending(
     except Exception as e:
         logger.error(f"Error getting trending videos: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -486,7 +478,8 @@ async def run_discovery(
     except Exception as e:
         logger.error(f"Error running discovery: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -504,7 +497,8 @@ async def discover_trending(
     except Exception as e:
         logger.error(f"Error discovering trending: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -525,7 +519,8 @@ async def discover_similar_artists(
     except Exception as e:
         logger.error(f"Error discovering similar artists: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -540,7 +535,8 @@ async def get_discovery_stats(current_user: dict = Depends(require_authenticatio
     except Exception as e:
         logger.error(f"Error getting discovery stats: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -563,7 +559,8 @@ async def analyze_video_quality(
     except Exception as e:
         logger.error(f"Error analyzing video quality: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -587,7 +584,8 @@ async def rank_videos_by_quality(
     except Exception as e:
         logger.error(f"Error ranking videos by quality: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -605,7 +603,8 @@ async def get_quality_statistics(
     except Exception as e:
         logger.error(f"Error getting quality statistics: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -623,7 +622,8 @@ async def get_user_preferences(
     except Exception as e:
         logger.error(f"Error getting user preferences: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -642,7 +642,8 @@ async def discover_trending_with_quality(
     except Exception as e:
         logger.error(f"Error discovering trending videos with quality: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -659,7 +660,8 @@ async def get_quality_discovery_patterns(
     except Exception as e:
         logger.error(f"Error getting quality discovery patterns: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -682,7 +684,8 @@ async def analyze_discovery_performance(
     except Exception as e:
         logger.error(f"Error analyzing discovery performance: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -702,5 +705,6 @@ async def generate_comprehensive_report(
     except Exception as e:
         logger.error(f"Error generating comprehensive report: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )

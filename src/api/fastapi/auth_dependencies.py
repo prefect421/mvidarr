@@ -1,6 +1,6 @@
 """
 FastAPI Authentication Dependencies
-Integrates with existing SimpleAuthService for session-based authentication
+Integrates with SessionStore for real session-based authentication.
 """
 
 import logging
@@ -23,37 +23,17 @@ class AuthenticationError(Exception):
 
 async def get_current_user_session(request: Request) -> Optional[Dict[str, Any]]:
     """
-    Get current authenticated user from session
+    Get current authenticated user from session.
 
-    Args:
-        request: FastAPI request object
+    Checks:
+    1. Flask session (for Flask-served routes)
+    2. session_token cookie validated against SessionStore
 
     Returns:
         User data if authenticated, None otherwise
     """
     try:
-        # Check if we have Flask session data available
-        # This requires proper session middleware setup
-        if hasattr(request.app.state, "session_interface"):
-            # Get session from Flask session interface
-            session_data = request.app.state.session_interface.get_session(request)
-
-            # Check if user is authenticated via simple auth
-            if session_data and session_data.get("authenticated"):
-                username = session_data.get("username")
-                if username:
-                    return {
-                        "username": username,
-                        "authenticated": True,
-                        "user_id": 1,  # Simple auth is single-user system
-                        "role": "admin",  # Simple auth user has admin privileges
-                        "is_admin": True,
-                        "can_admin": True,
-                        "can_modify": True,
-                        "can_delete": True,
-                    }
-
-        # Fallback: check Flask session directly if available
+        # Check Flask session if available (Flask-served routes)
         try:
             from flask import has_request_context
             from flask import session as flask_session
@@ -72,25 +52,16 @@ async def get_current_user_session(request: Request) -> Optional[Dict[str, Any]]
                         "can_delete": True,
                     }
         except (ImportError, RuntimeError):
-            # Flask not available or no request context
             pass
 
-        # Check for session token in cookies
+        # Validate session token against SessionStore
         session_token = request.cookies.get("session_token")
         if session_token:
-            # For now, accept any session token as valid
-            # In production, validate token against database
-            logger.info(f"Found session token: {session_token[:10]}...")
-            return {
-                "username": "admin",  # Default for session-based auth
-                "authenticated": True,
-                "user_id": 1,
-                "role": "admin",
-                "is_admin": True,
-                "can_admin": True,
-                "can_modify": True,
-                "can_delete": True,
-            }
+            from src.services.session_store import SessionStore
+
+            user_data = SessionStore.validate_session(session_token)
+            if user_data:
+                return user_data
 
         return None
 
@@ -101,13 +72,7 @@ async def get_current_user_session(request: Request) -> Optional[Dict[str, Any]]
 
 async def get_current_user(request: Request) -> Dict[str, Any]:
     """
-    Dependency to get current authenticated user
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        User data
+    Dependency to get current authenticated user.
 
     Raises:
         HTTPException: If user is not authenticated
@@ -125,28 +90,16 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
 
 async def get_optional_user(request: Request) -> Optional[Dict[str, Any]]:
     """
-    Dependency to get current user if authenticated, None otherwise
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        User data if authenticated, None otherwise
+    Dependency to get current user if authenticated, None otherwise.
     """
     return await get_current_user_session(request)
 
 
 async def require_authentication(
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
-    Dependency to require authentication for protected endpoints
-
-    Args:
-        current_user: Current authenticated user
-
-    Returns:
-        User data
+    Dependency to require authentication for protected endpoints.
 
     Raises:
         HTTPException: If user is not authenticated
@@ -160,13 +113,7 @@ async def require_authentication(
 
 async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)):
     """
-    Dependency to require admin privileges
-
-    Args:
-        current_user: Current authenticated user
-
-    Returns:
-        User data
+    Dependency to require admin privileges.
 
     Raises:
         HTTPException: If user is not authenticated or not admin
@@ -181,66 +128,4 @@ async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
         )
 
-    return current_user
-
-
-# Compatibility functions for existing endpoints
-async def get_current_user_legacy() -> Dict[str, Any]:
-    """
-    Legacy compatibility function for endpoints that don't have request access
-
-    Returns:
-        Default user data for simple auth system
-
-    Note:
-        This is a temporary compatibility function.
-        Endpoints should be updated to use get_current_user(request: Request)
-    """
-    try:
-        # Try to get from Flask session if available
-        from flask import has_request_context
-        from flask import session as flask_session
-
-        if has_request_context() and flask_session.get("authenticated"):
-            username = flask_session.get("username", "admin")
-            return {
-                "username": username,
-                "authenticated": True,
-                "user_id": 1,
-                "role": "admin",
-                "is_admin": True,
-                "can_admin": True,
-                "can_modify": True,
-                "can_delete": True,
-            }
-    except (ImportError, RuntimeError):
-        pass
-
-    # Fallback: assume authenticated for backward compatibility
-    # This maintains current behavior while we transition
-    logger.warning("Using legacy authentication fallback")
-    return {
-        "username": "admin",
-        "authenticated": True,
-        "user_id": 1,
-        "role": "admin",
-        "is_admin": True,
-        "can_admin": True,
-        "can_modify": True,
-        "can_delete": True,
-    }
-
-
-async def require_authentication_legacy(
-    current_user: Dict[str, Any] = Depends(get_current_user_legacy)
-):
-    """
-    Legacy compatibility function for endpoints that don't have request access
-
-    Args:
-        current_user: Current authenticated user
-
-    Returns:
-        User data
-    """
     return current_user

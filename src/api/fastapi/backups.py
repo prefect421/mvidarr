@@ -10,7 +10,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.services.backup_service import BackupService, BackupType
 
 logger = logging.getLogger("mvidarr.fastapi.backups")
@@ -79,7 +79,7 @@ class OperationResponse(BaseModel):
 @router.post("/create", response_model=BackupResponse)
 async def create_backup(
     request: CreateBackupRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     Create a new backup.
@@ -120,13 +120,13 @@ async def create_backup(
         raise
     except Exception as e:
         logger.error(f"Error creating backup: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/list", response_model=BackupListResponse)
 async def list_backups(
     backup_type: Optional[str] = None,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     List all available backups.
@@ -165,13 +165,13 @@ async def list_backups(
         raise
     except Exception as e:
         logger.error(f"Error listing backups: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/restore", response_model=OperationResponse)
 async def restore_backup(
     request: RestoreBackupRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     Restore from a backup.
@@ -197,13 +197,13 @@ async def restore_backup(
         raise
     except Exception as e:
         logger.error(f"Error restoring backup: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{backup_id}", response_model=OperationResponse)
 async def delete_backup(
     backup_id: str,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     Delete a backup.
@@ -229,12 +229,12 @@ async def delete_backup(
         raise
     except Exception as e:
         logger.error(f"Error deleting backup: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/info", response_model=dict)
 async def get_backup_info(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     Get backup configuration and statistics.
@@ -271,4 +271,4 @@ async def get_backup_info(
 
     except Exception as e:
         logger.error(f"Error getting backup info: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

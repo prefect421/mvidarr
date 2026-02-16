@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import Artist
 from src.services.video_discovery_service import video_discovery_service
@@ -99,7 +99,7 @@ class DiscoveryPreviewResponse(BaseModel):
 async def discover_for_artist(
     artist_id: int = Path(..., description="Artist ID to discover videos for"),
     discovery_request: DiscoveryRequest = DiscoveryRequest(),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Discover new videos for a specific artist"""
@@ -137,13 +137,13 @@ async def discover_for_artist(
         raise
     except Exception as e:
         logger.error(f"Artist discovery failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/all", response_model=BulkDiscoveryResponse)
 async def discover_for_all_artists(
     bulk_request: BulkDiscoveryRequest = BulkDiscoveryRequest(),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Discover new videos for all monitored artists"""
@@ -175,12 +175,12 @@ async def discover_for_all_artists(
         raise
     except Exception as e:
         logger.error(f"Bulk discovery failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/stats", response_model=DiscoveryStatsResponse)
 async def get_discovery_stats(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get video discovery statistics"""
@@ -197,13 +197,13 @@ async def get_discovery_stats(
 
     except Exception as e:
         logger.error(f"Failed to get discovery stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/test/{artist_id}", response_model=DiscoveryPreviewResponse)
 async def test_discovery_for_artist(
     artist_id: int = Path(..., description="Artist ID to test discovery for"),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Test video discovery for an artist (returns preview without storing)"""
@@ -242,7 +242,7 @@ async def test_discovery_for_artist(
         raise
     except Exception as e:
         logger.error(f"Discovery test failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.services.ytdlp_service import ytdlp_service
 
@@ -130,7 +130,7 @@ def allowed_file(filename: str) -> bool:
 
 @router.get("/test", response_model=HealthResponse)
 async def test_connection(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Test yt-dlp availability"""
@@ -159,7 +159,7 @@ async def test_connection(
 
 @router.get("/queue", response_model=QueueResponse)
 async def get_download_queue(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get current download queue including active Celery tasks"""
@@ -228,7 +228,7 @@ async def get_download_queue(
 
     except Exception as e:
         logger.error(f"Failed to get download queue: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/history", response_model=HistoryResponse)
@@ -236,7 +236,7 @@ async def get_download_history(
     limit: int = Query(
         default=50, ge=1, le=500, description="Maximum number of history items"
     ),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get download history"""
@@ -284,13 +284,13 @@ async def get_download_history(
 
     except Exception as e:
         logger.error(f"Failed to get download history: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/download/music-video", response_model=DownloadResponse)
 async def add_music_video_download(
     download_request: MusicVideoDownloadRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Add a music video download with MVidarr formatting"""
@@ -336,13 +336,13 @@ async def add_music_video_download(
         raise
     except Exception as e:
         logger.error(f"Failed to add music video download: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/download/{download_id}/stop", response_model=DownloadResponse)
 async def stop_download(
     download_id: str,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Stop a specific download"""
@@ -373,13 +373,13 @@ async def stop_download(
         raise
     except Exception as e:
         logger.error(f"Failed to stop download: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/download/{download_id}/retry", response_model=DownloadResponse)
 async def retry_download(
     download_id: str,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Retry a failed download"""
@@ -410,12 +410,12 @@ async def retry_download(
         raise
     except Exception as e:
         logger.error(f"Failed to retry download: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/history/clear", response_model=DownloadResponse)
 async def clear_history(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Clear download history"""
@@ -438,7 +438,7 @@ async def clear_history(
         raise
     except Exception as e:
         logger.error(f"Failed to clear history: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/clear-stuck", response_model=DownloadResponse)
@@ -447,7 +447,7 @@ async def clear_stuck_downloads(
     force: bool = Query(
         default=False, description="Force clear all downloads regardless of time"
     ),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Clear downloads stuck at 0% progress"""
@@ -532,12 +532,12 @@ async def clear_stuck_downloads(
         raise
     except Exception as e:
         logger.error(f"Failed to clear stuck downloads: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/force-clear-all", response_model=DownloadResponse)
 async def force_clear_all_downloads(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Force clear ALL queued/downloading downloads"""
@@ -594,12 +594,12 @@ async def force_clear_all_downloads(
         raise
     except Exception as e:
         logger.error(f"Failed to force clear downloads: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get yt-dlp service health status"""
@@ -632,7 +632,7 @@ async def health_check(
 @router.post("/cookies/upload", response_model=CookieUploadResponse)
 async def upload_cookies(
     file: UploadFile = File(..., description="YouTube cookies file (.txt or .cookies)"),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Upload YouTube cookies file for age-restricted video downloads"""
     try:
@@ -737,12 +737,12 @@ async def upload_cookies(
         raise
     except Exception as e:
         logger.error(f"Failed to upload cookies: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/cookies/status", response_model=CookieStatusResponse)
 async def cookies_status(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Check if cookies are uploaded and available"""
     try:
@@ -815,12 +815,12 @@ async def cookies_status(
 
     except Exception as e:
         logger.error(f"Failed to check cookie status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/cookies/delete", response_model=CookieUploadResponse)
 async def delete_cookies(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Delete uploaded cookies file from database and filesystem"""
     try:
@@ -853,12 +853,12 @@ async def delete_cookies(
 
     except Exception as e:
         logger.error(f"Failed to delete cookies: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/process-pending", response_model=DownloadResponse)
 async def process_pending_downloads(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Process pending downloads from database"""
@@ -885,4 +885,4 @@ async def process_pending_downloads(
         raise
     except Exception as e:
         logger.error(f"Failed to process pending downloads: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

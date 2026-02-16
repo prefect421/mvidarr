@@ -120,7 +120,7 @@ async def mobile_discover_server(request: Request):
 
     except Exception as e:
         logger.error(f"Failed to provide mobile discovery info: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @mobile_router.get("/status")
@@ -150,7 +150,7 @@ async def get_mobile_server_status(request: Request):
 
     except Exception as e:
         logger.error(f"Failed to get mobile server status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Mobile Collection Browsing
@@ -222,7 +222,7 @@ async def get_mobile_collections(
 
     except Exception as e:
         logger.error(f"Failed to get mobile collections: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @mobile_router.get("/collections/{collection_id}")
@@ -286,7 +286,7 @@ async def get_mobile_collection_videos(
 
     except Exception as e:
         logger.error(f"Failed to get collection videos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Mobile Search
@@ -350,7 +350,7 @@ async def mobile_search_videos(
 
     except Exception as e:
         logger.error(f"Failed to perform mobile search: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Mobile Streaming
@@ -393,7 +393,7 @@ async def stream_video_mobile(
 
     except Exception as e:
         logger.error(f"Failed to stream video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @mobile_router.get("/thumbnail/{item_id}")
@@ -437,7 +437,7 @@ async def get_mobile_thumbnail(
 
     except Exception as e:
         logger.error(f"Failed to get thumbnail for {item_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Mobile Download
@@ -484,7 +484,7 @@ async def download_video_mobile(
 
     except Exception as e:
         logger.error(f"Failed to prepare download for {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Mobile Playlists
@@ -546,7 +546,7 @@ async def get_mobile_playlists(
 
     except Exception as e:
         logger.error(f"Failed to get mobile playlists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @mobile_router.get("/playlists/{playlist_id}")
@@ -603,7 +603,7 @@ async def get_mobile_playlist_videos(
 
     except Exception as e:
         logger.error(f"Failed to get playlist {playlist_id} videos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Mobile App Interface
@@ -803,7 +803,7 @@ async def get_mobile_app_interface(request: Request):
 
     except Exception as e:
         logger.error(f"Failed to generate mobile app interface: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @mobile_router.get("/manifest.json")
@@ -874,4 +874,4 @@ async def register_mobile_device(request: Request, device_info: Dict[str, Any]):
 
     except Exception as e:
         logger.error(f"Failed to register mobile device: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

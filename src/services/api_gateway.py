@@ -635,10 +635,12 @@ class APIGateway:
             selected_instance.active_connections += 1
 
             # Make request with retries
-            status_code, response_headers, response_body = (
-                await self._make_request_with_retries(
-                    target_url, method, forwarded_headers, body, query_params, rule
-                )
+            (
+                status_code,
+                response_headers,
+                response_body,
+            ) = await self._make_request_with_retries(
+                target_url, method, forwarded_headers, body, query_params, rule
             )
 
             # Add response headers
@@ -692,7 +694,6 @@ class APIGateway:
                         params=query_params,
                         timeout=aiohttp.ClientTimeout(total=rule.timeout_seconds),
                     ) as response:
-
                         response_headers = dict(response.headers)
                         response_body = await response.read()
 

@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 
 logger = logging.getLogger("mvidarr.fastapi.security")
@@ -183,7 +183,7 @@ def validate_private_key_file(file_content: bytes) -> Tuple[bool, str]:
 
 @router.get("/certificates/status", response_model=Dict[str, Any])
 async def get_certificate_status(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get current certificate status"""
@@ -222,12 +222,12 @@ async def get_certificate_status(
 
     except Exception as e:
         logger.error(f"Error getting certificate status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/certificates/validate", response_model=Dict[str, Any])
 async def validate_certificate(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Validate the current certificate"""
@@ -290,7 +290,7 @@ async def validate_certificate(
         raise
     except Exception as e:
         logger.error(f"Error validating certificate: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -305,7 +305,7 @@ async def upload_certificates(
     certificate_chain: Optional[UploadFile] = File(
         None, description="Certificate chain file (optional)"
     ),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Upload new SSL certificates"""
@@ -378,12 +378,12 @@ async def upload_certificates(
         raise
     except Exception as e:
         logger.error(f"Error uploading certificates: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/certificates/download")
 async def download_certificate(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Download the current certificate file"""
@@ -405,12 +405,12 @@ async def download_certificate(
         raise
     except Exception as e:
         logger.error(f"Error downloading certificate: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/certificates/remove", response_model=CertificateRemovalResponse)
 async def remove_certificates(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Remove SSL certificates"""
@@ -456,4 +456,4 @@ async def remove_certificates(
         raise
     except Exception as e:
         logger.error(f"Error removing certificates: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

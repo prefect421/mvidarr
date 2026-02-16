@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import (
     require_admin,
-    require_authentication_legacy,
+    require_authentication,
 )
 from src.database.connection import get_db_session
 from src.database.models import User
@@ -83,7 +83,7 @@ class LoginVerificationRequest(BaseModel):
 @router.get("/setup", response_class=HTMLResponse)
 async def setup_page(
     request: Request,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """2FA setup page"""
@@ -126,7 +126,7 @@ async def setup_page(
 
 @router.post("/api/setup", response_model=TwoFactorSetupResponse)
 async def initiate_setup(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Initiate 2FA setup"""
@@ -170,7 +170,7 @@ async def initiate_setup(
 @router.post("/api/verify-setup")
 async def verify_setup(
     token_request: TokenVerificationRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Verify and confirm 2FA setup"""
@@ -208,7 +208,7 @@ async def verify_setup(
 @router.post("/api/disable")
 async def disable_two_factor(
     disable_request: DisableTwoFactorRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Disable 2FA for current user"""
@@ -251,7 +251,7 @@ async def disable_two_factor(
 @router.post("/api/regenerate-codes")
 async def regenerate_backup_codes(
     token_request: TokenVerificationRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Regenerate backup codes"""
@@ -290,7 +290,7 @@ async def regenerate_backup_codes(
 
 @router.get("/api/status", response_model=TwoFactorStatusResponse)
 async def get_two_factor_status(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get 2FA status for current user"""
@@ -347,26 +347,11 @@ async def verify_login(
     verification_request: LoginVerificationRequest,
     session: Session = Depends(get_db_session),
 ):
-    """Verify 2FA token during login process"""
-    try:
-        # This would typically get user_id from temporary session during login
-        # For now, we'll need to implement temporary session handling
-        # This is a placeholder implementation
-
-        # In a real implementation:
-        # 1. Get temporary user_id from login session
-        # 2. Verify the 2FA token
-        # 3. Complete the login process
-
-        return {
-            "success": True,
-            "message": "2FA verification successful",
-            "redirect": "/dashboard",
-        }
-
-    except Exception as e:
-        logger.error(f"2FA login verification error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to verify 2FA token")
+    """Verify 2FA token during login process - not yet implemented"""
+    raise HTTPException(
+        status_code=501,
+        detail="Two-factor authentication is not yet implemented",
+    )
 
 
 # ========================================================================================

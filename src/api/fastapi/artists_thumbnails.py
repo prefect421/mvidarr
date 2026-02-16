@@ -31,8 +31,8 @@ from sqlalchemy.orm import Session
 
 from src.api.fastapi.artists_models import ThumbnailSearchRequest
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.database.connection import get_db_session
 from src.database.models import Artist
@@ -52,23 +52,6 @@ router = APIRouter(
 
 # Logger setup
 logger = logging.getLogger("mvidarr.api.fastapi.artists_thumbnails")
-
-
-# ========================================================================================
-# AUTHENTICATION DEPENDENCIES (Legacy compatibility)
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # HELPER FUNCTIONS
 # ========================================================================================
@@ -169,7 +152,7 @@ async def _get_artist_thumbnail_impl(
         raise
     except Exception as e:
         logger.error(f"Error getting thumbnail for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -233,7 +216,7 @@ async def get_artist_thumbnail_info(
         raise
     except Exception as e:
         logger.error(f"Error getting thumbnail info for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{artist_id}/thumbnail/{size}")
@@ -379,7 +362,7 @@ async def set_artist_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Error setting thumbnail for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{artist_id}/thumbnail/upload")
@@ -439,7 +422,7 @@ async def upload_artist_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Error uploading thumbnail for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{artist_id}/thumbnail/search")
@@ -636,7 +619,7 @@ async def search_artist_thumbnail(
         raise
     except Exception as e:
         logger.error(f"Error searching thumbnails for artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/scan-missing-thumbnails")
@@ -846,4 +829,4 @@ async def scan_missing_thumbnails(
 
     except Exception as e:
         logger.error(f"Error scanning missing thumbnails: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

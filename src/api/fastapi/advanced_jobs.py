@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from src.api.fastapi.auth_dependencies import require_authentication_legacy
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.services.job_queue import (
     BackgroundJob,
     JobPriority,
@@ -97,7 +97,7 @@ class DependencyRequest(BaseModel):
 # Job management endpoints
 @router.post("/schedule", response_model=Dict[str, str])
 async def schedule_job(
-    job_request: JobRequest, current_user: dict = Depends(require_authentication_legacy)
+    job_request: JobRequest, current_user: dict = Depends(require_authentication)
 ):
     """Schedule a job for immediate or delayed execution"""
     try:
@@ -149,13 +149,13 @@ async def schedule_job(
 
     except Exception as e:
         logger.error(f"Error scheduling job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/analytics", response_model=JobAnalyticsResponse)
 async def get_job_analytics(
     days: int = Query(default=7, ge=1, le=30, description="Number of days to analyze"),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get detailed job analytics for the specified period"""
     try:
@@ -167,7 +167,7 @@ async def get_job_analytics(
 
     except Exception as e:
         logger.error(f"Error getting job analytics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/", response_model=List[JobResponse])
@@ -177,7 +177,7 @@ async def list_jobs(
     limit: int = Query(
         default=50, ge=1, le=200, description="Maximum number of jobs to return"
     ),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """List jobs with optional filtering"""
     try:
@@ -227,13 +227,11 @@ async def list_jobs(
 
     except Exception as e:
         logger.error(f"Error listing jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{job_id}", response_model=JobResponse)
-async def get_job(
-    job_id: str, current_user: dict = Depends(require_authentication_legacy)
-):
+async def get_job(job_id: str, current_user: dict = Depends(require_authentication)):
     """Get detailed information about a specific job"""
     try:
         job_queue = await get_job_queue()
@@ -270,14 +268,14 @@ async def get_job(
         raise
     except Exception as e:
         logger.error(f"Error getting job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{job_id}/dependencies", response_model=Dict[str, str])
 async def add_job_dependency(
     job_id: str,
     dependency: DependencyRequest,
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Add a dependency to an existing job"""
     try:
@@ -314,13 +312,11 @@ async def add_job_dependency(
         raise
     except Exception as e:
         logger.error(f"Error adding dependency to job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{job_id}", response_model=Dict[str, str])
-async def cancel_job(
-    job_id: str, current_user: dict = Depends(require_authentication_legacy)
-):
+async def cancel_job(job_id: str, current_user: dict = Depends(require_authentication)):
     """Cancel a queued job"""
     try:
         job_queue = await get_job_queue()
@@ -359,11 +355,11 @@ async def cancel_job(
         raise
     except Exception as e:
         logger.error(f"Error cancelling job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/stats/queue", response_model=Dict[str, Any])
-async def get_queue_stats(current_user: dict = Depends(require_authentication_legacy)):
+async def get_queue_stats(current_user: dict = Depends(require_authentication)):
     """Get current queue statistics"""
     try:
         job_queue = await get_job_queue()
@@ -374,12 +370,12 @@ async def get_queue_stats(current_user: dict = Depends(require_authentication_le
 
     except Exception as e:
         logger.error(f"Error getting queue stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/maintenance/process-scheduled", response_model=Dict[str, Any])
 async def process_scheduled_jobs(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Manually trigger processing of scheduled jobs (admin only)"""
     try:
@@ -396,12 +392,12 @@ async def process_scheduled_jobs(
         raise
     except Exception as e:
         logger.error(f"Error processing scheduled jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/maintenance/process-waiting", response_model=Dict[str, Any])
 async def process_waiting_jobs(
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Manually trigger processing of jobs waiting for dependencies (admin only)"""
     try:
@@ -418,13 +414,13 @@ async def process_waiting_jobs(
         raise
     except Exception as e:
         logger.error(f"Error processing waiting jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/maintenance/cleanup", response_model=Dict[str, Any])
 async def cleanup_old_jobs(
     days: int = Query(default=7, ge=1, le=30, description="Days to keep jobs"),
-    current_user: dict = Depends(require_authentication_legacy),
+    current_user: dict = Depends(require_authentication),
 ):
     """Clean up old completed/failed jobs (admin only)"""
     try:
@@ -445,4 +441,4 @@ async def cleanup_old_jobs(
         raise
     except Exception as e:
         logger.error(f"Error cleaning up jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

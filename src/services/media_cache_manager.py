@@ -178,58 +178,24 @@ class MediaCacheManager:
         return data
 
     def _serialize_value(self, value: Any) -> bytes:
-        """Serialize value for storage with integrity protection"""
+        """Serialize value for storage (JSON-only, no pickle for security)"""
         try:
-            # Try JSON first for simple types
-            if isinstance(value, (dict, list, str, int, float, bool, type(None))):
-                return json.dumps(value).encode("utf-8")
-            else:
-                # Use pickle for complex objects with HMAC signing for integrity
-                pickled = pickle.dumps(value)
-                signature = hmac.new(
-                    self._PICKLE_HMAC_KEY, pickled, hashlib.sha256
-                ).digest()
-                return b"PICKLE:" + signature + pickled
+            return json.dumps(value, default=str).encode("utf-8")
         except Exception as e:
-            logger.error(f"❌ Failed to serialize cache value: {e}")
-            # Fallback to pickle with HMAC
-            pickled = pickle.dumps(value)
-            signature = hmac.new(
-                self._PICKLE_HMAC_KEY, pickled, hashlib.sha256
-            ).digest()
-            return b"PICKLE:" + signature + pickled
+            logger.error(f"Failed to serialize cache value: {e}")
+            # Convert to string representation as last resort
+            return json.dumps(str(value)).encode("utf-8")
 
     def _deserialize_value(self, data: bytes) -> Any:
-        """Deserialize value from storage with integrity verification"""
+        """Deserialize value from storage (JSON-only)"""
         try:
             if data.startswith(b"PICKLE:"):
-                # Extract signature and pickled data
-                data_without_prefix = data[7:]  # Remove "PICKLE:" prefix
-                signature_size = 32  # SHA256 produces 32 bytes
-
-                if len(data_without_prefix) < signature_size:
-                    logger.error("❌ Invalid pickled data: too short for signature")
-                    return None
-
-                signature = data_without_prefix[:signature_size]
-                pickled = data_without_prefix[signature_size:]
-
-                # Verify HMAC signature to ensure data integrity
-                expected_signature = hmac.new(
-                    self._PICKLE_HMAC_KEY, pickled, hashlib.sha256
-                ).digest()
-                if not hmac.compare_digest(signature, expected_signature):
-                    logger.error(
-                        "❌ Pickle integrity check failed: invalid HMAC signature"
-                    )
-                    return None
-
-                # Signature verified, safe to unpickle
-                return pickle.loads(pickled)
-            else:
-                return json.loads(data.decode("utf-8"))
+                # Legacy pickle data - discard for security
+                logger.warning("Discarding legacy pickle cache entry")
+                return None
+            return json.loads(data.decode("utf-8"))
         except Exception as e:
-            logger.error(f"❌ Failed to deserialize cache value: {e}")
+            logger.error(f"Failed to deserialize cache value: {e}")
             return None
 
     async def get(

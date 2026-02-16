@@ -69,7 +69,7 @@ async def get_enrichment_stats(current_user: dict = Depends(require_authenticati
         return stats
     except Exception as e:
         logger.error(f"Failed to get enrichment stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/services/status")
@@ -183,7 +183,7 @@ async def get_enrichment_candidates(
 
     except Exception as e:
         logger.error(f"Failed to get enrichment candidates: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/validation/report")
@@ -199,7 +199,7 @@ async def get_validation_report(
         return report
     except Exception as e:
         logger.error(f"Failed to generate validation report: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/duplicates/candidates")
@@ -240,7 +240,7 @@ async def get_duplicate_candidates(
 
     except Exception as e:
         logger.error(f"Failed to get duplicate candidates: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/enrich/{artist_id}")

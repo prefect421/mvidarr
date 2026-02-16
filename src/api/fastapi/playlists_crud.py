@@ -11,6 +11,7 @@ from fastapi import Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.playlists_auth import UserInfo, get_current_user_from_session
 from src.api.fastapi.playlists_models import (
     AddVideoRequest,
@@ -34,28 +35,11 @@ logger = get_logger("mvidarr.api.fastapi.playlists_crud")
 # ========================================================================================
 
 
-@router.get("/test")
-async def test_endpoint():
-    """Simple test endpoint to check if route works"""
-    return {"success": True, "message": "Test endpoint working"}
-
-
-@router.get("/debug")
-async def debug_endpoint():
-    """Debug endpoint to isolate the issue"""
-    return {"success": True, "message": "Debug endpoint working"}
-
-
-@router.get("/simple")
-async def simple_endpoint():
-    """Simplest possible endpoint"""
-    return {"message": "simple"}
-
-
 @router.get("/", response_model=Dict[str, Any])
 async def get_playlists(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Get paginated list of playlists accessible to current user"""
@@ -116,7 +100,7 @@ async def get_playlists(
 
     except Exception as e:
         logger.error(f"Error getting playlists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{playlist_id}", response_model=Dict[str, Any])
@@ -124,12 +108,11 @@ async def get_playlist(
     request: Request,
     playlist_id: int = FastAPIPath(..., ge=1),
     include_entries: bool = Query(True),
+    current_user: UserInfo = Depends(get_current_user_from_session),
     session: Session = Depends(get_db_session),
 ):
     """Get specific playlist with optional entries"""
     try:
-        # Get current user for permission checking
-        current_user = await get_current_user_from_session(request)
 
         query = session.query(Playlist).options(joinedload(Playlist.user))
 
@@ -158,19 +141,18 @@ async def get_playlist(
         raise
     except Exception as e:
         logger.error(f"Error getting playlist {playlist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/", response_model=PlaylistResponse)
 async def create_playlist(
     request: Request,
     playlist_data: PlaylistCreateRequest = Body(...),
+    current_user: UserInfo = Depends(get_current_user_from_session),
     session: Session = Depends(get_db_session),
 ):
     """Create new playlist"""
     try:
-        # Get authenticated user
-        current_user = await get_current_user_from_session(request)
 
         # Only admins can create featured playlists
         if playlist_data.is_featured and not current_user.can_access_admin():
@@ -221,13 +203,14 @@ async def create_playlist(
     except Exception as e:
         logger.error(f"Error creating playlist: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{playlist_id}", response_model=PlaylistResponse)
 async def update_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     update_data: PlaylistUpdateRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Update playlist details"""
@@ -246,7 +229,19 @@ async def update_playlist(
         # Note: Admin check for featured status would go here when auth is implemented
         # For now, allow featured status updates in development
 
+        # Allowlist of fields that can be updated
+        allowed_fields = {
+            "name",
+            "description",
+            "is_public",
+            "is_featured",
+            "playlist_type",
+            "filter_criteria",
+            "sort_order",
+        }
         for field, value in update_fields.items():
+            if field not in allowed_fields:
+                continue
             setattr(playlist, field, value)
 
         session.commit()
@@ -286,12 +281,13 @@ async def update_playlist(
     except Exception as e:
         logger.error(f"Error updating playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{playlist_id}")
 async def delete_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Delete playlist"""
@@ -318,7 +314,7 @@ async def delete_playlist(
     except Exception as e:
         logger.error(f"Error deleting playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -330,6 +326,7 @@ async def delete_playlist(
 async def add_videos_to_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     request_data: AddVideoRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Add video(s) to playlist"""
@@ -416,13 +413,14 @@ async def add_videos_to_playlist(
     except Exception as e:
         logger.error(f"Error adding videos to playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{playlist_id}/videos/{entry_id}")
 async def remove_video_from_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     entry_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Remove video from playlist"""
@@ -472,13 +470,14 @@ async def remove_video_from_playlist(
     except Exception as e:
         logger.error(f"Error removing video from playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{playlist_id}/videos/reorder")
 async def reorder_videos_in_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     reorder_data: ReorderVideoRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Reorder videos in playlist"""
@@ -554,7 +553,7 @@ async def reorder_videos_in_playlist(
     except Exception as e:
         logger.error(f"Error reordering videos in playlist {playlist_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -564,7 +563,9 @@ async def reorder_videos_in_playlist(
 
 @router.post("/bulk/delete")
 async def bulk_delete_playlists(
-    request: BulkDeleteRequest = Body(...), session: Session = Depends(get_db_session)
+    request: BulkDeleteRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Delete multiple playlists"""
     try:
@@ -618,4 +619,4 @@ async def bulk_delete_playlists(
     except Exception as e:
         logger.error(f"Error in bulk delete: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

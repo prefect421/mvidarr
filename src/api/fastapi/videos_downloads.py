@@ -21,7 +21,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath
 from sqlalchemy.orm import Session, joinedload
 
-from src.api.fastapi.auth_dependencies import get_current_user_legacy
+from src.api.fastapi.auth_dependencies import get_current_user
 from src.api.fastapi.videos_models import BulkDownloadRequest
 from src.database.connection import get_db_session
 from src.database.models import Artist, Download, Video, VideoStatus
@@ -29,11 +29,6 @@ from src.utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_downloads")
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
 
 
 async def resolve_video_url(video: Video, session: Session) -> Optional[str]:
@@ -190,7 +185,7 @@ async def bulk_download_videos(
     except Exception as e:
         logger.error(f"Error in bulk download: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{video_id}/download")
@@ -349,7 +344,7 @@ async def queue_video_download(
     except Exception as e:
         logger.error(f"Error queuing download for video {video_id}: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{video_id}/download-debug")
@@ -712,4 +707,4 @@ async def bulk_download_wanted_videos(
     except Exception as e:
         logger.error(f"Error in bulk download wanted videos: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

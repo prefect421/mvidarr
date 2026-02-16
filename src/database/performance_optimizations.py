@@ -24,7 +24,6 @@ class DatabasePerformanceOptimizer:
 
         # Get the current connection
         with self.engine.connect() as conn:
-
             # 1. Composite index for video search optimization
             # Optimizes: video search with status + title filtering
             try:

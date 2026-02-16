@@ -240,7 +240,6 @@ class AsyncHttpClient:
                     data=data,
                     **kwargs,
                 ) as response:
-
                     # Check if response is successful
                     if response.status >= 400:
                         response_text = await response.text()

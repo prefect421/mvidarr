@@ -102,7 +102,7 @@ async def get_scheduler_status() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get scheduler status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/start")
@@ -124,7 +124,7 @@ async def start_scheduler() -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to start scheduler: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/stop")
@@ -146,7 +146,7 @@ async def stop_scheduler() -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to stop scheduler: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/trigger/discovery", response_model=TriggerResponse)
@@ -173,7 +173,7 @@ async def trigger_discovery(request: TriggerDiscoveryRequest = None) -> Dict[str
         raise
     except Exception as e:
         logger.error(f"Failed to trigger discovery: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/trigger/downloads", response_model=TriggerResponse)
@@ -195,7 +195,7 @@ async def trigger_downloads() -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to trigger downloads: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/jobs", response_model=JobHistoryResponse)
@@ -222,7 +222,7 @@ async def get_job_history(
 
     except Exception as e:
         logger.error(f"Failed to get job history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/jobs/{job_id}")
@@ -252,7 +252,7 @@ async def get_job_details(job_id: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get job details for {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/jobs/{job_id}/retry")
@@ -304,7 +304,7 @@ async def retry_job(job_id: str) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to retry job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/jobs/{job_id}")
@@ -339,7 +339,7 @@ async def cancel_job(job_id: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to cancel job {job_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -355,7 +355,7 @@ async def get_scheduler_health() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get scheduler health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/settings/reload")
@@ -377,7 +377,7 @@ async def reload_settings() -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to reload settings: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Import datetime for cancel_job

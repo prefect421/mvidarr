@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-02-16
+
+### Fixed
+- **Playlist Sync - VEVO Names**: Channel names like "KornVEVO" and "tenaciousDVEVO" are now cleaned to "Korn" and "tenaciousD" before artist lookup and creation, preventing duplicate artists with ugly YouTube suffixes
+- **Celery Task Logging**: All scheduled task logs (playlist sync, discovery, downloads) were silently dropped because `setup_logging()` only runs in the FastAPI process. Added `after_setup_logger` signal handler in Celery worker to configure `mvidarr.*` loggers with proper handlers
+- **Logger Namespace**: Added "src" to configured logger namespaces so Celery task loggers using `get_task_logger(__name__)` get file and console handlers in the FastAPI process
+
+### Changed
+- **Artist Name Cleanup**: New `_clean_channel_name()` method strips common YouTube channel suffixes (VEVO, Official, Music, Records, Channel, TV) case-insensitively before searching for or creating artists during playlist sync
+
+## [0.12.2] - 2026-02-14
+
+### Security
+- **Authentication**: Added authentication to 36 unprotected API endpoints across 6 files
+- **Global 401 Interceptor**: Unauthenticated users now redirected to login page instead of seeing error counts
+
+### Fixed
+- **Video Discovery**: Discovery no longer sets videos to WANTED when artist `auto_download` is disabled
+- **Artist Deletion**: Fixed 500 error from orphaned playlist/download foreign key references
+- **Playlist Sync**: YouTube monitored playlists now auto-sync every 6 hours via scheduled task
+- **Playlist Sync**: Fixed session detachment when creating new artists during sync
+- **Playlist Video Count**: Fixed video count not reflecting all videos in monitored playlists
+
+### Removed
+- Obsolete po-token-provider supervisord process causing FATAL crashes on startup
+
+### Infrastructure
+- bgutil-ytdlp-pot-provider updated to v1.2.2 (Rust-based yt-dlp plugin)
+
+## [0.12.1] - 2026-02-12
+
+### Fixed
+- **Login Page**: Fixed POSTing to removed `/test-login` endpoint
+- **WAF False Positives**: Fixed blocking of URLs, cookies, Range headers
+- **Video Streaming**: Range header no longer blocked by security middleware
+- **Playlist Sync**: Fixed not detecting new videos in YouTube playlists
+- **Auth Bridge**: Fixed Flask-to-FastAPI session bridge for consistent authentication
+- **Rate Limiting**: Set to 300/min with static files exempt
+
+### Changed
+- CI/CD: 28 files reformatted with black 24.3.0
+
+## [0.12.0] - 2026-02-11
+
+### Security
+- Consolidated auth system (SimpleAuth + SessionStore)
+- Removed backdoor endpoints (`/test-login`, credential reset)
+- Upgraded passwords from SHA-256 to bcrypt with lazy migration
+- SSRF protection, safe tar extraction, upload sanitization
+- Redis authentication, secure cookies, restricted proxy hosts
+- 49 vulnerabilities fixed (8 critical, 12 high, 16 medium, 13 low)
+
 ## [0.11.9] - 2026-02-05
 
 ### Security
@@ -264,7 +316,14 @@ Previous version history not documented. See GitHub releases for more informatio
 
 ## Version Links
 
-[Unreleased]: https://github.com/prefect421/mvidarr/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/prefect421/mvidarr/compare/v0.12.3...HEAD
+[0.12.3]: https://github.com/prefect421/mvidarr/compare/v0.12.2...v0.12.3
+[0.12.2]: https://github.com/prefect421/mvidarr/compare/v0.12.1...v0.12.2
+[0.12.1]: https://github.com/prefect421/mvidarr/compare/v0.12.0...v0.12.1
+[0.12.0]: https://github.com/prefect421/mvidarr/compare/v0.11.9...v0.12.0
+[0.11.9]: https://github.com/prefect421/mvidarr/compare/v0.11.8...v0.11.9
+[0.11.8]: https://github.com/prefect421/mvidarr/compare/v0.11.7...v0.11.8
+[0.11.7]: https://github.com/prefect421/mvidarr/compare/v0.10.1...v0.11.7
 [0.10.1]: https://github.com/prefect421/mvidarr/releases/tag/v0.10.1
 [0.10.0-beta.1]: https://github.com/prefect421/mvidarr/releases/tag/v0.10.0-beta.1
 [0.9.9]: https://github.com/prefect421/mvidarr/releases/tag/v0.9.9

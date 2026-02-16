@@ -129,7 +129,7 @@ async def track_user_action(request: UserActionRequest):
 
     except Exception as e:
         logger.error(f"Failed to track user action: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get("/user-engagement/{user_id}", response_model=AnalyticsResponse)
@@ -155,7 +155,7 @@ async def get_user_engagement_metrics(user_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get user engagement metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get("/user-behavior-summary", response_model=AnalyticsResponse)
@@ -174,7 +174,7 @@ async def get_user_behavior_summary():
 
     except Exception as e:
         logger.error(f"Failed to get user behavior summary: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get("/popular-content", response_model=AnalyticsResponse)
@@ -195,7 +195,7 @@ async def get_popular_content(
 
     except Exception as e:
         logger.error(f"Failed to get popular content: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Content Analytics Endpoints
@@ -237,7 +237,7 @@ async def record_content_metric(request: ContentMetricRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to record content metric: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get(
@@ -265,7 +265,7 @@ async def get_content_performance(content_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get content performance: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get("/trending-content", response_model=AnalyticsResponse)
@@ -288,7 +288,7 @@ async def get_trending_content(
 
     except Exception as e:
         logger.error(f"Failed to get trending content: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get(
@@ -309,7 +309,7 @@ async def get_content_insights(content_id: str):
 
     except Exception as e:
         logger.error(f"Failed to get content insights: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Real-Time Reporting Endpoints
@@ -361,7 +361,7 @@ async def create_report_configuration(request: ReportConfigRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to create report configuration: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.post(
@@ -383,7 +383,7 @@ async def generate_report(report_id: str, background_tasks: BackgroundTasks):
 
     except Exception as e:
         logger.error(f"Failed to start report generation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get("/reports/{report_id}", response_model=AnalyticsResponse)
@@ -405,7 +405,7 @@ async def get_generated_report(report_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get generated report: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get("/reports/{report_id}/download")
@@ -432,7 +432,7 @@ async def download_report_file(report_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to download report: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Real-Time Dashboard Endpoints
@@ -459,7 +459,7 @@ async def get_real_time_metrics():
         raise
     except Exception as e:
         logger.error(f"Failed to get real-time metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get("/real-time/history", response_model=AnalyticsResponse)
@@ -486,7 +486,7 @@ async def get_metrics_history(
 
     except Exception as e:
         logger.error(f"Failed to get metrics history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get("/dashboard", response_class=HTMLResponse)
@@ -620,7 +620,7 @@ async def get_analytics_dashboard():
 
     except Exception as e:
         logger.error(f"Failed to generate dashboard: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # System Analytics Endpoints
@@ -646,7 +646,7 @@ async def get_system_health():
 
     except Exception as e:
         logger.error(f"Failed to get system health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.get("/services/status", response_model=AnalyticsResponse)
@@ -674,7 +674,7 @@ async def get_analytics_services_status():
 
     except Exception as e:
         logger.error(f"Failed to get analytics services status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Convenience endpoints for common tracking operations
@@ -699,7 +699,7 @@ async def track_video_play_endpoint(
 
     except Exception as e:
         logger.error(f"Failed to track video play: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.post("/track/search", response_model=AnalyticsResponse)
@@ -725,7 +725,7 @@ async def track_search_endpoint(
 
     except Exception as e:
         logger.error(f"Failed to track search: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @analytics_router.post("/track/page-view", response_model=AnalyticsResponse)
@@ -746,4 +746,4 @@ async def track_page_view_endpoint(
 
     except Exception as e:
         logger.error(f"Failed to track page view: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

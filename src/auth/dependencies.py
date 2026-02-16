@@ -189,7 +189,6 @@ class ConditionalAuth:
         request: Request,
         user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
     ) -> Optional[Dict[str, Any]]:
-
         auth_enabled = await check_auth_enabled()
 
         if auth_enabled and not user:

@@ -260,7 +260,7 @@ async def enrich_metadata_bulk(
 
     except Exception as e:
         logger.error(f"❌ Bulk metadata enrichment failed to start: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/collections/import", response_model=OperationResponse)
@@ -329,7 +329,7 @@ async def import_collection(
 
     except Exception as e:
         logger.error(f"❌ Collection import failed to start: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/collections/cleanup", response_model=OperationResponse)
@@ -388,7 +388,7 @@ async def cleanup_collection(
 
     except Exception as e:
         logger.error(f"❌ Collection cleanup failed to start: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Status and Management Endpoints
@@ -428,7 +428,7 @@ async def get_operation_status(operation_id: str):
         raise
     except Exception as e:
         logger.error(f"❌ Failed to get operation status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/operations/{operation_id}/cancel", response_model=OperationResponse)
@@ -459,7 +459,7 @@ async def cancel_operation(operation_id: str):
         raise
     except Exception as e:
         logger.error(f"❌ Failed to cancel operation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/operations/active", response_model=List[Dict[str, Any]])
@@ -476,7 +476,7 @@ async def get_active_operations():
 
     except Exception as e:
         logger.error(f"❌ Failed to get active operations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Collection Management Endpoints
@@ -530,7 +530,7 @@ async def create_collection(
 
     except Exception as e:
         logger.error(f"❌ Failed to create collection: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/collections/{collection_id}/statistics", response_model=Dict[str, Any])
@@ -550,7 +550,7 @@ async def get_collection_statistics(collection_id: str):
         raise
     except Exception as e:
         logger.error(f"❌ Failed to get collection statistics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/system/statistics", response_model=Dict[str, Any])
@@ -580,7 +580,7 @@ async def get_system_statistics():
 
     except Exception as e:
         logger.error(f"❌ Failed to get system statistics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/operations/{operation_id}/cleanup")
@@ -604,4 +604,4 @@ async def cleanup_operation(operation_id: str):
 
     except Exception as e:
         logger.error(f"❌ Failed to cleanup operation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

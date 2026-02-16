@@ -39,7 +39,7 @@ async def get_summary() -> Dict:
         return get_analytics_summary()
     except Exception as e:
         logger.error(f"Error getting analytics summary: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/collection")
@@ -61,7 +61,7 @@ async def get_collection_stats() -> Dict:
         raise
     except Exception as e:
         logger.error(f"Error getting collection stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/top-artists")
@@ -87,7 +87,7 @@ async def get_top_artists_list(limit: int = 10) -> Dict:
         raise
     except Exception as e:
         logger.error(f"Error getting top artists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/top-genres")
@@ -113,7 +113,7 @@ async def get_top_genres_list(limit: int = 10) -> Dict:
         raise
     except Exception as e:
         logger.error(f"Error getting top genres: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/health")
@@ -135,7 +135,7 @@ async def get_health() -> Dict:
         raise
     except Exception as e:
         logger.error(f"Error getting collection health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/recent")
@@ -164,7 +164,7 @@ async def get_recent(days: int = 30, limit: int = 10) -> Dict:
         raise
     except Exception as e:
         logger.error(f"Error getting recent additions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/export/csv")
@@ -187,7 +187,7 @@ async def export_csv():
         )
     except Exception as e:
         logger.error(f"Error exporting CSV: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # Create a separate router for the web page (without /api prefix)

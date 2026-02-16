@@ -21,8 +21,8 @@ from sqlalchemy.orm import Session
 
 from src.api.fastapi.artists_models import ArtistResponse, IMVDbImportRequest
 from src.api.fastapi.auth_dependencies import (
-    get_current_user_legacy,
-    require_authentication_legacy,
+    get_current_user,
+    require_authentication,
 )
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video
@@ -41,22 +41,6 @@ router = APIRouter(
     },
 )
 logger = get_logger("mvidarr.api.fastapi.artists_discovery")
-
-# ========================================================================================
-# AUTHENTICATION DEPENDENCIES
-# ========================================================================================
-
-
-async def get_current_user():
-    """Get current authenticated user"""
-    return await get_current_user_legacy()
-
-
-async def require_authentication(current_user: dict = Depends(get_current_user)):
-    """Dependency to require authentication for protected endpoints"""
-    return await require_authentication_legacy(current_user)
-
-
 # ========================================================================================
 # UTILITY FUNCTIONS
 # ========================================================================================
@@ -143,7 +127,7 @@ async def discover_artists(
 
     except Exception as e:
         logger.error(f"Error discovering artists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -281,7 +265,7 @@ async def import_artist_from_imvdb(
     except Exception as e:
         logger.error(f"Error importing from IMVDb: {e}")
         session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/preview/{imvdb_id}")
@@ -315,7 +299,7 @@ async def preview_imvdb_artist(
         raise
     except Exception as e:
         logger.error(f"Error previewing IMVDb artist {imvdb_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ========================================================================================
@@ -714,7 +698,7 @@ async def manually_process_artist(
 
     except Exception as e:
         logger.error(f"Error manually processing artist {artist_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/bulk-auto-process")
@@ -837,4 +821,4 @@ async def bulk_auto_process_artists(
 
     except Exception as e:
         logger.error(f"Error in bulk auto-processing: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

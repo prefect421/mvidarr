@@ -22,6 +22,7 @@ from fastapi import Query, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video
 from src.utils.logger import get_logger
@@ -70,6 +71,7 @@ def _safe_parse_genres(genres: Union[str, List[str], None]) -> List[str]:
 async def universal_search(
     q: str = Query(..., min_length=1),
     extended: bool = Query(False),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Universal search endpoint that searches across videos, artists, IMVDb, and YouTube"""
@@ -246,7 +248,17 @@ async def universal_search(
                         f"Found {len(youtube_results)} YouTube results for: {query}"
                     )
                 else:
-                    logger.info(f"No YouTube results found for: {query}")
+                    yt_error = (
+                        youtube_search_result.get("error", "")
+                        if youtube_search_result
+                        else ""
+                    )
+                    if yt_error:
+                        logger.warning(
+                            f"YouTube search returned 0 results with error: {yt_error}"
+                        )
+                    else:
+                        logger.info(f"No YouTube results found for: {query}")
             else:
                 logger.warning(
                     "YouTube API key not configured, skipping YouTube search"
@@ -283,6 +295,7 @@ async def search_videos(
     offset: int = Query(0, ge=0),
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Search videos with filters"""
@@ -386,12 +399,14 @@ async def search_videos(
 
     except Exception as e:
         logger.error(f"Error searching videos: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/search-artists")
 async def search_artists(
-    q: str = Query("", min_length=0), session: Session = Depends(get_db_session)
+    q: str = Query("", min_length=0),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Search for existing artists by name"""
     try:
@@ -426,12 +441,14 @@ async def search_artists(
 
     except Exception as e:
         logger.error(f"Error searching artists: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{video_id}/lyrics/search")
 async def search_video_lyrics(
-    video_id: int = FastAPIPath(..., ge=1), session: Session = Depends(get_db_session)
+    video_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Search and retrieve lyrics for a video"""
     try:
@@ -560,4 +577,4 @@ async def search_video_lyrics(
         raise
     except Exception as e:
         logger.error(f"Error searching lyrics for video {video_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

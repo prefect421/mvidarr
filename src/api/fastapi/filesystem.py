@@ -5,16 +5,50 @@ Provides directory browsing capabilities for custom video imports.
 
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.fastapi.filesystem")
 
 router = APIRouter(prefix="/api/filesystem", tags=["filesystem"])
+
+# Allowed base directories for browsing (configurable via ALLOWED_BROWSE_DIRS env var)
+_DEFAULT_ALLOWED_DIRS = ["/data", "/media", "/mnt", "/home"]
+ALLOWED_BROWSE_DIRS = os.environ.get(
+    "ALLOWED_BROWSE_DIRS", ",".join(_DEFAULT_ALLOWED_DIRS)
+).split(",")
+
+
+def _is_path_allowed(browse_path: Path) -> bool:
+    """Check if a resolved path is under one of the allowed directories."""
+    resolved = str(browse_path.resolve())
+
+    # Always allow the music videos path
+    try:
+        from src.services.settings_service import settings
+
+        music_videos_path = settings.get("music_videos_path", "")
+        if music_videos_path:
+            mvp = str(Path(music_videos_path).resolve())
+            if resolved.startswith(mvp) or resolved == mvp:
+                return True
+    except Exception:
+        pass
+
+    for allowed in ALLOWED_BROWSE_DIRS:
+        allowed = allowed.strip()
+        if not allowed:
+            continue
+        allowed_resolved = str(Path(allowed).resolve())
+        if resolved.startswith(allowed_resolved) or resolved == allowed_resolved:
+            return True
+
+    return False
 
 
 # ====================================
@@ -51,41 +85,39 @@ class DirectoryListResponse(BaseModel):
 async def browse_directory(
     path: str = Query(
         default="/", description="Directory path to browse (default: root)"
-    )
+    ),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     Browse filesystem directories for video import.
 
     Returns a list of subdirectories and their metadata.
     Only shows directories (not files) to simplify navigation.
-
-    Args:
-        path: Directory path to browse
-
-    Returns:
-        List of directory entries with metadata
+    Restricted to allowed directories for security.
     """
     try:
-        # Resolve path
         browse_path = Path(path).resolve()
 
-        # Security check - ensure path exists and is directory
+        # Security: restrict to allowed directories
+        if not _is_path_allowed(browse_path):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Access denied. Browsing is restricted to: {', '.join(ALLOWED_BROWSE_DIRS)}",
+            )
+
         if not browse_path.exists():
             raise HTTPException(status_code=404, detail="Directory does not exist")
 
         if not browse_path.is_dir():
             raise HTTPException(status_code=400, detail="Path is not a directory")
 
-        # Check if readable
         if not os.access(browse_path, os.R_OK):
             raise HTTPException(status_code=403, detail="Directory is not readable")
 
-        # Get parent directory
         parent_path = (
             str(browse_path.parent) if browse_path.parent != browse_path else None
         )
 
-        # List directory contents (directories only)
         entries = []
         video_extensions = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".m4v"}
 
@@ -93,7 +125,6 @@ async def browse_directory(
             for item in sorted(
                 browse_path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())
             ):
-                # Skip hidden files/directories (starting with .)
                 if item.name.startswith("."):
                     continue
 
@@ -107,9 +138,7 @@ async def browse_directory(
                     is_readable=is_readable,
                 )
 
-                # Only include directories in the list
                 if is_dir:
-                    # Count video files in this directory (quick scan, not recursive)
                     try:
                         video_count = sum(
                             1
@@ -137,23 +166,16 @@ async def browse_directory(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error browsing directory '{path}': {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error browsing directory: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/common-paths", response_model=List[DirectoryEntry])
-async def get_common_paths():
+async def get_common_paths(
+    current_user: dict = Depends(require_authentication),
+):
     """
     Get common directory paths as shortcuts for browsing.
-
-    Returns common locations like:
-    - Home directory
-    - /mnt (common mount point)
-    - /media (common media mount)
-    - Current music videos path
-
-    Returns:
-        List of common directory shortcuts
     """
     try:
         common_paths = []
@@ -167,18 +189,6 @@ async def get_common_paths():
                     path=str(home_dir),
                     is_directory=True,
                     is_readable=os.access(home_dir, os.R_OK),
-                )
-            )
-
-        # Root
-        root_dir = Path("/")
-        if root_dir.exists() and root_dir.is_dir():
-            common_paths.append(
-                DirectoryEntry(
-                    name="Root (/)",
-                    path=str(root_dir),
-                    is_directory=True,
-                    is_readable=os.access(root_dir, os.R_OK),
                 )
             )
 
@@ -201,6 +211,18 @@ async def get_common_paths():
                 DirectoryEntry(
                     name="Media (/media)",
                     path=str(media_dir),
+                    is_directory=True,
+                    is_readable=True,
+                )
+            )
+
+        # /data directory
+        data_dir = Path("/data")
+        if data_dir.exists() and data_dir.is_dir() and os.access(data_dir, os.R_OK):
+            common_paths.append(
+                DirectoryEntry(
+                    name="Data (/data)",
+                    path=str(data_dir),
                     is_directory=True,
                     is_readable=True,
                 )
@@ -229,4 +251,4 @@ async def get_common_paths():
 
     except Exception as e:
         logger.error(f"Error getting common paths: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
