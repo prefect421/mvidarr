@@ -1,7 +1,7 @@
 {
   "version": "0.12.3",
-  "build_date": "2026-02-15T18:08:37.950632",
-  "git_commit": "6d55c2c",
+  "build_date": "2026-02-16T13:40:21.393739",
+  "git_commit": "b3292f3",
   "git_branch": "dev",
   "release_name": "v0.12.3 - Playlist Sync & Logging",
   "features": [
