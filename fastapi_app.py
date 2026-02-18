@@ -146,9 +146,7 @@ async def lifespan(app: FastAPI):
         if result.get("status") == "started":
             logger.info("✅ Scheduler V2 service started successfully")
         else:
-            logger.warning(
-                f"⚠️ Scheduler V2: {result.get('message', 'Unknown status')}"
-            )
+            logger.warning(f"⚠️ Scheduler V2: {result.get('message', 'Unknown status')}")
 
         # ytdlp_service is already initialized and pending downloads resumed during import
         logger.info(
@@ -436,7 +434,7 @@ app.add_middleware(
 # Fixes mixed content issues when accessing via HTTPS proxy (e.g., https://mvidarr.prefect42.com)
 app.add_middleware(
     ProxyHeadersMiddleware,
-    trusted_hosts=os.environ.get("TRUSTED_PROXY_HOSTS", "127.0.0.1").split(","),
+    trusted_hosts=os.environ.get("TRUSTED_PROXY_HOSTS", "*").split(","),
 )
 logger.info("✅ Proxy headers middleware enabled for reverse proxy support")
 

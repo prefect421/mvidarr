@@ -8795,7 +8795,7 @@ async function startVideoImport() {
 
     try {
         // Get configured directory from settings
-        const settingsResponse = await fetch('/api/settings');
+        const settingsResponse = await fetch('/api/settings/');
         const settings = await settingsResponse.json();
         const directory = settings.settings?.music_videos_path?.value || null;
 

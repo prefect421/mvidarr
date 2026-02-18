@@ -1346,7 +1346,7 @@ class MvTVPlayer {
 async function loadFilterOptions() {
     try {
         // Load genres
-        const genresResponse = await fetch('/api/genres');
+        const genresResponse = await fetch('/api/genres/');
         const genresData = await genresResponse.json();
         
         const genreFilter = document.getElementById('genreFilter');
@@ -1421,7 +1421,7 @@ async function loadFilterOptions() {
         }
 
         // Load artists (load all artists for search functionality)
-        const artistsResponse = await fetch('/api/artists');
+        const artistsResponse = await fetch('/api/artists/');
         const artistsData = await artistsResponse.json();
 
         const artistDropdown = document.getElementById('artistDropdown');

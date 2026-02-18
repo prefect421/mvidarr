@@ -382,7 +382,7 @@ async function refreshJobHistory() {
     const container = document.getElementById('recentJobsList');
     
     try {
-        const response = await fetch('/api/jobs', {
+        const response = await fetch('/api/jobs/', {
             credentials: 'include'
         });
         

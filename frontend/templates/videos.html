@@ -708,7 +708,7 @@ function updateVideoFilterCount() {
 
 function loadVideoGenreOptions() {
     // Load available genres from the API
-    fetch('/api/genres')
+    fetch('/api/genres/')
         .then(response => response.json())
         .then(data => {
             const genreSelect = document.getElementById('videoGenreFilter');
