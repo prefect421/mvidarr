@@ -1,12 +1,13 @@
 {
   "version": "0.12.3",
-  "build_date": "2026-02-16T13:40:21.393739",
-  "git_commit": "b3292f3",
+  "build_date": "2026-02-18T15:38:38.421816",
+  "git_commit": "59c42be",
   "git_branch": "dev",
   "release_name": "v0.12.3 - Playlist Sync & Logging",
   "features": [
     "Security: Added authentication to 36 unprotected API endpoints across 6 files",
     "Security: Global 401 interceptor redirects unauthenticated users to login page",
+    "Fix: CSP blocking API calls behind HTTPS reverse proxy (trailing slashes + proxy trust)",
     "Fix: Discovery no longer sets videos to WANTED when artist auto_download is disabled",
     "Fix: Artist deletion 500 error from orphaned playlist/download foreign key references",
     "Fix: YouTube monitored playlists now auto-sync every 6 hours via scheduled task",
@@ -16,6 +17,8 @@
     "Infra: bgutil-ytdlp-pot-provider updated to v1.2.2 (Rust-based yt-dlp plugin)"
   ],
   "resolved_issues": [
+    "CSP blocking /api/genres behind HTTPS reverse proxy due to http:// redirect",
+    "ProxyHeadersMiddleware not trusting reverse proxy (TRUSTED_PROXY_HOSTS default)",
     "36 API endpoints missing authentication (videos, search, settings, streaming, playlists, scheduling)",
     "Unauthenticated users seeing error counts instead of login redirect",
     "Video discovery setting status to WANTED regardless of artist auto_download setting",
