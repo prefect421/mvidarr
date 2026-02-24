@@ -7053,15 +7053,16 @@ function populateSettings(artist) {
     // Video Type Filtering (Issue #191)
     // First uncheck all video type checkboxes
     document.querySelectorAll('.video-type-checkbox').forEach(cb => cb.checked = false);
-    // Then check the ones that are in allowed_video_types
-    if (artist.allowed_video_types && Array.isArray(artist.allowed_video_types)) {
-        artist.allowed_video_types.forEach(type => {
-            const checkbox = document.querySelector(`.video-type-checkbox[value="${type}"]`);
-            if (checkbox) {
-                checkbox.checked = true;
-            }
-        });
-    }
+    // Use saved types, or default to official_music_video when not set
+    const videoTypes = (artist.allowed_video_types && Array.isArray(artist.allowed_video_types) && artist.allowed_video_types.length > 0)
+        ? artist.allowed_video_types
+        : ['official_music_video'];
+    videoTypes.forEach(type => {
+        const checkbox = document.querySelector(`.video-type-checkbox[value="${type}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+        }
+    });
 
     // Initialize thumbnail preview
     updateThumbnailPreview(artist.thumbnail_url);
