@@ -8,7 +8,7 @@ python-multipart==0.0.22  # Security: CVE-2026-24486 path traversal fix
 jinja2==3.1.6
 
 # Flask - Optional backwards compatibility (to be fully removed in future release)
-Flask==3.1.1
+Flask==3.1.3  # Security: CVE-2026-27205 Vary: Cookie header fix
 Flask-Session==0.8.0
 
 # Database
@@ -24,7 +24,7 @@ httpx==0.25.2
 aiohttp==3.13.3  # Security: CVE-2025-69223 zip bomb + multiple DoS fixes
 
 # Image Processing
-Pillow==10.3.0
+Pillow==12.1.1  # Security: CVE-2026-25990 out-of-bounds write on PSD images
 opencv-python-headless>=4.8.0
 
 # Media Processing
@@ -49,11 +49,11 @@ redis==5.0.1
 flower==2.0.1
 
 # Security
-werkzeug==3.1.5  # Security: CVE-2026-21860 Windows device names fix
+werkzeug==3.1.6  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
 bcrypt==4.1.2
 cryptography>=42.0.0
 PyJWT==2.8.0
-python-jose[cryptography]==3.4.0
+python-jose[cryptography]==3.4.0  # NOTE: pulls in ecdsa (CVE-2024-23342, no upstream fix). We only use HS256 - candidate for replacement with PyJWT
 passlib==1.7.4
 pyotp==2.9.0
 qrcode==7.4.2
