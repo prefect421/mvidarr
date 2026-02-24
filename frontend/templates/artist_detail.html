@@ -2921,7 +2921,7 @@ div.artist-header-actions button.btn iconify-icon {
                     <div class="import-options">
                         <div class="import-settings">
                             <label>
-                                <input type="checkbox" id="batchAutoDownload" checked>
+                                <input type="checkbox" id="batchAutoDownload">
                                 📥 Auto-download imported videos
                             </label>
                             <label>
@@ -7041,6 +7041,7 @@ function populateSettings(artist) {
     // Settings
     document.getElementById('monitoredSetting').checked = artist.monitored || false;
     document.getElementById('autoDownloadSetting').checked = artist.auto_download || false;
+    document.getElementById('batchAutoDownload').checked = artist.auto_download || false;
     document.getElementById('qualityProfileSetting').value = artist.quality_profile || 'any';
     document.getElementById('prioritySetting').value = artist.priority || 'normal';
 
