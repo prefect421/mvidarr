@@ -1,9 +1,9 @@
 {
-  "version": "0.12.3",
-  "build_date": "2026-02-24T23:49:36.769868",
-  "git_commit": "a82f6f3",
+  "version": "0.12.4",
+  "build_date": "2026-02-24T23:50:54.929062",
+  "git_commit": "2c0c759",
   "git_branch": "dev",
-  "release_name": "v0.12.3 - Playlist Sync & Logging",
+  "release_name": "v0.12.4 - Security & Auto-Download Fixes",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
@@ -20,8 +20,15 @@
     "Modern UI with left sidebar navigation and theme system",
     "MvTV Continuous Player with cinematic mode",
     "Two-Factor Authentication with TOTP support",
-    "Fixed Video Search Results Display with improved CSS and field mapping",
     "Robust CI/CD Integration with comprehensive testing and deployment",
     "Enhanced Database Initialization with secure admin user creation"
+  ],
+  "changes": [
+    "Security: replaced python-jose/ecdsa (CVE-2024-23342) with PyJWT",
+    "Security: fixed os.popen shell call in security_assessment (B605)",
+    "Fix: videos no longer set to WANTED for monitor-only artists",
+    "Fix: allowed_video_types and 20+ other artist settings now save correctly",
+    "Fix: batchAutoDownload checkbox now inherits artist auto_download setting",
+    "Default: Official Music Video pre-selected for all artists"
   ]
 }
