@@ -53,7 +53,6 @@ werkzeug==3.1.6  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names
 bcrypt==4.1.2
 cryptography>=42.0.0
 PyJWT==2.8.0
-python-jose[cryptography]==3.4.0  # NOTE: pulls in ecdsa (CVE-2024-23342, no upstream fix). We only use HS256 - candidate for replacement with PyJWT
 passlib==1.7.4
 pyotp==2.9.0
 qrcode==7.4.2

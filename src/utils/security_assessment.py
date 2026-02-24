@@ -8,6 +8,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
@@ -295,7 +296,7 @@ class SecurityAssessment:
         """Generate comprehensive security report"""
         report = []
         report.append("# MVidarr Security Assessment Report")
-        report.append(f"Generated: {os.popen('date').read().strip()}")
+        report.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         report.append("")
 
         # Summary
