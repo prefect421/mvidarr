@@ -19,6 +19,8 @@ class BackgroundJobManager {
         this.connectWebSocket();
         this.createJobProgressContainer();
         this.setupGlobalEventListeners();
+        // Always poll as safety net — WebSocket updates are faster but may be missed
+        this.setupPollingFallback();
     }
     
     // ========================================

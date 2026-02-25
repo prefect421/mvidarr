@@ -82,6 +82,9 @@ async def get_job(job_id: str):
             "failed": True,
         }
 
+    # Check Redis progress cache first (written by update_progress, survives broken result backend)
+    redis_progress = _get_redis_progress(job_id)
+
     try:
         from src.jobs.celery_app import celery_app
 
@@ -89,7 +92,6 @@ async def get_job(job_id: str):
         result = celery_app.AsyncResult(job_id)
 
         try:
-            # Try to get state first, this will fail if result is expired/corrupted
             state = result.state
             logger.info(f"Checking job status for {job_id}, state: {state}")
             status = result.status  # PENDING, PROGRESS, SUCCESS, FAILURE
@@ -98,6 +100,9 @@ async def get_job(job_id: str):
             logger.info(
                 f"Job {job_id} result expired or not found in backend: {state_error}"
             )
+            # If we have Redis-cached progress, surface it instead of "expired"
+            if redis_progress:
+                return _build_redis_progress_response(job_id, redis_progress)
             return {
                 "job_id": job_id,
                 "status": "expired",
@@ -116,6 +121,7 @@ async def get_job(job_id: str):
 
         task_result = None
         progress_info = None
+        is_successful = False
 
         try:
             is_ready = result.ready()
@@ -137,29 +143,30 @@ async def get_job(job_id: str):
                         "error": f"Error getting result: {get_error}",
                     }
             else:
-                # Task failed - get error info safely
                 try:
                     error_info = result.result
                     error_msg = str(error_info) if error_info else "Unknown error"
                 except Exception:
                     error_msg = "Task failed with unknown error"
 
-                task_result = {
-                    "success": False,
-                    "error": error_msg,
-                }
+                task_result = {"success": False, "error": error_msg}
         else:
-            # Task is still running - check for progress updates
+            # Task is still running — check PROGRESS state
             if status == "PROGRESS":
                 try:
                     progress_info = result.info or {}
                 except Exception:
                     progress_info = {}
 
+            # If Celery backend returns PENDING but we have Redis progress,
+            # use the cached progress (handles broken result backend)
+            if status == "PENDING" and redis_progress:
+                return _build_redis_progress_response(job_id, redis_progress)
+
         return {
             "job_id": job_id,
-            "status": status.lower(),  # Convert to lowercase for consistency
-            "progress": progress_info,
+            "status": status.lower(),
+            "progress": progress_info or redis_progress,
             "result": task_result,
             "ready": is_ready,
             "successful": is_successful if is_ready else None,
@@ -168,6 +175,9 @@ async def get_job(job_id: str):
 
     except Exception as e:
         logger.error(f"Error getting job status for {job_id}: {type(e).__name__}: {e}")
+        # Surface Redis progress even when Celery is totally unavailable
+        if redis_progress:
+            return _build_redis_progress_response(job_id, redis_progress)
         return {
             "job_id": job_id,
             "status": "error",
@@ -177,6 +187,39 @@ async def get_job(job_id: str):
             "successful": False,
             "failed": True,
         }
+
+
+def _get_redis_progress(job_id: str) -> dict:
+    """Try to read cached progress from Redis (written by update_progress)"""
+    try:
+        from src.jobs.redis_manager import redis_manager
+
+        if not redis_manager.ensure_connection():
+            return None
+        raw = redis_manager.redis_client.get(f"job_progress:{job_id}")
+        if raw:
+            import json
+
+            return json.loads(raw)
+    except Exception:
+        pass
+    return None
+
+
+def _build_redis_progress_response(job_id: str, redis_progress: dict) -> dict:
+    """Build a status response from Redis-cached progress data"""
+    pct = redis_progress.get("progress", 0)
+    cached_status = redis_progress.get("status", "PROGRESS").lower()
+    is_done = pct >= 100 or cached_status == "success"
+    return {
+        "job_id": job_id,
+        "status": "success" if is_done else "progress",
+        "progress": redis_progress,
+        "result": {"success": True} if is_done else None,
+        "ready": is_done,
+        "successful": True if is_done else None,
+        "failed": False,
+    }
 
 
 @router.delete("/{job_id}")

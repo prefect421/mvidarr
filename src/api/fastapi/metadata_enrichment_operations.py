@@ -119,7 +119,9 @@ async def enrich_artist_metadata(
                 f"Celery unavailable for enrichment, running directly: {celery_error}"
             )
             task_id = str(uuid.uuid4())
-            background_tasks.add_task(_enrich_artist_direct, artist_id, force_refresh)
+            background_tasks.add_task(
+                _enrich_artist_direct, artist_id, force_refresh, task_id
+            )
             return {
                 "job_id": task_id,
                 "message": f"Metadata enrichment started for {artist_name} (direct mode)",
@@ -140,31 +142,79 @@ async def enrich_artist_metadata(
         )
 
 
-async def _enrich_artist_direct(artist_id: int, force_refresh: bool) -> None:
+def _write_direct_job_progress(
+    task_id: str, progress: int, message: str, status: str = "PROGRESS"
+) -> None:
+    """Write progress to Redis so /api/jobs/{job_id} can surface it for direct-run jobs"""
+    try:
+        import json
+        from datetime import datetime
+
+        from src.jobs.redis_manager import redis_manager
+
+        if not redis_manager.ensure_connection():
+            return
+        data = {
+            "progress": progress,
+            "percent": progress,
+            "message": message,
+            "status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        redis_manager.redis_client.setex(
+            f"job_progress:{task_id}", 3600, json.dumps(data)
+        )
+    except Exception as e:
+        logger.warning(f"Could not write direct job progress to Redis: {e}")
+
+
+async def _enrich_artist_direct(
+    artist_id: int, force_refresh: bool, task_id: str = ""
+) -> None:
     """Fallback: run metadata enrichment directly without Celery"""
+    _write_direct_job_progress(task_id, 5, "Initializing enrichment...")
     try:
         from src.services.metadata_enrichment_service import MetadataEnrichmentService
 
         logger.info(f"Direct metadata enrichment started for artist {artist_id}")
+        _write_direct_job_progress(
+            task_id, 25, "Gathering metadata from external sources..."
+        )
         service = MetadataEnrichmentService()
         await service.enrich_artist_metadata(artist_id, force_refresh=force_refresh)
+        _write_direct_job_progress(
+            task_id, 100, "Enrichment completed", status="SUCCESS"
+        )
         logger.info(f"Direct metadata enrichment completed for artist {artist_id}")
     except Exception as e:
         logger.error(f"Direct metadata enrichment failed for artist {artist_id}: {e}")
+        _write_direct_job_progress(
+            task_id, 0, f"Enrichment failed: {e}", status="FAILURE"
+        )
 
 
-async def _enrich_video_direct(video_id: int, force_refresh: bool) -> None:
+async def _enrich_video_direct(
+    video_id: int, force_refresh: bool, task_id: str = ""
+) -> None:
     """Fallback: run video metadata enrichment directly without Celery"""
+    _write_direct_job_progress(task_id, 5, "Initializing video enrichment...")
     try:
         from src.services.metadata_enrichment_service import MetadataEnrichmentService
 
         logger.info(f"Direct video metadata enrichment started for video {video_id}")
+        _write_direct_job_progress(task_id, 25, "Gathering video metadata...")
         service = MetadataEnrichmentService()
         await service.enrich_video_metadata(video_id, force_refresh=force_refresh)
+        _write_direct_job_progress(
+            task_id, 100, "Video enrichment completed", status="SUCCESS"
+        )
         logger.info(f"Direct video metadata enrichment completed for video {video_id}")
     except Exception as e:
         logger.error(
             f"Direct video metadata enrichment failed for video {video_id}: {e}"
+        )
+        _write_direct_job_progress(
+            task_id, 0, f"Video enrichment failed: {e}", status="FAILURE"
         )
 
 
@@ -661,7 +711,9 @@ async def enrich_video_metadata(
                 f"Celery unavailable for video enrichment, running directly: {celery_error}"
             )
             task_id = str(uuid.uuid4())
-            background_tasks.add_task(_enrich_video_direct, video_id, force_refresh)
+            background_tasks.add_task(
+                _enrich_video_direct, video_id, force_refresh, task_id
+            )
             return {
                 "job_id": task_id,
                 "message": f"Video metadata enrichment started for {video.title} (direct mode)",
