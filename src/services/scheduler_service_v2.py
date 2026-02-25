@@ -404,7 +404,7 @@ class SchedulerServiceV2:
 
         except Exception as e:
             logger.error(f"Failed to trigger discovery: {e}")
-            return {"status": "error", "message": str(e)}
+            return {"status": "error", "message": str(e), "celery_failed": True}
 
     def trigger_downloads_now(self) -> Dict[str, Any]:
         """
@@ -428,7 +428,7 @@ class SchedulerServiceV2:
 
         except Exception as e:
             logger.error(f"Failed to trigger downloads: {e}")
-            return {"status": "error", "message": str(e)}
+            return {"status": "error", "message": str(e), "celery_failed": True}
 
     def get_job_status(self, job_id: str) -> Dict[str, Any]:
         """

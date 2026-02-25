@@ -68,8 +68,13 @@ celery_app.conf.update(
     # Task result settings
     result_expires=3600,  # Results expire after 1 hour
     result_backend_transport_options={
-        "master_name": "mvidarr",
         "retry_on_timeout": True,
+    },
+    # Broker connection timeouts - fail fast so endpoints don't hang
+    broker_transport_options={
+        "socket_timeout": 5,
+        "socket_connect_timeout": 5,
+        "max_retries": 2,
     },
     # Worker settings
     worker_max_tasks_per_child=1000,  # Restart workers after 1000 tasks
