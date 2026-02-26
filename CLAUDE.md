@@ -214,17 +214,36 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.3 - Released
+### Current Phase: v0.12.4 - Released
 
-#### Versioning Policy (Updated 2026-02-16)
-- **Current Version**: 0.12.3 (Released 2026-02-16)
-- **Next Version**: 0.12.4 (Planning)
+#### Versioning Policy (Updated 2026-02-26)
+- **Current Version**: 0.12.4 (Released 2026-02-26)
+- **Next Version**: 0.12.5 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.4** (2026-02-26): Scheduler & Auto-Download Fixes
+  - ✅ Security: CVE-2026-27205 Flask 3.1.1→3.1.3 in docker/monitor (Vary: Cookie)
+  - ✅ Security: CVE-2026-27199 werkzeug→3.1.6 (Windows device names in safe_join)
+  - ✅ Security: CVE-2026-25990 Pillow→12.1.1 (out-of-bounds write on PSD images)
+  - ✅ Security: replaced python-jose/ecdsa (CVE-2024-23342) with PyJWT
+  - ✅ Fix: Celery connection check no longer hangs — 2s timeout + ps fallback
+  - ✅ Fix: trigger/discovery and trigger/downloads no longer 500 after 19s timeout
+  - ✅ Fix: metadata enrichment endpoints no longer block the async event loop
+  - ✅ Fix: job progress bar stuck at 0% — nested progress object now parsed correctly
+  - ✅ Fix: job completion not detected — status normalized to lowercase
+  - ✅ Fix: auto-download scheduling priority was computed but then discarded
+  - ✅ Fix: auto_download_max_videos raised from 10 → 50
+  - ✅ Fix: pre-v0.10.1 artists with NULL download_enabled excluded from download queue
+  - ✅ Fix: MONITORED videos never promoted to WANTED when artist enables auto_download
+  - ✅ Fix: plain "Artist - Song" titles classified as None type, blocked by allowed_video_types
+  - ✅ Migration 004: backfill NULL Scheduler V2 fields for all existing artists
+  - ✅ Fix: videos no longer set to WANTED for monitor-only artists
+  - ✅ Fix: allowed_video_types and 20+ other artist fields now save correctly
+  - ✅ Default: Official Music Video pre-selected for all artists
 - **v0.12.3** (2026-02-16): Playlist Sync & Logging
   - ✅ VEVO/Official channel name cleanup during playlist sync
   - ✅ Celery worker logging fix (mvidarr.* loggers via after_setup_logger signal)
@@ -373,9 +392,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.3 (Playlist Sync & Logging)
+- **Current Version**: v0.12.4 (Scheduler & Auto-Download Fixes)
 - **Development Focus**: Stability, performance
-- **Next Version**: v0.12.4
+- **Next Version**: v0.12.5
 
 ### Code Development Process
 1. Create feature branch from `dev` branch

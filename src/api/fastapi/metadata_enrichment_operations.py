@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session, attributes
 
 from src.database.connection import get_db_session
@@ -65,6 +65,7 @@ except ImportError:
 @router.post("/enrich/artist/{artist_id}")
 async def enrich_artist_metadata(
     artist_id: int,
+    background_tasks: BackgroundTasks,
     data: Optional[Dict[str, Any]] = None,
     current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
@@ -81,33 +82,56 @@ async def enrich_artist_metadata(
 
         force_refresh = data.get("force_refresh", False) if data else False
         enrich_videos = data.get("enrich_videos", True) if data else True
+        artist_name = artist.name
 
-        logger.info(f"Enriching metadata for artist {artist_id}: {artist.name}")
+        logger.info(f"Enriching metadata for artist {artist_id}: {artist_name}")
 
-        # Import and use Celery tasks directly
+        # Import Celery task
         from src.jobs.metadata_tasks import enrich_artist_metadata_task
 
-        # Start the Celery task
-        task_result = enrich_artist_metadata_task.delay(
-            artist_id=artist_id,
-            force_refresh=force_refresh,
-            enrich_videos=enrich_videos,
-        )
+        try:
+            # Wrap synchronous .delay() in thread to avoid blocking the event loop
+            task_result = await asyncio.to_thread(
+                enrich_artist_metadata_task.delay,
+                artist_id=artist_id,
+                force_refresh=force_refresh,
+                enrich_videos=enrich_videos,
+            )
 
-        logger.info(
-            f"Started Celery metadata enrichment task {task_result.id} for artist {artist.name}"
-        )
+            logger.info(
+                f"Started Celery metadata enrichment task {task_result.id} for {artist_name}"
+            )
 
-        return {
-            "job_id": task_result.id,
-            "message": f"Metadata enrichment job started for {artist.name}",
-            "artist_id": artist_id,
-            "status": "queued",
-            "force_refresh": force_refresh,
-            "enrich_videos": enrich_videos,
-            "note": "Background processing initiated with Celery + Redis",
-            "task_name": "metadata.enrich_artist",
-        }
+            return {
+                "job_id": task_result.id,
+                "message": f"Metadata enrichment job started for {artist_name}",
+                "artist_id": artist_id,
+                "status": "queued",
+                "force_refresh": force_refresh,
+                "enrich_videos": enrich_videos,
+                "note": "Background processing initiated with Celery + Redis",
+                "task_name": "metadata.enrich_artist",
+            }
+
+        except Exception as celery_error:
+            # Celery unavailable — run enrichment directly in background
+            logger.warning(
+                f"Celery unavailable for enrichment, running directly: {celery_error}"
+            )
+            task_id = str(uuid.uuid4())
+            background_tasks.add_task(
+                _enrich_artist_direct, artist_id, force_refresh, task_id
+            )
+            return {
+                "job_id": task_id,
+                "message": f"Metadata enrichment started for {artist_name} (direct mode)",
+                "artist_id": artist_id,
+                "status": "queued",
+                "force_refresh": force_refresh,
+                "enrich_videos": enrich_videos,
+                "note": "Running directly — Celery unavailable",
+                "task_name": "metadata.enrich_artist",
+            }
 
     except HTTPException:
         raise
@@ -115,6 +139,82 @@ async def enrich_artist_metadata(
         logger.error(f"Artist metadata enrichment error for ID {artist_id}: {e}")
         raise HTTPException(
             status_code=500, detail=f"Metadata enrichment failed: {str(e)}"
+        )
+
+
+def _write_direct_job_progress(
+    task_id: str, progress: int, message: str, status: str = "PROGRESS"
+) -> None:
+    """Write progress to Redis so /api/jobs/{job_id} can surface it for direct-run jobs"""
+    try:
+        import json
+        from datetime import datetime
+
+        from src.jobs.redis_manager import redis_manager
+
+        if not redis_manager.ensure_connection():
+            return
+        data = {
+            "progress": progress,
+            "percent": progress,
+            "message": message,
+            "status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        redis_manager.redis_client.setex(
+            f"job_progress:{task_id}", 3600, json.dumps(data)
+        )
+    except Exception as e:
+        logger.warning(f"Could not write direct job progress to Redis: {e}")
+
+
+async def _enrich_artist_direct(
+    artist_id: int, force_refresh: bool, task_id: str = ""
+) -> None:
+    """Fallback: run metadata enrichment directly without Celery"""
+    _write_direct_job_progress(task_id, 5, "Initializing enrichment...")
+    try:
+        from src.services.metadata_enrichment_service import MetadataEnrichmentService
+
+        logger.info(f"Direct metadata enrichment started for artist {artist_id}")
+        _write_direct_job_progress(
+            task_id, 25, "Gathering metadata from external sources..."
+        )
+        service = MetadataEnrichmentService()
+        await service.enrich_artist_metadata(artist_id, force_refresh=force_refresh)
+        _write_direct_job_progress(
+            task_id, 100, "Enrichment completed", status="SUCCESS"
+        )
+        logger.info(f"Direct metadata enrichment completed for artist {artist_id}")
+    except Exception as e:
+        logger.error(f"Direct metadata enrichment failed for artist {artist_id}: {e}")
+        _write_direct_job_progress(
+            task_id, 0, f"Enrichment failed: {e}", status="FAILURE"
+        )
+
+
+async def _enrich_video_direct(
+    video_id: int, force_refresh: bool, task_id: str = ""
+) -> None:
+    """Fallback: run video metadata enrichment directly without Celery"""
+    _write_direct_job_progress(task_id, 5, "Initializing video enrichment...")
+    try:
+        from src.services.metadata_enrichment_service import MetadataEnrichmentService
+
+        logger.info(f"Direct video metadata enrichment started for video {video_id}")
+        _write_direct_job_progress(task_id, 25, "Gathering video metadata...")
+        service = MetadataEnrichmentService()
+        await service.enrich_video_metadata(video_id, force_refresh=force_refresh)
+        _write_direct_job_progress(
+            task_id, 100, "Video enrichment completed", status="SUCCESS"
+        )
+        logger.info(f"Direct video metadata enrichment completed for video {video_id}")
+    except Exception as e:
+        logger.error(
+            f"Direct video metadata enrichment failed for video {video_id}: {e}"
+        )
+        _write_direct_job_progress(
+            task_id, 0, f"Video enrichment failed: {e}", status="FAILURE"
         )
 
 
@@ -562,6 +662,7 @@ async def auto_match_services(
 @router.post("/enrich/video/{video_id}")
 async def enrich_video_metadata(
     video_id: int,
+    background_tasks: BackgroundTasks,
     data: Optional[Dict[str, Any]] = None,
     current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
@@ -583,24 +684,45 @@ async def enrich_video_metadata(
         # Import and use Celery tasks directly
         from src.jobs.metadata_tasks import enrich_video_metadata_task
 
-        # Start the Celery task
-        task_result = enrich_video_metadata_task.delay(
-            video_id=video_id, force_refresh=force_refresh
-        )
+        try:
+            # Wrap synchronous .delay() in thread to avoid blocking the event loop
+            task_result = await asyncio.to_thread(
+                enrich_video_metadata_task.delay,
+                video_id=video_id,
+                force_refresh=force_refresh,
+            )
 
-        logger.info(
-            f"Started Celery video metadata enrichment task {task_result.id} for video {video.title}"
-        )
+            logger.info(
+                f"Started Celery video metadata enrichment task {task_result.id} for video {video.title}"
+            )
 
-        return {
-            "job_id": task_result.id,
-            "message": f"Video metadata enrichment job started for {video.title}",
-            "video_id": video_id,
-            "status": "queued",
-            "force_refresh": force_refresh,
-            "note": "Background processing initiated with Celery + Redis",
-            "task_name": "metadata.enrich_video",
-        }
+            return {
+                "job_id": task_result.id,
+                "message": f"Video metadata enrichment job started for {video.title}",
+                "video_id": video_id,
+                "status": "queued",
+                "force_refresh": force_refresh,
+                "note": "Background processing initiated with Celery + Redis",
+                "task_name": "metadata.enrich_video",
+            }
+
+        except Exception as celery_error:
+            logger.warning(
+                f"Celery unavailable for video enrichment, running directly: {celery_error}"
+            )
+            task_id = str(uuid.uuid4())
+            background_tasks.add_task(
+                _enrich_video_direct, video_id, force_refresh, task_id
+            )
+            return {
+                "job_id": task_id,
+                "message": f"Video metadata enrichment started for {video.title} (direct mode)",
+                "video_id": video_id,
+                "status": "queued",
+                "force_refresh": force_refresh,
+                "note": "Running directly — Celery unavailable",
+                "task_name": "metadata.enrich_video",
+            }
 
     except HTTPException:
         raise
@@ -643,26 +765,37 @@ async def batch_enrich_artists(
         # Import and use Celery tasks directly
         from src.jobs.metadata_tasks import batch_enrich_artists_task
 
-        # Start the Celery batch task
-        task_result = batch_enrich_artists_task.delay(
-            artist_ids=artist_ids,
-            force_refresh=force_refresh,
-            enrich_videos=enrich_videos,
-        )
+        try:
+            # Wrap synchronous .delay() in thread to avoid blocking the event loop
+            task_result = await asyncio.to_thread(
+                batch_enrich_artists_task.delay,
+                artist_ids=artist_ids,
+                force_refresh=force_refresh,
+                enrich_videos=enrich_videos,
+            )
 
-        logger.info(f"Started Celery batch metadata enrichment task {task_result.id}")
+            logger.info(
+                f"Started Celery batch metadata enrichment task {task_result.id}"
+            )
 
-        return {
-            "job_id": task_result.id,
-            "message": f"Batch metadata enrichment job started for {len(artist_ids)} artists",
-            "artist_ids": artist_ids,
-            "total_artists": len(artist_ids),
-            "status": "queued",
-            "force_refresh": force_refresh,
-            "enrich_videos": enrich_videos,
-            "note": "Background processing initiated with Celery + Redis",
-            "task_name": "metadata.batch_enrich_artists",
-        }
+            return {
+                "job_id": task_result.id,
+                "message": f"Batch metadata enrichment job started for {len(artist_ids)} artists",
+                "artist_ids": artist_ids,
+                "total_artists": len(artist_ids),
+                "status": "queued",
+                "force_refresh": force_refresh,
+                "enrich_videos": enrich_videos,
+                "note": "Background processing initiated with Celery + Redis",
+                "task_name": "metadata.batch_enrich_artists",
+            }
+
+        except Exception as celery_error:
+            logger.warning(f"Celery unavailable for batch enrichment: {celery_error}")
+            raise HTTPException(
+                status_code=503,
+                detail="Celery workers unavailable. Please ensure Celery is running for batch operations.",
+            )
 
     except HTTPException:
         raise
@@ -704,28 +837,39 @@ async def enrich_all_artists(
         # Import and use Celery tasks directly
         from src.jobs.metadata_tasks import batch_enrich_artists_task
 
-        # Start the Celery batch task
-        task_result = batch_enrich_artists_task.delay(
-            artist_ids=artist_ids,
-            force_refresh=force_refresh,
-            enrich_videos=enrich_videos,
-        )
+        try:
+            # Wrap synchronous .delay() in thread to avoid blocking the event loop
+            task_result = await asyncio.to_thread(
+                batch_enrich_artists_task.delay,
+                artist_ids=artist_ids,
+                force_refresh=force_refresh,
+                enrich_videos=enrich_videos,
+            )
 
-        logger.info(
-            f"Started Celery bulk enrichment task {task_result.id} for ALL artists"
-        )
+            logger.info(
+                f"Started Celery bulk enrichment task {task_result.id} for ALL artists"
+            )
 
-        return {
-            "job_id": task_result.id,
-            "message": f"Bulk metadata enrichment job started for ALL {len(artist_ids)} artists",
-            "total_artists": len(artist_ids),
-            "status": "queued",
-            "force_refresh": force_refresh,
-            "enrich_videos": enrich_videos,
-            "note": "Background processing initiated with Celery + Redis",
-            "task_name": "metadata.batch_enrich_all_artists",
-        }
+            return {
+                "job_id": task_result.id,
+                "message": f"Bulk metadata enrichment job started for ALL {len(artist_ids)} artists",
+                "total_artists": len(artist_ids),
+                "status": "queued",
+                "force_refresh": force_refresh,
+                "enrich_videos": enrich_videos,
+                "note": "Background processing initiated with Celery + Redis",
+                "task_name": "metadata.batch_enrich_all_artists",
+            }
 
+        except Exception as celery_error:
+            logger.warning(f"Celery unavailable for bulk enrichment: {celery_error}")
+            raise HTTPException(
+                status_code=503,
+                detail="Celery workers unavailable. Please ensure Celery is running for bulk operations.",
+            )
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Bulk enrichment error for all artists: {e}")
         raise HTTPException(status_code=500, detail=f"Bulk enrichment failed: {str(e)}")

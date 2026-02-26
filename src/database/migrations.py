@@ -260,6 +260,101 @@ class Migration_003_AddArtistLabelsMembers(Migration):
             raise
 
 
+class Migration_004_BackfillSchedulerV2ArtistFields(Migration):
+    """
+    Backfill Scheduler V2 fields for artists created before v0.10.1.
+
+    The Scheduler V2 fields (download_enabled, discovery_enabled,
+    schedule_priority, allowed_video_types) were added to the model
+    without a corresponding ALTER TABLE migration, so existing artists
+    have NULL for these columns. NULL download_enabled causes artists to
+    be excluded from the auto-download queue.
+    """
+
+    def __init__(self):
+        super().__init__(
+            "004",
+            "Backfill Scheduler V2 artist fields (download_enabled, discovery_enabled, schedule_priority)",
+        )
+
+    def up(self, connection):
+        try:
+            # Add columns if missing (safe for both new and upgraded DBs)
+            scheduler_v2_columns = [
+                (
+                    "download_enabled",
+                    "BOOLEAN NOT NULL DEFAULT TRUE",
+                    "ALTER TABLE artists ADD COLUMN download_enabled BOOLEAN NOT NULL DEFAULT TRUE",
+                ),
+                (
+                    "discovery_enabled",
+                    "BOOLEAN NOT NULL DEFAULT TRUE",
+                    "ALTER TABLE artists ADD COLUMN discovery_enabled BOOLEAN NOT NULL DEFAULT TRUE",
+                ),
+                (
+                    "schedule_priority",
+                    "VARCHAR(20) DEFAULT 'medium'",
+                    "ALTER TABLE artists ADD COLUMN schedule_priority VARCHAR(20) DEFAULT 'medium'",
+                ),
+                (
+                    "discovery_interval_hours",
+                    "INT DEFAULT 24",
+                    "ALTER TABLE artists ADD COLUMN discovery_interval_hours INT DEFAULT 24",
+                ),
+                (
+                    "max_videos_per_discovery",
+                    "INT DEFAULT 50",
+                    "ALTER TABLE artists ADD COLUMN max_videos_per_discovery INT DEFAULT 50",
+                ),
+            ]
+
+            for col_name, col_def, alter_sql in scheduler_v2_columns:
+                try:
+                    connection.execute(text(alter_sql))
+                    logger.info(f"Added column {col_name} to artists table")
+                except OperationalError as e:
+                    if "Duplicate column name" in str(e) or "already exists" in str(e):
+                        logger.info(f"Column {col_name} already exists")
+                    else:
+                        raise
+
+            # Backfill NULLs in case columns already existed without defaults
+            connection.execute(
+                text(
+                    "UPDATE artists SET download_enabled = TRUE WHERE download_enabled IS NULL"
+                )
+            )
+            connection.execute(
+                text(
+                    "UPDATE artists SET discovery_enabled = TRUE WHERE discovery_enabled IS NULL"
+                )
+            )
+            connection.execute(
+                text(
+                    "UPDATE artists SET schedule_priority = 'medium' WHERE schedule_priority IS NULL"
+                )
+            )
+            connection.execute(
+                text(
+                    "UPDATE artists SET discovery_interval_hours = 24 WHERE discovery_interval_hours IS NULL"
+                )
+            )
+            connection.execute(
+                text(
+                    "UPDATE artists SET max_videos_per_discovery = 50 WHERE max_videos_per_discovery IS NULL"
+                )
+            )
+            logger.info("Backfilled NULL Scheduler V2 fields for existing artists")
+
+        except Exception as e:
+            logger.error(f"Failed to backfill Scheduler V2 artist fields: {e}")
+            raise
+
+    def down(self, connection):
+        """No-op — we don't want to drop these columns on rollback"""
+        logger.info("Migration 004 down: no-op (columns retained)")
+
+
 class MigrationManager:
     """Manages database migrations"""
 
@@ -269,6 +364,7 @@ class MigrationManager:
             Migration_001_AddPlaylistThumbnailUrl(),
             Migration_002_AddDynamicPlaylists(),
             Migration_003_AddArtistLabelsMembers(),
+            Migration_004_BackfillSchedulerV2ArtistFields(),
         ]
 
         # Load file-based migrations from migrations/ directory

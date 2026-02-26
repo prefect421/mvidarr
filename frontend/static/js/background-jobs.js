@@ -19,6 +19,8 @@ class BackgroundJobManager {
         this.connectWebSocket();
         this.createJobProgressContainer();
         this.setupGlobalEventListeners();
+        // Always poll as safety net — WebSocket updates are faster but may be missed
+        this.setupPollingFallback();
     }
     
     // ========================================
@@ -359,10 +361,11 @@ class BackgroundJobManager {
         // Update UI
         this.updateJobProgressUI(jobId, data);
         
-        // Handle completion
-        if (data.status === 'completed' || data.status === 'SUCCESS') {
+        // Handle completion — API may return lowercase ("success") or uppercase ("SUCCESS") or "completed"
+        const statusLower = (data.status || '').toLowerCase();
+        if (statusLower === 'completed' || statusLower === 'success') {
             this.handleJobCompletion(jobId, data);
-        } else if (data.status === 'failed' || data.status === 'FAILURE') {
+        } else if (statusLower === 'failed' || statusLower === 'failure') {
             this.handleJobFailure(jobId, data);
         }
     }
@@ -528,7 +531,11 @@ class BackgroundJobManager {
         
         const previousStatus = jobData.lastNotifiedStatus;
         const currentStatus = data.status;
-        const progress = data.progress || 0;
+        // data.progress may be a nested object {progress: 25, percent: 25, message: "..."}
+        // or a plain number depending on the source
+        const progress = (data.progress && typeof data.progress === 'object')
+            ? (data.progress.progress || data.progress.percent || 0)
+            : (data.progress || 0);
         
         // Only show notifications for significant status changes
         if (previousStatus !== currentStatus) {
@@ -587,10 +594,24 @@ class BackgroundJobManager {
     }
     
     updateJobProgressItem(element, jobId, data) {
-        const progress = data.progress || 0;
-        const message = data.message || 'Processing...';
-        const status = data.status || 'queued';
-        
+        // data.progress may be a nested object {progress: 25, percent: 25, message: "..."}
+        // or a plain number depending on whether the source is Celery PROGRESS state or Redis cache
+        const progress = (data.progress && typeof data.progress === 'object')
+            ? (data.progress.progress || data.progress.percent || 0)
+            : (data.progress || 0);
+        const message = (data.progress && typeof data.progress === 'object' && data.progress.message)
+            || data.message || 'Processing...';
+        // Normalize API status values to display keys
+        const rawStatus = (data.status || 'queued').toLowerCase();
+        const statusMap = {
+            queued: 'queued', pending: 'queued',
+            processing: 'processing', progress: 'processing', started: 'processing',
+            completed: 'completed', success: 'completed',
+            failed: 'failed', failure: 'failed',
+            cancelled: 'cancelled', revoked: 'cancelled'
+        };
+        const status = statusMap[rawStatus] || 'queued';
+
         // Status indicators
         const statusIcons = {
             queued: 'tabler:clock',
@@ -599,7 +620,7 @@ class BackgroundJobManager {
             failed: 'tabler:x-circle',
             cancelled: 'tabler:ban'
         };
-        
+
         const statusColors = {
             queued: '#f59e0b',
             processing: '#3b82f6',

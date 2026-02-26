@@ -75,8 +75,8 @@ def init_default_settings():
         ),
         (
             "auto_download_max_videos",
-            "10",
-            "Maximum videos to download per scheduled run (optimized for hourly downloads)",
+            "50",
+            "Maximum videos to download per scheduled run",
         ),
         (
             "auto_discovery_schedule_enabled",

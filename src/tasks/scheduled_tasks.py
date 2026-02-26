@@ -250,10 +250,12 @@ def scheduled_downloads_task(**kwargs) -> Dict[str, Any]:
 
     try:
         # Get settings
-        max_downloads = SettingsService.get_int("auto_download_max_videos", 10)
+        max_downloads = SettingsService.get_int("auto_download_max_videos", 50)
         max_concurrent = SettingsService.get_int("download_max_concurrent", 3)
 
         # Get wanted videos with priority ordering (Scheduler V2)
+        # Priority order: artist.schedule_priority (high > medium > low),
+        # then artist.priority, then video.created_at (oldest first)
         wanted_videos = get_wanted_videos_for_download(limit=max_downloads)
 
         if not wanted_videos:
@@ -268,22 +270,23 @@ def scheduled_downloads_task(**kwargs) -> Dict[str, Any]:
 
         logger.info(f"Found {len(wanted_videos)} wanted videos to download")
 
-        # Queue downloads (uses existing download infrastructure)
-        result = download_all_wanted_videos_internal(limit=max_downloads)
+        # Pass the priority-ordered IDs so the download function processes
+        # videos in scheduling priority order rather than DB insertion order
+        priority_video_ids = [v["id"] for v in wanted_videos]
+        result = download_all_wanted_videos_internal(video_ids=priority_video_ids)
 
         execution_time = (datetime.utcnow() - start_time).total_seconds()
 
         logger.info(
             f"Scheduled downloads completed in {execution_time:.2f}s: "
-            f"{result.get('queued_count', 0)} queued, "
+            f"{result.get('success_count', 0)} queued, "
             f"{result.get('failed_count', 0)} failed"
         )
 
         return {
             "success": result.get("success", False),
-            "queued": result.get("queued_count", 0),
+            "queued": result.get("success_count", 0),
             "failed": result.get("failed_count", 0),
-            "skipped": result.get("skipped_count", 0),
             "execution_time": execution_time,
             "triggered_at": start_time.isoformat(),
         }

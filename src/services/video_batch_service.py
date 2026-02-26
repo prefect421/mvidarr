@@ -104,12 +104,18 @@ def resolve_video_url(video, session) -> Optional[str]:
     return None
 
 
-def download_all_wanted_videos_internal(limit: int = 50) -> Dict:
+def download_all_wanted_videos_internal(
+    limit: int = 50, video_ids: Optional[List[int]] = None
+) -> Dict:
     """
     Internal function to download all videos with WANTED status
 
     Args:
-        limit: Maximum number of wanted videos to process (default: 50)
+        limit: Maximum number of wanted videos to process (default: 50).
+               Ignored when video_ids is provided.
+        video_ids: Optional ordered list of video IDs to download. When provided,
+                   only these videos are processed and their order is preserved
+                   (used by scheduled_downloads_task to honour scheduling priority).
 
     Returns:
         dict: Results containing success status, counts, and individual results
@@ -127,17 +133,36 @@ def download_all_wanted_videos_internal(limit: int = 50) -> Dict:
         download_subtitles = settings.get_bool("download_subtitles", False)
         subtitle_languages = settings.get("subtitle_languages", "en,en-US")
 
-        # First, get all wanted video IDs
+        # Determine which videos to download
         with get_db() as session:
-            wanted_videos = (
-                session.query(Video.id, Video.title, Artist.name)
-                .join(Artist)
-                .filter(Video.status == VideoStatus.WANTED)
-                .limit(limit)
-                .all()
-            )
+            if video_ids:
+                # Priority-ordered IDs supplied by the scheduler — fetch in one query
+                # then re-sort to preserve the caller's priority ordering.
+                rows = (
+                    session.query(Video.id, Video.title, Artist.name)
+                    .join(Artist)
+                    .filter(Video.id.in_(video_ids))
+                    .filter(Video.status == VideoStatus.WANTED)
+                    .all()
+                )
+                id_to_row = {r.id: r for r in rows}
+                # Preserve the priority order supplied by the caller
+                wanted_video_ids = [
+                    (id_to_row[vid].id, id_to_row[vid].title, id_to_row[vid].name)
+                    for vid in video_ids
+                    if vid in id_to_row
+                ]
+            else:
+                wanted_videos = (
+                    session.query(Video.id, Video.title, Artist.name)
+                    .join(Artist)
+                    .filter(Video.status == VideoStatus.WANTED)
+                    .limit(limit)
+                    .all()
+                )
+                wanted_video_ids = [(v.id, v.title, v.name) for v in wanted_videos]
 
-            if not wanted_videos:
+            if not wanted_video_ids:
                 return {
                     "success": True,
                     "message": "No wanted videos found",
@@ -145,8 +170,6 @@ def download_all_wanted_videos_internal(limit: int = 50) -> Dict:
                     "failed_count": 0,
                     "results": [],
                 }
-
-            wanted_video_ids = [(v.id, v.title, v.name) for v in wanted_videos]
 
         logger.info(f"Found {len(wanted_video_ids)} wanted videos to download")
 
@@ -288,8 +311,17 @@ def get_wanted_videos_for_download(limit: int = 50) -> List[Dict]:
             )
 
             # Filter by artist download_enabled if field exists (Scheduler V2)
+            # Treat NULL as True — pre-Scheduler-V2 artists have no value set
+            # and should still be eligible for downloads
             if hasattr(Artist, "download_enabled"):
-                query = query.filter(Artist.download_enabled == True)
+                from sqlalchemy import or_
+
+                query = query.filter(
+                    or_(
+                        Artist.download_enabled == True,
+                        Artist.download_enabled.is_(None),
+                    )
+                )
 
             # Order by priority (Scheduler V2 enhancement)
             if hasattr(Artist, "schedule_priority"):

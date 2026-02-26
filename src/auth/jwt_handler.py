@@ -8,7 +8,8 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 from passlib.context import CryptContext
 
 from src.services.async_base_service import AsyncBaseService
@@ -199,7 +200,7 @@ class JWTHandler(AsyncBaseService):
 
             return payload
 
-        except JWTError as e:
+        except PyJWTError as e:
             self.logger.debug(f"JWT verification failed: {e}")
             return None
         except Exception as e:
@@ -228,7 +229,7 @@ class JWTHandler(AsyncBaseService):
 
             return payload
 
-        except JWTError as e:
+        except PyJWTError as e:
             self.logger.debug(f"Refresh token verification failed: {e}")
             return None
         except Exception as e:
@@ -367,7 +368,7 @@ class JWTHandler(AsyncBaseService):
         """Get information about a token without verifying its signature"""
         try:
             # Decode without verification to get payload info
-            unverified_payload = jwt.get_unverified_claims(token)
+            unverified_payload = jwt.decode(token, options={"verify_signature": False})
 
             return {
                 "username": unverified_payload.get("username"),

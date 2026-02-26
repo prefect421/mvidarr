@@ -404,7 +404,7 @@ class SchedulerServiceV2:
 
         except Exception as e:
             logger.error(f"Failed to trigger discovery: {e}")
-            return {"status": "error", "message": str(e)}
+            return {"status": "error", "message": str(e), "celery_failed": True}
 
     def trigger_downloads_now(self) -> Dict[str, Any]:
         """
@@ -428,7 +428,7 @@ class SchedulerServiceV2:
 
         except Exception as e:
             logger.error(f"Failed to trigger downloads: {e}")
-            return {"status": "error", "message": str(e)}
+            return {"status": "error", "message": str(e), "celery_failed": True}
 
     def get_job_status(self, job_id: str) -> Dict[str, Any]:
         """
@@ -492,14 +492,36 @@ class SchedulerServiceV2:
         Returns:
             True if connected, False otherwise
         """
+        # First try: Celery inspect API with explicit timeout
         try:
-            inspect = self.celery.control.inspect()
+            inspect = self.celery.control.inspect(timeout=2.0)
             stats = inspect.stats()
-            return stats is not None and len(stats) > 0
-
+            if stats is not None and len(stats) > 0:
+                return True
         except Exception as e:
-            logger.error(f"Celery connection check failed: {e}")
-            return False
+            logger.warning(f"Celery inspect check failed: {e}")
+
+        # Fallback: check for celery worker processes via ps
+        try:
+            import subprocess
+
+            result = subprocess.run(
+                ["ps", "aux"], capture_output=True, text=True, timeout=5
+            )
+            celery_processes = [
+                line
+                for line in result.stdout.split("\n")
+                if "celery" in line and "worker" in line
+            ]
+            if celery_processes:
+                logger.debug(
+                    f"Celery detected via process check: {len(celery_processes)} worker processes"
+                )
+                return True
+        except Exception as e:
+            logger.warning(f"Celery process check failed: {e}")
+
+        return False
 
     def get_health(self) -> Dict[str, Any]:
         """

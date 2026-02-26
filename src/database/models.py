@@ -391,7 +391,7 @@ class Artist(Base):
         String(20), default="medium"
     )  # Scheduling priority: 'high', 'medium', 'low'
     allowed_video_types = Column(
-        JSON, nullable=True
+        JSON, nullable=True, default=lambda: ["official_music_video"]
     )  # List of allowed video types for auto-download filtering (Issue #191)
 
     created_at = Column(DateTime, default=datetime.utcnow)

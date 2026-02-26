@@ -39,7 +39,15 @@ async def import_from_youtube(
         title = request.get("title", "")
         artist = request.get("artist", "")
         artist_id = request.get("artist_id")
-        auto_download = request.get("auto_download", True)
+
+        # Inherit auto_download from artist setting if not explicitly provided
+        if "auto_download" in request:
+            auto_download = bool(request["auto_download"])
+        elif artist_id:
+            artist_obj = session.query(Artist).filter(Artist.id == artist_id).first()
+            auto_download = artist_obj.auto_download if artist_obj else False
+        else:
+            auto_download = False
 
         if not youtube_id:
             raise HTTPException(status_code=400, detail="YouTube ID is required")
@@ -160,7 +168,15 @@ async def import_from_imvdb(
         title = request.get("title", "")
         artist = request.get("artist", "")
         artist_id = request.get("artist_id")
-        auto_download = request.get("auto_download", True)
+
+        # Inherit auto_download from artist setting if not explicitly provided
+        if "auto_download" in request:
+            auto_download = bool(request["auto_download"])
+        elif artist_id:
+            artist_obj = session.query(Artist).filter(Artist.id == artist_id).first()
+            auto_download = artist_obj.auto_download if artist_obj else False
+        else:
+            auto_download = False
 
         if not imvdb_id:
             raise HTTPException(status_code=400, detail="IMVDb ID is required")

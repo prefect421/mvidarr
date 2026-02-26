@@ -722,7 +722,11 @@ class SpotifyService:
                                             "l"
                                         ),
                                         year=video_data.get("year"),
-                                        status=VideoStatus.WANTED,
+                                        status=(
+                                            VideoStatus.WANTED
+                                            if new_artist.auto_download
+                                            else VideoStatus.MONITORED
+                                        ),
                                         source="spotify_import",
                                     )
 
@@ -868,7 +872,11 @@ class SpotifyService:
                                             "l"
                                         ),
                                         year=video_data.get("year"),
-                                        status=VideoStatus.WANTED,
+                                        status=(
+                                            VideoStatus.WANTED
+                                            if new_artist.auto_download
+                                            else VideoStatus.MONITORED
+                                        ),
                                         source="spotify_followed",
                                     )
 

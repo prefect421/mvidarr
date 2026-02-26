@@ -19,9 +19,11 @@ Endpoints:
 - POST /api/v2/scheduler/settings/reload - Reload settings
 """
 
+import asyncio
+import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from src.database.connection import get_db
@@ -150,21 +152,33 @@ async def stop_scheduler() -> Dict[str, Any]:
 
 
 @router.post("/trigger/discovery", response_model=TriggerResponse)
-async def trigger_discovery(request: TriggerDiscoveryRequest = None) -> Dict[str, Any]:
+async def trigger_discovery(
+    background_tasks: BackgroundTasks,
+    request: TriggerDiscoveryRequest = None,
+) -> Dict[str, Any]:
     """
     Manually trigger video discovery
 
     Triggers discovery for all artists or a specific artist.
-
-    Args:
-        request: Optional request with artist_id for specific discovery
+    Uses Celery if available; falls back to direct execution.
     """
     try:
         artist_id = request.artist_id if request else None
 
-        result = scheduler_v2.trigger_discovery_now(artist_id=artist_id)
+        # Run synchronous apply_async in thread to avoid blocking the event loop
+        result = await asyncio.to_thread(scheduler_v2.trigger_discovery_now, artist_id)
 
         if result.get("status") == "error":
+            if result.get("celery_failed"):
+                # Celery unavailable — run directly in background after response
+                task_id = str(uuid.uuid4())
+                background_tasks.add_task(_run_discovery_direct, artist_id, task_id)
+                return {
+                    "status": "triggered",
+                    "task_id": task_id,
+                    "message": "Discovery started (direct mode — Celery unavailable)",
+                    "artist_id": artist_id,
+                }
             raise HTTPException(status_code=500, detail=result.get("message"))
 
         return result
@@ -177,16 +191,27 @@ async def trigger_discovery(request: TriggerDiscoveryRequest = None) -> Dict[str
 
 
 @router.post("/trigger/downloads", response_model=TriggerResponse)
-async def trigger_downloads() -> Dict[str, Any]:
+async def trigger_downloads(background_tasks: BackgroundTasks) -> Dict[str, Any]:
     """
     Manually trigger video downloads
 
     Triggers scheduled downloads of wanted videos.
+    Uses Celery if available; falls back to direct execution.
     """
     try:
-        result = scheduler_v2.trigger_downloads_now()
+        # Run synchronous apply_async in thread to avoid blocking the event loop
+        result = await asyncio.to_thread(scheduler_v2.trigger_downloads_now)
 
         if result.get("status") == "error":
+            if result.get("celery_failed"):
+                task_id = str(uuid.uuid4())
+                background_tasks.add_task(_run_downloads_direct, task_id)
+                return {
+                    "status": "triggered",
+                    "task_id": task_id,
+                    "message": "Downloads started (direct mode — Celery unavailable)",
+                    "artist_id": None,
+                }
             raise HTTPException(status_code=500, detail=result.get("message"))
 
         return result
@@ -196,6 +221,84 @@ async def trigger_downloads() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to trigger downloads: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+def _write_direct_job_progress(
+    task_id: str, progress: int, message: str, status: str = "PROGRESS"
+) -> None:
+    """Write progress to Redis so /api/jobs/{job_id} can surface it for direct-run jobs"""
+    try:
+        import json
+        from datetime import datetime
+
+        from src.jobs.redis_manager import redis_manager
+
+        if not redis_manager.ensure_connection():
+            return
+        data = {
+            "progress": progress,
+            "percent": progress,
+            "message": message,
+            "status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        redis_manager.redis_client.setex(
+            f"job_progress:{task_id}", 3600, json.dumps(data)
+        )
+    except Exception as e:
+        logger.warning(f"Could not write direct job progress to Redis: {e}")
+
+
+async def _run_discovery_direct(artist_id: Optional[int], task_id: str = "") -> None:
+    """Fallback: run discovery directly without Celery"""
+    _write_direct_job_progress(task_id, 5, "Starting discovery...")
+    try:
+        from src.services.video_discovery_service import VideoDiscoveryService
+
+        discovery_service = VideoDiscoveryService()
+        if artist_id:
+            logger.info(f"Direct discovery started for artist {artist_id}")
+            _write_direct_job_progress(
+                task_id, 20, f"Discovering videos for artist {artist_id}..."
+            )
+            await asyncio.to_thread(
+                discovery_service.discover_videos_for_artist, artist_id
+            )
+        else:
+            logger.info("Direct discovery started for all artists")
+            _write_direct_job_progress(
+                task_id, 20, "Discovering videos for all artists..."
+            )
+            await asyncio.to_thread(discovery_service.discover_videos_for_all_artists)
+        _write_direct_job_progress(
+            task_id, 100, "Discovery completed", status="SUCCESS"
+        )
+        logger.info("Direct discovery completed")
+    except Exception as e:
+        logger.error(f"Direct discovery failed: {e}")
+        _write_direct_job_progress(
+            task_id, 0, f"Discovery failed: {e}", status="FAILURE"
+        )
+
+
+async def _run_downloads_direct(task_id: str = "") -> None:
+    """Fallback: run downloads directly without Celery"""
+    _write_direct_job_progress(task_id, 5, "Starting download processing...")
+    try:
+        from src.services.video_batch_service import download_all_wanted_videos_internal
+
+        logger.info("Direct download processing started")
+        _write_direct_job_progress(task_id, 20, "Processing wanted videos...")
+        await asyncio.to_thread(download_all_wanted_videos_internal)
+        _write_direct_job_progress(
+            task_id, 100, "Download processing completed", status="SUCCESS"
+        )
+        logger.info("Direct download processing completed")
+    except Exception as e:
+        logger.error(f"Direct download processing failed: {e}")
+        _write_direct_job_progress(
+            task_id, 0, f"Download processing failed: {e}", status="FAILURE"
+        )
 
 
 @router.get("/jobs", response_model=JobHistoryResponse)

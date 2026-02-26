@@ -669,16 +669,30 @@ class VideoDiscoveryService:
 
             existing = session.query(Video).filter(*filters).first()
 
-            if existing:
-                logger.debug(
-                    f"Video already exists (ID: {existing.id}): {video_data.get('title')}"
-                )
-                return
-
-            # Get artist name for title cleaning
+            # Get artist name for title cleaning (needed for both existing and new videos)
             from src.database.models import Artist
 
             artist = session.query(Artist).filter(Artist.id == artist_id).first()
+
+            if existing:
+                # If the video exists as MONITORED but the artist now has auto_download
+                # enabled, promote it to WANTED so it gets picked up by the downloader.
+                if (
+                    artist
+                    and artist.auto_download
+                    and existing.status == VideoStatus.MONITORED
+                ):
+                    existing.status = VideoStatus.WANTED
+                    session.commit()
+                    logger.info(
+                        f"Promoted video '{existing.title}' (ID: {existing.id}) "
+                        f"from MONITORED to WANTED (artist auto_download enabled)"
+                    )
+                else:
+                    logger.debug(
+                        f"Video already exists (ID: {existing.id}): {video_data.get('title')}"
+                    )
+                return
             artist_name = artist.name if artist else ""
 
             # Create new video record with 'wanted' status
@@ -710,6 +724,11 @@ class VideoDiscoveryService:
 
             # Detect video type from title and metadata (Issue #191)
             detected_video_type = VideoTypeDetector.detect_from_metadata(video_data)
+            # Plain "Artist - Song" titles produce no type signals and return None.
+            # Default these to official_music_video so they aren't silently dropped
+            # when an artist has allowed_video_types configured.
+            if detected_video_type is None:
+                detected_video_type = "official_music_video"
 
             # Check if video type matches artist's allowed types (Issue #191)
             if artist and artist.allowed_video_types:
