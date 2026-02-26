@@ -669,16 +669,30 @@ class VideoDiscoveryService:
 
             existing = session.query(Video).filter(*filters).first()
 
-            if existing:
-                logger.debug(
-                    f"Video already exists (ID: {existing.id}): {video_data.get('title')}"
-                )
-                return
-
-            # Get artist name for title cleaning
+            # Get artist name for title cleaning (needed for both existing and new videos)
             from src.database.models import Artist
 
             artist = session.query(Artist).filter(Artist.id == artist_id).first()
+
+            if existing:
+                # If the video exists as MONITORED but the artist now has auto_download
+                # enabled, promote it to WANTED so it gets picked up by the downloader.
+                if (
+                    artist
+                    and artist.auto_download
+                    and existing.status == VideoStatus.MONITORED
+                ):
+                    existing.status = VideoStatus.WANTED
+                    session.commit()
+                    logger.info(
+                        f"Promoted video '{existing.title}' (ID: {existing.id}) "
+                        f"from MONITORED to WANTED (artist auto_download enabled)"
+                    )
+                else:
+                    logger.debug(
+                        f"Video already exists (ID: {existing.id}): {video_data.get('title')}"
+                    )
+                return
             artist_name = artist.name if artist else ""
 
             # Create new video record with 'wanted' status
