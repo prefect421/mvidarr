@@ -710,6 +710,11 @@ class VideoDiscoveryService:
 
             # Detect video type from title and metadata (Issue #191)
             detected_video_type = VideoTypeDetector.detect_from_metadata(video_data)
+            # Plain "Artist - Song" titles produce no type signals and return None.
+            # Default these to official_music_video so they aren't silently dropped
+            # when an artist has allowed_video_types configured.
+            if detected_video_type is None:
+                detected_video_type = "official_music_video"
 
             # Check if video type matches artist's allowed types (Issue #191)
             if artist and artist.allowed_video_types:

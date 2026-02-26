@@ -311,8 +311,17 @@ def get_wanted_videos_for_download(limit: int = 50) -> List[Dict]:
             )
 
             # Filter by artist download_enabled if field exists (Scheduler V2)
+            # Treat NULL as True — pre-Scheduler-V2 artists have no value set
+            # and should still be eligible for downloads
             if hasattr(Artist, "download_enabled"):
-                query = query.filter(Artist.download_enabled == True)
+                from sqlalchemy import or_
+
+                query = query.filter(
+                    or_(
+                        Artist.download_enabled == True,
+                        Artist.download_enabled.is_(None),
+                    )
+                )
 
             # Order by priority (Scheduler V2 enhancement)
             if hasattr(Artist, "schedule_priority"):
