@@ -327,6 +327,27 @@ async def create_admin_user(
                     user_id = created_user.id
                     username = created_user.username
 
+                    # Sync wizard credentials into SimpleAuth settings so the
+                    # login form uses the user's chosen username and password,
+                    # not the default admin/mvidarr that init_db wrote on first run.
+                    try:
+                        import bcrypt
+
+                        from src.services.settings_service import SettingsService
+
+                        password_hash = bcrypt.hashpw(
+                            request.password.encode(), bcrypt.gensalt()
+                        ).decode()
+                        SettingsService.set("simple_auth_username", username)
+                        SettingsService.set("simple_auth_password", password_hash)
+                        logger.info(
+                            f"✅ SimpleAuth credentials synced for wizard user: {username}"
+                        )
+                    except Exception as sync_err:
+                        logger.error(
+                            f"Failed to sync SimpleAuth credentials: {sync_err}"
+                        )
+
                     logger.info(
                         f"✅ First admin user created during wizard: {username}"
                     )
