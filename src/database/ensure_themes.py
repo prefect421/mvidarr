@@ -119,8 +119,7 @@ def ensure_builtin_themes_exist():
                     continue
 
                 connection.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO custom_themes (
                             name, display_name, description, created_by,
                             is_public, is_built_in, theme_data,
@@ -130,8 +129,7 @@ def ensure_builtin_themes_exist():
                             1, 1, :theme_data,
                             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                         )
-                    """
-                    ),
+                    """),
                     {
                         "name": theme["name"],
                         "display_name": theme["display_name"],

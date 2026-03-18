@@ -225,22 +225,7 @@ async def get_version_info():
             "git_branch": "unknown",
         }
 
-        # Use async subprocess utilities for git commands (non-blocking)
-        try:
-            git_commit = await get_git_version()
-            if git_commit:
-                version_info["git_commit"] = git_commit
-        except Exception as e:
-            logger.debug(f"Could not get git commit: {e}")
-
-        try:
-            git_branch = await get_git_branch()
-            if git_branch:
-                version_info["git_branch"] = git_branch
-        except Exception as e:
-            logger.debug(f"Could not get git branch: {e}")
-
-        # Try to read version.json as fallback
+        # Read version.json first — baked in at build time, works in all environments
         try:
             version_json_path = (
                 Path(__file__).parent.parent.parent.parent / "version.json"
@@ -248,12 +233,32 @@ async def get_version_info():
             if version_json_path.exists():
                 with open(version_json_path) as f:
                     version_data = json.load(f)
-                    if version_info["git_commit"] == "unknown":
-                        version_info["git_commit"] = version_data.get(
-                            "git_commit", "unknown"
-                        )
+                    version_info["git_commit"] = version_data.get(
+                        "git_commit", "unknown"
+                    )
+                    version_info["git_branch"] = version_data.get(
+                        "git_branch", "unknown"
+                    )
         except Exception as e:
             logger.debug(f"Could not read version.json: {e}")
+
+        # Fall back to live git commands only if version.json didn't provide the info
+        # (not available in Docker — git binary is not installed in the image)
+        if version_info["git_commit"] == "unknown":
+            try:
+                git_commit = await get_git_version()
+                if git_commit:
+                    version_info["git_commit"] = git_commit
+            except Exception as e:
+                logger.debug(f"Could not get git commit: {e}")
+
+        if version_info["git_branch"] == "unknown":
+            try:
+                git_branch = await get_git_branch()
+                if git_branch:
+                    version_info["git_branch"] = git_branch
+            except Exception as e:
+                logger.debug(f"Could not get git branch: {e}")
 
         return VersionInfoResponse(**version_info)
 

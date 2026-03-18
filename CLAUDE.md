@@ -41,17 +41,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Code Formatting and Testing
 
 ### Python Code Formatting
-- **Black Version**: Always use `black==24.3.0` to match the version pinned in `requirements-dev.txt`
+- **Black Version**: Always use `black==26.3.1` to match the version pinned in `requirements-dev.txt`
 - **isort Configuration**: Use `isort --profile black` for import sorting to maintain compatibility with Black
-- **Installation**: Use `pipx install black==24.3.0` and `pipx install isort`
+- **Installation**: Use `pipx install black==26.3.1` and `pipx install isort`
 - **Commands for formatting**:
   ```bash
   # Format with specific black version
   ~/.local/bin/black src/
-  
-  # Sort imports with black profile  
+
+  # Sort imports with black profile
   ~/.local/bin/isort --profile black src/
-  
+
   # Check formatting (for CI compatibility)
   ~/.local/bin/black --check src/
   ~/.local/bin/isort --profile black --check-only src/
@@ -491,8 +491,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.3 (2026-02-16)
-- **Next Release**: Version 0.12.4 (Planning)
+- **Current Release**: Version 0.12.4 (2026-02-26)
+- **Next Release**: Version 0.12.5 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
@@ -636,17 +636,17 @@ semgrep --config=p/owasp-top-ten src/
 semgrep --config=p/security-audit --config=p/secrets --config=p/owasp-top-ten src/
 ```
 
-### Security Infrastructure Status: Enterprise-Grade ✅
+### Security Infrastructure Status ✅
 
 **Comprehensive Coverage:**
 - ✅ **8 Automated Security Workflows** covering all attack vectors
-- ✅ **Zero Known Vulnerabilities** - All 17 original issues resolved  
+- ✅ **Zero Known Vulnerabilities** - All 17 original issues resolved
 - ✅ **Multi-Framework Compliance** - OWASP, CIS, NIST alignment
 - ✅ **Automated Incident Response** - Multi-tier threat response capability
 - ✅ **Policy Enforcement** - Real-time security policy validation
-- ✅ **Enterprise Security Operations** - Continuous monitoring and assessment
+- ✅ **Continuous Security Monitoring** - Automated assessment and reporting
 
-**Security Posture:** MVidarr now exceeds industry security standards with enterprise-level automated security operations, continuous compliance monitoring, and comprehensive threat detection and response capabilities.
+**Security Posture:** MVidarr has robust, automated security operations with continuous compliance monitoring and comprehensive threat detection appropriate for a self-hosted application.
 
 ## GitHub Pages Management
 

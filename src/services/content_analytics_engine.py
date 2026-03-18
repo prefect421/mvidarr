@@ -378,7 +378,7 @@ _content_analytics_engine: Optional[ContentAnalyticsEngine] = None
 
 
 async def get_content_analytics_engine(
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = None,
 ) -> ContentAnalyticsEngine:
     """Get or create global content analytics engine instance"""
     global _content_analytics_engine

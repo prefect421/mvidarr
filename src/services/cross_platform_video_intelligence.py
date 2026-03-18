@@ -711,7 +711,7 @@ _cross_platform_intelligence_service: Optional[CrossPlatformVideoIntelligence] =
 
 
 async def get_cross_platform_video_intelligence(
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = None,
 ) -> CrossPlatformVideoIntelligence:
     """Get or create global cross-platform video intelligence service instance"""
     global _cross_platform_intelligence_service

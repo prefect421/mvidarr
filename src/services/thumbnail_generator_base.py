@@ -248,7 +248,9 @@ class ConcurrentThumbnailGenerator:
         total_jobs = len(jobs)
         results = []
 
-        logger.info(f"🖼️ Generating {total_jobs} thumbnails using concurrent processing")
+        logger.info(
+            f"🖼️ Generating {total_jobs} thumbnails using concurrent processing"
+        )
 
         # Execute jobs concurrently
         completed = 0

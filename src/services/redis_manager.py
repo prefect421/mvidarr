@@ -1,5 +1,5 @@
 """
-Simplified Redis Manager - Phase 3 Week 33 
+Simplified Redis Manager - Phase 3 Week 33
 Basic Redis operations for MVidarr caching system
 """
 

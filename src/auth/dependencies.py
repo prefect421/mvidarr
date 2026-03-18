@@ -76,7 +76,7 @@ async def get_current_user_optional(
 
 
 async def get_current_user(
-    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional),
 ) -> Dict[str, Any]:
     """
     Get current user from JWT token (required - raises 401 if not authenticated)
@@ -97,14 +97,14 @@ async def get_current_username(user: Dict[str, Any] = Depends(get_current_user))
 
 
 async def get_current_user_id(
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(get_current_user),
 ) -> Optional[int]:
     """Get current user's ID"""
     return user.get("user_id")
 
 
 async def require_admin(
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Require admin privileges (for single-user system, any authenticated user is admin)

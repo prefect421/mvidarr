@@ -28,23 +28,15 @@ class DatabasePerformanceOptimizer:
             # Optimizes: video search with status + title filtering
             try:
                 if self.dialect_name == "mysql":
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         CREATE INDEX IF NOT EXISTS idx_video_search_composite 
                         ON videos(status, title(100), artist_id)
-                    """
-                        )
-                    )
+                    """))
                 else:
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         CREATE INDEX IF NOT EXISTS idx_video_search_composite 
                         ON videos(status, title, artist_id)
-                    """
-                        )
-                    )
+                    """))
                 print("✅ Created composite search index for videos")
             except Exception as e:
                 print(f"⚠️ Search composite index already exists or failed: {e}")
@@ -53,60 +45,36 @@ class DatabasePerformanceOptimizer:
             try:
                 if self.dialect_name == "mysql":
                     # MySQL full-text indexes
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         CREATE FULLTEXT INDEX IF NOT EXISTS idx_video_title_fulltext 
                         ON videos(title)
-                    """
-                        )
-                    )
-                    conn.execute(
-                        text(
-                            """
+                    """))
+                    conn.execute(text("""
                         CREATE FULLTEXT INDEX IF NOT EXISTS idx_artist_name_fulltext 
                         ON artists(name)
-                    """
-                        )
-                    )
+                    """))
                     print("✅ Created MySQL full-text search indexes")
                 elif self.dialect_name == "postgresql":
                     # PostgreSQL GIN indexes for text search
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         CREATE INDEX IF NOT EXISTS idx_video_title_gin 
                         ON videos USING gin(to_tsvector('english', title))
-                    """
-                        )
-                    )
-                    conn.execute(
-                        text(
-                            """
+                    """))
+                    conn.execute(text("""
                         CREATE INDEX IF NOT EXISTS idx_artist_name_gin 
                         ON artists USING gin(to_tsvector('english', name))
-                    """
-                        )
-                    )
+                    """))
                     print("✅ Created PostgreSQL GIN text search indexes")
                 else:
                     # SQLite - use trigram-like approach with expression index
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         CREATE INDEX IF NOT EXISTS idx_video_title_lower 
                         ON videos(LOWER(title))
-                    """
-                        )
-                    )
-                    conn.execute(
-                        text(
-                            """
+                    """))
+                    conn.execute(text("""
                         CREATE INDEX IF NOT EXISTS idx_artist_name_lower 
                         ON artists(LOWER(name))
-                    """
-                        )
-                    )
+                    """))
                     print("✅ Created SQLite case-insensitive indexes")
             except Exception as e:
                 print(f"⚠️ Full-text indexes failed or already exist: {e}")
@@ -115,24 +83,16 @@ class DatabasePerformanceOptimizer:
             try:
                 if self.dialect_name == "mysql":
                     # MySQL JSON index
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         CREATE INDEX IF NOT EXISTS idx_video_genres_json 
                         ON videos((CAST(genres AS CHAR(255) ARRAY)))
-                    """
-                        )
-                    )
+                    """))
                 elif self.dialect_name == "postgresql":
                     # PostgreSQL JSON GIN index
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         CREATE INDEX IF NOT EXISTS idx_video_genres_gin 
                         ON videos USING gin(genres)
-                    """
-                        )
-                    )
+                    """))
                 else:
                     # SQLite - basic JSON support
                     pass
@@ -142,14 +102,10 @@ class DatabasePerformanceOptimizer:
 
             # 4. Composite index for artist listing with video counts
             try:
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE INDEX IF NOT EXISTS idx_artist_monitoring_composite 
                     ON artists(monitored, name, created_at)
-                """
-                    )
-                )
+                """))
                 print("✅ Created artist monitoring composite index")
             except Exception as e:
                 print(f"⚠️ Artist composite index failed: {e}")
@@ -157,34 +113,22 @@ class DatabasePerformanceOptimizer:
             # 5. Video filtering composite indexes
             try:
                 # Status + quality filtering
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE INDEX IF NOT EXISTS idx_video_status_quality 
                     ON videos(status, quality)
-                """
-                    )
-                )
+                """))
 
                 # Source + status filtering
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE INDEX IF NOT EXISTS idx_video_source_status 
                     ON videos(source, status)
-                """
-                    )
-                )
+                """))
 
                 # Date range filtering
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE INDEX IF NOT EXISTS idx_video_created_status 
                     ON videos(created_at, status)
-                """
-                    )
-                )
+                """))
 
                 print("✅ Created video filtering composite indexes")
             except Exception as e:
@@ -192,14 +136,10 @@ class DatabasePerformanceOptimizer:
 
             # 6. Download queue optimization
             try:
-                conn.execute(
-                    text(
-                        """
+                conn.execute(text("""
                     CREATE INDEX IF NOT EXISTS idx_download_queue_composite 
                     ON downloads(status, priority, created_at)
-                """
-                    )
-                )
+                """))
                 print("✅ Created download queue composite index")
             except Exception as e:
                 print(f"⚠️ Download queue index failed: {e}")
@@ -463,9 +403,7 @@ class DatabasePerformanceOptimizer:
             try:
                 if self.dialect_name == "postgresql":
                     # PostgreSQL materialized view
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         CREATE MATERIALIZED VIEW IF NOT EXISTS artist_video_counts AS
                         SELECT 
                             a.id as artist_id,
@@ -486,16 +424,12 @@ class DatabasePerformanceOptimizer:
                         
                         CREATE UNIQUE INDEX IF NOT EXISTS idx_artist_counts_id 
                         ON artist_video_counts(artist_id);
-                    """
-                        )
-                    )
+                    """))
                     print("✅ Created PostgreSQL materialized view for artist counts")
 
                 elif self.dialect_name == "mysql":
                     # MySQL doesn't have materialized views, create a regular table
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS artist_video_counts (
                             artist_id INT PRIMARY KEY,
                             name VARCHAR(255),
@@ -506,9 +440,7 @@ class DatabasePerformanceOptimizer:
                             INDEX idx_artist_counts_monitored (monitored),
                             INDEX idx_artist_counts_video_count (video_count)
                         );
-                    """
-                        )
-                    )
+                    """))
                     print("✅ Created MySQL table for artist counts cache")
 
                 conn.commit()
@@ -527,9 +459,7 @@ class DatabasePerformanceOptimizer:
 
                 elif self.dialect_name == "mysql":
                     # Refresh MySQL cache table
-                    conn.execute(
-                        text(
-                            """
+                    conn.execute(text("""
                         REPLACE INTO artist_video_counts (artist_id, name, monitored, video_count, downloaded_count)
                         SELECT 
                             a.id,
@@ -547,9 +477,7 @@ class DatabasePerformanceOptimizer:
                             WHERE status IN ('DOWNLOADED', 'WANTED', 'DOWNLOADING')
                             GROUP BY artist_id
                         ) v ON a.id = v.artist_id;
-                    """
-                        )
-                    )
+                    """))
                     print("✅ Refreshed MySQL artist counts cache")
 
                 conn.commit()
@@ -676,9 +604,7 @@ class DatabasePerformanceOptimizer:
             try:
                 if self.dialect_name == "mysql":
                     # Enable query logging temporarily
-                    result = conn.execute(
-                        text(
-                            """
+                    result = conn.execute(text("""
                         SELECT 
                             sql_text,
                             exec_count,
@@ -688,9 +614,7 @@ class DatabasePerformanceOptimizer:
                         WHERE schema_name = DATABASE()
                         ORDER BY sum_timer_wait DESC 
                         LIMIT 10;
-                    """
-                        )
-                    )
+                    """))
 
                     print("🔍 Top 10 slowest MySQL queries:")
                     for row in result:
@@ -700,17 +624,13 @@ class DatabasePerformanceOptimizer:
 
                 elif self.dialect_name == "postgresql":
                     # Check if pg_stat_statements is enabled
-                    result = conn.execute(
-                        text(
-                            """
+                    result = conn.execute(text("""
                         SELECT query, calls, mean_exec_time, total_exec_time
                         FROM pg_stat_statements 
                         WHERE query LIKE '%videos%' OR query LIKE '%artists%'
                         ORDER BY total_exec_time DESC 
                         LIMIT 10;
-                    """
-                        )
-                    )
+                    """))
 
                     print("🔍 Top 10 slowest PostgreSQL queries:")
                     for row in result:

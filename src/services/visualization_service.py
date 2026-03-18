@@ -1,6 +1,6 @@
 """
 Visualization Service - Phase 3 Week 36
-Chart generation and data visualization for monitoring dashboard  
+Chart generation and data visualization for monitoring dashboard
 """
 
 import statistics

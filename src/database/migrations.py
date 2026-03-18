@@ -483,18 +483,14 @@ class MigrationManager:
     def ensure_migrations_table(self, connection):
         """Create migrations table if it doesn't exist"""
         try:
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE IF NOT EXISTS database_migrations (
                     version VARCHAR(10) PRIMARY KEY,
                     description VARCHAR(255) NOT NULL,
                     applied_at DATETIME NOT NULL,
                     applied_by VARCHAR(100) DEFAULT 'system'
                 )
-                """
-                )
-            )
+                """))
             logger.debug("Migrations table ensured")
         except Exception as e:
             logger.error(f"Failed to create migrations table: {e}")
@@ -526,12 +522,10 @@ class MigrationManager:
 
             # Record the migration as applied
             connection.execute(
-                text(
-                    """
+                text("""
                 INSERT INTO database_migrations (version, description, applied_at)
                 VALUES (:version, :description, :applied_at)
-                """
-                ),
+                """),
                 {
                     "version": migration.version,
                     "description": migration.description,

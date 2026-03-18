@@ -1120,7 +1120,7 @@ _advanced_dashboard_system: Optional[AdvancedDashboardSystem] = None
 
 
 async def get_advanced_dashboard_system(
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = None,
 ) -> AdvancedDashboardSystem:
     """Get or create global advanced dashboard system instance"""
     global _advanced_dashboard_system

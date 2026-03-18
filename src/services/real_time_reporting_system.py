@@ -452,7 +452,7 @@ _real_time_reporting_system: Optional[RealTimeReportingSystem] = None
 
 
 async def get_real_time_reporting_system(
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = None,
 ) -> RealTimeReportingSystem:
     """Get or create global real-time reporting system instance"""
     global _real_time_reporting_system

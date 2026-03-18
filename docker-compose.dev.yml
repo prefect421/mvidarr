@@ -1,0 +1,124 @@
+# MVidarr - Dev Docker Compose
+# Builds from local source, runs on port 5001
+# Source code mounted as volume — edits reflect without full rebuilds (Python files only)
+
+services:
+  mvidarr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mvidarr-dev
+    ports:
+      - "5001:5000"
+    environment:
+      # Database Configuration
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-mvidarr_dev}
+
+      # Application Security
+      - SECRET_KEY=${SECRET_KEY}
+      - MVIDARR_SECRET_KEY=${SECRET_KEY}
+
+      # Optional API Keys
+      - IMVDB_API_KEY=${IMVDB_API_KEY:-}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-}
+
+      # Application Settings
+      - DEBUG=true
+      - PYTHONUNBUFFERED=1
+      - TZ=${TZ:-America/Chicago}
+      - FLASK_ENV=development
+
+      # User/Group IDs
+      - PUID=1000
+      - PGID=1000
+
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-mvidarr_dev_redis}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-mvidarr_dev_redis}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-mvidarr_dev_redis}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-mvidarr_dev_redis}@redis:6379/1
+
+      # Background Jobs
+      - BACKGROUND_JOBS_ENABLED=true
+      - JOB_SYSTEM_ENABLED=true
+      - JOB_WORKER_COUNT=2
+    volumes:
+      # Source code — mount for live Python edits (requires app restart, not rebuild)
+      - ./src:/app/src
+      - ./version.json:/app/version.json
+      # Persistent data
+      - ./data/musicvideos:/app/data/musicvideos
+      - ./data/downloads:/app/data/downloads
+      - ./data/thumbnails:/app/data/thumbnails
+      - ./data/database:/app/data/database
+      - ./data/logs:/app/data/logs
+      - ./data/cache:/app/data/cache
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    networks:
+      - mvidarr-dev
+
+  mariadb:
+    image: mariadb:11.4
+    container_name: mvidarr-dev-mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME:-mvidarr_dev}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+      - TZ=${TZ:-America/Chicago}
+    volumes:
+      - mariadb_dev_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - mvidarr-dev
+
+  redis:
+    image: redis:7-alpine
+    container_name: mvidarr-dev-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-mvidarr_dev_redis}
+    volumes:
+      - redis_dev_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-mvidarr_dev_redis}", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - mvidarr-dev
+
+volumes:
+  mariadb_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  mvidarr-dev:
+    driver: bridge
