@@ -106,13 +106,11 @@ class AsyncArtistService(AsyncBaseService):
         try:
             async with self.get_session() as session:
                 # Insert new tracked artist
-                query = text(
-                    """
+                query = text("""
                     INSERT INTO tracked_artists 
                     (user_id, artist_name, search_terms, auto_download, videos_found) 
                     VALUES (:user_id, :artist_name, :search_terms, :auto_download, :videos_found)
-                """
-                )
+                """)
 
                 await session.execute(
                     query,
@@ -126,13 +124,11 @@ class AsyncArtistService(AsyncBaseService):
                 )
 
                 # Get the newly created artist
-                select_query = text(
-                    """
+                select_query = text("""
                     SELECT * FROM tracked_artists 
                     WHERE user_id = :user_id AND artist_name = :artist_name
                     ORDER BY created_at DESC LIMIT 1
-                """
-                )
+                """)
 
                 result = await session.execute(
                     select_query, {"user_id": user_id, "artist_name": artist_name}

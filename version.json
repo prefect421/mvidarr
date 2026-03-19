@@ -1,9 +1,9 @@
 {
-  "version": "0.12.4",
-  "build_date": "2026-02-26T15:55:52.092114",
-  "git_commit": "4b0e04f",
+  "version": "0.12.5",
+  "build_date": "2026-03-19T00:00:00.000000",
+  "git_commit": "05e24c88",
   "git_branch": "dev",
-  "release_name": "v0.12.4 - Auto-Download & Scheduler Fixes",
+  "release_name": "v0.12.5 - Security & Bug Fixes",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
@@ -24,22 +24,13 @@
     "Enhanced Database Initialization with secure admin user creation"
   ],
   "changes": [
-    "Security: replaced python-jose/ecdsa (CVE-2024-23342) with PyJWT",
-    "Security: fixed os.popen shell call in security_assessment (B605)",
-    "Security: CVE-2026-27205 Flask 3.1.1→3.1.3 in docker/monitor (Vary: Cookie header)",
-    "Fix: Celery connection check no longer hangs - added 2s timeout + ps fallback",
-    "Fix: trigger/discovery and trigger/downloads no longer 500 - wrapped in asyncio.to_thread",
-    "Fix: metadata enrichment endpoints no longer block event loop on Celery calls",
-    "Fix: job progress bar stuck at 0% - nested progress object now correctly parsed",
-    "Fix: job completion not detected - status normalized to lowercase before comparison",
-    "Fix: auto-download scheduling priority was computed but then ignored entirely",
-    "Fix: auto_download_max_videos raised from 10 to 50",
-    "Fix: pre-v0.10.1 artists with NULL download_enabled excluded from download queue",
-    "Fix: MONITORED videos never promoted to WANTED when artist auto_download enabled",
-    "Fix: unclassified video types (plain Artist - Song titles) blocked by allowed_video_types filter",
-    "Migration 004: backfill NULL Scheduler V2 fields for all existing artists",
-    "Fix: videos no longer set to WANTED for monitor-only artists",
-    "Fix: allowed_video_types and 20+ other artist settings now save correctly",
-    "Default: Official Music Video pre-selected for all artists"
+    "Security: CVE-2026-32597 PyJWT 2.8.0 → 2.12.0 (crit header validation)",
+    "Security: CVE-2026-32274 black 24.3.0 → 26.3.1 (arbitrary cache file write)",
+    "Security: removed black from runtime requirements (dev tool only)",
+    "Fix: Docker git_branch always unknown - version.json now read first in health endpoint",
+    "Fix: Docker ERROR log spam from missing git binary on every health check",
+    "Fix: installation wizard credentials now applied to login (admin/mvidarr no longer overrides)",
+    "CI/CD: pinned black==26.3.1 in workflow",
+    "Dev: added docker-compose.dev.yml for local Docker dev environment on port 5001"
   ]
 }

@@ -688,7 +688,7 @@ _music_recommendation_service: Optional[MusicRecommendationService] = None
 
 
 async def get_music_recommendation_service(
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = None,
 ) -> MusicRecommendationService:
     """Get or create global music recommendation service instance"""
     global _music_recommendation_service

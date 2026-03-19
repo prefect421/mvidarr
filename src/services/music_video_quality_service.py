@@ -819,7 +819,7 @@ _music_video_quality_service: Optional[MusicVideoQualityService] = None
 
 
 async def get_music_video_quality_service(
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = None,
 ) -> MusicVideoQualityService:
     """Get or create global music video quality service instance"""
     global _music_video_quality_service

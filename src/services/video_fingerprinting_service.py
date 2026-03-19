@@ -700,7 +700,7 @@ _video_fingerprinting_service: Optional[VideoFingerprintingService] = None
 
 
 async def get_video_fingerprinting_service(
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = None,
 ) -> VideoFingerprintingService:
     """Get or create global video fingerprinting service instance"""
     global _video_fingerprinting_service

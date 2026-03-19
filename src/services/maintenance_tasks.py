@@ -111,14 +111,12 @@ def optimize_database() -> Dict:
         results = []
         with get_db() as session:
             # Get all MVidarr tables
-            tables_query = text(
-                """
+            tables_query = text("""
                 SELECT table_name
                 FROM information_schema.tables
                 WHERE table_schema = DATABASE()
                 AND table_type = 'BASE TABLE'
-            """
-            )
+            """)
             tables = session.execute(tables_query).fetchall()
 
             # Optimize each table

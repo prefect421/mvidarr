@@ -1,5 +1,5 @@
 """
-Analytics Middleware - Phase 3 Week 36  
+Analytics Middleware - Phase 3 Week 36
 Automatic metrics collection from requests for monitoring dashboard
 """
 

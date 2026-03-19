@@ -859,7 +859,7 @@ _user_behavior_analytics: Optional[UserBehaviorAnalytics] = None
 
 
 async def get_user_behavior_analytics(
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = None,
 ) -> UserBehaviorAnalytics:
     """Get or create global user behavior analytics service instance"""
     global _user_behavior_analytics

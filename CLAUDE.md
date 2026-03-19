@@ -41,17 +41,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Code Formatting and Testing
 
 ### Python Code Formatting
-- **Black Version**: Always use `black==24.3.0` to match the version pinned in `requirements-dev.txt`
+- **Black Version**: Always use `black==26.3.1` to match the version pinned in `requirements-dev.txt`
 - **isort Configuration**: Use `isort --profile black` for import sorting to maintain compatibility with Black
-- **Installation**: Use `pipx install black==24.3.0` and `pipx install isort`
+- **Installation**: Use `pipx install black==26.3.1` and `pipx install isort`
 - **Commands for formatting**:
   ```bash
   # Format with specific black version
   ~/.local/bin/black src/
-  
-  # Sort imports with black profile  
+
+  # Sort imports with black profile
   ~/.local/bin/isort --profile black src/
-  
+
   # Check formatting (for CI compatibility)
   ~/.local/bin/black --check src/
   ~/.local/bin/isort --profile black --check-only src/
@@ -214,17 +214,25 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.4 - Released
+### Current Phase: v0.12.5 - Released
 
-#### Versioning Policy (Updated 2026-02-26)
-- **Current Version**: 0.12.4 (Released 2026-02-26)
-- **Next Version**: 0.12.5 (Planning)
+#### Versioning Policy (Updated 2026-03-19)
+- **Current Version**: 0.12.5 (Released 2026-03-19)
+- **Next Version**: 0.12.6 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.5** (2026-03-19): Security & Bug Fixes
+  - ✅ Security: CVE-2026-32597 PyJWT 2.8.0 → 2.12.0 (crit header validation)
+  - ✅ Security: CVE-2026-32274 black 24.3.0 → 26.3.1 (arbitrary cache file write)
+  - ✅ Security: removed black from runtime requirements (dev tool only)
+  - ✅ Fix: Docker git_branch always unknown — version.json now read first in health endpoint
+  - ✅ Fix: Docker ERROR log spam from missing git binary on every health check
+  - ✅ Fix: installation wizard credentials now applied to login (issue #199)
+  - ✅ CI/CD: pinned black==26.3.1 in workflow
 - **v0.12.4** (2026-02-26): Scheduler & Auto-Download Fixes
   - ✅ Security: CVE-2026-27205 Flask 3.1.1→3.1.3 in docker/monitor (Vary: Cookie)
   - ✅ Security: CVE-2026-27199 werkzeug→3.1.6 (Windows device names in safe_join)
@@ -392,9 +400,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.4 (Scheduler & Auto-Download Fixes)
-- **Development Focus**: Stability, performance
-- **Next Version**: v0.12.5
+- **Current Version**: v0.12.5 (Security & Bug Fixes)
+- **Development Focus**: Stability, security
+- **Next Version**: v0.12.6
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -491,8 +499,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.3 (2026-02-16)
-- **Next Release**: Version 0.12.4 (Planning)
+- **Current Release**: Version 0.12.5 (2026-03-19)
+- **Next Release**: Version 0.12.6 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
@@ -636,17 +644,17 @@ semgrep --config=p/owasp-top-ten src/
 semgrep --config=p/security-audit --config=p/secrets --config=p/owasp-top-ten src/
 ```
 
-### Security Infrastructure Status: Enterprise-Grade ✅
+### Security Infrastructure Status ✅
 
 **Comprehensive Coverage:**
 - ✅ **8 Automated Security Workflows** covering all attack vectors
-- ✅ **Zero Known Vulnerabilities** - All 17 original issues resolved  
+- ✅ **Zero Known Vulnerabilities** - All 17 original issues resolved
 - ✅ **Multi-Framework Compliance** - OWASP, CIS, NIST alignment
 - ✅ **Automated Incident Response** - Multi-tier threat response capability
 - ✅ **Policy Enforcement** - Real-time security policy validation
-- ✅ **Enterprise Security Operations** - Continuous monitoring and assessment
+- ✅ **Continuous Security Monitoring** - Automated assessment and reporting
 
-**Security Posture:** MVidarr now exceeds industry security standards with enterprise-level automated security operations, continuous compliance monitoring, and comprehensive threat detection and response capabilities.
+**Security Posture:** MVidarr has robust, automated security operations with continuous compliance monitoring and comprehensive threat detection appropriate for a self-hosted application.
 
 ## GitHub Pages Management
 

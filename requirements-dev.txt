@@ -11,7 +11,7 @@ pytest-flask==1.3.0
 pytest-mock==3.12.0
 
 # Code Quality and Formatting
-black==24.3.0
+black==26.3.1  # Security: CVE-2026-32274 arbitrary file write fix
 flake8==6.1.0
 mypy==1.7.1
 bandit==1.7.5

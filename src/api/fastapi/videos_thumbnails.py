@@ -104,14 +104,32 @@ async def get_video_thumbnail(
 
                 cached_thumbnail = thumbnail_dir / f"{video_id}_cached{file_extension}"
 
-                # Download if not already cached
+                # Download if not already cached — try YouTube quality fallbacks
                 if not cached_thumbnail.exists():
-                    async with httpx.AsyncClient() as client:
-                        response = await client.get(video.thumbnail_url, timeout=10)
-                        response.raise_for_status()
+                    # Build candidate URL list: primary URL first, then YouTube fallbacks
+                    candidate_urls = [video.thumbnail_url]
+                    if video.youtube_id:
+                        yt_id = video.youtube_id
+                        for quality in ("maxresdefault", "hqdefault", "mqdefault"):
+                            fallback = (
+                                f"https://img.youtube.com/vi/{yt_id}/{quality}.jpg"
+                            )
+                            if fallback != video.thumbnail_url:
+                                candidate_urls.append(fallback)
 
-                        with open(cached_thumbnail, "wb") as f:
-                            f.write(response.content)
+                    async with httpx.AsyncClient() as client:
+                        for url in candidate_urls:
+                            try:
+                                response = await client.get(url, timeout=10)
+                                response.raise_for_status()
+                                with open(cached_thumbnail, "wb") as f:
+                                    f.write(response.content)
+                                break  # success
+                            except Exception:
+                                continue  # try next URL
+
+                if not cached_thumbnail.exists():
+                    raise RuntimeError("All thumbnail URL candidates failed")
 
                 # Update database with cached path
                 video.thumbnail_path = str(cached_thumbnail)

@@ -1,5 +1,5 @@
 """
-Collection Performance Service - Phase 4 Week 31  
+Collection Performance Service - Phase 4 Week 31
 Performance optimizations for large music video collections (10K+ videos)
 """
 
