@@ -72,6 +72,30 @@ def update_video_status_in_database(
                             f"🔄 Video queued for enhancement processing by metadata service"
                         )
 
+                        # Download thumbnail immediately after video download completes
+                        # so the video card never shows a placeholder for a downloaded video.
+                        if not video.thumbnail_path and video.thumbnail_url:
+                            try:
+                                from src.services.thumbnail_service import (
+                                    ThumbnailService,
+                                )
+
+                                artist_name = (
+                                    video.artist.name if video.artist else "Unknown"
+                                )
+                                thumb_path = ThumbnailService.download_video_thumbnail(
+                                    artist_name, video.title, video.thumbnail_url
+                                )
+                                if thumb_path:
+                                    video.thumbnail_path = thumb_path
+                                    logger.info(
+                                        f"✅ Thumbnail downloaded for video {video_id}: {thumb_path}"
+                                    )
+                            except Exception as thumb_err:
+                                logger.warning(
+                                    f"Could not download thumbnail for video {video_id}: {thumb_err}"
+                                )
+
                 session.commit()
                 logger.info(f"Updated video {video_id} status to {status} in database")
             else:
