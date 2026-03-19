@@ -22,21 +22,33 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.3 - Playlist Sync & Logging**
+## 🚀 **LATEST: v0.12.5 - Security & Bug Fixes**
 
-**Released**: February 16, 2026
+**Released**: March 19, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Playlist Sync Fixes ✅
-- **🎵 VEVO Name Cleanup**: YouTube channel suffixes (VEVO, Official, Music, etc.) stripped before artist lookup/creation
-- **📋 Celery Task Logging**: Scheduled task logs no longer silently dropped - all worker output now visible
-- **🔐 Authentication**: 36 API endpoints secured, global 401 interceptor added
-- **🛡️ Security Hardening**: 49 vulnerabilities fixed across v0.12.0-v0.12.3
+### Security Fixes ✅
+- **🔒 CVE-2026-32597**: PyJWT 2.8.0 → 2.12.0 — missing `crit` header validation (HIGH)
+- **🔒 CVE-2026-32274**: black 24.3.0 → 26.3.1 — arbitrary cache file write (HIGH)
 
-> **Upgrade Note**: Docker image rebuild required. Restart server after upgrade.
+### Bug Fixes ✅
+- **🐛 #197**: Docker containers no longer log `git not found` errors on every health check; `git_branch` now shown correctly in the sidebar
+- **🐛 #199**: Credentials set during the installation wizard are now used for login — default `admin`/`mvidarr` no longer overrides the wizard setup
+- **🐛 #200**: Thumbnails are now downloaded immediately when a video download completes — no more placeholder until the first page view; YouTube URL fallback chain added (`maxresdefault` → `hqdefault` → `mqdefault`)
+
+> **Upgrade Note**: No database migrations required. Docker image rebuild recommended.
 
 ## 🎯 Previous Releases
+
+### v0.12.4 - Scheduler & Auto-Download Fixes (February 26, 2026)
+- Auto-download scheduling priority fix, auto_download_max_videos raised from 10 to 50
+- Multiple security CVEs patched (Flask, werkzeug, Pillow, PyJWT)
+- Fixed allowed_video_types and 20+ artist settings not saving correctly
+
+### v0.12.3 - Playlist Sync & Logging (February 16, 2026)
+- VEVO/Official channel name cleanup during playlist sync
+- Celery worker logging fix, authentication added to 36 API endpoints
 
 ### v0.12.2 - Authentication & Stability (February 14, 2026)
 - **🔐 API Security**: Added authentication to 36 unprotected API endpoints across 6 files
