@@ -25,25 +25,20 @@ title: Home
 - **🔐 User Authentication** - Role-based access control with security features
 - **🌙 Dark/Light Themes** - Multiple theme options with automatic switching
 
-## 🚀 **NEW in v0.10.0-beta.1 - First Beta Release with Critical Fixes!**
+## 🚀 **LATEST: v0.12.5 - Security & Bug Fixes**
 
-**🔒 BETA RELEASE: Security & Stability Improvements**
+**Released**: March 19, 2026
 
-- **🐛 Chrome Fix** - Resolved STATUS_BREAKPOINT crash when seeking videos with subtitles
-- **🔒 Security Updates** - Fixed 10 critical vulnerabilities + FastAPI/Starlette DoS patches
-- **🐛 MariaDB Health Check** - Updated to use mariadb-admin instead of deprecated mysqladmin
-- **📚 Browser Compatibility** - Comprehensive guide for Chrome, Firefox, Safari, Edge support
-- **🔧 Installation Wizard** - Guided first-run setup with validation
-- **🎬 Video Import** - Reliable import system with duplicate detection
-- **📊 Performance Monitoring** - System health dashboard and diagnostics
-- **🐳 Docker Improvements** - Better health checks and container reliability
+> **Note**: Pre-production release following SemVer 0.x conventions. Feature-complete, undergoing testing before v1.0.0.
 
-### **v0.10.0-beta.1 Achievements:**
-- ✅ **Chrome Stability**: Fixed crash during video seeking with active subtitles
-- ✅ **Security**: 10 critical CVEs resolved, DoS vulnerability patches applied
-- ✅ **Documentation**: New browser compatibility guide and enhanced troubleshooting
-- ✅ **CI/CD**: Fixed security audit workflow with official Semgrep action
-- ✅ **Beta Testing**: Active development phase, production validation in progress
+### Security Fixes
+- **CVE-2026-32597**: PyJWT 2.8.0 → 2.12.0 — missing `crit` header validation (HIGH)
+- **CVE-2026-32274**: black 24.3.0 → 26.3.1 — arbitrary cache file write (HIGH)
+
+### Bug Fixes
+- **#197**: Docker containers no longer log `git not found` errors on every health check; `git_branch` now shown correctly in the sidebar
+- **#199**: Credentials set during the installation wizard are now used for login — default `admin`/`mvidarr` no longer overrides the wizard setup
+- **#200**: Thumbnails are now downloaded immediately when a video download completes; YouTube URL fallback chain added (`maxresdefault` → `hqdefault` → `mqdefault`)
 
 ## 🚀 Quick Start
 
@@ -52,21 +47,23 @@ title: Home
 ```bash
 git clone https://github.com/prefect421/mvidarr.git
 cd mvidarr
+cp .env.example .env  # edit with your settings
 docker-compose up -d
 ```
 
 **Production Docker Image:**
 ```bash
-# Use the latest beta release
-docker pull ghcr.io/prefect421/mvidarr:v0.10.0-beta.1
+# Latest release
+docker pull ghcr.io/prefect421/mvidarr:v0.12.5
 
-# Or use the latest tag (points to current beta)
+# Or always latest
 docker pull ghcr.io/prefect421/mvidarr:latest
 ```
 
 **Access the application:**
-- Open your browser to `http://localhost:5001`
+- Open your browser to `http://localhost:5000`
 - Default login: `admin` / `admin` (change immediately)
+- Complete the first-run setup wizard
 
 ## 🏗️ Architecture
 
@@ -86,4 +83,4 @@ This project is licensed under the MIT License - see the [LICENSE]({{ site.githu
 
 ---
 
-**MVidarr v{{ site.data.version.current | default: "0.10.0-beta.1" }}** - Built with ❤️ for music video enthusiasts
+**MVidarr v{{ site.data.version.current | default: "0.12.5" }}** - Built with ❤️ for music video enthusiasts

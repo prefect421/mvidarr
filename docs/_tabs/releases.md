@@ -8,23 +8,41 @@ order: 5
 
 Track MVidarr's development progress through our release history and upcoming milestones.
 
-## 🚀 Current Release: v0.12.3
+## 🚀 Current Release: v0.12.5
 
-**Released**: February 16, 2026
-**Focus**: Playlist Sync & Logging
+**Released**: March 19, 2026
+**Focus**: Security & Bug Fixes
 
-### Key Fixes
-- **🎵 VEVO Name Cleanup**: YouTube channel suffixes (VEVO, Official, Music, Records, etc.) automatically stripped during playlist sync to prevent duplicate artists
-- **📋 Celery Task Logging**: Scheduled task logs were silently dropped because worker process lacked logger configuration. Fixed via `after_setup_logger` signal
-- **🔐 Authentication**: 36 API endpoints secured with session-based auth
-- **🛡️ Security**: 49 vulnerabilities fixed across v0.12.0-v0.12.3 (bcrypt passwords, SSRF protection, secure cookies)
+### Security Fixes
+- **CVE-2026-32597**: PyJWT 2.8.0 → 2.12.0 — missing `crit` header validation (HIGH)
+- **CVE-2026-32274**: black 24.3.0 → 26.3.1 — arbitrary cache file write (HIGH)
 
-### Download v0.12.3
-- **[GitHub Release](https://github.com/prefect421/mvidarr/releases)** - Source code and installation packages
-- **[Docker Image](https://ghcr.io/prefect421/mvidarr:latest)** - Production-ready container
+### Bug Fixes
+- **#197**: Docker containers no longer log `git not found` errors on every health check; `git_branch` now shown correctly in the sidebar
+- **#199**: Credentials set during the installation wizard are now used for login — default `admin`/`mvidarr` no longer overrides the wizard setup
+- **#200**: Thumbnails downloaded immediately when a video download completes; YouTube URL fallback chain added (`maxresdefault` → `hqdefault` → `mqdefault`)
+
+### Download v0.12.5
+- **[GitHub Release](https://github.com/prefect421/mvidarr/releases/tag/v0.12.5)** - Source code and release notes
+- **Docker Image**: `docker pull ghcr.io/prefect421/mvidarr:v0.12.5`
 - **[Documentation](https://prefect421.github.io/mvidarr)** - Complete user and developer guides
 
+> No database migrations required. Docker image rebuild recommended.
+
 ## 📋 Recent Releases
+
+### v0.12.4 - Scheduler & Auto-Download Fixes
+**Released**: February 26, 2026
+
+- Auto-download scheduling priority fix, `auto_download_max_videos` raised from 10 to 50
+- Multiple security CVEs patched (Flask, werkzeug, Pillow, PyJWT)
+- Fixed `allowed_video_types` and 20+ artist settings not saving correctly
+
+### v0.12.3 - Playlist Sync & Logging
+**Released**: February 16, 2026
+
+- VEVO/Official channel name cleanup during playlist sync
+- Celery worker logging fix; authentication added to 36 API endpoints
 
 ### v0.12.2 - Authentication & Stability
 **Released**: February 14, 2026
@@ -93,9 +111,9 @@ Track MVidarr's development progress through our release history and upcoming mi
 ## 📊 Release Statistics
 
 ### Development Metrics
-- **Total Releases**: 15+ versions from v0.9.0 to v0.12.3
+- **Total Releases**: 16+ versions from v0.9.0 to v0.12.5
 - **Features Implemented**: 35+ comprehensive capabilities
-- **Security Fixes**: 60+ vulnerabilities resolved across all releases
+- **Security Fixes**: 62+ vulnerabilities resolved across all releases
 - **Docker Architecture**: Simplified 3-container deployment
 
 ## 🔗 Release Resources

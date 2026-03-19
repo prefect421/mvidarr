@@ -8,46 +8,56 @@ permalink: /releases/
 
 Track MVidarr's development progress through our release history and upcoming milestones.
 
-## 🚀 Current Release: v0.11.9
+## 🚀 Current Release: v0.12.5
 
-**Released**: February 5, 2026
-**Focus**: Security Updates, Video Quality & Discovery Fix
+**Released**: March 19, 2026
+**Focus**: Security & Bug Fixes
 
-### 🎉 What's New
+### Security Fixes ✅
+- **CVE-2026-32597**: PyJWT 2.8.0 → 2.12.0 — missing `crit` header validation (HIGH)
+- **CVE-2026-32274**: black 24.3.0 → 26.3.1 — arbitrary cache file write (HIGH)
+- Removed `black` from runtime `requirements.txt` (dev tool only)
 
-#### Security Updates ✅ (11 CVEs Fixed)
-Critical security vulnerabilities addressed through dependency updates:
-
-| Package | Update | CVE |
-|---------|--------|-----|
-| python-multipart | 0.0.20 → 0.0.22 | CVE-2026-24486 (path traversal) |
-| urllib3 | 2.6.0 → 2.6.3 | CVE-2026-21441 (decompression-bomb bypass) |
-| aiohttp | 3.12.14 → 3.13.3 | CVE-2025-69223/24/25/26/27/28/29/30 (zip bomb + DoS) |
-| werkzeug | 3.1.4 → 3.1.5 | CVE-2026-21860 (Windows device names bypass) |
-
-#### Video Quality Fix ✅
-- **Format Sorting**: Added `-S` flag to prioritize resolution over bitrate
-- **User Settings Respected**: Downloads now honor `max_video_quality` database setting
-- **TV Client Fallback**: Falls back to web client for more format options
-- **No More 360p**: Videos now download at the quality you expect
-
-#### YouTube Discovery Fix ✅
-- **API Key Caching Bug**: Fixed issue where empty API key was cached forever
-- **Settings Updates Work**: Changing YouTube API key in Settings now takes effect immediately
-- **Cache Invalidation**: Bumped cache version to clear stale empty results
+### Bug Fixes ✅
+- **#197**: Docker containers no longer log `git not found` errors on every health check; `git_branch` now shown correctly in the sidebar
+- **#199**: Credentials set during the installation wizard are now used for login — default `admin`/`mvidarr` no longer overrides the wizard setup
+- **#200**: Thumbnails downloaded immediately when a video download completes; YouTube URL fallback chain added (`maxresdefault` → `hqdefault` → `mqdefault`)
 
 ### Upgrade Notes
-- Docker image rebuild required for security updates
-- Restart required for discovery fix to take effect
-- Video downloads will now respect format sorting for better quality
+- No database migrations required
+- Docker image rebuild recommended
 
 ### Docker Image
 ```bash
-docker pull ghcr.io/prefect421/mvidarr:v0.11.9
+docker pull ghcr.io/prefect421/mvidarr:v0.12.5
 docker pull ghcr.io/prefect421/mvidarr:latest
 ```
 
-**Git Commit**: `26511da` | **Build**: 2026-02-05
+**Git Commit**: `05e24c88` | **Build**: 2026-03-19
+
+---
+
+## 📈 Previous Release: v0.12.4
+
+**Released**: February 26, 2026
+**Focus**: Scheduler & Auto-Download Fixes
+
+- Auto-download scheduling priority fix, `auto_download_max_videos` raised from 10 to 50
+- Multiple security CVEs patched (Flask, werkzeug, Pillow, PyJWT)
+- Fixed `allowed_video_types` and 20+ artist settings not saving correctly
+
+---
+
+## 📈 Previous Release: v0.12.3
+
+**Released**: February 16, 2026
+**Focus**: Playlist Sync & Logging
+
+- VEVO/Official channel name cleanup during playlist sync to prevent duplicate artists
+- Celery worker logging fix via `after_setup_logger` signal
+- 36 API endpoints secured with session-based auth
+
+**Git Commit**: `8e4a1f2` | **Build**: 2026-02-16
 
 ---
 
