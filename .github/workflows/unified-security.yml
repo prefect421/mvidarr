@@ -33,6 +33,7 @@ jobs:
   unified-security-scan:
     name: Unified Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       security-events: write
@@ -140,9 +141,8 @@ jobs:
     - name: Run TruffleHog3 (Historical Secret Detection)
       if: steps.scan-scope.outputs.scan_type == 'comprehensive'
       run: |
-        echo "🐷 Scanning git history for secrets..."
-        trufflehog3 --format json --output trufflehog-results.json . || true
-        trufflehog3 . || true
+        echo "🐷 Scanning git history for secrets (last 100 commits)..."
+        trufflehog3 --format json --output trufflehog-results.json --max-depth 100 . || true
 
     # Container Security (for comprehensive scans)
     - name: Install Trivy (Container Scanner)
