@@ -1,4 +1,4 @@
-requests==2.32.4
+requests==2.33.0  # Security: CVE-2026-25645 predictable temp file creation fix
 docker==7.1.0
 schedule==1.2.0
 psutil==5.9.6
