@@ -22,24 +22,35 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.5 - Security & Bug Fixes**
+## 🚀 **LATEST: v0.12.6 - Security Dependency Updates**
 
-**Released**: March 19, 2026
+**Released**: April 9, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Security Fixes ✅
-- **🔒 CVE-2026-32597**: PyJWT 2.8.0 → 2.12.0 — missing `crit` header validation (HIGH)
-- **🔒 CVE-2026-32274**: black 24.3.0 → 26.3.1 — arbitrary cache file write (HIGH)
+### Security Fixes ✅ (12 CVEs resolved — closes #201)
+- **🔒 CVE-2026-25645**: requests 2.32.4 → 2.33.0 — predictable temporary file creation (MEDIUM)
+- **🔒 CVE-2026-22815**: aiohttp 3.13.3 → 3.13.4 — DoS via insufficient header/trailer handling (MEDIUM)
+- **🔒 CVE-2026-34516**: aiohttp 3.13.3 → 3.13.4 — DoS via excessive multipart headers (MEDIUM)
+- **🔒 CVE-2026-34525**: aiohttp 3.13.3 → 3.13.4 — security bypass via multiple Host headers (MEDIUM)
+- **🔒 CVE-2026-34515**: aiohttp 3.13.3 → 3.13.4 — info disclosure via Windows static handler (MEDIUM)
+- **🔒 CVE-2026-34513**: aiohttp 3.13.3 → 3.13.4 — DoS via unbounded DNS cache (LOW)
+- **🔒 CVE-2026-34514**: aiohttp 3.13.3 → 3.13.4 — header injection via content_type (LOW)
+- **🔒 CVE-2026-34517**: aiohttp 3.13.3 → 3.13.4 — DoS via large multipart form fields (LOW)
+- **🔒 CVE-2026-34518**: aiohttp 3.13.3 → 3.13.4 — info disclosure via Cookie/Proxy-Auth headers (LOW)
+- **🔒 CVE-2026-34519**: aiohttp 3.13.3 → 3.13.4 — header injection via reason parameter (LOW)
+- **🔒 CVE-2026-34520**: aiohttp 3.13.3 → 3.13.4 — header injection via improper char handling (LOW)
 
-### Bug Fixes ✅
-- **🐛 #197**: Docker containers no longer log `git not found` errors on every health check; `git_branch` now shown correctly in the sidebar
-- **🐛 #199**: Credentials set during the installation wizard are now used for login — default `admin`/`mvidarr` no longer overrides the wizard setup
-- **🐛 #200**: Thumbnails are now downloaded immediately when a video download completes — no more placeholder until the first page view; YouTube URL fallback chain added (`maxresdefault` → `hqdefault` → `mqdefault`)
-
-> **Upgrade Note**: No database migrations required. Docker image rebuild recommended.
+> **Upgrade Note**: No database migrations required. Docker image rebuild recommended (`docker compose pull && docker compose up -d`).
 
 ## 🎯 Previous Releases
+
+### v0.12.5 - Security & Bug Fixes (March 19, 2026)
+- CVE-2026-32597: PyJWT 2.8.0 → 2.12.0 (missing `crit` header validation)
+- CVE-2026-32274: black 24.3.0 → 26.3.1 (arbitrary cache file write)
+- Fixed Docker `git not found` error spam on health checks
+- Fixed installation wizard credentials being overridden by defaults (#199)
+- Fixed thumbnail download on video completion (#200)
 
 ### v0.12.4 - Scheduler & Auto-Download Fixes (February 26, 2026)
 - Auto-download scheduling priority fix, auto_download_max_videos raised from 10 to 50
@@ -152,7 +163,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.11.9`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.6`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -304,4 +315,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.11.9** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.6** - Built with ❤️ for music video enthusiasts
