@@ -223,8 +223,8 @@ jobs:
         mkdir -p install-package
         cp -r scripts install-package/
         cp requirements.txt install-package/
-        cp docker-compose.production.yml install-package/docker-compose.yml
-        cp docs/INSTALLATION.md install-package/README.md
+        cp docker-compose.yml install-package/docker-compose.yml
+        cp docs/installation.md install-package/README.md
         
         tar -czf mvidarr-enhanced-${TAG_NAME}-install.tar.gz -C install-package .
 
