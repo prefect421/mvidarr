@@ -24,7 +24,7 @@ httpx==0.25.2
 aiohttp==3.13.4  # Security: CVE-2026-22815/34513-34520/34525 header injection + DoS fixes
 
 # Image Processing
-Pillow==12.1.1  # Security: CVE-2026-25990 out-of-bounds write on PSD images
+Pillow==12.2.0  # Security: CVE-2026-25990 PSD fix, CVE-2026-40192 FITS GZIP decompression bomb fix
 opencv-python-headless>=4.8.0
 
 # Media Processing
