@@ -22,28 +22,32 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.6 - Security Dependency Updates**
+## 🚀 **LATEST: v0.12.7 - Dependency Cleanup & Test Infrastructure**
 
-**Released**: April 9, 2026
+**Released**: April 16, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Security Fixes ✅ (12 CVEs resolved — closes #201)
-- **🔒 CVE-2026-25645**: requests 2.32.4 → 2.33.0 — predictable temporary file creation (MEDIUM)
-- **🔒 CVE-2026-22815**: aiohttp 3.13.3 → 3.13.4 — DoS via insufficient header/trailer handling (MEDIUM)
-- **🔒 CVE-2026-34516**: aiohttp 3.13.3 → 3.13.4 — DoS via excessive multipart headers (MEDIUM)
-- **🔒 CVE-2026-34525**: aiohttp 3.13.3 → 3.13.4 — security bypass via multiple Host headers (MEDIUM)
-- **🔒 CVE-2026-34515**: aiohttp 3.13.3 → 3.13.4 — info disclosure via Windows static handler (MEDIUM)
-- **🔒 CVE-2026-34513**: aiohttp 3.13.3 → 3.13.4 — DoS via unbounded DNS cache (LOW)
-- **🔒 CVE-2026-34514**: aiohttp 3.13.3 → 3.13.4 — header injection via content_type (LOW)
-- **🔒 CVE-2026-34517**: aiohttp 3.13.3 → 3.13.4 — DoS via large multipart form fields (LOW)
-- **🔒 CVE-2026-34518**: aiohttp 3.13.3 → 3.13.4 — info disclosure via Cookie/Proxy-Auth headers (LOW)
-- **🔒 CVE-2026-34519**: aiohttp 3.13.3 → 3.13.4 — header injection via reason parameter (LOW)
-- **🔒 CVE-2026-34520**: aiohttp 3.13.3 → 3.13.4 — header injection via improper char handling (LOW)
+### Dependency Cleanup ✅
+- **🧹 Removed sphinx from production runtime** — sphinx and sphinx-rtd-theme were incorrectly listed in `requirements.txt`; now dev-only
+- **🧹 pytest-cov 4.1.0 → 7.1.0** — upgraded for full pytest 9.x compatibility
+- **🔧 CI: pinned flake8==6.1.0** — prevents version drift from silently changing lint rules
+
+### Security Fixes ✅ (5 CVEs resolved)
+- **🔒 CVE-2026-40347**: python-multipart 0.0.22 → 0.0.26 — DoS via large multipart preamble (MEDIUM)
+- **🔒 CVE-2026-40192**: Pillow 12.1.1 → 12.2.0 — FITS GZIP decompression bomb (HIGH)
+- **🔒 CVE-2025-71176**: pytest 7.4.3 → 9.0.3 — insecure tmpdir creation (MEDIUM)
+- **🧹 pytest moved out of runtime** — pytest and companions removed from `requirements.txt` (dev tools must not ship in production images)
 
 > **Upgrade Note**: No database migrations required. Docker image rebuild recommended (`docker compose pull && docker compose up -d`).
 
 ## 🎯 Previous Releases
+
+### v0.12.6 - Security Dependency Updates (April 9, 2026)
+- CVE-2026-25645: requests 2.32.4 → 2.33.0 — predictable temporary file creation (MEDIUM)
+- CVE-2026-22815/34513-34520: aiohttp 3.13.3 → 3.13.4 — multiple DoS and injection fixes
+- 12 CVEs total resolved
+
 
 ### v0.12.5 - Security & Bug Fixes (March 19, 2026)
 - CVE-2026-32597: PyJWT 2.8.0 → 2.12.0 (missing `crit` header validation)
@@ -163,7 +167,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.6`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.7`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -315,4 +319,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.6** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.7** - Built with ❤️ for music video enthusiasts
