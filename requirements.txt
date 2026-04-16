@@ -4,7 +4,7 @@
 fastapi==0.123.0
 starlette>=0.50.0  # Security: Fix GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 uvicorn[standard]==0.24.0
-python-multipart==0.0.22  # Security: CVE-2026-24486 path traversal fix
+python-multipart==0.0.26  # Security: CVE-2026-24486 path traversal fix, CVE-2026-40347 DoS fix
 jinja2==3.1.6
 
 # Flask - Optional backwards compatibility (to be fully removed in future release)
