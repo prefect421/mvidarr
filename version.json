@@ -1,10 +1,11 @@
 {
   "version": "0.12.6",
-  "build_date": "2026-04-08T21:21:17.038100",
-  "git_commit": "68ea4768",
+  "build_date": "2026-04-16T22:17:59.735520",
+  "git_commit": "f643aa96",
   "git_branch": "dev",
   "release_name": "v0.12.6 - Security Dependency Updates",
   "features": [
+    "🔒 Security: CVE-2026-40347, CVE-2026-40192, CVE-2025-71176 — python-multipart, Pillow, pytest updated",
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
     "Professional Thumbnail Management with multi-source search and cropping",
@@ -20,20 +21,8 @@
     "Modern UI with left sidebar navigation and theme system",
     "MvTV Continuous Player with cinematic mode",
     "Two-Factor Authentication with TOTP support",
+    "Fixed Video Search Results Display with improved CSS and field mapping",
     "Robust CI/CD Integration with comprehensive testing and deployment",
     "Enhanced Database Initialization with secure admin user creation"
-  ],
-  "changes": [
-    "Security: CVE-2026-25645 requests 2.32.4 → 2.33.0 (predictable temp file creation)",
-    "Security: CVE-2026-22815 aiohttp 3.13.3 → 3.13.4 (DoS via header/trailer handling)",
-    "Security: CVE-2026-34513 aiohttp 3.13.3 → 3.13.4 (DoS via unbounded DNS cache)",
-    "Security: CVE-2026-34514 aiohttp 3.13.3 → 3.13.4 (header injection via content_type)",
-    "Security: CVE-2026-34515 aiohttp 3.13.3 → 3.13.4 (info disclosure on Windows)",
-    "Security: CVE-2026-34516 aiohttp 3.13.3 → 3.13.4 (DoS via excessive multipart headers)",
-    "Security: CVE-2026-34517 aiohttp 3.13.3 → 3.13.4 (DoS via large multipart fields)",
-    "Security: CVE-2026-34518 aiohttp 3.13.3 → 3.13.4 (info disclosure via Cookie/Proxy-Auth headers)",
-    "Security: CVE-2026-34519 aiohttp 3.13.3 → 3.13.4 (header injection via reason parameter)",
-    "Security: CVE-2026-34520 aiohttp 3.13.3 → 3.13.4 (header injection via improper char handling)",
-    "Security: CVE-2026-34525 aiohttp 3.13.3 → 3.13.4 (security bypass via multiple Host headers)"
   ]
 }
