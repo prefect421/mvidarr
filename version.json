@@ -1,10 +1,12 @@
 {
-  "version": "0.12.6",
-  "build_date": "2026-04-08T21:21:17.038100",
-  "git_commit": "68ea4768",
+  "version": "0.12.7",
+  "build_date": "2026-04-16T23:48:35.248462",
+  "git_commit": "56bd2076",
   "git_branch": "dev",
-  "release_name": "v0.12.6 - Security Dependency Updates",
+  "release_name": "v0.12.7 - Dependency Cleanup & Test Infrastructure",
   "features": [
+    "🧹 Chore: removed sphinx from production runtime, pytest-cov 7.1.0 (pytest 9 compat), CI flake8 pinned",
+    "🔒 Security: CVE-2026-40347 python-multipart, CVE-2026-40192 Pillow, CVE-2025-71176 pytest — all patched",
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
     "Professional Thumbnail Management with multi-source search and cropping",
@@ -20,20 +22,8 @@
     "Modern UI with left sidebar navigation and theme system",
     "MvTV Continuous Player with cinematic mode",
     "Two-Factor Authentication with TOTP support",
+    "Fixed Video Search Results Display with improved CSS and field mapping",
     "Robust CI/CD Integration with comprehensive testing and deployment",
     "Enhanced Database Initialization with secure admin user creation"
-  ],
-  "changes": [
-    "Security: CVE-2026-25645 requests 2.32.4 → 2.33.0 (predictable temp file creation)",
-    "Security: CVE-2026-22815 aiohttp 3.13.3 → 3.13.4 (DoS via header/trailer handling)",
-    "Security: CVE-2026-34513 aiohttp 3.13.3 → 3.13.4 (DoS via unbounded DNS cache)",
-    "Security: CVE-2026-34514 aiohttp 3.13.3 → 3.13.4 (header injection via content_type)",
-    "Security: CVE-2026-34515 aiohttp 3.13.3 → 3.13.4 (info disclosure on Windows)",
-    "Security: CVE-2026-34516 aiohttp 3.13.3 → 3.13.4 (DoS via excessive multipart headers)",
-    "Security: CVE-2026-34517 aiohttp 3.13.3 → 3.13.4 (DoS via large multipart fields)",
-    "Security: CVE-2026-34518 aiohttp 3.13.3 → 3.13.4 (info disclosure via Cookie/Proxy-Auth headers)",
-    "Security: CVE-2026-34519 aiohttp 3.13.3 → 3.13.4 (header injection via reason parameter)",
-    "Security: CVE-2026-34520 aiohttp 3.13.3 → 3.13.4 (header injection via improper char handling)",
-    "Security: CVE-2026-34525 aiohttp 3.13.3 → 3.13.4 (security bypass via multiple Host headers)"
   ]
 }

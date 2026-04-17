@@ -24,7 +24,7 @@ httpx==0.25.2
 sqlalchemy[asyncio]>=2.0.23
 aiomysql>=0.2.0
 cryptography>=3.4.8
-python-multipart>=0.0.22  # Security: CVE-2026-24486
+python-multipart>=0.0.26  # Security: CVE-2026-24486, CVE-2026-40347 DoS fix
 
 # Keep pymysql for Flask compatibility during migration
 pymysql>=1.0.2

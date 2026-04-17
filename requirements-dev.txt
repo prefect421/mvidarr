@@ -5,8 +5,9 @@
 -r requirements-prod.txt
 
 # Development and Testing
-pytest==7.4.3
-pytest-cov==4.1.0
+pytest==9.0.3  # Security: CVE-2025-71176 tmpdir vuln fix
+pytest-cov==7.1.0  # Upgraded for pytest 9 compatibility
+pytest-asyncio==0.23.8  # Upgraded for pytest 9 compatibility
 pytest-flask==1.3.0
 pytest-mock==3.12.0
 
@@ -25,7 +26,7 @@ sphinx-rtd-theme==1.3.0
 # Visual Testing and Browser Automation
 playwright==1.40.0
 pytest-playwright==0.4.3
-Pillow==12.1.1  # Security: CVE-2026-25990
+Pillow==12.2.0  # Security: CVE-2026-25990 PSD fix, CVE-2026-40192 FITS GZIP decompression bomb fix
 imagehash==4.3.1
 
 # Additional Development Tools
