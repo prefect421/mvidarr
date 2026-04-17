@@ -216,9 +216,9 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ### Current Phase: v0.12.5 - Released
 
-#### Versioning Policy (Updated 2026-03-19)
-- **Current Version**: 0.12.5 (Released 2026-03-19)
-- **Next Version**: 0.12.6 (Planning)
+#### Versioning Policy (Updated 2026-04-16)
+- **Current Version**: 0.12.7 (Released 2026-04-16)
+- **Next Version**: 0.12.8 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
@@ -400,9 +400,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.5 (Security & Bug Fixes)
+- **Current Version**: v0.12.7 (Dependency Cleanup & Test Infrastructure)
 - **Development Focus**: Stability, security
-- **Next Version**: v0.12.6
+- **Next Version**: v0.12.8
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -499,8 +499,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.5 (2026-03-19)
-- **Next Release**: Version 0.12.6 (Planning)
+- **Current Release**: Version 0.12.7 (2026-04-16)
+- **Next Release**: Version 0.12.8 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
