@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 

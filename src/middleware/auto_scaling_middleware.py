@@ -12,9 +12,10 @@ from typing import Any, Dict, List, Optional
 
 import psutil
 from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
 from src.services.media_cache_manager import MediaCacheManager
 from src.utils.logger import get_logger
-from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = get_logger("mvidarr.middleware.auto_scaling")
 

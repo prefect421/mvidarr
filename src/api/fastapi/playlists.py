@@ -13,6 +13,7 @@ Original: 1,480 lines → Refactored: 5 files (~300 lines each)
 """
 
 from fastapi import APIRouter
+
 from src.utils.logger import get_logger
 
 # Import all routers from modular components

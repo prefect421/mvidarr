@@ -12,6 +12,7 @@ from sqlalchemy import JSON, Boolean, Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from src.database.connection import Base
 
 

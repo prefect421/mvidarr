@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Query
 from pydantic import BaseModel, Field
+
 from src.jobs.image_processing_tasks import (
     ThumbnailSpec,
     submit_bulk_thumbnail_generation,

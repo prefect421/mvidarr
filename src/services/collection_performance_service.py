@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 import psutil
 from sqlalchemy import func, select
+
 from src.database.async_connection import get_async_session
 from src.database.models import Artist, Video
 from src.services.redis_service import get_redis_client

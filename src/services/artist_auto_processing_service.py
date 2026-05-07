@@ -6,6 +6,7 @@ import asyncio
 from typing import Any, Dict
 
 from flask import current_app
+
 from src.database.models import Artist
 from src.utils.logger import get_logger
 

@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from celery import Task
+
 from src.jobs.redis_manager import redis_manager
 from src.utils.logger import get_logger
 

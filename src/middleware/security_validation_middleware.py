@@ -12,9 +12,10 @@ from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
 from fastapi import HTTPException, Request, status
-from src.utils.logger import get_logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+
+from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.middleware.security_validation")
 

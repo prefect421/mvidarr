@@ -105,6 +105,7 @@ def optimize_database() -> Dict:
     """
     try:
         from sqlalchemy import text
+
         from src.database.connection import get_db
 
         results = []

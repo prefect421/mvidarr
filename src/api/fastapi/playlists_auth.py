@@ -7,6 +7,7 @@ from typing import Dict
 
 from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
+
 from src.database.connection import get_db
 from src.database.models import Playlist, User, UserRole
 from src.utils.logger import get_logger

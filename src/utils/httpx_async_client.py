@@ -11,6 +11,7 @@ from enum import Enum
 from typing import Any, Dict, Optional, Union
 
 import httpx
+
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.utils.httpx_async_client")

@@ -10,6 +10,7 @@ from datetime import timedelta
 from celery import Celery
 from celery.signals import after_setup_logger, worker_ready, worker_shutting_down
 from kombu import Queue
+
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.jobs.celery_app")

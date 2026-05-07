@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 
 from flask import request
 from flask import session as flask_session
+
 from src.database.models import User
 from src.utils.logger import get_logger
 

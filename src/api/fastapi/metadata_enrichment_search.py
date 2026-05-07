@@ -7,6 +7,7 @@ import asyncio
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+
 from src.middleware.fastapi_auth_middleware import require_authentication
 from src.utils.logger import get_logger
 

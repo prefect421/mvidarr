@@ -8,6 +8,7 @@ import os
 import subprocess
 
 from flask import Response
+
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.ffmpeg_streaming")

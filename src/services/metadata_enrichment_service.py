@@ -18,6 +18,7 @@ Refactored into: 7 specialized modules for better maintainability
 from typing import Dict
 
 from sqlalchemy import or_
+
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.services.allmusic_service import allmusic_service

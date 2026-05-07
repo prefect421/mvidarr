@@ -10,9 +10,10 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+
 from src.services.media_cache_manager import MediaCacheManager
 from src.utils.logger import get_logger
-from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = get_logger("mvidarr.middleware.cache")
 

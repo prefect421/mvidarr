@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+
 from src.api.fastapi.auth_dependencies import (
     get_current_user,
     require_authentication,

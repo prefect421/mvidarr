@@ -6,6 +6,7 @@ Job management endpoints (job status, cancel, celery health, celery inspect)
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+
 from src.middleware.fastapi_auth_middleware import require_authentication
 from src.utils.logger import get_logger
 
@@ -195,6 +196,7 @@ async def clear_completed_jobs(current_user: dict = Depends(require_authenticati
     """Clear completed job history from Redis result backend"""
     try:
         import redis
+
         from src.jobs.celery_app import CELERY_RESULT_BACKEND
 
         # Create Redis connection with timeout
@@ -243,6 +245,7 @@ async def get_celery_inspect(current_user: dict = Depends(require_authentication
         import json
 
         import redis
+
         from src.jobs.celery_app import CELERY_RESULT_BACKEND, celery_app
 
         inspect = celery_app.control.inspect()

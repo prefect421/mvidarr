@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pyotp
 import qrcode
+
 from src.database.connection import get_db
 from src.database.models import User
 from src.services.audit_service import AuditService

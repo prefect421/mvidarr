@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field, HttpUrl, validator
 from sqlalchemy.orm import Session
+
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.services.webhook_service import (

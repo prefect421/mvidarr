@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
+
 from src.services.base_media_server_service import (
     BaseMediaServerService,
     MediaItem,

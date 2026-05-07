@@ -23,6 +23,7 @@ from celery.beat import ScheduleEntry
 from celery.schedules import crontab
 from celery.schedules import schedule as celery_schedule
 from sqlalchemy.orm import Session
+
 from src.database.connection import get_db
 from src.database.models import Artist, ScheduledJob
 from src.jobs.celery_app import celery_app

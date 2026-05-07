@@ -5,6 +5,7 @@ Provides genre-related endpoints for video and artist genre management
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video
 from src.utils.logger import get_logger

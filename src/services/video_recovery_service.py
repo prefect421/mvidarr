@@ -6,6 +6,7 @@ import os
 from typing import Optional
 
 from sqlalchemy import and_
+
 from src.database.connection import get_db
 from src.database.models import Video, VideoStatus
 from src.services.settings_service import settings

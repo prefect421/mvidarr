@@ -16,6 +16,7 @@ except ImportError:
     FLASK_AVAILABLE = False
 
 from sqlalchemy.exc import IntegrityError
+
 from src.database.connection import get_db
 from src.database.models import SessionStatus, User, UserRole, UserSession
 from src.utils.logger import get_logger

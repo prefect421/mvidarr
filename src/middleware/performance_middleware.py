@@ -7,13 +7,14 @@ import time
 from typing import Callable, Optional
 
 from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+
 from src.services.performance_monitor import (
     get_performance_monitor,
     track_api_response_time,
     track_error_rate,
 )
 from src.utils.logger import get_logger
-from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = get_logger("mvidarr.middleware.performance")
 

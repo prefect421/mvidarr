@@ -17,6 +17,7 @@ from typing import Dict, List
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
+
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.utils.logger import get_logger

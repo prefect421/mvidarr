@@ -18,6 +18,7 @@ from fastapi import Path as FastAPIPath
 from fastapi import Query
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
+
 from src.api.fastapi.artists_models import (
     BulkDeleteRequest,
     BulkEditRequest,

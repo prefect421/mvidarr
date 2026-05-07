@@ -23,6 +23,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import relationship
+
 from src.database.connection import Base
 
 

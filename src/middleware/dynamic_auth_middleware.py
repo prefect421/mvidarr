@@ -4,6 +4,7 @@ Checks authentication requirements on each request based on database settings.
 """
 
 from flask import jsonify, redirect, render_template, request, session, url_for
+
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 
@@ -195,6 +196,7 @@ class DynamicAuthMiddleware:
             if is_authenticated and not request.cookies.get("session_token"):
                 try:
                     from flask import after_this_request
+
                     from src.services.session_store import SessionStore
 
                     username = session.get("username", "admin")

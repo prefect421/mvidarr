@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 import requests
 from PIL import Image, ImageOps
+
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 

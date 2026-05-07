@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import or_
+
 from src.api.fastapi.auth_dependencies import (
     get_current_user,
     require_authentication,

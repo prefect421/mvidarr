@@ -5,6 +5,7 @@ Security configuration and initialization for MVidarr
 import os
 
 from flask import Flask
+
 from src.utils.logger import get_logger
 from src.utils.security import SecureConfig, apply_security_headers
 
