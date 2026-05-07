@@ -15,7 +15,6 @@ from datetime import datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
-
 from src.api.fastapi.auth_dependencies import get_current_user
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video, VideoStatus

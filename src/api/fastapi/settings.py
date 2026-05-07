@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-
 from src.services.settings_service import SettingsService, settings
 from src.utils.logger import get_logger
 

@@ -28,7 +28,6 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-
 from src.api.fastapi.artists_models import ThumbnailSearchRequest
 from src.api.fastapi.auth_dependencies import (
     get_current_user,

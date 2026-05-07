@@ -18,7 +18,6 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db
 from src.database.models import Artist, ScheduledJob

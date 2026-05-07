@@ -14,7 +14,6 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
 from fastapi import Depends, HTTPException, Request
-
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
 

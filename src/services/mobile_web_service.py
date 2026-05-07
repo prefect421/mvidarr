@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, desc, select
 from sqlalchemy.orm import selectinload
-
 from src.database.async_connection import get_async_session
 from src.database.models import Video
 from src.services.playlist_management_service import get_playlist_management_service

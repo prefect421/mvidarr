@@ -8,7 +8,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.services.audit_service import (
     AuditEventType,
@@ -556,7 +555,6 @@ async def auth_health():
     """Check authentication system health"""
     try:
         from sqlalchemy import text
-
         from src.database.connection import get_db
 
         with get_db() as db_session:

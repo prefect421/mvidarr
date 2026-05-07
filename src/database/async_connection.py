@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import QueuePool
-
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.database.async_connection")

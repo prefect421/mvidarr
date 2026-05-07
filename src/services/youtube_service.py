@@ -6,7 +6,6 @@ Handles YouTube API integration for video search and data retrieval
 from typing import Any, Dict, Optional
 
 import requests
-
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

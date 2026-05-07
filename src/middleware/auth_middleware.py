@@ -6,7 +6,6 @@ Provides central authentication handling and request context setup.
 from flask import g, jsonify, redirect, request
 from flask import session as flask_session
 from flask import url_for
-
 from src.services.audit_service import AuditEventType, AuditService
 from src.services.auth_service import AuthService
 from src.utils.logger import get_logger

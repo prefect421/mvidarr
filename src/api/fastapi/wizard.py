@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
-
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import WizardState, WizardStatus, WizardStep
@@ -332,7 +331,6 @@ async def create_admin_user(
                     # not the default admin/mvidarr that init_db wrote on first run.
                     try:
                         import bcrypt
-
                         from src.services.settings_service import SettingsService
 
                         password_hash = bcrypt.hashpw(

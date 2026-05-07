@@ -8,7 +8,6 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy import JSON, Column, DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import validates
-
 from src.database.models import Base
 from src.services.job_queue import BackgroundJob, JobPriority, JobStatus, JobType
 

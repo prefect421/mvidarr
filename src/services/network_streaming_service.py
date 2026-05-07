@@ -15,7 +15,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
-
 from src.database.async_connection import get_async_session
 from src.database.models import Video
 from src.services.redis_service import get_redis_client

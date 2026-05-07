@@ -7,7 +7,6 @@ import re
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
-
 from src.services.async_base_service import AsyncBaseService, AsyncServiceError
 
 

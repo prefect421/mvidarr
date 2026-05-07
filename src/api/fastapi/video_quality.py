@@ -7,7 +7,6 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-
 from src.services.job_queue import BackgroundJob, JobPriority, JobType, get_job_queue
 from src.utils.logger import get_logger
 

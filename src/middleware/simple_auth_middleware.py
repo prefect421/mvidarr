@@ -5,7 +5,6 @@ Simple authentication middleware for single-user system
 from functools import wraps
 
 from flask import jsonify, redirect, request, url_for
-
 from src.services.settings_service import SettingsService
 from src.services.simple_auth_service import SimpleAuthService
 from src.utils.logger import get_logger

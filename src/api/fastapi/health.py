@@ -14,7 +14,6 @@ from typing import Any, Dict, Optional
 import psutil
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-
 from src.database.connection import get_db_session
 from src.utils.async_subprocess import get_git_branch, get_git_version
 from src.utils.logger import get_logger

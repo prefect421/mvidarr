@@ -11,11 +11,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from fastapi import Request, status
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
-
 from src.services.media_cache_manager import MediaCacheManager
 from src.utils.logger import get_logger
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 logger = get_logger("mvidarr.middleware.circuit_breaker")
 

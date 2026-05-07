@@ -16,7 +16,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin
 
 import aiohttp
-
 from src.services.analytics_service import (
     MetricPoint,
     MetricType,

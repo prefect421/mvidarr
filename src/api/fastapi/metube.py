@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.services.ytdlp_service import ytdlp_service

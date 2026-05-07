@@ -12,7 +12,6 @@ from urllib.parse import quote, urljoin
 
 import httpx
 from bs4 import BeautifulSoup
-
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
 from src.services.performance_monitor import track_media_processing_time
 from src.utils.logger import get_logger

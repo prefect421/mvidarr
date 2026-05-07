@@ -6,7 +6,6 @@ import re
 from typing import Dict, List, Optional
 
 import requests
-
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 from src.utils.youtube_cache import get_youtube_cache

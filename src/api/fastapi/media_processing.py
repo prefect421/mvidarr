@@ -10,7 +10,6 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
-
 from src.jobs.ffmpeg_processing_tasks import (
     submit_bulk_metadata_task,
     submit_metadata_extraction_task,

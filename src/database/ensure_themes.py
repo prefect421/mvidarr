@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 from sqlalchemy import text
-
 from src.database.connection import get_db
 from src.utils.logger import get_logger
 

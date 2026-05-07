@@ -12,7 +12,6 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session, attributes
-
 from src.database.connection import get_db_session
 from src.middleware.fastapi_auth_middleware import require_authentication
 from src.utils.logger import get_logger

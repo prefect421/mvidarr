@@ -8,7 +8,6 @@ import time
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
-
 from src.database.connection import get_db
 from src.utils.logger import get_logger
 

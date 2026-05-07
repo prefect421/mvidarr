@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.testing.migration_validation")

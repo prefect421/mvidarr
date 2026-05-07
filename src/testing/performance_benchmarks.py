@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 import psutil
-
 from src.services.database_service import DatabaseService
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger

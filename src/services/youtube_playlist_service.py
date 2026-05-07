@@ -10,7 +10,6 @@ from typing import Dict, List, Optional
 
 import requests
 from sqlalchemy.orm import Session
-
 from src.database.connection import get_db
 from src.database.models import Artist, PlaylistMonitor, Video, VideoStatus
 from src.services.settings_service import settings

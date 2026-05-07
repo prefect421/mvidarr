@@ -8,7 +8,6 @@ from datetime import datetime
 from typing import Dict, List
 
 import requests
-
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
 from src.services.imvdb_service import imvdb_service
