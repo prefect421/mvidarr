@@ -6,7 +6,6 @@ This module provides compatibility endpoints and redirects to the new system.
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
-
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.fastapi.jobs")

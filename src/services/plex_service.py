@@ -9,7 +9,6 @@ from urllib.parse import urljoin
 
 import defusedxml.ElementTree as ET
 import requests
-
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.utils.logger import get_logger

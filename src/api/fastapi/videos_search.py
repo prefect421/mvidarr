@@ -21,7 +21,6 @@ from fastapi import Path as FastAPIPath
 from fastapi import Query, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
-
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video

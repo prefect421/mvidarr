@@ -11,7 +11,6 @@ from urllib.parse import quote_plus, urljoin
 
 import requests
 from bs4 import BeautifulSoup
-
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 

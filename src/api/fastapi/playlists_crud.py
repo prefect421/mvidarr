@@ -10,7 +10,6 @@ from fastapi import Path as FastAPIPath
 from fastapi import Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
-
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.playlists_auth import UserInfo, get_current_user_from_session
 from src.api.fastapi.playlists_models import (

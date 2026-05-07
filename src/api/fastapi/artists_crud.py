@@ -28,7 +28,6 @@ from fastapi import (
 )
 from sqlalchemy import and_, desc, func, or_
 from sqlalchemy.orm import Session
-
 from src.api.fastapi.artists_models import (
     ArtistCreateRequest,
     ArtistResponse,

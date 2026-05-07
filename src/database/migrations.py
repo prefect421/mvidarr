@@ -8,7 +8,6 @@ from typing import Dict, List
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
-
 from src.database.connection import get_db
 from src.utils.logger import get_logger
 

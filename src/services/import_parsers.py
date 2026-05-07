@@ -19,7 +19,6 @@ from typing import Any, Dict, List
 
 import defusedxml.ElementTree as ET
 import yaml
-
 from src.database.import_export_models import (
     ExportData,
     ExportedArtist,

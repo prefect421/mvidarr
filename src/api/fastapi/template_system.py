@@ -14,7 +14,6 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
@@ -250,7 +249,6 @@ class AsyncTemplateSystem:
         try:
             # Import here to avoid circular imports
             from sqlalchemy.orm import Session
-
             from src.api.fastapi.themes import router as themes_router
             from src.database.connection import get_db_session
             from src.database.models import CustomTheme, Setting

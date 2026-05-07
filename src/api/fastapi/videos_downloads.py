@@ -20,7 +20,6 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath
 from sqlalchemy.orm import Session, joinedload
-
 from src.api.fastapi.auth_dependencies import get_current_user
 from src.api.fastapi.videos_models import BulkDownloadRequest
 from src.database.connection import get_db_session

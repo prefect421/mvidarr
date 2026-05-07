@@ -9,9 +9,8 @@ from typing import Callable
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from src.database.models import WizardState, WizardStatus
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("mvidarr.wizard_middleware")
 

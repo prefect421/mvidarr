@@ -14,10 +14,9 @@ from typing import Any, Dict, List, Optional
 
 import aiofiles
 from fastapi import FastAPI, Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 logger = get_logger("mvidarr.api.logging")
 

@@ -11,7 +11,6 @@ from typing import Dict, List, Optional
 
 import requests
 from sqlalchemy import and_, desc
-
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.services.imvdb_service import imvdb_service

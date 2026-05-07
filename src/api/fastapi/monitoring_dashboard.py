@@ -11,7 +11,6 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
-
 from src.middleware.auto_scaling_middleware import get_scaling_status
 from src.services.analytics_service import AlertRule, get_analytics_service
 from src.utils.logger import get_logger

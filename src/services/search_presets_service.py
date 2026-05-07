@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, desc
 from sqlalchemy.orm import Session
-
 from src.database.connection import get_db
 from src.database.models import User
 from src.database.search_models import (

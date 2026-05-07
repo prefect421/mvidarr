@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
-
 from src.services.analytics_service import get_analytics_service
 from src.services.content_analytics_engine import (
     ContentType,

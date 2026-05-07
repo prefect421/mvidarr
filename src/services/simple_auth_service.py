@@ -7,7 +7,6 @@ import hashlib
 from typing import Optional, Tuple
 
 from flask import session as flask_session
-
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 

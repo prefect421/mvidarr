@@ -8,7 +8,6 @@ from typing import Any, Dict, Optional
 
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
 from src.auth.jwt_handler import jwt_handler
 from src.services.async_base_service import AsyncBaseService
 from src.utils.logger import get_logger

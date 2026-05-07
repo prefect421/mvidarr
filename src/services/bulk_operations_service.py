@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
-
 from src.database.bulk_models import (
     BulkOperation,
     BulkOperationAudit,

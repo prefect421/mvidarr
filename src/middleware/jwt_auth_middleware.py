@@ -13,10 +13,9 @@ from typing import Dict, List, Optional, Tuple
 
 import jwt
 from fastapi import Request, status
+from src.utils.logger import get_logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, RedirectResponse
-
-from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.middleware.jwt_auth")
 

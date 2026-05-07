@@ -15,11 +15,10 @@ from typing import Any, Dict, List, Optional
 
 import netifaces
 import qrcode
-from zeroconf import ServiceInfo, Zeroconf
-
 from src.services.performance_monitor import get_performance_monitor
 from src.services.redis_service import get_redis_client
 from src.utils.logger import get_logger
+from zeroconf import ServiceInfo, Zeroconf
 
 logger = get_logger("mvidarr.local_network_share")
 

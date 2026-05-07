@@ -120,7 +120,6 @@ def get_database_status() -> Dict:
     """
     try:
         from sqlalchemy import text
-
         from src.database.connection import get_db
 
         with get_db() as session:

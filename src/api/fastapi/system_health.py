@@ -9,7 +9,6 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-
 from src.api.fastapi.template_system import template_system
 from src.services.health_monitoring import (
     get_celery_status,
