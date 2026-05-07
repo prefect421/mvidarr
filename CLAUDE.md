@@ -214,17 +214,27 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.5 - Released
+### Current Phase: v0.12.8 - Released
 
-#### Versioning Policy (Updated 2026-04-16)
-- **Current Version**: 0.12.7 (Released 2026-04-16)
-- **Next Version**: 0.12.8 (Planning)
+#### Versioning Policy (Updated 2026-05-07)
+- **Current Version**: 0.12.8 (Released 2026-05-07)
+- **Next Version**: 0.12.9 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.8** (2026-05-07): Security Patches (3 CVEs)
+  - ✅ Security: CVE-2026-41066 lxml 4.9.3 → 6.1.0 (XXE local file read, HIGH)
+  - ✅ Security: CVE-2026-42561 python-multipart 0.0.26 → 0.0.27 (DoS header parsing, MEDIUM)
+  - ✅ Security: CVE-2026-28684 python-dotenv 1.0.0 → 1.2.2 (symlink arbitrary file overwrite, MEDIUM)
+  - ✅ Fix: broken -r requirements-prod.txt in requirements-dev.txt → -r requirements.txt
+  - ✅ CI: isort import ordering corrected across src/
+- **v0.12.7** (2026-04-16): Dependency Cleanup & Test Infrastructure
+  - ✅ Security: 5 CVEs (python-multipart, Pillow, pytest)
+  - ✅ Removed sphinx from production runtime
+  - ✅ pytest-cov 4.1.0 → 7.1.0
 - **v0.12.5** (2026-03-19): Security & Bug Fixes
   - ✅ Security: CVE-2026-32597 PyJWT 2.8.0 → 2.12.0 (crit header validation)
   - ✅ Security: CVE-2026-32274 black 24.3.0 → 26.3.1 (arbitrary cache file write)
@@ -499,8 +509,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.7 (2026-04-16)
-- **Next Release**: Version 0.12.8 (Planning)
+- **Current Release**: Version 0.12.8 (2026-05-07)
+- **Next Release**: Version 0.12.9 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
