@@ -6,7 +6,6 @@ Pydantic models and utility functions for playlist operations
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
-
 from src.database.models import Playlist
 from src.utils.logger import get_logger
 

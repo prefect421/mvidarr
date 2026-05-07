@@ -7,7 +7,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.utils.logger import get_logger
 

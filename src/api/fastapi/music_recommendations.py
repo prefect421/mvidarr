@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-
 from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 from src.services.music_recommendations import (

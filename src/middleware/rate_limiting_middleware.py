@@ -11,10 +11,9 @@ from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple
 
 from fastapi import Request, status
+from src.utils.logger import get_logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-
-from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.middleware.rate_limiting")
 

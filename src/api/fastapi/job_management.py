@@ -8,7 +8,6 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-
 from src.auth.dependencies import get_current_user_optional
 from src.jobs.base_task import (
     cancel_task,

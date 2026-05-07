@@ -2,7 +2,7 @@
 # Development, testing, documentation, and code quality tools
 
 # Include production dependencies
--r requirements-prod.txt
+-r requirements.txt
 
 # Development and Testing
 pytest==9.0.3  # Security: CVE-2025-71176 tmpdir vuln fix

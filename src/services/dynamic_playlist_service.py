@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
-
 from src.database.connection import get_db
 from src.database.models import Artist, Playlist, PlaylistEntry, PlaylistType, Video
 from src.utils.logger import get_logger

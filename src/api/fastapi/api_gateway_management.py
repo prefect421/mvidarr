@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-
 from src.services.api_gateway import (
     RouteRule,
     RoutingStrategy,

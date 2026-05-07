@@ -11,9 +11,8 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from sqlalchemy.orm import relationship, validates
-from werkzeug.security import check_password_hash, generate_password_hash
-
 from src.database.connection import Base
+from werkzeug.security import check_password_hash, generate_password_hash
 
 
 class VideoStatus(Enum):

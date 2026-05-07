@@ -14,7 +14,6 @@ Refactored into: 5 specialized modules for better maintainability
 """
 
 from fastapi import APIRouter
-
 from src.api.fastapi.artists_bulk import router as bulk_router
 from src.api.fastapi.artists_crud import router as crud_router
 from src.api.fastapi.artists_discovery import router as discovery_router

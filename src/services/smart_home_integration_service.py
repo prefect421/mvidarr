@@ -14,7 +14,6 @@ from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-
 from src.database.async_connection import get_async_session
 from src.database.models import Video
 from src.services.redis_service import get_redis_client

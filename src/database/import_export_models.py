@@ -21,7 +21,6 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy.orm import relationship
-
 from src.database.connection import Base
 
 

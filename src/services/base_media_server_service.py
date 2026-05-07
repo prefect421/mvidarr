@@ -9,7 +9,6 @@ from typing import Dict, List
 
 import requests
 from sqlalchemy.orm import Session
-
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.utils.logger import get_logger

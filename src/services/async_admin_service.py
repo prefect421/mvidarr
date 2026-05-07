@@ -172,7 +172,6 @@ class AsyncAdminService(AsyncBaseService):
             # Database connectivity check
             try:
                 from sqlalchemy import text
-
                 from src.database.async_connection import async_db_manager
 
                 async with async_db_manager.session_scope() as session:

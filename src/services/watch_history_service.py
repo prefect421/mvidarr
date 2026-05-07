@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-
 from src.database.async_connection import get_async_session
 from src.database.models import Video
 from src.services.performance_monitor import get_performance_monitor

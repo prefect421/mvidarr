@@ -9,7 +9,6 @@ from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-
 from src.api.fastapi.template_system import template_system
 from src.services.maintenance_tasks import (
     cleanup_old_job_history,

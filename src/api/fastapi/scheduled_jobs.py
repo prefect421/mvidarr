@@ -20,7 +20,6 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func
-
 from src.database.connection import get_db
 from src.database.models import Artist, ScheduledJob
 from src.services.scheduler_service_v2 import scheduler_v2

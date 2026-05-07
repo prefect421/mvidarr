@@ -9,7 +9,6 @@ from threading import Lock
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 from sqlalchemy.pool import QueuePool
-
 from src.config.config import Config
 from src.utils.logger import get_logger
 

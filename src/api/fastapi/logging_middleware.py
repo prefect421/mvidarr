@@ -9,9 +9,8 @@ from typing import Callable
 
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from src.utils.structured_logger import CorrelationContext, get_structured_logger
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = get_structured_logger("mvidarr.api.middleware")
 

@@ -16,7 +16,6 @@ from typing import Any, Dict, List, Optional
 
 import aiohttp
 import psutil
-
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.testing.load")

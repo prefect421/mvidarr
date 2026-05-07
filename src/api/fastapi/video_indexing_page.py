@@ -8,7 +8,6 @@ import logging
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-
 from src.api.fastapi.template_system import template_system
 
 logger = logging.getLogger(__name__)

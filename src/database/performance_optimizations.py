@@ -4,7 +4,6 @@ Implements strategic indexes and query optimizations for critical bottlenecks
 """
 
 from sqlalchemy import text
-
 from src.database.connection import engine
 from src.database.models import Artist, Download, Video, VideoStatus
 from src.utils.logger import get_logger
@@ -647,7 +646,6 @@ class DatabasePerformanceOptimizer:
     def optimize_video_indexing_stats(self, session):
         """Optimized query for video indexing statistics - FIXED"""
         from sqlalchemy import case, func
-
         from src.database.models import VideoStatus
 
         # Use separate targeted queries to avoid outer join counting issues

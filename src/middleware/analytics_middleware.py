@@ -10,8 +10,6 @@ from typing import Any, Dict, Optional
 
 import psutil
 from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from src.middleware.auto_scaling_middleware import ResourceMetrics
 from src.services.analytics_service import (
     MetricPoint,
@@ -19,6 +17,7 @@ from src.services.analytics_service import (
     get_analytics_service,
 )
 from src.utils.logger import get_logger
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = get_logger("mvidarr.middleware.analytics")
 

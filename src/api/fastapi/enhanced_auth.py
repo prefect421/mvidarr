@@ -11,7 +11,6 @@ from typing import Any, Dict, Optional
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field, validator
-
 from src.middleware.jwt_auth_middleware import (
     JWTManager,
     TokenConfig,
