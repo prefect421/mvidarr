@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import requests
+
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.performance.testing")

@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
 from src.services.collection_organizer import (
     OrganizationRule,
     OrganizationStrategy,

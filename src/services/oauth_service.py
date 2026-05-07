@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 import requests
 from flask import request
 from flask import session as flask_session
+
 from src.database.connection import get_db
 from src.database.models import User, UserRole, UserSession
 from src.utils.logger import get_logger

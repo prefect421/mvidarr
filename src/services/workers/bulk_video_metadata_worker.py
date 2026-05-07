@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
+
 from src.database.connection import get_db
 from src.database.models import Video
 from src.services.background_worker_base import HybridWorker

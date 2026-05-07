@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from celery import Task
+
 from src.database.connection import get_db, init_db_standalone
 from src.jobs.celery_app import celery_app
 from src.services.video_indexing_service import video_indexing_service

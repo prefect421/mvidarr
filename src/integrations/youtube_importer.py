@@ -14,6 +14,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 import yt_dlp
+
 from src.services.enhanced_artist_discovery_service import get_enhanced_artist_discovery
 from src.services.music_video_detector import get_music_video_detector
 from src.services.redis_service import get_redis_client

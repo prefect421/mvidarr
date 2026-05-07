@@ -7,6 +7,7 @@ from functools import wraps
 from flask import jsonify, redirect, request
 from flask import session as flask_session
 from flask import url_for
+
 from src.database.models import UserRole
 from src.services.auth_service import (
     AuthenticationError,

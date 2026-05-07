@@ -10,6 +10,7 @@ from typing import Dict
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
+
 from src.api.fastapi.template_system import template_system
 from src.services.personal_analytics import (
     export_collection_csv,

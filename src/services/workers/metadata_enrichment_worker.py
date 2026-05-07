@@ -192,6 +192,7 @@ class MetadataEnrichmentWorker(HybridWorker):
         # Create Flask app context for the enrichment service
         # This is needed because the enrichment service expects Flask context
         from flask import Flask
+
         from src.database.connection import init_db
 
         app = Flask(__name__)

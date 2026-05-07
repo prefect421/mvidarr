@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import requests
+
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 

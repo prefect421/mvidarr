@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import redis
+
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.jobs.redis_manager")

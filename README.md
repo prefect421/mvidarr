@@ -22,26 +22,29 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.7 - Dependency Cleanup & Test Infrastructure**
+## 🚀 **LATEST: v0.12.8 - Security Patches (3 CVEs)**
 
-**Released**: April 16, 2026
+**Released**: May 7, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Dependency Cleanup ✅
-- **🧹 Removed sphinx from production runtime** — sphinx and sphinx-rtd-theme were incorrectly listed in `requirements.txt`; now dev-only
-- **🧹 pytest-cov 4.1.0 → 7.1.0** — upgraded for full pytest 9.x compatibility
-- **🔧 CI: pinned flake8==6.1.0** — prevents version drift from silently changing lint rules
+### Security Fixes ✅ (3 CVEs resolved)
+- **🔒 CVE-2026-41066** (HIGH): lxml 4.9.3 → 6.1.0 — XXE allows reading local files via default `iterparse()`/`ETCompatXMLParser()` parsers
+- **🔒 CVE-2026-42561** (MEDIUM): python-multipart 0.0.26 → 0.0.27 — DoS via oversized/repeated multipart part headers exhausting FastAPI/Starlette workers
+- **🔒 CVE-2026-28684** (MEDIUM): python-dotenv 1.0.0 → 1.2.2 — symlink following in `set_key()` allows arbitrary file overwrite via cross-device rename fallback
 
-### Security Fixes ✅ (5 CVEs resolved)
-- **🔒 CVE-2026-40347**: python-multipart 0.0.22 → 0.0.26 — DoS via large multipart preamble (MEDIUM)
-- **🔒 CVE-2026-40192**: Pillow 12.1.1 → 12.2.0 — FITS GZIP decompression bomb (HIGH)
-- **🔒 CVE-2025-71176**: pytest 7.4.3 → 9.0.3 — insecure tmpdir creation (MEDIUM)
-- **🧹 pytest moved out of runtime** — pytest and companions removed from `requirements.txt` (dev tools must not ship in production images)
+### Housekeeping ✅
+- Fixed broken `-r requirements-prod.txt` include in `requirements-dev.txt` (file did not exist)
+- Import ordering corrected across `src/` for CI compliance
 
-> **Upgrade Note**: No database migrations required. Docker image rebuild recommended (`docker compose pull && docker compose up -d`).
+> **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.7 - Dependency Cleanup & Test Infrastructure (April 16, 2026)
+- Removed sphinx from production runtime (dev-only)
+- pytest-cov 4.1.0 → 7.1.0 for pytest 9.x compatibility
+- 5 CVEs resolved (python-multipart, Pillow, pytest)
 
 ### v0.12.6 - Security Dependency Updates (April 9, 2026)
 - CVE-2026-25645: requests 2.32.4 → 2.33.0 — predictable temporary file creation (MEDIUM)

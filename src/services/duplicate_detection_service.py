@@ -12,6 +12,7 @@ from typing import Dict, List
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
+
 from src.database.connection import get_db
 from src.database.models import Artist, Download, Video
 from src.utils.logger import get_logger

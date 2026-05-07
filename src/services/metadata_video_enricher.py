@@ -18,6 +18,7 @@ from typing import Optional
 import requests
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
+
 from src.database.connection import get_db
 from src.database.models import Video
 from src.services.discogs_service import discogs_service

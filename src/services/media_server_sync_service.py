@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Dict, List
 
 from sqlalchemy import and_, or_
+
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
 from src.services.base_media_server_service import BaseMediaServerService

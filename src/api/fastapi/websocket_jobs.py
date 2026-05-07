@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional, Set
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
+
 from src.jobs.redis_manager import redis_manager
 
 # Authentication dependency removed for now - WebSocket auth handled separately

@@ -3,6 +3,7 @@ Database initialization and migration utilities
 """
 
 from sqlalchemy import text
+
 from src.database.connection import Base
 from src.database.models import CustomTheme, Setting, User, WizardState
 from src.utils.logger import get_logger
@@ -204,6 +205,7 @@ def init_default_settings():
 def ensure_default_credentials(force_reset=False):
     """Ensure default authentication credentials exist in settings"""
     import bcrypt
+
     from src.database.connection import get_db
 
     try:

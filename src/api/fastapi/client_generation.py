@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+
 from src.api.fastapi.client_javascript_generator import generate_javascript_client
 from src.api.fastapi.client_models import (
     ClientConfig,

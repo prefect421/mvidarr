@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, Optional, Set
 
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.routing import APIRouter
+
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.websocket_integration")

@@ -6,6 +6,7 @@ import time
 from typing import Dict
 
 import requests
+
 from src.services.spotify_service import spotify_service
 from src.utils.logger import get_logger
 

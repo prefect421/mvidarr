@@ -14,6 +14,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+
 from src.database.connection import get_db_session
 from src.database.models import CustomTheme
 

@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from sqlalchemy import and_, desc, or_
 from sqlalchemy.orm import Session, joinedload
+
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
 from src.database.search_models import (

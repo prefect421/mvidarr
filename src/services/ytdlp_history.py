@@ -10,6 +10,7 @@ import threading
 from typing import Dict, List
 
 from sqlalchemy.orm import joinedload
+
 from src.database.connection import get_db
 from src.database.models import Artist, Download, Video
 from src.services.settings_service import settings

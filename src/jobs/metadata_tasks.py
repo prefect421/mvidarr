@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from celery import Task
+
 from src.config.config import Config
 from src.database.connection import get_db, init_db_standalone
 from src.database.models import Artist, Video

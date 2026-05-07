@@ -6,6 +6,9 @@ FastAPI middleware integration for API Gateway functionality
 import asyncio
 
 from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+
 from src.services.api_gateway import (
     RouteRule,
     RoutingStrategy,
@@ -13,8 +16,6 @@ from src.services.api_gateway import (
     get_api_gateway,
 )
 from src.utils.logger import get_logger
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
 
 logger = get_logger("mvidarr.middleware.api_gateway")
 

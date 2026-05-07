@@ -19,6 +19,7 @@ Refactored into: 10 specialized modules for better maintainability
 """
 
 from fastapi import APIRouter
+
 from src.api.fastapi.videos_blacklist import router as blacklist_router
 from src.api.fastapi.videos_bulk import router as bulk_router
 from src.api.fastapi.videos_crud import router as crud_router

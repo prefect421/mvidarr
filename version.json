@@ -1,12 +1,10 @@
 {
-  "version": "0.12.7",
-  "build_date": "2026-04-16T23:48:35.248462",
-  "git_commit": "56bd2076",
-  "git_branch": "dev",
-  "release_name": "v0.12.7 - Dependency Cleanup & Test Infrastructure",
+  "version": "0.12.8",
+  "build_date": "2026-05-07T18:30:46.837958",
+  "git_commit": "3048996a",
+  "git_branch": "main",
+  "release_name": "v0.12.8 - Security Patches (3 CVEs)",
   "features": [
-    "🧹 Chore: removed sphinx from production runtime, pytest-cov 7.1.0 (pytest 9 compat), CI flake8 pinned",
-    "🔒 Security: CVE-2026-40347 python-multipart, CVE-2026-40192 Pillow, CVE-2025-71176 pytest — all patched",
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
     "Professional Thumbnail Management with multi-source search and cropping",

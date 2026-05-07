@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List
 
 from sqlalchemy import desc, or_
+
 from src.database.connection import get_db
 from src.database.models import Artist, Video
 from src.services.metadata_enrichment_service import metadata_enrichment_service

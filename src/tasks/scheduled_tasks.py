@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 
 from celery import Task
 from celery.utils.log import get_task_logger
+
 from src.database.connection import get_db
 from src.database.models import Artist, Download, ScheduledJob, Video, VideoStatus
 from src.jobs.celery_app import celery_app

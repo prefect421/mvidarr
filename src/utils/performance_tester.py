@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import requests
+
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.utils.performance_tester")

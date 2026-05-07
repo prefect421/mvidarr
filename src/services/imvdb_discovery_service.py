@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Set
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
+
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
 from src.services.imvdb_service import imvdb_service

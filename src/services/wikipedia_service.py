@@ -5,6 +5,7 @@ Wikipedia API service for artist thumbnail retrieval
 import re
 
 import requests
+
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.wikipedia_service")
