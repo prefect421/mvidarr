@@ -10,7 +10,7 @@ import requests
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 from src.utils.youtube_cache import get_youtube_cache
-from src.utils.youtube_quota_tracker import track_youtube_api_call
+from src.utils.youtube_quota_tracker import get_quota_tracker, track_youtube_api_call
 
 logger = get_logger("mvidarr.services.youtube_search")
 
@@ -21,6 +21,7 @@ class YouTubeSearchService:
     def __init__(self):
         self.base_url = "https://www.googleapis.com/youtube/v3"
         self._cache = get_youtube_cache()
+        self._quota_tracker = get_quota_tracker()
         # Note: API key is NOT cached here - always fetch from SettingsService
         # to ensure updates are reflected without restarting the service
 
@@ -44,13 +45,13 @@ class YouTubeSearchService:
             return None
 
     def search_artist_videos(self, artist_name: str, limit: int = 50) -> Dict:
-        """Search for music videos by artist name (with caching)
+        """Search for music videos by artist name.
 
-        Performs two types of searches:
-        1. Music category search - for official music videos and lyric videos
-        2. Extended search (no category filter) - for live performances, acoustic, etc.
+        Makes at most 2 YouTube API search calls per artist:
+        1. Music category search (videoCategoryId=10) — official music/lyric videos
+        2. Extended search (no category) — live, acoustic, concert
+        The second call is skipped if quota is too low.
         """
-        # Get API key fresh (not cached locally)
         current_api_key = self.api_key
         if not current_api_key:
             logger.warning(
@@ -62,7 +63,6 @@ class YouTubeSearchService:
                 "error": "YouTube API key not configured",
             }
 
-        # Log API key presence (first/last 4 chars for debugging, masked middle)
         key_preview = (
             f"{current_api_key[:4]}...{current_api_key[-4:]}"
             if len(current_api_key) > 8
@@ -70,24 +70,32 @@ class YouTubeSearchService:
         )
         logger.debug(f"YouTube API key present: {key_preview}")
 
-        # Check cache first
-        # Note: Cache version bumped to v3 to invalidate any stale empty results
-        # from when API key caching bug caused empty responses to be cached
-        cache_params = {"artist_name": artist_name, "limit": limit, "version": "v3"}
+        cache_params = {"artist_name": artist_name, "limit": limit, "version": "v4"}
         cached_result = self._cache.get("search", cache_params)
         if cached_result is not None:
             logger.info(f"Using cached search results for artist: {artist_name}")
             return cached_result
 
+        # Check quota before making any call
+        if not self._quota_tracker.has_budget(100):
+            logger.warning(
+                f"YouTube API quota exhausted — skipping search for '{artist_name}'"
+            )
+            return {
+                "videos": [],
+                "total_results": 0,
+                "error": "YouTube API quota exhausted for today",
+            }
+
         all_videos = []
-        seen_video_ids = set()
+        seen_video_ids: set = set()
         total_results = 0
 
         try:
-            # Search 1: Music category (official music videos, lyric videos)
+            # Search 1: Music category — official music/lyric videos (100 units)
             music_videos = self._search_youtube_api(
                 query=f"{artist_name} official music video",
-                limit=min(limit // 2, 25),
+                limit=min(limit, 25),
                 use_music_category=True,
             )
             for video in music_videos.get("videos", []):
@@ -96,57 +104,33 @@ class YouTubeSearchService:
                     all_videos.append(video)
             total_results += music_videos.get("total_results", 0)
 
-            # Search 2: Live performances (no category filter)
-            live_videos = self._search_youtube_api(
-                query=f"{artist_name} live performance official",
-                limit=min(limit // 3, 20),
-                use_music_category=False,
-            )
-            for video in live_videos.get("videos", []):
-                if video["youtube_id"] not in seen_video_ids:
-                    seen_video_ids.add(video["youtube_id"])
-                    all_videos.append(video)
-            total_results += live_videos.get("total_results", 0)
+            # Search 2: Extended — live, acoustic, concert (100 units, conditional)
+            if self._quota_tracker.has_budget(100):
+                extended_videos = self._search_youtube_api(
+                    query=f"{artist_name} live acoustic concert official",
+                    limit=min(limit // 2, 20),
+                    use_music_category=False,
+                )
+                for video in extended_videos.get("videos", []):
+                    if video["youtube_id"] not in seen_video_ids:
+                        seen_video_ids.add(video["youtube_id"])
+                        all_videos.append(video)
+                total_results += extended_videos.get("total_results", 0)
+            else:
+                logger.info(
+                    f"Skipping extended search for '{artist_name}' — quota too low"
+                )
 
-            # Search 3: Concert footage (no category filter)
-            concert_videos = self._search_youtube_api(
-                query=f"{artist_name} concert official video",
-                limit=min(limit // 4, 15),
-                use_music_category=False,
-            )
-            for video in concert_videos.get("videos", []):
-                if video["youtube_id"] not in seen_video_ids:
-                    seen_video_ids.add(video["youtube_id"])
-                    all_videos.append(video)
-            total_results += concert_videos.get("total_results", 0)
-
-            # Search 4: Acoustic/unplugged versions (no category filter)
-            acoustic_videos = self._search_youtube_api(
-                query=f"{artist_name} acoustic unplugged official",
-                limit=min(limit // 4, 10),
-                use_music_category=False,
-            )
-            for video in acoustic_videos.get("videos", []):
-                if video["youtube_id"] not in seen_video_ids:
-                    seen_video_ids.add(video["youtube_id"])
-                    all_videos.append(video)
-            total_results += acoustic_videos.get("total_results", 0)
-
-            # Calculate relevance scores for all videos
             for video in all_videos:
                 video["search_score"] = self._calculate_relevance_score(
                     video.get("title", ""), artist_name
                 )
 
-            # Sort by relevance score
             all_videos.sort(key=lambda x: x.get("search_score", 0), reverse=True)
-
-            # Limit to requested number
             all_videos = all_videos[:limit]
 
             logger.info(
-                f"Found {len(all_videos)} YouTube videos for artist: {artist_name} "
-                f"(combined from multiple searches)"
+                f"Found {len(all_videos)} YouTube videos for artist: {artist_name}"
             )
 
             result = {
@@ -156,8 +140,6 @@ class YouTubeSearchService:
                 "artist_name": artist_name,
             }
 
-            # Only cache if we actually got results - don't cache empty results
-            # from API quota exhaustion or other transient failures
             if all_videos:
                 self._cache.set("search", cache_params, result)
             else:
@@ -169,11 +151,9 @@ class YouTubeSearchService:
             return result
 
         except Exception as e:
-            # Sanitize error message to remove API key
             error_msg = str(e)
             if self.api_key and self.api_key in error_msg:
                 error_msg = error_msg.replace(self.api_key, "***API_KEY***")
-
             logger.error(f"YouTube search failed for artist {artist_name}: {error_msg}")
             return {
                 "videos": all_videos if all_videos else [],
@@ -196,6 +176,10 @@ class YouTubeSearchService:
             Dict with videos list and metadata
         """
         try:
+            if not self._quota_tracker.has_budget(100):
+                logger.warning(f"Quota exhausted — aborting search: {query!r}")
+                return {"videos": [], "total_results": 0}
+
             url = f"{self.base_url}/search"
             params = {
                 "part": "snippet",
@@ -214,8 +198,7 @@ class YouTubeSearchService:
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
 
-            # Track quota usage for search API call
-            track_youtube_api_call("search", count=1)
+            self._quota_tracker.consume("search", count=1)
 
             data = response.json()
             videos = []
