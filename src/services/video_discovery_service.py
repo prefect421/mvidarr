@@ -214,9 +214,10 @@ class VideoDiscoveryService:
                             total_discovered += result["discovered_count"]
                             total_stored += result["stored_count"]
 
-                            # Update last discovery time
+                            # Commit per-artist so interrupted runs don't re-process
                             artist.last_discovery = datetime.utcnow()
                             session.add(artist)
+                            session.commit()
 
                         # Rate limiting between artists
                         time.sleep(self.rate_limit_delay * 2)
