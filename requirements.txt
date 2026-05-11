@@ -19,7 +19,7 @@ mysqlclient>=2.2.0
 
 # HTTP and API
 requests==2.33.0  # Security: CVE-2026-25645 predictable temp file creation fix
-urllib3==2.6.3  # Security: CVE-2026-21441 decompression-bomb fix
+urllib3==2.7.0  # Security: CVE-2026-21441 decompression-bomb fix
 httpx==0.25.2
 aiohttp==3.13.4  # Security: CVE-2026-22815/34513-34520/34525 header injection + DoS fixes
 
