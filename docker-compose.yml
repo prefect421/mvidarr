@@ -1,4 +1,4 @@
-# MVidarr - Production Docker Compose
+# MVidarr - Docker Compose
 # Simple 3-container deployment: MVidarr, MariaDB, Redis
 # FastAPI + Celery worker managed by supervisord in the main container
 
