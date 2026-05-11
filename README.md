@@ -22,24 +22,31 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.8 - Security Patches (3 CVEs)**
+## 🚀 **LATEST: v0.12.9 - YouTube Quota & Discovery Improvements**
 
-**Released**: May 7, 2026
+**Released**: May 11, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Security Fixes ✅ (3 CVEs resolved)
-- **🔒 CVE-2026-41066** (HIGH): lxml 4.9.3 → 6.1.0 — XXE allows reading local files via default `iterparse()`/`ETCompatXMLParser()` parsers
-- **🔒 CVE-2026-42561** (MEDIUM): python-multipart 0.0.26 → 0.0.27 — DoS via oversized/repeated multipart part headers exhausting FastAPI/Starlette workers
-- **🔒 CVE-2026-28684** (MEDIUM): python-dotenv 1.0.0 → 1.2.2 — symlink following in `set_key()` allows arbitrary file overwrite via cross-device rename fallback
+### Features ✅
+- Reduced YouTube searches from 4 to 2 per artist for better API quota efficiency
+- Quota enforcement added to YouTubeQuotaTracker with file locking to prevent overruns
+- Per-artist `last_discovery` now committed after each artist completes, surviving interrupted discovery runs
 
-### Housekeeping ✅
-- Fixed broken `-r requirements-prod.txt` include in `requirements-dev.txt` (file did not exist)
-- Import ordering corrected across `src/` for CI compliance
+### Tests ✅
+- Unit tests added for YouTubeQuotaTracker
+- Unit tests added for YouTubeSearchService
 
 > **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.8 - Security Patches (3 CVEs) (May 7, 2026)
+- **🔒 CVE-2026-41066** (HIGH): lxml 4.9.3 → 6.1.0 — XXE local file read
+- **🔒 CVE-2026-42561** (MEDIUM): python-multipart 0.0.26 → 0.0.27 — DoS via oversized headers
+- **🔒 CVE-2026-28684** (MEDIUM): python-dotenv 1.0.0 → 1.2.2 — symlink arbitrary file overwrite
+- Fixed broken `-r requirements-prod.txt` include in `requirements-dev.txt`
+- Import ordering corrected across `src/` for CI compliance
 
 ### v0.12.7 - Dependency Cleanup & Test Infrastructure (April 16, 2026)
 - Removed sphinx from production runtime (dev-only)
@@ -170,7 +177,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.7`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.9`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -322,4 +329,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.7** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.9** - Built with ❤️ for music video enthusiasts
