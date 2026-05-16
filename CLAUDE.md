@@ -214,17 +214,27 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.8 - Released
+### Current Phase: v0.12.10 - Released
 
-#### Versioning Policy (Updated 2026-05-07)
-- **Current Version**: 0.12.8 (Released 2026-05-07)
-- **Next Version**: 0.12.9 (Planning)
+#### Versioning Policy (Updated 2026-05-16)
+- **Current Version**: 0.12.10 (Released 2026-05-16)
+- **Next Version**: 0.12.11 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.10** (2026-05-16): Security Sweep (2 HIGH CVEs)
+  - ✅ Security: CVE-2026-44432 urllib3 2.6.3 → 2.7.0 (decompression-bomb bypass, HIGH CVSS 7.5)
+  - ✅ Security: CVE-2026-44431 urllib3 2.6.3 → 2.7.0 (sensitive header forwarding, HIGH CVSS 5.3)
+  - ✅ Fix: pytest-asyncio 0.23.8 → 1.3.0 (0.x incompatible with pytest 9.x, broke pip-audit + test suite)
+  - ✅ Fix: pytest-playwright 0.4.3 → 0.7.2 (required for pytest 9.x compatibility)
+  - ✅ Dockerfile: added --timeout 120 to pip install for reliable builds on slow connections
+- **v0.12.9** (2026-05-11): YouTube Quota & Discovery Improvements
+  - ✅ Reduced YouTube searches from 4 to 2 per artist for quota efficiency
+  - ✅ Quota enforcement with file locking in YouTubeQuotaTracker
+  - ✅ Per-artist last_discovery committed after each artist to survive interrupted runs
 - **v0.12.8** (2026-05-07): Security Patches (3 CVEs)
   - ✅ Security: CVE-2026-41066 lxml 4.9.3 → 6.1.0 (XXE local file read, HIGH)
   - ✅ Security: CVE-2026-42561 python-multipart 0.0.26 → 0.0.27 (DoS header parsing, MEDIUM)
