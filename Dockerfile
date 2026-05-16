@@ -34,7 +34,7 @@ WORKDIR /app
 COPY requirements.txt requirements-fastapi.txt ./
 
 # Install Python dependencies (both Flask/core and FastAPI)
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-fastapi.txt
+RUN pip install --no-cache-dir --timeout 120 -r requirements.txt -r requirements-fastapi.txt
 
 # Copy application code
 COPY . .
