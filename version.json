@@ -1,17 +1,27 @@
 {
-  "version": "0.12.9",
-  "build_date": "2026-05-08T16:55:49.210447",
-  "git_commit": "a10e51a8",
-  "git_branch": "dev",
-  "release_name": "v0.12.9 - YouTube API Quota Fix",
+  "version": "0.12.10",
+  "build_date": "2026-05-16T00:10:55.321025",
+  "git_commit": "ae94f657",
+  "git_branch": "main",
+  "release_name": "v0.12.10 - Security Sweep (urllib3 CVE-2026-44431/44432)",
   "features": [
-    "Fix: YouTube API quota exhaustion — searches reduced from 4 to 2 per artist",
-    "Fix: Quota enforcement blocks API calls when daily limit is reached",
-    "Fix: Multi-process quota tracking via file locking (Celery workers share state)",
-    "Fix: last_discovery committed per-artist to survive interrupted discovery runs",
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
     "Professional Thumbnail Management with multi-source search and cropping",
-    "Intelligent Organization with automatic folder creation and cleanup"
+    "Intelligent Organization with automatic folder creation and cleanup",
+    "Advanced Search System with real-time suggestions and filtering",
+    "Bulk Operations with multi-select editing and batch processing",
+    "Video Streaming with built-in player and transcoding",
+    "System Health monitoring with comprehensive diagnostics",
+    "Database-Driven Settings with complete configuration management",
+    "Download Management with queue visualization and progress tracking",
+    "Multi-User Authentication with role-based access control",
+    "Advanced Security with password policies and audit logging",
+    "Modern UI with left sidebar navigation and theme system",
+    "MvTV Continuous Player with cinematic mode",
+    "Two-Factor Authentication with TOTP support",
+    "Fixed Video Search Results Display with improved CSS and field mapping",
+    "Robust CI/CD Integration with comprehensive testing and deployment",
+    "Enhanced Database Initialization with secure admin user creation"
   ]
 }
