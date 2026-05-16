@@ -22,24 +22,29 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.9 - YouTube Quota & Discovery Improvements**
+## 🚀 **LATEST: v0.12.10 - Security Sweep (2 HIGH CVEs)**
 
-**Released**: May 11, 2026
+**Released**: May 16, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Features ✅
-- Reduced YouTube searches from 4 to 2 per artist for better API quota efficiency
-- Quota enforcement added to YouTubeQuotaTracker with file locking to prevent overruns
-- Per-artist `last_discovery` now committed after each artist completes, surviving interrupted discovery runs
+### Security Fixes ✅
+- **🔒 CVE-2026-44432** (HIGH, CVSS 7.5): urllib3 2.6.3 → 2.7.0 — decompression-bomb safeguards bypassed in streaming API
+- **🔒 CVE-2026-44431** (HIGH, CVSS 5.3): urllib3 2.6.3 → 2.7.0 — sensitive `Authorization`/`Cookie` headers forwarded across origins in proxied low-level redirects
 
-### Tests ✅
-- Unit tests added for YouTubeQuotaTracker
-- Unit tests added for YouTubeSearchService
+### Dependency Fixes ✅
+- pytest-asyncio 0.23.8 → 1.3.0 — 0.x series incompatible with pytest 9.x; fixes broken pip-audit and test suite
+- pytest-playwright 0.4.3 → 0.7.2 — required for pytest 9.x compatibility
+- Dockerfile: added `--timeout 120` to `pip install` for reliable builds on slow connections
 
 > **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.9 - YouTube Quota & Discovery Improvements (May 11, 2026)
+- Reduced YouTube searches from 4 to 2 per artist for better API quota efficiency
+- Quota enforcement added to YouTubeQuotaTracker with file locking to prevent overruns
+- Per-artist `last_discovery` now committed after each artist completes, surviving interrupted runs
 
 ### v0.12.8 - Security Patches (3 CVEs) (May 7, 2026)
 - **🔒 CVE-2026-41066** (HIGH): lxml 4.9.3 → 6.1.0 — XXE local file read
