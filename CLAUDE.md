@@ -214,17 +214,27 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.10 - Released
+### Current Phase: v0.12.11 - Released
 
-#### Versioning Policy (Updated 2026-05-16)
-- **Current Version**: 0.12.10 (Released 2026-05-16)
-- **Next Version**: 0.12.11 (Planning)
+#### Versioning Policy (Updated 2026-06-01)
+- **Current Version**: 0.12.11 (Released 2026-06-01)
+- **Next Version**: 0.12.12 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.11** (2026-06-01): Security Sweep + CI Modernization
+  - ✅ Security: CVE-2026-47180, CVE-2026-47183, CVE-2026-47184 zeroconf 0.132.2 → 0.149.7 (LAN DoS/OOM via mDNS)
+  - ✅ Security: PYSEC-2026-161 starlette ≥1.0.1 (Host header injection / auth bypass)
+  - ✅ Dependency: fastapi 0.123.0 → 0.136.3 (required for starlette 1.x)
+  - ✅ Dependency: pydantic 2.5.0 → 2.13.4 (required by fastapi 0.136.3)
+  - ✅ Dependency: pydantic-settings 2.1.0 → 2.14.1
+  - ✅ Dependency: typing-inspection ≥0.4.2 (new fastapi 0.136.3 requirement)
+  - ✅ CI: GitHub Actions v4 → Node.js 24 (checkout@v5, cache@v5, setup-python@v6, upload-artifact@v7, codecov@v6)
+  - ✅ CI: Fixed codecov `file:` → `files:` input rename (Unexpected input warnings)
+  - ✅ Incorporates Dependabot PR #213 (zeroconf) into dev branch
 - **v0.12.10** (2026-05-16): Security Sweep (2 HIGH CVEs)
   - ✅ Security: CVE-2026-44432 urllib3 2.6.3 → 2.7.0 (decompression-bomb bypass, HIGH CVSS 7.5)
   - ✅ Security: CVE-2026-44431 urllib3 2.6.3 → 2.7.0 (sensitive header forwarding, HIGH CVSS 5.3)
