@@ -48,12 +48,18 @@ logger = get_logger("mvidarr.api.fastapi.videos_streaming")
 
 async def find_relocated_video(video: Video) -> Optional[Path]:
     """Find video file if it has been relocated"""
-    if not getattr(video, "file_path", video.local_path):
+    file_ref = video.file_path or video.local_path
+    if not file_ref:
         return None
 
-    original_path = Path(getattr(video, "file_path", video.local_path))
+    original_path = Path(file_ref)
     if original_path.exists():
         return original_path
+    # Resolve relative paths against the app base directory
+    if not original_path.is_absolute():
+        abs_path = Config.BASE_DIR / original_path
+        if abs_path.exists():
+            return abs_path
 
     # Search for relocated file in configured music videos directory
     filename = original_path.name
@@ -172,12 +178,17 @@ async def stream_video(
         if not video:
             raise HTTPException(status_code=404, detail="Video not found")
 
-        # Find the video file
+        # Find the video file — check relative paths against both CWD and BASE_DIR
         video_path = None
-        if video.local_path and Path(video.local_path).exists():
-            video_path = Path(video.local_path)
-        else:
-            # Try to find relocated file
+        if video.local_path:
+            candidate = Path(video.local_path)
+            if candidate.exists():
+                video_path = candidate
+            elif not candidate.is_absolute():
+                abs_candidate = Config.BASE_DIR / candidate
+                if abs_candidate.exists():
+                    video_path = abs_candidate
+        if not video_path:
             video_path = await find_relocated_video(video)
 
         if not video_path or not video_path.exists():
@@ -321,12 +332,17 @@ async def stream_video_transcode(
         if not video:
             raise HTTPException(status_code=404, detail="Video not found")
 
-        # Find the video file
+        # Find the video file — check relative paths against both CWD and BASE_DIR
         video_path = None
-        if video.local_path and Path(video.local_path).exists():
-            video_path = Path(video.local_path)
-        else:
-            # Try to find relocated file
+        if video.local_path:
+            candidate = Path(video.local_path)
+            if candidate.exists():
+                video_path = candidate
+            elif not candidate.is_absolute():
+                abs_candidate = Config.BASE_DIR / candidate
+                if abs_candidate.exists():
+                    video_path = abs_candidate
+        if not video_path:
             video_path = await find_relocated_video(video)
 
         if not video_path or not video_path.exists():
