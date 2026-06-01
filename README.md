@@ -22,26 +22,26 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.12 - Dependabot Sweep + Python 3.14**
+## 🚀 **LATEST: v0.12.13 - Video Streaming Fix**
 
 **Released**: June 1, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Dependency Updates ✅
-- **Python 3.12-slim → 3.14-slim** — base image upgraded across all Dockerfiles; netifaces, mysqlclient, moviepy all verified compiling cleanly under 3.14
-- aiofiles 23.2.1 → 25.1.0
-- starlette ≥1.0.1 → ≥1.2.1
-- python-dateutil 2.8.2 → 2.9.0.post0
-- werkzeug 3.1.6 → 3.1.8
-- PyYAML 6.0.1 → 6.0.3
-
-### CI/CD ✅
-- GitHub Actions upgraded to Node.js 24: checkout@v6, login-action@v4, build-push-action@v7, github-script@v9, deploy-pages@v5
+### Bug Fixes ✅
+- **Fixed video streaming 404 errors** — Two bugs in the streaming endpoint caused videos to return HTTP 404 when `local_path` in the database is stored as a relative path (e.g. `data/musicvideos/...`):
+  1. `find_relocated_video()` incorrectly used `getattr()` to read `file_path`, which returned `None` even when `local_path` was valid — the fallback path search was silently skipped
+  2. Path existence checks now try both CWD-relative and `BASE_DIR`-anchored resolution, ensuring files are found regardless of working directory
+- Both `stream` and `stream-transcode` endpoints patched
 
 > **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.12 - Dependabot Sweep + Python 3.14 (June 1, 2026)
+- **Python 3.12-slim → 3.14-slim** — base image upgraded; netifaces, mysqlclient, moviepy verified clean
+- aiofiles 23.2.1 → 25.1.0, starlette ≥1.2.1, python-dateutil 2.9.0.post0, werkzeug 3.1.8, PyYAML 6.0.3
+- GitHub Actions upgraded to Node.js 24: checkout@v6, login-action@v4, build-push-action@v7, github-script@v9, deploy-pages@v5
 
 ### v0.12.11 - Security Sweep (June 1, 2026)
 - **🔒 CVE-2026-47180, CVE-2026-47183, CVE-2026-47184**: zeroconf 0.132.2 → 0.149.7 — LAN-local DoS/OOM via mDNS flood
@@ -195,7 +195,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.12`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.13`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -347,4 +347,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.12** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.13** - Built with ❤️ for music video enthusiasts

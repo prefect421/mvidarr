@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - update documentation after each issue or feature is completed
 - push to dev after each update.
 - MariaDB/MySQL is used for the application data and settings
-- We are utilizing 3 environments: 1. Dev is running on local server port 5000. 2. Docker is running on local machine docker install on port 5001. 3. Prod is running on 192.168.1.132:5050 in a docker install.
+- We are utilizing 3 environments: 1. Dev is running on local server port 5000. 2. Docker is running on local machine docker install on port 5001. 3. Prod is running on 192.168.1.68:5050 in a docker install.
 - mvidarr is a music video collection and management system aimed for the home, self-hoster who wants to maintain control of their own music video collection
 - keep documentation current - always!
 - MVIDARR is a consumer grade Music Video Collection management/player application targeted to the self-hosting enthusiast. It should be able to be ran as a service or a docker.
@@ -214,17 +214,21 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.12 - Released
+### Current Phase: v0.12.13 - Released
 
 #### Versioning Policy (Updated 2026-06-01)
-- **Current Version**: 0.12.12 (Released 2026-06-01)
-- **Next Version**: 0.12.13 (Planning)
+- **Current Version**: 0.12.13 (Released 2026-06-01)
+- **Next Version**: 0.12.14 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.13** (2026-06-01): Video Streaming Fix
+  - ✅ Fix: streaming 404 — find_relocated_video() used getattr(file_path) returning None, silently ignoring local_path
+  - ✅ Fix: streaming 404 — added Config.BASE_DIR-anchored path fallback for relative local_path values in Docker
+  - ✅ Both stream and stream-transcode endpoints patched
 - **v0.12.12** (2026-06-01): Dependabot Sweep + Python 3.14
   - ✅ Python base image 3.12-slim → 3.14-slim (verified: netifaces, mysqlclient, moviepy compile cleanly)
   - ✅ aiofiles 23.2.1 → 25.1.0, starlette ≥1.2.1, python-dateutil 2.9.0.post0, werkzeug 3.1.8, PyYAML 6.0.3

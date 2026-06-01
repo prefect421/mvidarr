@@ -2,7 +2,7 @@
 MVidarr - Music Video Management System
 """
 
-__version__ = "0.12.12"
+__version__ = "0.12.13"
 __author__ = "MVidarr Team"
 __description__ = (
     "Music Video Management System with Artist Tracking and Multi-Source Search"
