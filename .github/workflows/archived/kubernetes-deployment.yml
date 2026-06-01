@@ -58,7 +58,7 @@ jobs:
       istio-changed: ${{ steps.changes.outputs.istio }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -77,7 +77,7 @@ jobs:
               - 'src/**'
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -136,7 +136,7 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -187,7 +187,7 @@ jobs:
       url: https://dev.mvidarr.example.com
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure kubectl
         run: |
@@ -243,7 +243,7 @@ jobs:
       url: https://staging.mvidarr.example.com
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure kubectl
         run: |
@@ -300,7 +300,7 @@ jobs:
       url: https://mvidarr.example.com
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure kubectl
         run: |
