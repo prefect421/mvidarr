@@ -38,7 +38,7 @@ python-dotenv==1.2.2  # Security: CVE-2026-28684 symlink following arbitrary fil
 pydantic==2.13.4
 pydantic-settings==2.14.1
 marshmallow==3.26.2
-PyYAML==6.0.1
+PyYAML==6.0.3
 
 # HTML Parsing (for AllMusic web scraping)
 beautifulsoup4==4.12.2
