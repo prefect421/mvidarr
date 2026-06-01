@@ -2,7 +2,7 @@
 # Version: 0.9.9 - Production-Ready Release
 # Supports background job processing with Celery + Redis + FFmpeg
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Install system dependencies including supervisord for process management
 # xz-utils is REQUIRED for extracting Node.js .tar.xz files

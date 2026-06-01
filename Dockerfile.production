@@ -5,7 +5,7 @@
 #################################
 # Stage 1: Build Environment
 #################################
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Build arguments for version information (passed from CI/CD)
 ARG GIT_COMMIT=unknown
@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requiremen
 #################################
 # Stage 2: Runtime Environment
 #################################
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # Re-declare build arguments for runtime stage
 ARG GIT_COMMIT=unknown
