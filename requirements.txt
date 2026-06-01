@@ -50,7 +50,7 @@ redis==5.0.1
 flower==2.0.1
 
 # Security
-werkzeug==3.1.6  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
+werkzeug==3.1.8  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
 bcrypt==4.1.2
 cryptography>=42.0.0
 PyJWT==2.12.0  # Security: CVE-2026-32597 crit header validation fix

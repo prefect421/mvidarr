@@ -31,7 +31,7 @@ python-multipart>=0.0.27  # Security: CVE-2026-24486, CVE-2026-40347 DoS fix, CV
 pymysql>=1.0.2
 
 # Security utilities
-werkzeug>=3.1.5  # Security: CVE-2026-21860
+werkzeug>=3.1.8  # Security: CVE-2026-21860
 
 # Background job dependencies (already installed)
 # asyncio (built-in)
