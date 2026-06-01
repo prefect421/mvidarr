@@ -2,7 +2,7 @@
 
 # Core Framework - FastAPI primary, Flask for backwards compatibility
 fastapi==0.136.3
-starlette>=1.0.1  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
+starlette>=1.2.1  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 typing-inspection>=0.4.2
 uvicorn[standard]==0.24.0
 python-multipart==0.0.27  # Security: CVE-2026-24486 path traversal fix, CVE-2026-40347 DoS fix, CVE-2026-42561 header parsing DoS fix
@@ -33,12 +33,12 @@ python-ffmpeg==2.0.12
 moviepy==1.0.3
 
 # Data Processing
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
 python-dotenv==1.2.2  # Security: CVE-2026-28684 symlink following arbitrary file overwrite fix
 pydantic==2.13.4
 pydantic-settings==2.14.1
 marshmallow==3.26.2
-PyYAML==6.0.1
+PyYAML==6.0.3
 
 # HTML Parsing (for AllMusic web scraping)
 beautifulsoup4==4.12.2
@@ -50,7 +50,7 @@ redis==5.0.1
 flower==2.0.1
 
 # Security
-werkzeug==3.1.6  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
+werkzeug==3.1.8  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
 bcrypt==4.1.2
 cryptography>=42.0.0
 PyJWT==2.12.0  # Security: CVE-2026-32597 crit header validation fix
@@ -78,7 +78,7 @@ sentry-sdk==2.8.0
 
 # Additional utilities
 yarl>=1.12.0
-aiofiles==23.2.1
+aiofiles==25.1.0
 python-slugify==8.0.1
 bleach==6.1.0
 humanize==4.9.0
