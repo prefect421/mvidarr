@@ -22,24 +22,37 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.10 - Security Sweep (2 HIGH CVEs)**
+## 🚀 **LATEST: v0.12.12 - Dependabot Sweep + Python 3.14**
 
-**Released**: May 16, 2026
+**Released**: June 1, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Security Fixes ✅
-- **🔒 CVE-2026-44432** (HIGH, CVSS 7.5): urllib3 2.6.3 → 2.7.0 — decompression-bomb safeguards bypassed in streaming API
-- **🔒 CVE-2026-44431** (HIGH, CVSS 5.3): urllib3 2.6.3 → 2.7.0 — sensitive `Authorization`/`Cookie` headers forwarded across origins in proxied low-level redirects
+### Dependency Updates ✅
+- **Python 3.12-slim → 3.14-slim** — base image upgraded across all Dockerfiles; netifaces, mysqlclient, moviepy all verified compiling cleanly under 3.14
+- aiofiles 23.2.1 → 25.1.0
+- starlette ≥1.0.1 → ≥1.2.1
+- python-dateutil 2.8.2 → 2.9.0.post0
+- werkzeug 3.1.6 → 3.1.8
+- PyYAML 6.0.1 → 6.0.3
 
-### Dependency Fixes ✅
-- pytest-asyncio 0.23.8 → 1.3.0 — 0.x series incompatible with pytest 9.x; fixes broken pip-audit and test suite
-- pytest-playwright 0.4.3 → 0.7.2 — required for pytest 9.x compatibility
-- Dockerfile: added `--timeout 120` to `pip install` for reliable builds on slow connections
+### CI/CD ✅
+- GitHub Actions upgraded to Node.js 24: checkout@v6, login-action@v4, build-push-action@v7, github-script@v9, deploy-pages@v5
 
 > **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.11 - Security Sweep (June 1, 2026)
+- **🔒 CVE-2026-47180, CVE-2026-47183, CVE-2026-47184**: zeroconf 0.132.2 → 0.149.7 — LAN-local DoS/OOM via mDNS flood
+- **🔒 PYSEC-2026-161**: starlette ≥1.0.1 — Host header injection / authentication bypass
+- fastapi 0.123.0 → 0.136.3, pydantic 2.5.0 → 2.13.4, pydantic-settings 2.1.0 → 2.14.1
+- GitHub Actions: setup-python@v6, upload-artifact@v7, codecov@v6 — Node.js 24 migration
+
+### v0.12.10 - Security Sweep (May 16, 2026)
+- **🔒 CVE-2026-44432** (HIGH, CVSS 7.5): urllib3 2.6.3 → 2.7.0 — decompression-bomb bypass
+- **🔒 CVE-2026-44431** (HIGH, CVSS 5.3): urllib3 2.6.3 → 2.7.0 — sensitive header forwarding
+- pytest-asyncio 0.23.8 → 1.3.0, pytest-playwright 0.4.3 → 0.7.2 for pytest 9.x compatibility
 
 ### v0.12.9 - YouTube Quota & Discovery Improvements (May 11, 2026)
 - Reduced YouTube searches from 4 to 2 per artist for better API quota efficiency
@@ -182,7 +195,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.9`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.12`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -334,4 +347,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.9** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.12** - Built with ❤️ for music video enthusiasts

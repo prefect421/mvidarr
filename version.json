@@ -1,9 +1,9 @@
 {
-  "version": "0.12.11",
-  "build_date": "2026-06-01T18:00:33.719163",
-  "git_commit": "b7d203e1",
+  "version": "0.12.12",
+  "build_date": "2026-06-01T19:34:37.700635",
+  "git_commit": "ebef86ea",
   "git_branch": "main",
-  "release_name": "v0.12.11 - Security Sweep (zeroconf CVEs + starlette Host header injection)",
+  "release_name": "v0.12.12 - Dependabot sweep + Python 3.14",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
