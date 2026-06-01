@@ -36,7 +36,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
 
@@ -269,7 +269,7 @@ jobs:
         echo "5. **Audit Logging**: Enhanced authentication event logging and monitoring" >> auth-security-summary.md
 
     - name: Upload authentication security artifacts
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: auth-security-scan-${{ github.sha }}
