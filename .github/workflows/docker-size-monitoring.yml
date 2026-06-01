@@ -26,7 +26,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install dependencies
       run: |
@@ -122,7 +122,7 @@ jobs:
           }
 
     - name: Upload size history
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: docker-size-history-${{ steps.tag.outputs.tag }}

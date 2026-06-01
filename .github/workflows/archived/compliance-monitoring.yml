@@ -41,10 +41,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.12'
 
@@ -186,7 +186,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: CIS Control 1 - Inventory and Control of Hardware Assets
       run: |
@@ -321,7 +321,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: NIST Identify Function
       run: |
@@ -456,7 +456,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Download compliance artifacts
       uses: actions/download-artifact@v4
@@ -547,7 +547,7 @@ jobs:
           --assignee "@me" || echo "Issue creation failed - report available in artifacts"
 
     - name: Upload compliance artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: compliance-assessment-${{ github.run_id }}
