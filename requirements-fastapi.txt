@@ -1,6 +1,6 @@
 # FastAPI Core Framework
 fastapi==0.136.3
-starlette>=1.0.1  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
+starlette>=1.2.1  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 typing-inspection>=0.4.2
 uvicorn[standard]==0.24.0
 
