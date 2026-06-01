@@ -254,10 +254,10 @@ jobs:
         docker network rm mvidarr-test-network || true
 
     - name: Upload coverage reports
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       if: github.event_name == 'push'
       with:
-        file: ./coverage.xml
+        files: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
 
