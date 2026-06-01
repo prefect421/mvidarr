@@ -214,17 +214,21 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.11 - Released
+### Current Phase: v0.12.12 - Released
 
 #### Versioning Policy (Updated 2026-06-01)
-- **Current Version**: 0.12.11 (Released 2026-06-01)
-- **Next Version**: 0.12.12 (Planning)
+- **Current Version**: 0.12.12 (Released 2026-06-01)
+- **Next Version**: 0.12.13 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.12** (2026-06-01): Dependabot Sweep + Python 3.14
+  - ✅ Python base image 3.12-slim → 3.14-slim (verified: netifaces, mysqlclient, moviepy compile cleanly)
+  - ✅ aiofiles 23.2.1 → 25.1.0, starlette ≥1.2.1, python-dateutil 2.9.0.post0, werkzeug 3.1.8, PyYAML 6.0.3
+  - ✅ CI: Actions Node.js 24 — checkout@v6, login-action@v4, build-push-action@v7, github-script@v9, deploy-pages@v5
 - **v0.12.11** (2026-06-01): Security Sweep + CI Modernization
   - ✅ Security: CVE-2026-47180, CVE-2026-47183, CVE-2026-47184 zeroconf 0.132.2 → 0.149.7 (LAN DoS/OOM via mDNS)
   - ✅ Security: PYSEC-2026-161 starlette ≥1.0.1 (Host header injection / auth bypass)
