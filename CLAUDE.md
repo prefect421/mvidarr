@@ -214,17 +214,24 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.13 - Released
+### Current Phase: v0.12.14 - Released
 
-#### Versioning Policy (Updated 2026-06-01)
-- **Current Version**: 0.12.13 (Released 2026-06-01)
-- **Next Version**: 0.12.14 (Planning)
+#### Versioning Policy (Updated 2026-06-02)
+- **Current Version**: 0.12.14 (Released 2026-06-02)
+- **Next Version**: 0.12.15 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.14** (2026-06-02): Security Sweep (PyJWT CVEs)
+  - ✅ Security: PYSEC-2026-179 PyJWT 2.12.0 → 2.13.0 (HMAC algorithm confusion)
+  - ✅ Security: PYSEC-2026-178 PyJWT 2.12.0 → 2.13.0 (Detached JWS DoS)
+  - ✅ Security: PYSEC-2026-177 PyJWT 2.12.0 → 2.13.0 (unbounded JWKS fetches unauthenticated DoS)
+  - ✅ Security: PYSEC-2026-176 PyJWT 2.12.0 → 2.13.0 (algorithm allow-list bypass via PyJWK)
+  - ✅ Security: PYSEC-2026-175 PyJWT 2.12.0 → 2.13.0 (PyJWKClient SSRF via file://, ftp://, data://)
+  - ✅ 3 stale Trivy code scanning alerts (zeroconf CVE-2026-47180/83/84) cleared via fresh scan
 - **v0.12.13** (2026-06-01): Video Streaming Fix
   - ✅ Fix: streaming 404 — find_relocated_video() used getattr(file_path) returning None, silently ignoring local_path
   - ✅ Fix: streaming 404 — added Config.BASE_DIR-anchored path fallback for relative local_path values in Docker

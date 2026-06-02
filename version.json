@@ -1,9 +1,9 @@
 {
-  "version": "0.12.13",
-  "build_date": "2026-06-01T20:57:40.604914",
-  "git_commit": "9cf0a620",
+  "version": "0.12.14",
+  "build_date": "2026-06-02T18:28:02.015538",
+  "git_commit": "51e6ba66",
   "git_branch": "main",
-  "release_name": "v0.12.13 - Video Streaming Fix",
+  "release_name": "v0.12.14 - Security Sweep (PyJWT CVEs)",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
@@ -20,7 +20,7 @@
     "Modern UI with left sidebar navigation and theme system",
     "MvTV Continuous Player with cinematic mode",
     "Two-Factor Authentication with TOTP support",
-    "Fixed Video Streaming 404 for relative local_path values in Docker",
+    "Fixed Video Search Results Display with improved CSS and field mapping",
     "Robust CI/CD Integration with comprehensive testing and deployment",
     "Enhanced Database Initialization with secure admin user creation"
   ]

@@ -22,21 +22,28 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.13 - Video Streaming Fix**
+## 🚀 **LATEST: v0.12.14 - Security Sweep (PyJWT CVEs)**
 
-**Released**: June 1, 2026
+**Released**: June 2, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Bug Fixes ✅
-- **Fixed video streaming 404 errors** — Two bugs in the streaming endpoint caused videos to return HTTP 404 when `local_path` in the database is stored as a relative path (e.g. `data/musicvideos/...`):
-  1. `find_relocated_video()` incorrectly used `getattr()` to read `file_path`, which returned `None` even when `local_path` was valid — the fallback path search was silently skipped
-  2. Path existence checks now try both CWD-relative and `BASE_DIR`-anchored resolution, ensuring files are found regardless of working directory
-- Both `stream` and `stream-transcode` endpoints patched
+### Security Fixes ✅
+- **🔒 PYSEC-2026-179**: PyJWT 2.12.0 → 2.13.0 — HMAC algorithm confusion (issuer public key usable as HMAC secret)
+- **🔒 PYSEC-2026-178**: PyJWT 2.12.0 → 2.13.0 — Detached JWS DoS via oversized unencoded payload
+- **🔒 PYSEC-2026-177**: PyJWT 2.12.0 → 2.13.0 — Unbounded JWKS fetches via unknown kid header (unauthenticated DoS)
+- **🔒 PYSEC-2026-176**: PyJWT 2.12.0 → 2.13.0 — Algorithm allow-list bypass via PyJWK key object binding
+- **🔒 PYSEC-2026-175**: PyJWT 2.12.0 → 2.13.0 — PyJWKClient SSRF via file://, ftp://, data:// URI schemes
+- 3 stale Trivy code scanning alerts for zeroconf (CVE-2026-47180/83/84) auto-closed after fresh scan confirmed zeroconf 0.149.7 is clean
 
 > **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.13 - Video Streaming Fix (June 1, 2026)
+- **Fixed video streaming 404 errors** — Two bugs in the streaming endpoint caused videos to return HTTP 404 when `local_path` in the database is stored as a relative path
+- `find_relocated_video()` incorrectly used `getattr()` returning `None`; path resolution now tries both CWD-relative and `BASE_DIR`-anchored paths
+- Both `stream` and `stream-transcode` endpoints patched
 
 ### v0.12.12 - Dependabot Sweep + Python 3.14 (June 1, 2026)
 - **Python 3.12-slim → 3.14-slim** — base image upgraded; netifaces, mysqlclient, moviepy verified clean
