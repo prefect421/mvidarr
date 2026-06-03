@@ -13,8 +13,9 @@ jobs:
       pull-requests: write
     steps:
       - uses: dessant/lock-threads@v5
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
-          github-token: ${{ github.token }}
           issue-inactive-days: '90'
           exclude-issue-created-before: ''
           exclude-any-issue-labels: ''
