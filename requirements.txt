@@ -19,7 +19,7 @@ alembic==1.13.1
 mysqlclient>=2.2.0
 
 # HTTP and API
-requests==2.33.0  # Security: CVE-2026-25645 predictable temp file creation fix
+requests==2.34.2  # Security: CVE-2026-25645 predictable temp file creation fix
 urllib3==2.7.0  # Security: CVE-2026-44431 sensitive-header forwarding fix, CVE-2026-44432 decompression-bomb fix
 httpx==0.25.2
 aiohttp==3.13.4  # Security: CVE-2026-22815/34513-34520/34525 header injection + DoS fixes
