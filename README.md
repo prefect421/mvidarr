@@ -22,23 +22,28 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.14 - Security Sweep (PyJWT CVEs)**
+## 🚀 **LATEST: v0.12.15 - Security Sweep (aiohttp CVEs)**
 
-**Released**: June 2, 2026
+**Released**: June 6, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
 ### Security Fixes ✅
-- **🔒 PYSEC-2026-179**: PyJWT 2.12.0 → 2.13.0 — HMAC algorithm confusion (issuer public key usable as HMAC secret)
-- **🔒 PYSEC-2026-178**: PyJWT 2.12.0 → 2.13.0 — Detached JWS DoS via oversized unencoded payload
-- **🔒 PYSEC-2026-177**: PyJWT 2.12.0 → 2.13.0 — Unbounded JWKS fetches via unknown kid header (unauthenticated DoS)
-- **🔒 PYSEC-2026-176**: PyJWT 2.12.0 → 2.13.0 — Algorithm allow-list bypass via PyJWK key object binding
-- **🔒 PYSEC-2026-175**: PyJWT 2.12.0 → 2.13.0 — PyJWKClient SSRF via file://, ftp://, data:// URI schemes
-- 3 stale Trivy code scanning alerts for zeroconf (CVE-2026-47180/83/84) auto-closed after fresh scan confirmed zeroconf 0.149.7 is clean
+- **🔒 CVE-2026-34993**: aiohttp 3.13.4 → 3.14.0 — `CookieJar.load()` deserialization → arbitrary code execution (MEDIUM)
+- **🔒 CVE-2026-47265**: aiohttp 3.13.4 → 3.14.0 — per-request cookies leaked via cross-origin redirect (MEDIUM)
+
+### Dependency Updates
+- **bcrypt** 4.1.2 → 5.0.0 (breaking: passwords >72 bytes now raise ValueError; guard added in auth service)
+- **requests** 2.33.0 → 2.34.2, **alembic** 1.13.1 → 1.18.4, **zeroconf** 0.149.7 → 0.149.16
+- **GitHub Actions Node 24**: docker/metadata-action v6, upload-pages-artifact v5, labeler v6, label-actions v5, lock-threads v6
 
 > **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.14 - Security Sweep (PyJWT CVEs) (June 2, 2026)
+- **🔒 PYSEC-2026-179/178/177/176/175**: PyJWT 2.12.0 → 2.13.0 — HMAC confusion, JWS DoS, JWKS unauthenticated DoS, algorithm bypass, SSRF
+- 3 stale Trivy code scanning alerts for zeroconf auto-closed after fresh scan
 
 ### v0.12.13 - Video Streaming Fix (June 1, 2026)
 - **Fixed video streaming 404 errors** — Two bugs in the streaming endpoint caused videos to return HTTP 404 when `local_path` in the database is stored as a relative path
@@ -202,7 +207,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.13`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.15`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -354,4 +359,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.13** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.15** - Built with ❤️ for music video enthusiasts

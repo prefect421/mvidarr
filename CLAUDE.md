@@ -63,7 +63,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Docker Actions**: Use stable versions only:
   - `docker/login-action@v3`
   - `docker/setup-buildx-action@v3` 
-  - `docker/metadata-action@v5`
+  - `docker/metadata-action@v6`
   - `docker/build-push-action@v6`
 
 ## Subtitle System Implementation
@@ -214,17 +214,24 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.14 - Released
+### Current Phase: v0.12.15 - Released
 
-#### Versioning Policy (Updated 2026-06-02)
-- **Current Version**: 0.12.14 (Released 2026-06-02)
-- **Next Version**: 0.12.15 (Planning)
+#### Versioning Policy (Updated 2026-06-06)
+- **Current Version**: 0.12.15 (Released 2026-06-06)
+- **Next Version**: 0.12.16 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.15** (2026-06-06): Security Sweep (aiohttp CVEs + dependency updates)
+  - ✅ Security: CVE-2026-34993 aiohttp 3.13.4 → 3.14.0 (CookieJar.load() deserialization RCE, MEDIUM)
+  - ✅ Security: CVE-2026-47265 aiohttp 3.13.4 → 3.14.0 (cross-origin redirect leaks per-request cookies, MEDIUM)
+  - ✅ Dependency: bcrypt 4.1.2 → 5.0.0 (breaking: passwords >72 bytes raise ValueError; guard added in auth service)
+  - ✅ Dependency: requests 2.33.0 → 2.34.2, alembic 1.13.1 → 1.18.4, zeroconf 0.149.7 → 0.149.16
+  - ✅ CI: GitHub Actions Node 24 — docker/metadata-action@v6, upload-pages-artifact@v5, labeler@v6, label-actions@v5, lock-threads@v6
+  - ✅ Removed FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 workaround from lock.yml (v6 has native Node 24 support)
 - **v0.12.14** (2026-06-02): Security Sweep (PyJWT CVEs)
   - ✅ Security: PYSEC-2026-179 PyJWT 2.12.0 → 2.13.0 (HMAC algorithm confusion)
   - ✅ Security: PYSEC-2026-178 PyJWT 2.12.0 → 2.13.0 (Detached JWS DoS)
