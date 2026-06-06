@@ -49,6 +49,9 @@ class SimpleAuthService:
             if len(password) < 8:
                 return False, "Password must be at least 8 characters long"
 
+            if len(password.encode()) > 72:
+                return False, "Password must be 72 bytes or fewer"
+
             # Hash password using bcrypt
             import bcrypt
 
@@ -109,13 +112,20 @@ class SimpleAuthService:
                 password_sha256 = hashlib.sha256(password.encode()).hexdigest()
                 if password_sha256 == stored_password_hash:
                     # Password matches - migrate to bcrypt
-                    new_hash = bcrypt.hashpw(
-                        password.encode(), bcrypt.gensalt()
-                    ).decode()
-                    SettingsService.set("simple_auth_password", new_hash)
-                    logger.info(
-                        f"User authenticated and password migrated to bcrypt: {username}"
-                    )
+                    try:
+                        new_hash = bcrypt.hashpw(
+                            password.encode(), bcrypt.gensalt()
+                        ).decode()
+                        SettingsService.set("simple_auth_password", new_hash)
+                        logger.info(
+                            f"User authenticated and password migrated to bcrypt: {username}"
+                        )
+                    except ValueError:
+                        # bcrypt 5.0.0+ raises ValueError for passwords > 72 bytes;
+                        # skip migration and leave legacy hash in place
+                        logger.warning(
+                            f"bcrypt migration skipped for {username}: password exceeds 72 bytes"
+                        )
                     return True, "Authentication successful"
                 else:
                     return False, "Invalid username or password"

@@ -12,9 +12,7 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: dessant/lock-threads@v5
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      - uses: dessant/lock-threads@v6
         with:
           issue-inactive-days: '90'
           exclude-issue-created-before: ''
