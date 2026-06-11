@@ -52,7 +52,7 @@ flower==2.0.1
 # Security
 werkzeug==3.1.8  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
 bcrypt==5.0.0
-cryptography>=42.0.0
+cryptography>=48.0.1
 PyJWT==2.13.0  # Security: CVE-2026-32597 crit header validation fix, PYSEC-2026-175/176/177/178/179 JWKS/HMAC/DoS fixes
 passlib==1.7.4
 pyotp==2.9.0

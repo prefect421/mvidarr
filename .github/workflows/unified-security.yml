@@ -221,7 +221,7 @@ jobs:
 
     - name: Upload to GitHub Security Tab (SARIF)
       if: steps.scan-scope.outputs.scan_type == 'comprehensive' && (success() || failure())
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: semgrep-results.json
       continue-on-error: true
