@@ -22,7 +22,7 @@ mysqlclient>=2.2.0
 requests==2.34.2  # Security: CVE-2026-25645 predictable temp file creation fix
 urllib3==2.7.0  # Security: CVE-2026-44431 sensitive-header forwarding fix, CVE-2026-44432 decompression-bomb fix
 httpx==0.25.2
-aiohttp==3.14.0  # Security: CVE-2026-22815/34513-34520/34525 header injection + DoS fixes, CVE-2026-34993 CookieJar deserialization RCE fix, CVE-2026-47265 cross-origin cookie leak fix
+aiohttp==3.14.1  # Security: CVE-2026-22815/34513-34520/34525 header injection + DoS fixes, CVE-2026-34993 CookieJar deserialization RCE fix, CVE-2026-47265 cross-origin cookie leak fix
 
 # Image Processing
 Pillow==12.2.0  # Security: CVE-2026-25990 PSD fix, CVE-2026-40192 FITS GZIP decompression bomb fix
