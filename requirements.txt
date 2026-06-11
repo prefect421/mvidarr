@@ -22,11 +22,11 @@ mysqlclient>=2.2.0
 requests==2.34.2  # Security: CVE-2026-25645 predictable temp file creation fix
 urllib3==2.7.0  # Security: CVE-2026-44431 sensitive-header forwarding fix, CVE-2026-44432 decompression-bomb fix
 httpx==0.25.2
-aiohttp==3.14.0  # Security: CVE-2026-22815/34513-34520/34525 header injection + DoS fixes, CVE-2026-34993 CookieJar deserialization RCE fix, CVE-2026-47265 cross-origin cookie leak fix
+aiohttp==3.14.1  # Security: CVE-2026-22815/34513-34520/34525 header injection + DoS fixes, CVE-2026-34993 CookieJar deserialization RCE fix, CVE-2026-47265 cross-origin cookie leak fix
 
 # Image Processing
 Pillow==12.2.0  # Security: CVE-2026-25990 PSD fix, CVE-2026-40192 FITS GZIP decompression bomb fix
-opencv-python-headless>=4.8.0
+opencv-python-headless>=4.13.0.92
 
 # Media Processing
 python-ffmpeg==2.0.12
@@ -52,7 +52,7 @@ flower==2.0.1
 # Security
 werkzeug==3.1.8  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
 bcrypt==5.0.0
-cryptography>=42.0.0
+cryptography>=48.0.1
 PyJWT==2.13.0  # Security: CVE-2026-32597 crit header validation fix, PYSEC-2026-175/176/177/178/179 JWKS/HMAC/DoS fixes
 passlib==1.7.4
 pyotp==2.9.0

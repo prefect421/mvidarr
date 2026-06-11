@@ -6,7 +6,7 @@ uvicorn[standard]==0.24.0
 
 # ASGI Server and WebSocket support
 uvicorn==0.24.0
-websockets==12.0
+websockets==16.0
 
 # Template engine (compatible with FastAPI)
 jinja2==3.1.6
@@ -24,7 +24,7 @@ httpx==0.25.2
 # Database - Async Support
 sqlalchemy[asyncio]>=2.0.23
 aiomysql>=0.2.0
-cryptography>=3.4.8
+cryptography>=48.0.1
 python-multipart>=0.0.27  # Security: CVE-2026-24486, CVE-2026-40347 DoS fix, CVE-2026-42561 header parsing DoS fix
 
 # Keep pymysql for Flask compatibility during migration
