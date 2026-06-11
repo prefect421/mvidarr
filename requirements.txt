@@ -30,7 +30,7 @@ opencv-python-headless>=4.8.0
 
 # Media Processing
 python-ffmpeg==2.0.12
-moviepy==1.0.3
+moviepy==2.2.1
 
 # Data Processing
 python-dateutil==2.9.0.post0
