@@ -56,7 +56,7 @@ cryptography>=48.0.1
 PyJWT==2.13.0  # Security: CVE-2026-32597 crit header validation fix, PYSEC-2026-175/176/177/178/179 JWKS/HMAC/DoS fixes
 passlib==1.7.4
 pyotp==2.9.0
-qrcode==7.4.2
+qrcode==8.2
 defusedxml==0.7.1
 
 # Utilities
