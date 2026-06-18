@@ -24,7 +24,7 @@ jobs:
       
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0
         fetch-tags: true
@@ -131,7 +131,7 @@ jobs:
         
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
@@ -201,7 +201,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Create source archive
       run: |
@@ -251,7 +251,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
