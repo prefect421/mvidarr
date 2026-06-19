@@ -214,17 +214,28 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.15 - Released
+### Current Phase: v0.12.16 - Released
 
-#### Versioning Policy (Updated 2026-06-06)
-- **Current Version**: 0.12.15 (Released 2026-06-06)
-- **Next Version**: 0.12.16 (Planning)
+#### Versioning Policy (Updated 2026-06-19)
+- **Current Version**: 0.12.16 (Released 2026-06-19)
+- **Next Version**: 0.12.17 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.16** (2026-06-19): Security Sweep (python-multipart CVEs + bleach + Dependabot PRs)
+  - ✅ Security: CVE-2026-53539 python-multipart 0.0.27 → 0.0.32 (quadratic CPU DoS via semicolon separators, HIGH CVSS 7.5)
+  - ✅ Security: Dependabot #20 bleach 6.1.0 → 6.4.0 (formaction URI scheme bypass, MEDIUM CVSS 6.1)
+  - ✅ Security: CVE-2026-53538 python-multipart (semicolon field separator parameter smuggling, LOW)
+  - ✅ Security: CVE-2026-53537 python-multipart (Content-Disposition RFC 2231 smuggling, LOW)
+  - ✅ Security: CVE-2026-45152 python-multipart (negative Content-Length buffers body, LOW)
+  - ✅ Security: Dependabot #19 bleach (Unicode >U+00A0 URI sanitization bypass, LOW)
+  - ✅ Dependency: sentry-sdk 2.8.0 → 2.63.0 (FastAPI 0.137 compat fix)
+  - ✅ Dependency: starlette floor >=1.2.1 → >=1.3.1
+  - ✅ CI: actions/checkout v6 → v7 (8 active workflows; blocks unsafe fork PR checkout)
+  - ✅ Closed Dependabot alerts #15 #16 #17 #18 #19 #20; closed PRs #252 #254 #255 #256 #257 #258
 - **v0.12.15** (2026-06-06): Security Sweep (aiohttp CVEs + dependency updates)
   - ✅ Security: CVE-2026-34993 aiohttp 3.13.4 → 3.14.0 (CookieJar.load() deserialization RCE, MEDIUM)
   - ✅ Security: CVE-2026-47265 aiohttp 3.13.4 → 3.14.0 (cross-origin redirect leaks per-request cookies, MEDIUM)
