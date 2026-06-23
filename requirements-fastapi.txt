@@ -16,7 +16,7 @@ aiofiles==25.1.0
 
 # Validation and serialization  
 pydantic==2.13.4
-pydantic-settings==2.14.1
+pydantic-settings==2.14.2
 
 # HTTP client for async requests
 httpx==0.25.2
