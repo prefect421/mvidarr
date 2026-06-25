@@ -19,7 +19,7 @@ pydantic==2.13.4
 pydantic-settings==2.14.1
 
 # HTTP client for async requests
-httpx==0.25.2
+httpx==0.28.1
 
 # Database - Async Support
 sqlalchemy[asyncio]>=2.0.23
