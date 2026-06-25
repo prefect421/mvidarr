@@ -78,7 +78,7 @@ sentry-sdk==2.63.0
 # Additional utilities
 yarl>=1.12.0
 aiofiles==25.1.0
-python-slugify==8.0.1
+python-slugify==8.0.4
 bleach==6.4.0  # Security: Dependabot #20 formaction URI scheme bypass fix, #19 Unicode URI sanitization fix
 humanize==4.9.0
 
