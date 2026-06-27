@@ -1,7 +1,7 @@
 # MVidarr Enhanced - Production Dependencies
 
 # Core Framework - FastAPI primary, Flask for backwards compatibility
-fastapi==0.136.3
+fastapi==0.138.1
 starlette>=1.3.1  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 typing-inspection>=0.4.2
 uvicorn[standard]==0.24.0
@@ -15,13 +15,13 @@ Flask-Session==0.8.0
 # Database
 SQLAlchemy==2.0.23
 PyMySQL==1.1.1
-alembic==1.18.4
+alembic==1.18.5
 mysqlclient>=2.2.0
 
 # HTTP and API
 requests==2.34.2  # Security: CVE-2026-25645 predictable temp file creation fix
 urllib3==2.7.0  # Security: CVE-2026-44431 sensitive-header forwarding fix, CVE-2026-44432 decompression-bomb fix
-httpx==0.25.2
+httpx==0.28.1
 aiohttp==3.14.1  # Security: CVE-2026-22815/34513-34520/34525 header injection + DoS fixes, CVE-2026-34993 CookieJar deserialization RCE fix, CVE-2026-47265 cross-origin cookie leak fix
 
 # Image Processing
@@ -35,7 +35,7 @@ python-ffmpeg==2.0.12
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2  # Security: CVE-2026-28684 symlink following arbitrary file overwrite fix
 pydantic==2.13.4
-pydantic-settings==2.14.1
+pydantic-settings==2.14.2  # Security: GHSA-4xgf-cpjx-pc3j NestedSecretsSettingsSource symlink traversal fix
 marshmallow==3.26.2
 PyYAML==6.0.3
 
@@ -78,7 +78,7 @@ sentry-sdk==2.63.0
 # Additional utilities
 yarl>=1.12.0
 aiofiles==25.1.0
-python-slugify==8.0.1
+python-slugify==8.0.4
 bleach==6.4.0  # Security: Dependabot #20 formaction URI scheme bypass fix, #19 Unicode URI sanitization fix
 humanize==4.9.0
 
