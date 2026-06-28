@@ -22,28 +22,28 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.16 - Security Sweep (python-multipart, bleach)**
+## 🚀 **LATEST: v0.12.17 - Security Sweep (pydantic-settings CVE + dependency updates)**
 
-**Released**: June 19, 2026
+**Released**: June 27, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Security Fixes ✅
-- **🔒 CVE-2026-53539** (HIGH, CVSS 7.5): python-multipart 0.0.27 → 0.0.32 — quadratic CPU DoS via semicolon-separated form bodies
-- **🔒 Dependabot #20** (MEDIUM, CVSS 6.1): bleach 6.1.0 → 6.4.0 — `formaction` attribute allows `javascript:` URI bypass through sanitizer
-- **🔒 CVE-2026-53538** (LOW): python-multipart — semicolon separator enables parameter smuggling
-- **🔒 CVE-2026-53537** (LOW): python-multipart — Content-Disposition RFC 2231 parameter smuggling
-- **🔒 CVE-2026-45152** (LOW): python-multipart — negative Content-Length buffers full request body in memory
-- **🔒 Dependabot #19** (LOW): bleach — Unicode >U+00A0 bypasses URI scheme sanitization
+### Security Fix ✅
+- **🔒 GHSA-4xgf-cpjx-pc3j** (MEDIUM): pydantic-settings 2.14.1 → 2.14.2 — `NestedSecretsSettingsSource` follows symlinks outside `secrets_dir`, enabling out-of-tree local file reads and bypassing `secrets_dir_max_size` cap
 
 ### Dependency Updates
-- **sentry-sdk** 2.8.0 → 2.63.0 (includes FastAPI 0.137 double-wrap fix)
-- **starlette** floor >=1.2.1 → >=1.3.1
-- **actions/checkout** v6 → v7 across all active workflows (blocks unsafe fork PR checkout)
+- **fastapi** 0.136.3 → 0.138.1, **alembic** 1.18.4 → 1.18.5, **httpx** 0.25.2 → 0.28.1, **python-slugify** 8.0.1 → 8.0.4
+- **mypy** 1.7.1 → 2.1.0 (dev), **actions/cache** v5 → v6, **ruby/setup-ruby** 1.313.0 → 1.314.0
 
 > **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.16 - Security Sweep (python-multipart, bleach) (June 19, 2026)
+- **🔒 CVE-2026-53539** (HIGH, CVSS 7.5): python-multipart 0.0.27 → 0.0.32 — quadratic CPU DoS
+- **🔒 Dependabot #20** (MEDIUM, CVSS 6.1): bleach 6.1.0 → 6.4.0 — `formaction` URI bypass
+- **🔒 CVE-2026-53538/53537/45152** (LOW): python-multipart — parameter smuggling + buffer fixes
+- **sentry-sdk** 2.8.0 → 2.63.0, **starlette** >=1.3.1, **actions/checkout** v6 → v7
 
 ### v0.12.15 - Security Sweep (aiohttp CVEs) (June 6, 2026)
 - **🔒 CVE-2026-34993**: aiohttp 3.13.4 → 3.14.0 — `CookieJar.load()` deserialization → arbitrary code execution (MEDIUM)
@@ -217,7 +217,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.16`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.17`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -369,4 +369,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.16** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.17** - Built with ❤️ for music video enthusiasts

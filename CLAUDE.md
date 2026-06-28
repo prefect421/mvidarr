@@ -214,17 +214,23 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.16 - Released
+### Current Phase: v0.12.17 - Released
 
-#### Versioning Policy (Updated 2026-06-19)
-- **Current Version**: 0.12.16 (Released 2026-06-19)
-- **Next Version**: 0.12.17 (Planning)
+#### Versioning Policy (Updated 2026-06-27)
+- **Current Version**: 0.12.17 (Released 2026-06-27)
+- **Next Version**: 0.12.18 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.17** (2026-06-27): Security Sweep (pydantic-settings CVE + dependency updates)
+  - ✅ Security: GHSA-4xgf-cpjx-pc3j pydantic-settings 2.14.1 → 2.14.2 (NestedSecretsSettingsSource symlink traversal, MEDIUM) — also fixed in requirements-fastapi.txt (pre-existing stale pin was silently downgrading httpx in Docker)
+  - ✅ Dependency: fastapi 0.136.3 → 0.138.1, alembic 1.18.4 → 1.18.5, httpx 0.25.2 → 0.28.1, python-slugify 8.0.1 → 8.0.4
+  - ✅ Dev: mypy 1.7.1 → 2.1.0 (major version, not run in CI — local dev tool only)
+  - ✅ CI: actions/cache v5 → v6 (ESM migration), ruby/setup-ruby 1.313.0 → 1.314.0
+  - ✅ Closed Dependabot alerts #21 #22, code scan #78; closed/superseded PRs #260 #261 #262 #263 #264 #265 #266 #267
 - **v0.12.16** (2026-06-19): Security Sweep (python-multipart CVEs + bleach + Dependabot PRs)
   - ✅ Security: CVE-2026-53539 python-multipart 0.0.27 → 0.0.32 (quadratic CPU DoS via semicolon separators, HIGH CVSS 7.5)
   - ✅ Security: Dependabot #20 bleach 6.1.0 → 6.4.0 (formaction URI scheme bypass, MEDIUM CVSS 6.1)
