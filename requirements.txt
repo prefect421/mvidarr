@@ -59,7 +59,7 @@ qrcode==7.4.2
 defusedxml==0.7.1
 
 # Utilities
-click==8.1.7
+click==8.4.2
 colorama==0.4.6
 tqdm==4.66.3
 psutil==5.9.6
