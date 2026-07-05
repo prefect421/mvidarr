@@ -214,17 +214,24 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.17 - Released
+### Current Phase: v0.12.18 - Released
 
-#### Versioning Policy (Updated 2026-06-27)
-- **Current Version**: 0.12.17 (Released 2026-06-27)
-- **Next Version**: 0.12.18 (Planning)
+#### Versioning Policy (Updated 2026-07-05)
+- **Current Version**: 0.12.18 (Released 2026-07-05)
+- **Next Version**: 0.12.19 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.18** (2026-07-05): Dependency Sweep (Dependabot PRs #269-274)
+  - ✅ Dependency: fastapi 0.138.1 → 0.139.0, Pillow 12.2.0 → 12.3.0, opencv-python-headless >=4.13.0.92 → >=5.0.0.93
+  - ✅ Dependency: click 8.1.7 → 8.4.2, tqdm 4.66.3 → 4.68.3
+  - ✅ CI: ruby/setup-ruby 1.314.0 → 1.315.0
+  - ✅ Fix: release.yml now tolerates pre-existing release tags (skips create if already exists)
+  - ✅ Closed/superseded Dependabot PRs #269 #270 #271 #272 #273 #274
+  - ✅ Security scan: all clear — zero CVEs, zero alerts
 - **v0.12.17** (2026-06-27): Security Sweep (pydantic-settings CVE + dependency updates)
   - ✅ Security: GHSA-4xgf-cpjx-pc3j pydantic-settings 2.14.1 → 2.14.2 (NestedSecretsSettingsSource symlink traversal, MEDIUM) — also fixed in requirements-fastapi.txt (pre-existing stale pin was silently downgrading httpx in Docker)
   - ✅ Dependency: fastapi 0.136.3 → 0.138.1, alembic 1.18.4 → 1.18.5, httpx 0.25.2 → 0.28.1, python-slugify 8.0.1 → 8.0.4
@@ -469,9 +476,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.7 (Dependency Cleanup & Test Infrastructure)
+- **Current Version**: v0.12.18 (Dependency Sweep — Dependabot PRs #269-274)
 - **Development Focus**: Stability, security
-- **Next Version**: v0.12.8
+- **Next Version**: v0.12.19
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
