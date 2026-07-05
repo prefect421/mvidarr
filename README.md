@@ -22,22 +22,27 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.17 - Security Sweep (pydantic-settings CVE + dependency updates)**
+## 🚀 **LATEST: v0.12.18 - Dependency Sweep (fastapi, Pillow, opencv, click, tqdm)**
 
-**Released**: June 27, 2026
+**Released**: July 5, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Security Fix ✅
-- **🔒 GHSA-4xgf-cpjx-pc3j** (MEDIUM): pydantic-settings 2.14.1 → 2.14.2 — `NestedSecretsSettingsSource` follows symlinks outside `secrets_dir`, enabling out-of-tree local file reads and bypassing `secrets_dir_max_size` cap
+### Security Status ✅
+- All clear — zero CVEs, zero Dependabot security alerts, zero code scanning alerts
 
 ### Dependency Updates
-- **fastapi** 0.136.3 → 0.138.1, **alembic** 1.18.4 → 1.18.5, **httpx** 0.25.2 → 0.28.1, **python-slugify** 8.0.1 → 8.0.4
-- **mypy** 1.7.1 → 2.1.0 (dev), **actions/cache** v5 → v6, **ruby/setup-ruby** 1.313.0 → 1.314.0
+- **fastapi** 0.138.1 → 0.139.0, **Pillow** 12.2.0 → 12.3.0, **opencv-python-headless** >=4.13.0.92 → >=5.0.0.93
+- **click** 8.1.7 → 8.4.2, **tqdm** 4.66.3 → 4.68.3, **ruby/setup-ruby** 1.314.0 → 1.315.0
 
 > **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.17 - Security Sweep (pydantic-settings CVE + dependency updates) (June 27, 2026)
+- **🔒 GHSA-4xgf-cpjx-pc3j** (MEDIUM): pydantic-settings 2.14.1 → 2.14.2 — `NestedSecretsSettingsSource` symlink traversal
+- **fastapi** 0.136.3 → 0.138.1, **alembic** 1.18.4 → 1.18.5, **httpx** 0.25.2 → 0.28.1, **python-slugify** 8.0.1 → 8.0.4
+- **mypy** 1.7.1 → 2.1.0 (dev), **actions/cache** v5 → v6, **ruby/setup-ruby** 1.313.0 → 1.314.0
 
 ### v0.12.16 - Security Sweep (python-multipart, bleach) (June 19, 2026)
 - **🔒 CVE-2026-53539** (HIGH, CVSS 7.5): python-multipart 0.0.27 → 0.0.32 — quadratic CPU DoS
@@ -217,7 +222,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.17`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.18`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -369,4 +374,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.17** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.18** - Built with ❤️ for music video enthusiasts
