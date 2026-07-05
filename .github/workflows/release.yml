@@ -112,11 +112,15 @@ jobs:
           PRERELEASE_FLAG=""
         fi
         
-        gh release create "$TAG_NAME" \
-          --title "MVidarr $TAG_NAME" \
-          --notes-file release_notes.md \
-          $PRERELEASE_FLAG
-        
+        if gh release view "$TAG_NAME" &>/dev/null; then
+          echo "Release $TAG_NAME already exists — skipping create"
+        else
+          gh release create "$TAG_NAME" \
+            --title "MVidarr $TAG_NAME" \
+            --notes-file release_notes.md \
+            $PRERELEASE_FLAG
+        fi
+
         # Get upload URL for other jobs (GitHub CLI doesn't provide this directly)
         UPLOAD_URL=$(gh api repos/${{ github.repository }}/releases/tags/$TAG_NAME --jq '.upload_url')
         echo "upload_url=$UPLOAD_URL" >> $GITHUB_OUTPUT
