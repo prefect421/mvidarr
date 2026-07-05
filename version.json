@@ -1,9 +1,9 @@
 {
-  "version": "0.12.17",
-  "build_date": "2026-06-27T19:40:47.747318",
-  "git_commit": "a691580e",
+  "version": "0.12.18",
+  "build_date": "2026-07-05T20:30:52.711485",
+  "git_commit": "17f1f3a8",
   "git_branch": "main",
-  "release_name": "v0.12.17 - Security Sweep (pydantic-settings CVE + dependency updates)",
+  "release_name": "v0.12.18 - Dependency Sweep (fastapi, Pillow, opencv, click, tqdm, ruby/setup-ruby)",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
