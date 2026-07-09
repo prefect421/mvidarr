@@ -40,7 +40,7 @@ marshmallow==3.26.2
 PyYAML==6.0.3
 
 # HTML Parsing (for AllMusic web scraping)
-beautifulsoup4==4.12.2
+beautifulsoup4==4.15.0
 lxml==6.1.0  # Security: CVE-2026-41066 XXE local file read fix
 
 # Background Tasks
