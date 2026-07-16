@@ -65,6 +65,7 @@ class DownloadResponse(BaseModel):
     download_id: Optional[int] = None
     error: Optional[str] = None
     deleted_count: Optional[int] = None  # For clear history operations
+    cleared_count: Optional[int] = None  # For clear-stuck / force-clear-all
 
 
 class QueueResponse(BaseModel):
@@ -339,6 +340,25 @@ async def add_music_video_download(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+def _parse_queue_item_id(download_id: str) -> tuple[str, int]:
+    """
+    Parse a queue item ID into (kind, numeric_id).
+
+    Queue items are sourced from two different tables (see
+    unified_download_service.get_download_queue): "db_123" and bare "123"
+    both refer to a Download.id, while "video_123" refers to a Video.id
+    (a video shown as DOWNLOADING with no live Download row to match).
+    """
+    try:
+        if download_id.startswith("db_"):
+            return "download", int(download_id[3:])
+        if download_id.startswith("video_"):
+            return "video", int(download_id[6:])
+        return "download", int(download_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid download ID format")
+
+
 @router.post("/download/{download_id}/stop", response_model=DownloadResponse)
 async def stop_download(
     download_id: str,
@@ -348,21 +368,16 @@ async def stop_download(
     """Stop a specific download"""
     try:
         user_id = current_user.get("user_id", 1)
-
-        # Parse download_id (handle both integer and "db_123" format)
-        try:
-            if download_id.startswith("db_"):
-                actual_id = int(download_id[3:])  # Remove "db_" prefix
-            else:
-                actual_id = int(download_id)
-        except (ValueError, AttributeError):
-            raise HTTPException(status_code=400, detail="Invalid download ID format")
+        kind, actual_id = _parse_queue_item_id(download_id)
 
         logger.info(
-            f"Stopping download {actual_id} for user {current_user.get('username')}"
+            f"Stopping {kind} {actual_id} for user {current_user.get('username')}"
         )
 
-        result = ytdlp_service.stop_download(actual_id)
+        if kind == "video":
+            result = ytdlp_service.stop_video_download(actual_id)
+        else:
+            result = ytdlp_service.stop_download(actual_id)
 
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result)
@@ -385,21 +400,16 @@ async def retry_download(
     """Retry a failed download"""
     try:
         user_id = current_user.get("user_id", 1)
-
-        # Parse download_id (handle both integer and "db_123" format)
-        try:
-            if download_id.startswith("db_"):
-                actual_id = int(download_id[3:])  # Remove "db_" prefix
-            else:
-                actual_id = int(download_id)
-        except (ValueError, AttributeError):
-            raise HTTPException(status_code=400, detail="Invalid download ID format")
+        kind, actual_id = _parse_queue_item_id(download_id)
 
         logger.info(
-            f"Retrying download {actual_id} for user {current_user.get('username')}"
+            f"Retrying {kind} {actual_id} for user {current_user.get('username')}"
         )
 
-        result = ytdlp_service.retry_download(actual_id)
+        if kind == "video":
+            result = ytdlp_service.retry_video_download(actual_id)
+        else:
+            result = ytdlp_service.retry_download(actual_id)
 
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result)
@@ -512,6 +522,32 @@ async def clear_stuck_downloads(
 
             cleared_count += 1
 
+        # The queue view is driven by Video.status, not the Download table —
+        # a video can be stuck at DOWNLOADING with no Download row left in
+        # queued/downloading (already finished, failed, or never created).
+        # The loop above only catches videos reachable via such a row, so
+        # also reset any video stuck at DOWNLOADING directly.
+        if force:
+            orphaned_videos = (
+                session.query(Video)
+                .filter(Video.status == VideoStatus.DOWNLOADING)
+                .all()
+            )
+        else:
+            orphaned_videos = (
+                session.query(Video)
+                .filter(
+                    Video.status == VideoStatus.DOWNLOADING,
+                    Video.updated_at < cutoff_time,
+                )
+                .all()
+            )
+
+        for video in orphaned_videos:
+            logger.info(f"Resetting orphaned stuck video {video.id}: {video.title}")
+            video.status = VideoStatus.WANTED
+            cleared_count += 1
+
         session.commit()
 
         if force:
@@ -524,6 +560,7 @@ async def clear_stuck_downloads(
             "message": message,
             "download_id": None,
             "error": None,
+            "cleared_count": cleared_count,
         }
 
         return DownloadResponse(**result)
@@ -579,6 +616,18 @@ async def force_clear_all_downloads(
 
             cleared_count += 1
 
+        # Also reset videos stuck at DOWNLOADING with no matching Download
+        # row left in queued/downloading (see clear_stuck_downloads above).
+        orphaned_videos = (
+            session.query(Video).filter(Video.status == VideoStatus.DOWNLOADING).all()
+        )
+        for video in orphaned_videos:
+            logger.info(
+                f"Force resetting orphaned stuck video {video.id}: {video.title}"
+            )
+            video.status = VideoStatus.WANTED
+            cleared_count += 1
+
         session.commit()
 
         result = {
@@ -586,6 +635,7 @@ async def force_clear_all_downloads(
             "message": f"Force cleared {cleared_count} downloads",
             "download_id": None,
             "error": None,
+            "cleared_count": cleared_count,
         }
 
         return DownloadResponse(**result)

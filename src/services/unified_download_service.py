@@ -1001,7 +1001,9 @@ class UnifiedDownloadService:
                 for video, artist_name in downloading_videos:
                     queue_items.append(
                         {
-                            "id": video.id,
+                            # Prefixed to disambiguate from Download-table IDs
+                            # (see "db_" prefix below) — this is a Video.id.
+                            "id": f"video_{video.id}",
                             "artist": artist_name,
                             "title": video.title,
                             "url": video.url or video.youtube_url,
@@ -1130,6 +1132,50 @@ class UnifiedDownloadService:
 
         logger.warning(f"Download {download_id} not found")
         return False
+
+    def reset_stuck_video(self, video_id: int) -> bool:
+        """
+        Unstick a video shown as DOWNLOADING in the queue.
+
+        The queue (get_download_queue) is built from Video.status, not the
+        Download table, so a video can be stuck there with no Download row
+        left in "queued"/"downloading"/"pending" (or none at all). Stop any
+        such Download row AND reset the Video status directly, so this is
+        the counterpart to cancel_download() for video-sourced queue entries.
+        """
+        try:
+            from src.database.connection import get_db
+            from src.database.models import Download, Video, VideoStatus
+
+            with get_db() as session:
+                video = session.query(Video).filter(Video.id == video_id).first()
+                if not video:
+                    logger.warning(f"Video {video_id} not found")
+                    return False
+
+                download = (
+                    session.query(Download)
+                    .filter(
+                        Download.video_id == video_id,
+                        Download.status.in_(["queued", "downloading", "pending"]),
+                    )
+                    .first()
+                )
+                if download:
+                    download.status = "stopped"
+                    download.error_message = "Download stopped by user"
+                    download.updated_at = datetime.utcnow()
+
+                if video.status == VideoStatus.DOWNLOADING:
+                    video.status = VideoStatus.WANTED
+
+                session.commit()
+                logger.info(f"Reset stuck video {video_id} to WANTED")
+                return True
+
+        except Exception as e:
+            logger.error(f"Error resetting stuck video {video_id}: {e}")
+            return False
 
 
 # Global service instance
