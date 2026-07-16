@@ -208,15 +208,15 @@ class AntiDetectionManager:
             # More aggressive evasion
             args.extend(["--throttled-rate", "100K", "--sleep-subtitles", "1"])
 
-            # Use different extraction strategies
-            args.extend(["--extractor-args", "youtube:player_client=android,web"])
+            # Web/TV clients expose full adaptive formats; android often caps ~360p
+            args.extend(["--extractor-args", "youtube:player_client=web,mweb,tv"])
 
         if level == AntiDetectionLevel.STEALTH:
-            # Maximum evasion
+            # Maximum evasion without android-only clients that hide HD formats
             args.extend(
                 [
                     "--extractor-args",
-                    "youtube:player_client=tv_embedded,android_creator,android_vr,web",
+                    "youtube:player_client=web,mweb,tv,web_safari",
                     "--sleep-requests",
                     "3",
                     "--sleep-interval",
@@ -287,11 +287,39 @@ class YouTubeDownloadStrategy(DownloadStrategy):
         # Start with moderate anti-detection
         current_level = context.anti_detection
         max_attempts = 3
+        last_error = None
 
         for attempt in range(max_attempts):
             try:
                 result = self._attempt_download(context, current_level)
+                if not result.success and result.error_message:
+                    last_error = result.error_message
                 if result.success:
+                    height = self._probe_video_height(result.file_path)
+                    # Escalated clients can still land at 360p when better formats exist
+                    if (
+                        height is not None
+                        and height <= 360
+                        and current_level
+                        in (AntiDetectionLevel.AGGRESSIVE, AntiDetectionLevel.STEALTH)
+                    ):
+                        logger.warning(
+                            f"Low-res download ({height}p) with {current_level}; "
+                            "retrying once with MODERATE for better formats"
+                        )
+                        try:
+                            if result.file_path and os.path.exists(result.file_path):
+                                os.remove(result.file_path)
+                        except OSError:
+                            pass
+                        retry = self._attempt_download(
+                            context, AntiDetectionLevel.MODERATE
+                        )
+                        if retry.success:
+                            retry_h = self._probe_video_height(retry.file_path)
+                            if retry_h is None or retry_h >= height:
+                                retry.duration = time.time() - start_time
+                                return retry
                     result.duration = time.time() - start_time
                     return result
 
@@ -306,14 +334,16 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                     time.sleep(2**attempt)  # Exponential backoff
 
             except Exception as e:
+                last_error = str(e)
                 logger.error(f"Download attempt {attempt + 1} exception: {e}")
                 if attempt < max_attempts - 1:
                     current_level = AntiDetectionLevel.AGGRESSIVE
                     time.sleep(2**attempt)
 
+        detail = last_error or "unknown error"
         return DownloadResult(
             success=False,
-            error_message=f"All {max_attempts} download attempts failed",
+            error_message=f"All {max_attempts} download attempts failed: {detail}",
             duration=time.time() - start_time,
         )
 
@@ -329,6 +359,10 @@ class YouTubeDownloadStrategy(DownloadStrategy):
         output_template = os.path.join(context.output_path, f"{context.title}.%(ext)s")
         cmd.extend(["-o", output_template])
 
+        # Node runtime required for full YouTube format lists (HD/4K)
+        cmd.extend(["--js-runtimes", "node", "--remote-components", "ejs:github"])
+        # Prefer highest resolution, then bitrate (mp4 preference picks 360p combined)
+        cmd.extend(["-S", "res,br"])
         # Quality format
         cmd.extend(["-f", self._get_quality_format(context.quality)])
 
@@ -392,6 +426,34 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                 success=False, error_message=f"Process error: {str(e)}"
             )
 
+    def _probe_video_height(self, file_path: Optional[str]) -> Optional[int]:
+        """Return video height via ffprobe, or None if unavailable."""
+        if not file_path or not os.path.exists(file_path):
+            return None
+        try:
+            proc = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=height",
+                    "-of",
+                    "csv=p=0",
+                    file_path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if proc.returncode != 0:
+                return None
+            return int((proc.stdout or "").strip().splitlines()[0])
+        except Exception:
+            return None
+
     def _get_quality_format(self, quality: str) -> str:
         """Get optimized format string for YouTube downloads"""
         # If quality contains yt-dlp format selectors, use it directly (for custom format strings)
@@ -403,8 +465,8 @@ class YouTubeDownloadStrategy(DownloadStrategy):
 
         # Simple quality presets
         if quality == "best":
-            # Prioritize combined formats to avoid audio/video sync issues
-            return "bv*[height<=2160]+ba/best[height<=2160]/bv+ba/best"
+            # Max available up to 4K (separate A/V preferred; progressive fallback)
+            return "bestvideo[height<=2160]+bestaudio/bv*[height<=2160]+ba/best[height<=2160]/bestvideo+bestaudio/best"
         elif quality.endswith("p"):
             height = quality.replace("p", "")
             return f"bv*[height<={height}]+ba/best[height<={height}]/bv+ba/best"
@@ -414,18 +476,41 @@ class YouTubeDownloadStrategy(DownloadStrategy):
     def _find_downloaded_file(
         self, template: str, output_lines: List[str]
     ) -> Optional[str]:
-        """Find the actual downloaded file from template and output"""
-        # Look for "Destination:" lines in output
+        """Find the actual downloaded media file from template and output"""
+        media_exts = (".mp4", ".webm", ".mkv", ".m4v", ".mov", ".avi")
+        # Merged final output is authoritative when present
+        for line in output_lines:
+            if "Merging formats into" in line:
+                cand = (
+                    line.split("Merging formats into", 1)[1]
+                    .strip()
+                    .strip('"')
+                    .strip("'")
+                )
+                if cand.lower().endswith(media_exts):
+                    return cand
+        # Prefer last media Destination (skip .info.json / part files)
+        media_dests = []
         for line in output_lines:
             if "Destination:" in line:
-                return line.split("Destination:")[1].strip()
+                cand = line.split("Destination:", 1)[1].strip()
+                low = cand.lower()
+                if low.endswith(media_exts) and not low.endswith(".part"):
+                    media_dests.append(cand)
+        if media_dests:
+            return media_dests[-1]
 
-        # Fallback: look for files matching the pattern
+        # Fallback: look for media files matching the pattern
         base_path = os.path.dirname(template)
+        stem = os.path.splitext(os.path.basename(template))[0]
         if os.path.exists(base_path):
+            matches = []
             for file in os.listdir(base_path):
-                if file.startswith(os.path.splitext(os.path.basename(template))[0]):
-                    return os.path.join(base_path, file)
+                if file.startswith(stem) and file.lower().endswith(media_exts):
+                    matches.append(os.path.join(base_path, file))
+            if matches:
+                matches.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+                return matches[0]
 
         return None
 
@@ -514,6 +599,22 @@ class UnifiedDownloadService:
             # Execute download
             result = strategy.download(context)
 
+            # Dead YouTube URL (private / terminated / removed) → search official alternate once
+            if (not result.success) and self._is_dead_youtube_error(
+                result.error_message or ""
+            ):
+                alt = self._find_youtube_alternate(context)
+                if alt and alt != (context.url or ""):
+                    from dataclasses import replace
+
+                    logger.info(
+                        f"Dead YouTube URL for {context.title}; retrying with {alt}"
+                    )
+                    self._persist_video_url(context.video_id, alt)
+                    context = replace(context, url=alt)
+                    strategy = self._get_strategy(context.url) or strategy
+                    result = strategy.download(context)
+
             # Update database with result
             if result.success:
                 self._update_database_success(context.video_id, result)
@@ -541,6 +642,177 @@ class UnifiedDownloadService:
                 del self.active_downloads[download_id]
             if download_id in self.download_callbacks:
                 del self.download_callbacks[download_id]
+
+    def _is_dead_youtube_error(self, error: str) -> bool:
+        """True when the URL itself is gone (not a transient yt-dlp/network blip)."""
+        if not error:
+            return False
+        low = error.lower()
+        markers = (
+            "private video",
+            "video unavailable",
+            "has been terminated",
+            "removed by the uploader",
+            "this video is not available",
+            "account associated with this video",
+            "who has blocked it in your country",
+            "copyright claim",
+            "violating youtube",
+        )
+        return any(m in low for m in markers)
+
+    def _persist_video_url(self, video_id: int, url: str) -> None:
+        """Persist a replacement YouTube URL onto the Video row."""
+        if not video_id:
+            return
+        try:
+            import re
+
+            from src.database.connection import get_db
+            from src.database.models import Video
+
+            with get_db() as session:
+                v = session.query(Video).filter(Video.id == video_id).first()
+                if not v:
+                    return
+                v.url = url
+                if hasattr(v, "youtube_url"):
+                    v.youtube_url = url
+                m = re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{11})", url)
+                if m and hasattr(v, "youtube_id"):
+                    v.youtube_id = m.group(1)
+                session.commit()
+                logger.info(
+                    f"Persisted alternate YouTube URL for video {video_id}: {url}"
+                )
+        except Exception as e:
+            logger.warning(f"Could not persist alternate URL for video {video_id}: {e}")
+
+    def _find_youtube_alternate(self, context: DownloadContext) -> Optional[str]:
+        """yt-dlp search for a working official upload when IMVDb/YouTube ID is dead."""
+        artist = (context.artist or "").strip()
+        title = (context.title or "").strip()
+        if not title:
+            return None
+
+        # Titles are often stored as "Artist - Song"
+        if artist and title.lower().startswith(artist.lower()):
+            rest = title[len(artist) :].lstrip(" -–—:\t")
+            if rest:
+                title = rest
+        title = (
+            title.replace("&quot;", '"')
+            .replace("&#39;", "'")
+            .replace("&amp;", "&")
+            .strip()
+        )
+
+        exclude = set()
+        cur = context.url or ""
+        for token in ("v=", "youtu.be/"):
+            if token in cur:
+                exclude.add(cur.split(token, 1)[1][:11])
+
+        queries = []
+        if artist:
+            queries.append(f"ytsearch8:{artist} {title} official video")
+            queries.append(f"ytsearch5:{artist} {title} official")
+        queries.append(f"ytsearch5:{title} official music video")
+
+        bad_terms = (
+            "lyric",
+            "lyrics",
+            "audio only",
+            "official audio",
+            "karaoke",
+            "reaction",
+            "cover",
+            "slowed",
+            "nightcore",
+            "8d audio",
+            "sped up",
+            "instrumental",
+        )
+
+        ytdlp = self.ytdlp_manager.current_executable
+        candidates = []
+        for q in queries:
+            try:
+                proc = subprocess.run(
+                    [
+                        ytdlp,
+                        "--js-runtimes",
+                        "node",
+                        "--flat-playlist",
+                        "--no-warnings",
+                        "--print",
+                        "%(id)s\t%(title)s\t%(duration)s",
+                        q,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=90,
+                )
+            except Exception as e:
+                logger.debug(f"Alternate search failed for {q!r}: {e}")
+                continue
+            if proc.returncode != 0:
+                continue
+            for line in (proc.stdout or "").splitlines():
+                parts = line.split("\t")
+                if len(parts) < 2:
+                    continue
+                vid, ctitle = parts[0].strip(), parts[1].strip()
+                if not vid or len(vid) != 11 or vid in exclude:
+                    continue
+                low = ctitle.lower()
+                if any(b in low for b in bad_terms):
+                    continue
+                score = 0
+                if "official video" in low:
+                    score += 50
+                elif "official" in low:
+                    score += 30
+                if artist and artist.lower() in low:
+                    score += 20
+                try:
+                    dur = int(float(parts[2])) if len(parts) > 2 and parts[2] else 0
+                except ValueError:
+                    dur = 0
+                if 90 <= dur <= 420:
+                    score += 10
+                candidates.append((score, vid, ctitle))
+            if candidates:
+                break
+
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        for score, vid, ctitle in candidates[:6]:
+            url = f"https://www.youtube.com/watch?v={vid}"
+            try:
+                chk = subprocess.run(
+                    [
+                        ytdlp,
+                        "--js-runtimes",
+                        "node",
+                        "--skip-download",
+                        "--no-warnings",
+                        "--print",
+                        "id",
+                        url,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+            except Exception:
+                continue
+            if chk.returncode == 0 and (chk.stdout or "").strip():
+                logger.info(
+                    f"Alternate YouTube candidate for {context.title}: "
+                    f"{vid} ({ctitle!r}, score={score})"
+                )
+                return url
+        return None
 
     def _get_strategy(self, url: str) -> Optional[DownloadStrategy]:
         """Get appropriate download strategy for URL"""
