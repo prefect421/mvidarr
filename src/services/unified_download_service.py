@@ -287,10 +287,13 @@ class YouTubeDownloadStrategy(DownloadStrategy):
         # Start with moderate anti-detection
         current_level = context.anti_detection
         max_attempts = 3
+        last_error = None
 
         for attempt in range(max_attempts):
             try:
                 result = self._attempt_download(context, current_level)
+                if not result.success and result.error_message:
+                    last_error = result.error_message
                 if result.success:
                     height = self._probe_video_height(result.file_path)
                     # Escalated clients can still land at 360p when better formats exist
@@ -331,14 +334,16 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                     time.sleep(2**attempt)  # Exponential backoff
 
             except Exception as e:
+                last_error = str(e)
                 logger.error(f"Download attempt {attempt + 1} exception: {e}")
                 if attempt < max_attempts - 1:
                     current_level = AntiDetectionLevel.AGGRESSIVE
                     time.sleep(2**attempt)
 
+        detail = last_error or "unknown error"
         return DownloadResult(
             success=False,
-            error_message=f"All {max_attempts} download attempts failed",
+            error_message=f"All {max_attempts} download attempts failed: {detail}",
             duration=time.time() - start_time,
         )
 
@@ -594,6 +599,22 @@ class UnifiedDownloadService:
             # Execute download
             result = strategy.download(context)
 
+            # Dead YouTube URL (private / terminated / removed) → search official alternate once
+            if (not result.success) and self._is_dead_youtube_error(
+                result.error_message or ""
+            ):
+                alt = self._find_youtube_alternate(context)
+                if alt and alt != (context.url or ""):
+                    from dataclasses import replace
+
+                    logger.info(
+                        f"Dead YouTube URL for {context.title}; retrying with {alt}"
+                    )
+                    self._persist_video_url(context.video_id, alt)
+                    context = replace(context, url=alt)
+                    strategy = self._get_strategy(context.url) or strategy
+                    result = strategy.download(context)
+
             # Update database with result
             if result.success:
                 self._update_database_success(context.video_id, result)
@@ -621,6 +642,177 @@ class UnifiedDownloadService:
                 del self.active_downloads[download_id]
             if download_id in self.download_callbacks:
                 del self.download_callbacks[download_id]
+
+    def _is_dead_youtube_error(self, error: str) -> bool:
+        """True when the URL itself is gone (not a transient yt-dlp/network blip)."""
+        if not error:
+            return False
+        low = error.lower()
+        markers = (
+            "private video",
+            "video unavailable",
+            "has been terminated",
+            "removed by the uploader",
+            "this video is not available",
+            "account associated with this video",
+            "who has blocked it in your country",
+            "copyright claim",
+            "violating youtube",
+        )
+        return any(m in low for m in markers)
+
+    def _persist_video_url(self, video_id: int, url: str) -> None:
+        """Persist a replacement YouTube URL onto the Video row."""
+        if not video_id:
+            return
+        try:
+            import re
+
+            from src.database.connection import get_db
+            from src.database.models import Video
+
+            with get_db() as session:
+                v = session.query(Video).filter(Video.id == video_id).first()
+                if not v:
+                    return
+                v.url = url
+                if hasattr(v, "youtube_url"):
+                    v.youtube_url = url
+                m = re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{11})", url)
+                if m and hasattr(v, "youtube_id"):
+                    v.youtube_id = m.group(1)
+                session.commit()
+                logger.info(
+                    f"Persisted alternate YouTube URL for video {video_id}: {url}"
+                )
+        except Exception as e:
+            logger.warning(f"Could not persist alternate URL for video {video_id}: {e}")
+
+    def _find_youtube_alternate(self, context: DownloadContext) -> Optional[str]:
+        """yt-dlp search for a working official upload when IMVDb/YouTube ID is dead."""
+        artist = (context.artist or "").strip()
+        title = (context.title or "").strip()
+        if not title:
+            return None
+
+        # Titles are often stored as "Artist - Song"
+        if artist and title.lower().startswith(artist.lower()):
+            rest = title[len(artist) :].lstrip(" -–—:\t")
+            if rest:
+                title = rest
+        title = (
+            title.replace("&quot;", '"')
+            .replace("&#39;", "'")
+            .replace("&amp;", "&")
+            .strip()
+        )
+
+        exclude = set()
+        cur = context.url or ""
+        for token in ("v=", "youtu.be/"):
+            if token in cur:
+                exclude.add(cur.split(token, 1)[1][:11])
+
+        queries = []
+        if artist:
+            queries.append(f"ytsearch8:{artist} {title} official video")
+            queries.append(f"ytsearch5:{artist} {title} official")
+        queries.append(f"ytsearch5:{title} official music video")
+
+        bad_terms = (
+            "lyric",
+            "lyrics",
+            "audio only",
+            "official audio",
+            "karaoke",
+            "reaction",
+            "cover",
+            "slowed",
+            "nightcore",
+            "8d audio",
+            "sped up",
+            "instrumental",
+        )
+
+        ytdlp = self.ytdlp_manager.current_executable
+        candidates = []
+        for q in queries:
+            try:
+                proc = subprocess.run(
+                    [
+                        ytdlp,
+                        "--js-runtimes",
+                        "node",
+                        "--flat-playlist",
+                        "--no-warnings",
+                        "--print",
+                        "%(id)s\t%(title)s\t%(duration)s",
+                        q,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=90,
+                )
+            except Exception as e:
+                logger.debug(f"Alternate search failed for {q!r}: {e}")
+                continue
+            if proc.returncode != 0:
+                continue
+            for line in (proc.stdout or "").splitlines():
+                parts = line.split("\t")
+                if len(parts) < 2:
+                    continue
+                vid, ctitle = parts[0].strip(), parts[1].strip()
+                if not vid or len(vid) != 11 or vid in exclude:
+                    continue
+                low = ctitle.lower()
+                if any(b in low for b in bad_terms):
+                    continue
+                score = 0
+                if "official video" in low:
+                    score += 50
+                elif "official" in low:
+                    score += 30
+                if artist and artist.lower() in low:
+                    score += 20
+                try:
+                    dur = int(float(parts[2])) if len(parts) > 2 and parts[2] else 0
+                except ValueError:
+                    dur = 0
+                if 90 <= dur <= 420:
+                    score += 10
+                candidates.append((score, vid, ctitle))
+            if candidates:
+                break
+
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        for score, vid, ctitle in candidates[:6]:
+            url = f"https://www.youtube.com/watch?v={vid}"
+            try:
+                chk = subprocess.run(
+                    [
+                        ytdlp,
+                        "--js-runtimes",
+                        "node",
+                        "--skip-download",
+                        "--no-warnings",
+                        "--print",
+                        "id",
+                        url,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+            except Exception:
+                continue
+            if chk.returncode == 0 and (chk.stdout or "").strip():
+                logger.info(
+                    f"Alternate YouTube candidate for {context.title}: "
+                    f"{vid} ({ctitle!r}, score={score})"
+                )
+                return url
+        return None
 
     def _get_strategy(self, url: str) -> Optional[DownloadStrategy]:
         """Get appropriate download strategy for URL"""
