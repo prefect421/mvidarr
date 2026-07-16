@@ -22,22 +22,30 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.18 - Dependency Sweep (fastapi, Pillow, opencv, click, tqdm)**
+## 🚀 **LATEST: v0.12.19 - YouTube Max-Quality Downloads & Dead-URL Recovery**
 
-**Released**: July 5, 2026
+**Released**: July 16, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Security Status ✅
-- All clear — zero CVEs, zero Dependabot security alerts, zero code scanning alerts
+### Community Contribution 🎉
+- Core fix contributed by **@Ktell123** in [#282](https://github.com/prefect421/mvidarr/pull/282) — thank you!
 
-### Dependency Updates
-- **fastapi** 0.138.1 → 0.139.0, **Pillow** 12.2.0 → 12.3.0, **opencv-python-headless** >=4.13.0.92 → >=5.0.0.93
-- **click** 8.1.7 → 8.4.2, **tqdm** 4.66.3 → 4.68.3, **ruby/setup-ruby** 1.314.0 → 1.315.0
+### Fixes
+- **🐛 Anti-detection setting ignored**: `enable_aggressive_anti_detection` was read with `settings.get()`, which returns the string `'False'` — truthy in Python — forcing AGGRESSIVE anti-detection (and the Android YouTube client) on every download and capping quality at ~360p. Now uses `settings.get_bool()`.
+- **🎬 Player client priority**: prefer `web,mweb,tv` YouTube clients over android-first clients that hide adaptive HD/4K formats.
+- **📈 Format selection**: yt-dlp Node JS runtime + resolution-first format sort (`-S res,br`), improved `best` format string, and an automatic MODERATE retry when an escalated (AGGRESSIVE/STEALTH) download still lands at ≤360p.
+- **🔗 Dead YouTube URL recovery**: when a stored YouTube URL is private, unavailable, or terminated, MVidarr now searches for an official alternate upload, persists the new URL, and retries the download once.
+- **🐛 Retry file-preservation bug** (found in code review): the low-res retry logic deleted the original download's file before confirming the retry actually succeeded or was better, so a failed or worse retry could report success while pointing at a deleted file. Fixed, with 16 new unit tests covering the retry paths.
 
 > **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
 
 ## 🎯 Previous Releases
+
+### v0.12.18 - Dependency Sweep (fastapi, Pillow, opencv, click, tqdm) (July 5, 2026)
+- All clear — zero CVEs, zero Dependabot security alerts, zero code scanning alerts
+- **fastapi** 0.138.1 → 0.139.0, **Pillow** 12.2.0 → 12.3.0, **opencv-python-headless** >=4.13.0.92 → >=5.0.0.93
+- **click** 8.1.7 → 8.4.2, **tqdm** 4.66.3 → 4.68.3, **ruby/setup-ruby** 1.314.0 → 1.315.0
 
 ### v0.12.17 - Security Sweep (pydantic-settings CVE + dependency updates) (June 27, 2026)
 - **🔒 GHSA-4xgf-cpjx-pc3j** (MEDIUM): pydantic-settings 2.14.1 → 2.14.2 — `NestedSecretsSettingsSource` symlink traversal
@@ -222,7 +230,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.18`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.19`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -374,4 +382,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.18** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.19** - Built with ❤️ for music video enthusiasts
