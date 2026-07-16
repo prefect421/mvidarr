@@ -1,9 +1,9 @@
 {
-  "version": "0.12.18",
-  "build_date": "2026-07-05T20:30:52.711485",
-  "git_commit": "17f1f3a8",
+  "version": "0.12.19",
+  "build_date": "2026-07-16T14:44:10.333972",
+  "git_commit": "7ab1e450",
   "git_branch": "main",
-  "release_name": "v0.12.18 - Dependency Sweep (fastapi, Pillow, opencv, click, tqdm, ruby/setup-ruby)",
+  "release_name": "v0.12.19 - YouTube Max-Quality Downloads & Dead-URL Recovery",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
