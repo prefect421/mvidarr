@@ -307,19 +307,18 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                             f"Low-res download ({height}p) with {current_level}; "
                             "retrying once with MODERATE for better formats"
                         )
-                        try:
-                            if result.file_path and os.path.exists(result.file_path):
-                                os.remove(result.file_path)
-                        except OSError:
-                            pass
                         retry = self._attempt_download(
                             context, AntiDetectionLevel.MODERATE
                         )
                         if retry.success:
                             retry_h = self._probe_video_height(retry.file_path)
                             if retry_h is None or retry_h >= height:
+                                # Retry is at least as good: keep it, drop the low-res original
+                                self._remove_file(result.file_path)
                                 retry.duration = time.time() - start_time
                                 return retry
+                            # Retry is worse: drop it, keep the original
+                            self._remove_file(retry.file_path)
                     result.duration = time.time() - start_time
                     return result
 
@@ -346,6 +345,14 @@ class YouTubeDownloadStrategy(DownloadStrategy):
             error_message=f"All {max_attempts} download attempts failed: {detail}",
             duration=time.time() - start_time,
         )
+
+    def _remove_file(self, file_path: Optional[str]) -> None:
+        """Best-effort removal of a discarded download."""
+        try:
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+        except OSError:
+            pass
 
     def _attempt_download(
         self, context: DownloadContext, level: AntiDetectionLevel
