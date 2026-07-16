@@ -22,25 +22,28 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.19 - YouTube Max-Quality Downloads & Dead-URL Recovery**
+## 🚀 **LATEST: v0.12.20 - Fix Stuck Download Queue**
 
 **Released**: July 16, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Community Contribution 🎉
-- Core fix contributed by **@Ktell123** in [#282](https://github.com/prefect421/mvidarr/pull/282) — thank you!
-
 ### Fixes
+- **🐛 "Stop Download" 400 error**: the queue view is built from `Video.status == DOWNLOADING`, but `stop_download` always looked the id up as a `Download` table row — so stopping a stuck video almost always 400'd with "Download not found or already completed". Queue ids from videos are now unambiguously tagged (`video_123`) and routed to the right table.
+- **🐛 "Force Clear All" reported nothing to clear**: the endpoint only reset videos reachable through a `Download` row still in `queued`/`downloading`/`pending`. A video stuck at `DOWNLOADING` with no such row (already finished, failed, or never created) was invisible to it. It now also resets orphaned stuck videos directly.
+- **🐛 Misleading "no stuck downloads found" message**: the frontend's success message depended on a `cleared_count` field the backend never sent, so it always claimed nothing was found — even when downloads were, in fact, cleared. Backend now returns the real count.
+
+> **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`. If you have videos currently stuck in the queue, click **Force Clear All** once — the fix operates on live database state, so it will unstick them too.
+
+## 🎯 Previous Releases
+
+### v0.12.19 - YouTube Max-Quality Downloads & Dead-URL Recovery (July 16, 2026)
+- Core fix contributed by **@Ktell123** in [#282](https://github.com/prefect421/mvidarr/pull/282) — thank you!
 - **🐛 Anti-detection setting ignored**: `enable_aggressive_anti_detection` was read with `settings.get()`, which returns the string `'False'` — truthy in Python — forcing AGGRESSIVE anti-detection (and the Android YouTube client) on every download and capping quality at ~360p. Now uses `settings.get_bool()`.
 - **🎬 Player client priority**: prefer `web,mweb,tv` YouTube clients over android-first clients that hide adaptive HD/4K formats.
 - **📈 Format selection**: yt-dlp Node JS runtime + resolution-first format sort (`-S res,br`), improved `best` format string, and an automatic MODERATE retry when an escalated (AGGRESSIVE/STEALTH) download still lands at ≤360p.
 - **🔗 Dead YouTube URL recovery**: when a stored YouTube URL is private, unavailable, or terminated, MVidarr now searches for an official alternate upload, persists the new URL, and retries the download once.
 - **🐛 Retry file-preservation bug** (found in code review): the low-res retry logic deleted the original download's file before confirming the retry actually succeeded or was better, so a failed or worse retry could report success while pointing at a deleted file. Fixed, with 16 new unit tests covering the retry paths.
-
-> **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`
-
-## 🎯 Previous Releases
 
 ### v0.12.18 - Dependency Sweep (fastapi, Pillow, opencv, click, tqdm) (July 5, 2026)
 - All clear — zero CVEs, zero Dependabot security alerts, zero code scanning alerts
@@ -230,7 +233,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.19`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.20`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -382,4 +385,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.19** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.20** - Built with ❤️ for music video enthusiasts

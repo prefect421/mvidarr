@@ -1,9 +1,9 @@
 {
-  "version": "0.12.19",
-  "build_date": "2026-07-16T14:44:10.333972",
-  "git_commit": "7ab1e450",
+  "version": "0.12.20",
+  "build_date": "2026-07-16T16:46:56.295798",
+  "git_commit": "08eae160",
   "git_branch": "main",
-  "release_name": "v0.12.19 - YouTube Max-Quality Downloads & Dead-URL Recovery",
+  "release_name": "v0.12.20 - Fix Stuck Download Queue (stop/clear-stuck/force-clear-all)",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
