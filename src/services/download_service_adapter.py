@@ -451,6 +451,44 @@ class DownloadServiceAdapter:
                 "error": "Download not found",
             }
 
+    def stop_video_download(self, video_id: int) -> Dict[str, Any]:
+        """Stop a video stuck in the queue (video-sourced queue entry)"""
+        success = self.unified_service.reset_stuck_video(video_id)
+
+        if success:
+            return {
+                "success": True,
+                "message": f"Video {video_id} download stopped",
+                "download_id": None,
+                "error": None,
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Video not found",
+                "download_id": None,
+                "error": "Video not found",
+            }
+
+    def retry_video_download(self, video_id: int) -> Dict[str, Any]:
+        """Reset a stuck video back to WANTED so it can be redownloaded"""
+        success = self.unified_service.reset_stuck_video(video_id)
+
+        if success:
+            return {
+                "success": True,
+                "message": f"Video {video_id} reset to WANTED for retry",
+                "download_id": None,
+                "error": None,
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Video not found",
+                "download_id": None,
+                "error": "Video not found",
+            }
+
     def retry_download(self, download_id: int) -> Dict[str, Any]:
         """Retry a failed/stopped download (API compatibility method)"""
         try:
