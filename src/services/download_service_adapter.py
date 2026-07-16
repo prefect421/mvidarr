@@ -168,7 +168,8 @@ class DownloadServiceAdapter:
     def _get_anti_detection_level(self) -> AntiDetectionLevel:
         """Determine anti-detection level based on system settings and history"""
         # Check if we've had recent detection issues
-        enable_aggressive_anti_detection = settings.get(
+        # settings.get() returns strings from DB; 'False' is truthy in Python
+        enable_aggressive_anti_detection = settings.get_bool(
             "enable_aggressive_anti_detection", False
         )
 

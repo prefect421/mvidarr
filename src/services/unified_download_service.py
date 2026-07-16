@@ -208,15 +208,15 @@ class AntiDetectionManager:
             # More aggressive evasion
             args.extend(["--throttled-rate", "100K", "--sleep-subtitles", "1"])
 
-            # Use different extraction strategies
-            args.extend(["--extractor-args", "youtube:player_client=android,web"])
+            # Web/TV clients expose full adaptive formats; android often caps ~360p
+            args.extend(["--extractor-args", "youtube:player_client=web,mweb,tv"])
 
         if level == AntiDetectionLevel.STEALTH:
-            # Maximum evasion
+            # Maximum evasion without android-only clients that hide HD formats
             args.extend(
                 [
                     "--extractor-args",
-                    "youtube:player_client=tv_embedded,android_creator,android_vr,web",
+                    "youtube:player_client=web,mweb,tv,web_safari",
                     "--sleep-requests",
                     "3",
                     "--sleep-interval",
@@ -292,6 +292,31 @@ class YouTubeDownloadStrategy(DownloadStrategy):
             try:
                 result = self._attempt_download(context, current_level)
                 if result.success:
+                    height = self._probe_video_height(result.file_path)
+                    # Escalated clients can still land at 360p when better formats exist
+                    if (
+                        height is not None
+                        and height <= 360
+                        and current_level
+                        in (AntiDetectionLevel.AGGRESSIVE, AntiDetectionLevel.STEALTH)
+                    ):
+                        logger.warning(
+                            f"Low-res download ({height}p) with {current_level}; "
+                            "retrying once with MODERATE for better formats"
+                        )
+                        try:
+                            if result.file_path and os.path.exists(result.file_path):
+                                os.remove(result.file_path)
+                        except OSError:
+                            pass
+                        retry = self._attempt_download(
+                            context, AntiDetectionLevel.MODERATE
+                        )
+                        if retry.success:
+                            retry_h = self._probe_video_height(retry.file_path)
+                            if retry_h is None or retry_h >= height:
+                                retry.duration = time.time() - start_time
+                                return retry
                     result.duration = time.time() - start_time
                     return result
 
@@ -329,6 +354,10 @@ class YouTubeDownloadStrategy(DownloadStrategy):
         output_template = os.path.join(context.output_path, f"{context.title}.%(ext)s")
         cmd.extend(["-o", output_template])
 
+        # Node runtime required for full YouTube format lists (HD/4K)
+        cmd.extend(["--js-runtimes", "node", "--remote-components", "ejs:github"])
+        # Prefer highest resolution, then bitrate (mp4 preference picks 360p combined)
+        cmd.extend(["-S", "res,br"])
         # Quality format
         cmd.extend(["-f", self._get_quality_format(context.quality)])
 
@@ -392,6 +421,34 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                 success=False, error_message=f"Process error: {str(e)}"
             )
 
+    def _probe_video_height(self, file_path: Optional[str]) -> Optional[int]:
+        """Return video height via ffprobe, or None if unavailable."""
+        if not file_path or not os.path.exists(file_path):
+            return None
+        try:
+            proc = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=height",
+                    "-of",
+                    "csv=p=0",
+                    file_path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if proc.returncode != 0:
+                return None
+            return int((proc.stdout or "").strip().splitlines()[0])
+        except Exception:
+            return None
+
     def _get_quality_format(self, quality: str) -> str:
         """Get optimized format string for YouTube downloads"""
         # If quality contains yt-dlp format selectors, use it directly (for custom format strings)
@@ -403,8 +460,8 @@ class YouTubeDownloadStrategy(DownloadStrategy):
 
         # Simple quality presets
         if quality == "best":
-            # Prioritize combined formats to avoid audio/video sync issues
-            return "bv*[height<=2160]+ba/best[height<=2160]/bv+ba/best"
+            # Max available up to 4K (separate A/V preferred; progressive fallback)
+            return "bestvideo[height<=2160]+bestaudio/bv*[height<=2160]+ba/best[height<=2160]/bestvideo+bestaudio/best"
         elif quality.endswith("p"):
             height = quality.replace("p", "")
             return f"bv*[height<={height}]+ba/best[height<={height}]/bv+ba/best"
@@ -414,18 +471,41 @@ class YouTubeDownloadStrategy(DownloadStrategy):
     def _find_downloaded_file(
         self, template: str, output_lines: List[str]
     ) -> Optional[str]:
-        """Find the actual downloaded file from template and output"""
-        # Look for "Destination:" lines in output
+        """Find the actual downloaded media file from template and output"""
+        media_exts = (".mp4", ".webm", ".mkv", ".m4v", ".mov", ".avi")
+        # Merged final output is authoritative when present
+        for line in output_lines:
+            if "Merging formats into" in line:
+                cand = (
+                    line.split("Merging formats into", 1)[1]
+                    .strip()
+                    .strip('"')
+                    .strip("'")
+                )
+                if cand.lower().endswith(media_exts):
+                    return cand
+        # Prefer last media Destination (skip .info.json / part files)
+        media_dests = []
         for line in output_lines:
             if "Destination:" in line:
-                return line.split("Destination:")[1].strip()
+                cand = line.split("Destination:", 1)[1].strip()
+                low = cand.lower()
+                if low.endswith(media_exts) and not low.endswith(".part"):
+                    media_dests.append(cand)
+        if media_dests:
+            return media_dests[-1]
 
-        # Fallback: look for files matching the pattern
+        # Fallback: look for media files matching the pattern
         base_path = os.path.dirname(template)
+        stem = os.path.splitext(os.path.basename(template))[0]
         if os.path.exists(base_path):
+            matches = []
             for file in os.listdir(base_path):
-                if file.startswith(os.path.splitext(os.path.basename(template))[0]):
-                    return os.path.join(base_path, file)
+                if file.startswith(stem) and file.lower().endswith(media_exts):
+                    matches.append(os.path.join(base_path, file))
+            if matches:
+                matches.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+                return matches[0]
 
         return None
 
