@@ -22,20 +22,25 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.20 - Fix Stuck Download Queue**
+## 🚀 **LATEST: v0.12.21 - Dependabot Sweep (lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby)**
 
-**Released**: July 16, 2026
+**Released**: July 19, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
-### Fixes
+### Dependency Updates
+- **🔒 lxml** 6.1.0 → 6.1.1 — fixes GHSA-4jhm-jv67-739f (`xlink:href` missing from known link attrs, URL bypass in embedded SVG/MathML) and bundles libxslt fixes for CVE-2025-7424 / CVE-2025-11731
+- **🔒 aiomysql** >=0.2.0 → >=0.3.2 — fixes GHSA-r397-ff8c-wv2g (local_infile load bypass)
+- **pymysql** 1.1.1 → 1.2.0 (both `requirements.txt` and `requirements-fastapi.txt`) — note v1.2.0 makes TLS required-by-default when the server supports it; verified against live MariaDB with no regression
+- **marshmallow** 3.26.2 → 4.3.0, **flake8** 6.1.0 → 7.3.0 (dev-only), **ruby/setup-ruby** 1.316.0 → 1.319.0 (CI)
+- All 6 changes verified via rebuilt local Docker: migrations succeeded against live MariaDB, full pytest suite passed (58 passed, 1 skipped)
+
+## 🎯 Previous Releases
+
+### v0.12.20 - Fix Stuck Download Queue (July 16, 2026)
 - **🐛 "Stop Download" 400 error**: the queue view is built from `Video.status == DOWNLOADING`, but `stop_download` always looked the id up as a `Download` table row — so stopping a stuck video almost always 400'd with "Download not found or already completed". Queue ids from videos are now unambiguously tagged (`video_123`) and routed to the right table.
 - **🐛 "Force Clear All" reported nothing to clear**: the endpoint only reset videos reachable through a `Download` row still in `queued`/`downloading`/`pending`. A video stuck at `DOWNLOADING` with no such row (already finished, failed, or never created) was invisible to it. It now also resets orphaned stuck videos directly.
 - **🐛 Misleading "no stuck downloads found" message**: the frontend's success message depended on a `cleared_count` field the backend never sent, so it always claimed nothing was found — even when downloads were, in fact, cleared. Backend now returns the real count.
-
-> **Upgrade Note**: No database migrations required. `docker compose pull && docker compose up -d`. If you have videos currently stuck in the queue, click **Force Clear All** once — the fix operates on live database state, so it will unstick them too.
-
-## 🎯 Previous Releases
 
 ### v0.12.19 - YouTube Max-Quality Downloads & Dead-URL Recovery (July 16, 2026)
 - Core fix contributed by **@Ktell123** in [#282](https://github.com/prefect421/mvidarr/pull/282) — thank you!
@@ -233,7 +238,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.20`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.21`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
