@@ -214,17 +214,26 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.18 - Released
+### Current Phase: v0.12.21 - Released
 
-#### Versioning Policy (Updated 2026-07-05)
-- **Current Version**: 0.12.18 (Released 2026-07-05)
-- **Next Version**: 0.12.19 (Planning)
+#### Versioning Policy (Updated 2026-07-19)
+- **Current Version**: 0.12.21 (Released 2026-07-19)
+- **Next Version**: 0.12.22 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.21** (2026-07-19): Dependabot Sweep (lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby)
+  - ✅ Security: lxml 6.1.0 → 6.1.1 (GHSA-4jhm-jv67-739f xlink:href URL bypass fix, bundles libxslt CVE-2025-7424/CVE-2025-11731 fixes)
+  - ✅ Security: aiomysql >=0.2.0 → >=0.3.2 (GHSA-r397-ff8c-wv2g local_infile load bypass fix)
+  - ✅ Dependency: pymysql 1.1.1 → 1.2.0 (requirements.txt + requirements-fastapi.txt; TLS required-by-default behavior change verified against live MariaDB)
+  - ✅ Dependency: marshmallow 3.26.2 → 4.3.0 (zero usages in src/, zero-risk), flake8 6.1.0 → 7.3.0 (dev-only)
+  - ✅ CI: ruby/setup-ruby 1.316.0 → 1.319.0
+  - ✅ Verified via rebuilt local Docker: migrations succeeded against live MariaDB, full pytest suite passed (58 passed, 1 skipped)
+  - ✅ Closed/superseded Dependabot PRs #285 #286 #287 #288 #289 #290
+  - ✅ Security scan: 0 open GitHub issues, 0 Dependabot alerts, 0 code-scanning alerts, pip-audit clean on all 3 requirements files
 - **v0.12.18** (2026-07-05): Dependency Sweep (Dependabot PRs #269-274)
   - ✅ Dependency: fastapi 0.138.1 → 0.139.0, Pillow 12.2.0 → 12.3.0, opencv-python-headless >=4.13.0.92 → >=5.0.0.93
   - ✅ Dependency: click 8.1.7 → 8.4.2, tqdm 4.66.3 → 4.68.3
@@ -476,9 +485,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.18 (Dependency Sweep — Dependabot PRs #269-274)
+- **Current Version**: v0.12.21 (Dependabot Sweep — lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby)
 - **Development Focus**: Stability, security
-- **Next Version**: v0.12.19
+- **Next Version**: v0.12.22
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -575,8 +584,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.8 (2026-05-07)
-- **Next Release**: Version 0.12.9 (Planning)
+- **Current Release**: Version 0.12.21 (2026-07-19)
+- **Next Release**: Version 0.12.22 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
