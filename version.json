@@ -1,9 +1,9 @@
 {
-  "version": "0.12.20",
-  "build_date": "2026-07-16T16:46:56.295798",
-  "git_commit": "08eae160",
+  "version": "0.12.21",
+  "build_date": "2026-07-19T17:13:48.752521",
+  "git_commit": "dea2f358",
   "git_branch": "main",
-  "release_name": "v0.12.20 - Fix Stuck Download Queue (stop/clear-stuck/force-clear-all)",
+  "release_name": "v0.12.21 - Dependabot Sweep (lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby)",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
