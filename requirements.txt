@@ -14,7 +14,7 @@ Flask-Session==0.8.0
 
 # Database
 SQLAlchemy==2.0.51
-PyMySQL==1.1.1
+PyMySQL==1.2.0
 alembic==1.18.5
 mysqlclient>=2.2.0
 
@@ -36,12 +36,12 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.2.2  # Security: CVE-2026-28684 symlink following arbitrary file overwrite fix
 pydantic==2.13.4
 pydantic-settings==2.14.2  # Security: GHSA-4xgf-cpjx-pc3j NestedSecretsSettingsSource symlink traversal fix
-marshmallow==3.26.2
+marshmallow==4.3.0
 PyYAML==6.0.3
 
 # HTML Parsing (for AllMusic web scraping)
 beautifulsoup4==4.15.0
-lxml==6.1.0  # Security: CVE-2026-41066 XXE local file read fix
+lxml==6.1.1  # Security: CVE-2026-41066 XXE local file read fix, GHSA-4jhm-jv67-739f xlink:href URL bypass fix, CVE-2025-7424/CVE-2025-11731 libxslt fixes
 
 # Background Tasks
 celery==5.3.4
