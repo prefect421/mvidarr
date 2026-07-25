@@ -1,9 +1,9 @@
 {
-  "version": "0.12.21",
-  "build_date": "2026-07-19T17:13:48.752521",
-  "git_commit": "dea2f358",
+  "version": "0.12.22",
+  "build_date": "2026-07-25T17:28:57.473085",
+  "git_commit": "8ad8774b",
   "git_branch": "main",
-  "release_name": "v0.12.21 - Dependabot Sweep (lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby)",
+  "release_name": "v0.12.22 - Dependency Sweep (celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby)",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
