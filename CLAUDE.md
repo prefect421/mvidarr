@@ -214,17 +214,27 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.21 - Released
+### Current Phase: v0.12.22 - Released
 
-#### Versioning Policy (Updated 2026-07-19)
-- **Current Version**: 0.12.21 (Released 2026-07-19)
-- **Next Version**: 0.12.22 (Planning)
+#### Versioning Policy (Updated 2026-07-25)
+- **Current Version**: 0.12.22 (Released 2026-07-25)
+- **Next Version**: 0.12.23 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.22** (2026-07-25): Dependency Sweep (celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby)
+  - ✅ Dependency: celery 5.3.4 → 5.6.3, redis 5.0.1 → 8.0.1 (3 major versions) — verified live in mvidarr-dev Docker: celery worker/beat ping OK, redis_manager job-progress/cache round-trip OK; PR #297's original CI timeout traced to an apt-mirror stall (not a celery regression), rerun passed clean
+  - ✅ Dependency: sentry-sdk 2.63.0 → 2.66.1, imagehash 4.3.1 → 4.3.2 (dev-only)
+  - ✅ CI: actions/setup-python v6 → v7, actions/labeler v6 → v7, ruby/setup-ruby 1.319.0 → 1.321.0
+  - ⏸️ psutil 5.9.6 → 7.2.2 intentionally deferred — 2 major versions, not part of the verified batch this round
+  - ✅ Verified via rebuilt local Docker: migrations succeeded against live MariaDB, celery ping OK, health endpoint reports correct version; prod (192.168.1.68:5050) rebuilt and confirmed on v0.12.22
+  - 🐛 Found (out of scope, not fixed): `redis_manager.health_check()` calls `self.redis_client.ping()` without `ensure_connection()` first, so it throws `NoneType` if called before any other Redis op establishes the lazy connection — worth a follow-up issue
+  - 🐛 Found (out of scope, not fixed): prod's `/api/health/version` reports `git_commit`/`git_branch` as `"unknown"` even though `version.json` has them set correctly — same class of issue as the v0.12.5 "Docker git_branch always unknown" fix, but recurring for the published GHCR image path specifically
+  - ✅ Closed/superseded Dependabot PRs #292 #293 #294 #295 #296 #297 #298 #299
+  - ✅ Security scan: 0 open GitHub issues, 0 Dependabot alerts, 0 code-scanning alerts, pip-audit clean on all 3 requirements files
 - **v0.12.21** (2026-07-19): Dependabot Sweep (lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby)
   - ✅ Security: lxml 6.1.0 → 6.1.1 (GHSA-4jhm-jv67-739f xlink:href URL bypass fix, bundles libxslt CVE-2025-7424/CVE-2025-11731 fixes)
   - ✅ Security: aiomysql >=0.2.0 → >=0.3.2 (GHSA-r397-ff8c-wv2g local_infile load bypass fix)
@@ -485,9 +495,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.21 (Dependabot Sweep — lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby)
+- **Current Version**: v0.12.22 (Dependency Sweep — celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby)
 - **Development Focus**: Stability, security
-- **Next Version**: v0.12.22
+- **Next Version**: v0.12.23
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -584,8 +594,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.21 (2026-07-19)
-- **Next Release**: Version 0.12.22 (Planning)
+- **Current Release**: Version 0.12.22 (2026-07-25)
+- **Next Release**: Version 0.12.23 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
