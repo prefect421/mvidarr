@@ -1,9 +1,9 @@
 {
-  "version": "0.12.22",
-  "build_date": "2026-07-25T17:28:57.473085",
-  "git_commit": "8ad8774b",
+  "version": "0.12.23",
+  "build_date": "2026-08-01T16:33:13.997115",
+  "git_commit": "655834c4",
   "git_branch": "main",
-  "release_name": "v0.12.22 - Dependency Sweep (celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby)",
+  "release_name": "v0.12.23 - Dependency Sweep (pytest, tqdm, sphinx, sphinx-rtd-theme, redis, psutil)",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
     "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
