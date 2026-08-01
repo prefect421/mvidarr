@@ -45,7 +45,7 @@ lxml==6.1.1  # Security: CVE-2026-41066 XXE local file read fix, GHSA-4jhm-jv67-
 
 # Background Tasks
 celery==5.6.3
-redis==8.0.1
+redis==8.1.0
 flower==2.0.1
 
 # Security
@@ -61,8 +61,8 @@ defusedxml==0.7.1
 # Utilities
 click==8.4.2
 colorama==0.4.6
-tqdm==4.68.3
-psutil==5.9.6
+tqdm==4.70.0
+psutil==7.2.2
 schedule==1.2.0
 netifaces==0.11.0
 zeroconf==0.149.16
