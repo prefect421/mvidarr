@@ -22,20 +22,28 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.22 - Dependency Sweep (celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby)**
+## 🚀 **LATEST: v0.12.23 - Dependency Sweep (pytest, tqdm, sphinx, sphinx-rtd-theme, redis, psutil)**
 
-**Released**: July 25, 2026
+**Released**: August 2, 2026
 
 > **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
 
 ### Dependency Updates
 - All clear — zero open GitHub issues, zero Dependabot security alerts, zero code scanning alerts at time of sweep; pip-audit clean on all three requirements files
+- **pytest** 9.0.3 → 9.1.1 (dev), **tqdm** 4.68.3 → 4.70.0
+- **sphinx** 7.2.6 → 9.1.0, **sphinx-rtd-theme** 1.3.0 → 3.1.0 (dev-only; rtd-theme bump required to resolve a `sphinx<8` pin conflict)
+- **redis** 8.0.1 → 8.1.0
+- **psutil** 5.9.6 → 7.2.2 (2 major versions) — deferred in v0.12.22 pending its own verification pass; this round's changelog review found no overlap between the 6.0.0/7.0.0 breaking-change list and any psutil API this codebase actually calls
+- Verified via rebuilt local Docker: migrations succeeded against live MariaDB, full pytest suite passed (58 passed, 1 skipped); prod (192.168.1.68:5050) rebuilt and confirmed on v0.12.23
+- Closed/superseded Dependabot PRs #299 #301 #302 #303 #304
+
+## 🎯 Previous Releases
+
+### v0.12.22 - Dependency Sweep (celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby) (July 25, 2026)
+- All clear — zero open GitHub issues, zero Dependabot security alerts, zero code scanning alerts at time of sweep; pip-audit clean on all three requirements files
 - **celery** 5.3.4 → 5.6.3, **redis** 5.0.1 → 8.0.1 (3 major versions) — both verified live in the local Docker dev environment: celery worker/beat ping successfully, and job-progress/cache round-trips through `redis_manager` work correctly over the new connection
 - **sentry-sdk** 2.63.0 → 2.66.1, **imagehash** 4.3.1 → 4.3.2 (dev-only)
 - **CI**: actions/setup-python v6 → v7, actions/labeler v6 → v7, ruby/setup-ruby 1.319.0 → 1.321.0
-- `psutil` 5.9.6 → 7.2.2 intentionally deferred to a follow-up release pending its own verification pass
-
-## 🎯 Previous Releases
 
 ### v0.12.21 - Dependabot Sweep (lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby) (July 19, 2026)
 - **🔒 lxml** 6.1.0 → 6.1.1 — fixes GHSA-4jhm-jv67-739f (`xlink:href` missing from known link attrs, URL bypass in embedded SVG/MathML) and bundles libxslt fixes for CVE-2025-7424 / CVE-2025-11731
@@ -245,7 +253,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.22`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.23`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -397,4 +405,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.22** - Built with ❤️ for music video enthusiasts
+**MVidarr v0.12.23** - Built with ❤️ for music video enthusiasts
