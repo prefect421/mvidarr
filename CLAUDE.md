@@ -214,17 +214,27 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.22 - Released
+### Current Phase: v0.12.23 - Released
 
-#### Versioning Policy (Updated 2026-07-25)
-- **Current Version**: 0.12.22 (Released 2026-07-25)
-- **Next Version**: 0.12.23 (Planning)
+#### Versioning Policy (Updated 2026-08-02)
+- **Current Version**: 0.12.23 (Released 2026-08-02)
+- **Next Version**: 0.12.24 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.23** (2026-08-02): Dependency Sweep (pytest, tqdm, sphinx, sphinx-rtd-theme, redis, psutil)
+  - ✅ Dependency: pytest 9.0.3 → 9.1.1 (dev), tqdm 4.68.3 → 4.70.0
+  - ✅ Dependency: sphinx 7.2.6 → 9.1.0, sphinx-rtd-theme 1.3.0 → 3.1.0 (dev-only) — rtd-theme 1.3.0 pins `sphinx<8`, so it had to move too; verified via `pip install --dry-run` full resolve, no conflicts
+  - ✅ Dependency: redis 8.0.1 → 8.1.0
+  - ✅ Dependency: psutil 5.9.6 → 7.2.2 (2 major versions) — deferred in v0.12.22 pending its own pass; this round checked the 6.0.0/7.0.0 changelogs against every psutil API this codebase calls (boot_time, cpu_count, cpu_percent, disk_io_counters, disk_usage, getloadavg, net_connections, net_if_addrs, net_io_counters, pids, Process, virtual_memory) — no overlap with documented breaking changes, so included this round
+  - ✅ Verified via rebuilt local Docker: image builds clean, migrations succeeded against live MariaDB, FastAPI/Celery worker/beat all started, health endpoint healthy, full pytest suite passed (58 passed, 1 skipped); prod (192.168.1.68:5050) rebuilt and confirmed on v0.12.23
+  - ✅ Closed/superseded Dependabot PRs #299 #301 #302 #303 #304
+  - ✅ Security scan: 0 open GitHub issues, 0 Dependabot alerts, 0 code-scanning alerts, pip-audit clean on all 3 requirements files (this was a routine dependency sweep — no CVEs were involved)
+  - ℹ️ Host testing note: this dev machine lacks `python3-dev`/mysqlclient build headers and no sudo was available to install them, so pre-merge verification ran inside the rebuilt Docker image instead of bare `python src/app.py` — full pytest suite was copied into the running container and executed there since `tests/` is intentionally excluded from the production image via `.dockerignore`
+  - 🐛 Still open (out of scope, not fixed): prod's `/api/health/version` still reports `git_commit`/`git_branch` as `"unknown"` (same GHCR-image-path issue noted in v0.12.22)
 - **v0.12.22** (2026-07-25): Dependency Sweep (celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby)
   - ✅ Dependency: celery 5.3.4 → 5.6.3, redis 5.0.1 → 8.0.1 (3 major versions) — verified live in mvidarr-dev Docker: celery worker/beat ping OK, redis_manager job-progress/cache round-trip OK; PR #297's original CI timeout traced to an apt-mirror stall (not a celery regression), rerun passed clean
   - ✅ Dependency: sentry-sdk 2.63.0 → 2.66.1, imagehash 4.3.1 → 4.3.2 (dev-only)
@@ -495,9 +505,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.22 (Dependency Sweep — celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby)
+- **Current Version**: v0.12.23 (Dependency Sweep — pytest, tqdm, sphinx, sphinx-rtd-theme, redis, psutil)
 - **Development Focus**: Stability, security
-- **Next Version**: v0.12.23
+- **Next Version**: v0.12.24
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -594,8 +604,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.22 (2026-07-25)
-- **Next Release**: Version 0.12.23 (Planning)
+- **Current Release**: Version 0.12.23 (2026-08-02)
+- **Next Release**: Version 0.12.24 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
