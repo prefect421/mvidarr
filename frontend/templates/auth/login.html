@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - MVidarr</title>
-    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='themes.css') }}" id="themes-stylesheet">
+    <link rel="stylesheet" href="{{ url_for('frontend.css_files', filename='themes.css') }}">
     <style>
+        /* Fixed dark mode, Default theme tokens only — see Global Constraints
+           in docs/superpowers/plans/2026-08-09-auth-cluster.md for why this
+           page doesn't fetch the instance's configured theme. */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg-primary, #667eea);
+            background: var(--bg-primary, #1a1a1a);
             margin: 0;
             padding: 0;
             min-height: 100vh;
@@ -19,204 +22,147 @@
             position: relative;
             overflow: hidden;
         }
-        
-        /* Dynamic animated gradient background */
+
         body::before {
             content: '';
             position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                45deg,
-                var(--bg-primary, #667eea),
-                var(--bg-secondary, #764ba2),
-                var(--bg-primary, #667eea),
-                var(--bg-secondary, #764ba2)
-            );
-            background-size: 400% 400%;
-            animation: gradientShift 8s ease-in-out infinite;
-            z-index: -1;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70%;
+            height: 60%;
+            background: radial-gradient(ellipse at center, color-mix(in srgb, var(--text-accent, #4a9eff) 16%, transparent) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
         }
-        
-        @keyframes gradientShift {
-            0% {
-                background-position: 0% 50%;
-            }
-            50% {
-                background-position: 100% 50%;
-            }
-            100% {
-                background-position: 0% 50%;
-            }
-        }
-        
+
         .login-container {
-            background: var(--bg-secondary, white);
-            border-radius: 12px;
-            box-shadow: 0 20px 40px var(--shadow, rgba(0,0,0,0.1));
-            padding: 2rem;
+            position: relative;
+            background: var(--bg-card, #2a2a2a);
+            border: 1px solid var(--border-primary, #444444);
+            border-radius: 10px;
+            box-shadow: 0 12px 40px var(--shadow, rgba(0,0,0,0.3));
+            padding: 32px 28px;
             width: 100%;
-            max-width: 400px;
+            max-width: 380px;
             margin: 1rem;
-            border: 1px solid var(--border-primary, transparent);
         }
-        
+
         .logo {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 28px;
         }
-        
+
         .logo h1 {
-            color: var(--text-primary, #333);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            color: var(--text-accent, #4a9eff);
+            font-size: 14px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
             margin: 0;
-            font-size: 2rem;
-            font-weight: 700;
+            font-weight: 600;
         }
-        
+
         .logo p {
-            color: var(--text-secondary, #666);
-            margin: 0.5rem 0 0 0;
-            font-size: 0.9rem;
+            color: var(--text-secondary, #cccccc);
+            margin: 6px 0 0 0;
+            font-size: 0.85rem;
         }
-        
+
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
         }
-        
+
         .form-group label {
             display: block;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary, #333);
+            margin-bottom: 6px;
+            color: var(--text-secondary, #cccccc);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
             font-weight: 500;
         }
-        
+
         .form-group input {
             width: 100%;
-            padding: 0.75rem;
-            border: 2px solid var(--input-border, #e1e5e9);
-            border-radius: 8px;
+            padding: 0.7rem 0.85rem;
+            border: 1px solid var(--input-border, #555555);
+            border-radius: 6px;
             font-size: 1rem;
-            transition: border-color 0.3s;
             box-sizing: border-box;
-            background: var(--input-bg, #ffffff);
-            color: var(--input-text, #333);
+            background: var(--input-bg, #3a3a3a);
+            color: var(--input-text, #ffffff);
         }
-        
+
         .form-group input:focus {
             outline: none;
-            border-color: var(--input-focus, #667eea);
+            border-color: var(--input-focus, #4a9eff);
         }
-        
+
         .login-button {
             width: 100%;
             padding: 0.75rem;
-            background: var(--btn-primary-bg, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
-            color: var(--btn-primary-text, white);
+            background: var(--btn-primary-bg, #4a9eff);
+            color: var(--btn-primary-text, #ffffff);
             border: none;
-            border-radius: 8px;
-            font-size: 1rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
         }
-        
-        .login-button:hover {
-            background: var(--btn-primary-hover, #667eea);
-            transform: translateY(-2px);
-        }
-        
+
         .login-button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
         }
-        
+
         .oauth-section {
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--border-primary, #e1e5e9);
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-primary, #444444);
         }
-        
+
         .oauth-title {
             text-align: center;
-            color: var(--text-secondary, #666);
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
+            color: var(--text-secondary, #cccccc);
+            margin-bottom: 12px;
+            font-size: 0.8rem;
         }
-        
+
         .oauth-button {
             width: 100%;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            border: 2px solid var(--border-primary, #e1e5e9);
-            border-radius: 8px;
-            background: var(--bg-card, white);
-            color: var(--text-primary, #333);
+            padding: 0.65rem;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-primary, #444444);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-primary, #ffffff);
             text-decoration: none;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 500;
-            transition: all 0.3s;
+            font-size: 0.9rem;
         }
-        
-        .oauth-button:hover {
-            border-color: var(--text-accent, #667eea);
-            background: var(--bg-hover, #f8f9fa);
-        }
-        
-        .oauth-button.authentik {
-            border-color: #fd4b2d;
-            color: #fd4b2d;
-        }
-        
-        .oauth-button.authentik:hover {
-            background: #fd4b2d;
-            color: white;
-        }
-        
-        .oauth-button.google {
-            border-color: #4285f4;
-            color: #4285f4;
-        }
-        
-        .oauth-button.google:hover {
-            background: #4285f4;
-            color: white;
-        }
-        
-        .oauth-button.github {
-            border-color: #333;
-            color: #333;
-        }
-        
-        .oauth-button.github:hover {
-            background: #333;
-            color: white;
-        }
-        
+
         .error-message {
-            background: var(--error, #fee);
-            color: var(--text-inverse, #c33);
-            padding: 1rem;
-            border-radius: 8px;
+            background: color-mix(in srgb, var(--error, #dc3545) 18%, transparent);
+            color: var(--error-color, #ff6b6b);
+            padding: 0.75rem;
+            border-radius: 6px;
             margin-bottom: 1rem;
-            border: 1px solid var(--border-secondary, #fcc);
+            font-size: 0.85rem;
         }
-        
-        .loading {
-            text-align: center;
-            color: var(--text-secondary, #666);
-            margin-top: 1rem;
+
+        #twoFactorSection {
+            display: none;
         }
-        
+
         @media (max-width: 480px) {
             .login-container {
                 margin: 0.5rem;
-                padding: 1.5rem;
+                padding: 24px 20px;
             }
         }
     </style>
@@ -224,115 +170,130 @@
 <body>
     <div class="login-container">
         <div class="logo">
-            <h1>🎵 MVidarr</h1>
+            <h1>MVidarr</h1>
             <p>Music Video Management System</p>
         </div>
-        
-        {% if error %}
-        <div class="error-message">
-            {{ error }}
-        </div>
-        {% endif %}
-        
-        <form id="loginForm" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <form id="loginForm">
             <div class="form-group">
-                <label for="username">Username or Email</label>
-                <input type="text" id="username" name="username" required>
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" autocomplete="username" required>
             </div>
-            
+
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
+                <input type="password" id="password" name="password" autocomplete="current-password" required>
             </div>
-            
-            <button type="submit" class="login-button" id="loginButton">
-                Sign In
-            </button>
+
+            <button type="submit" class="login-button" id="loginButton">Sign In</button>
         </form>
-        
+
+        <form id="twoFactorForm">
+            <div id="twoFactorSection" class="form-group">
+                <label for="twoFactorToken">Verification Code</label>
+                <input type="text" id="twoFactorToken" name="token" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code">
+                <button type="submit" class="login-button" id="twoFactorButton" style="margin-top: 12px;">Verify</button>
+            </div>
+        </form>
+
         {% if oauth_providers %}
         <div class="oauth-section">
             <div class="oauth-title">Or sign in with</div>
-            
             {% for provider, name in oauth_providers.items() %}
-            <a href="/auth/oauth/{{ provider }}/login" class="oauth-button {{ provider }}">
-                {% if provider == 'authentik' %}
-                    🔐 Sign in with Authentik
-                {% elif provider == 'google' %}
-                    🌐 Sign in with Google
-                {% elif provider == 'github' %}
-                    🐙 Sign in with GitHub
-                {% else %}
-                    🔑 Sign in with {{ name }}
-                {% endif %}
+            <a href="/auth/oauth/{{ provider }}/login" class="oauth-button">
+                {{ name }}
             </a>
             {% endfor %}
         </div>
         {% endif %}
-        
-        <div class="loading" id="loading" style="display: none;">
-            Signing you in...
-        </div>
     </div>
-    
+
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        const loginForm = document.getElementById('loginForm');
+        const twoFactorForm = document.getElementById('twoFactorForm');
+        const twoFactorSection = document.getElementById('twoFactorSection');
+        const errorMessage = document.getElementById('errorMessage');
+        let pendingUsername = null;
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        loginForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            hideError();
+
             const button = document.getElementById('loginButton');
-            const loading = document.getElementById('loading');
-            
             button.disabled = true;
             button.textContent = 'Signing In...';
-            loading.style.display = 'block';
-            
-            // Form will submit normally, this just provides user feedback
-        });
-        
-        // Handle OAuth login
-        document.querySelectorAll('.oauth-button').forEach(button => {
-            button.addEventListener('click', function(e) {
-                const loading = document.getElementById('loading');
-                loading.style.display = 'block';
-                loading.textContent = 'Redirecting to authentication provider...';
-            });
-        });
-        
-        // Auto-focus username field
-        document.getElementById('username').focus();
-        
-        // Theme management for login page
-        window.currentTheme = window.currentTheme || 'default';
-        window.currentMode = window.currentMode || 'dark';
-        
-        function applyCurrentTheme() {
-            document.documentElement.setAttribute('data-theme', window.currentTheme);
-            document.documentElement.setAttribute('data-mode', window.currentMode);
-        }
-        
-        function loadSavedTheme() {
-            const savedDayNightMode = localStorage.getItem('mvidarr-daynight-mode');
-            window.currentMode = savedDayNightMode || 'dark';
-            
-            // Load saved theme from settings API
-            fetch('/api/settings/ui_theme')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.value) {
-                        window.currentTheme = data.value;
-                    }
-                    applyCurrentTheme();
-                })
-                .catch(error => {
-                    console.log('Theme setting not found, using default');
-                    applyCurrentTheme();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/auth/simple-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
                 });
-        }
-        
-        // Load theme on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadSavedTheme();
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    window.location.href = '/';
+                } else if (response.status === 202 && data.requires_2fa) {
+                    pendingUsername = username;
+                    loginForm.style.display = 'none';
+                    twoFactorSection.style.display = 'block';
+                } else {
+                    showError(data.detail || data.message || 'Login failed');
+                }
+            } catch (err) {
+                showError('Login failed — could not reach the server');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Sign In';
+            }
         });
+
+        twoFactorForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            hideError();
+
+            const button = document.getElementById('twoFactorButton');
+            button.disabled = true;
+            button.textContent = 'Verifying...';
+
+            const token = document.getElementById('twoFactorToken').value;
+
+            try {
+                const response = await fetch('/api/verify-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: pendingUsername, token }),
+                });
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    window.location.href = '/';
+                } else {
+                    showError(data.detail || data.message || 'Verification failed');
+                }
+            } catch (err) {
+                showError('Verification failed — could not reach the server');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Verify';
+            }
+        });
+
+        document.getElementById('username').focus();
     </script>
 </body>
 </html>
