@@ -665,7 +665,26 @@ async def scan_missing_thumbnails(
 
         stale_count = 0
         for artist_id, artist_name, thumb_path in artists_with_path:
-            if not Path(thumb_path).exists():
+            # Distinguish "confirmed missing" from "couldn't check" (e.g. a
+            # transient stat/permission error or a volume not yet mounted).
+            # Only a clean, successful False from exists() proves the file is
+            # actually gone -- an exception must never be treated as proof of
+            # deletion, or a momentary filesystem hiccup would permanently
+            # wipe a valid thumbnail reference from the database.
+            try:
+                file_exists = Path(thumb_path).exists()
+            except OSError as path_error:
+                logger.warning(
+                    f"Could not verify thumbnail path for artist {artist_name} "
+                    f"(ID: {artist_id}), skipping stale-check: {thumb_path} ({path_error})"
+                )
+                continue
+
+            if not file_exists:
+                logger.info(
+                    f"Confirmed missing thumbnail file for artist {artist_name} "
+                    f"(ID: {artist_id}): {thumb_path}"
+                )
                 artists_without_thumbnails.append((artist_id, artist_name))
                 stale_count += 1
                 # Clear the stale path from database

@@ -1235,21 +1235,13 @@ async function playVideo(videoId, title, localPath, videoUrl) {
             hasLoaded = true;
             clearTimeout(loadTimeout);
         });
-        
-        // Check if format is likely unsupported and warn immediately
-        let formatUnsupported = localPath.toLowerCase().endsWith('.mkv') || 
-                               localPath.toLowerCase().endsWith('.avi');
-        
-        if (formatUnsupported) {
-            // Show immediate warning for known unsupported formats
-            setTimeout(() => {
-                if (!hasLoaded) {
-                    console.warn('Likely unsupported format detected:', localPath);
-                    showVideoError(videoId, localPath, mimeType, 'This video format may not be supported by your browser');
-                }
-            }, 3000); // Check after 3 seconds
-        }
-        
+
+        // Note: MKV/AVI files are transcoded in real time via /stream-transcode, which
+        // can legitimately take longer than a few seconds to start. The 30-second
+        // loadTimeout above already reports a genuine "format may not be supported"
+        // warning if the stream never loads — a shorter premature check here caused
+        // false positives that destroyed an otherwise-succeeding transcoded player.
+
     } else if (videoUrl && videoUrl !== 'null' && videoUrl !== 'undefined') {
         // Fall back to YouTube or other URL
         if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
