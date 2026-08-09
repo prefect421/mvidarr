@@ -372,7 +372,12 @@ class OAuthService:
             return False, "Failed to initiate OAuth flow", None
 
     def handle_oauth_callback(
-        self, provider_name: str, code: str, state: str
+        self,
+        provider_name: str,
+        code: str,
+        state: str,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> Tuple[bool, str, Optional[User], Optional[UserSession]]:
         """
         Handle OAuth callback and authenticate user
@@ -381,6 +386,10 @@ class OAuthService:
             provider_name: Name of OAuth provider
             code: Authorization code from provider
             state: State parameter for CSRF protection
+            ip_address: Client IP address for the new session (from the
+                real FastAPI Request; this service has no Flask request
+                context to read it from itself)
+            user_agent: Client User-Agent header for the new session
 
         Returns:
             Tuple of (success, message, user, session)
@@ -423,7 +432,7 @@ class OAuthService:
 
             # Find or create user
             user, session_obj = self._find_or_create_oauth_user(
-                provider_name, user_info
+                provider_name, user_info, ip_address=ip_address, user_agent=user_agent
             )
 
             if user and session_obj:
@@ -442,7 +451,11 @@ class OAuthService:
             return False, "OAuth authentication failed", None, None
 
     def _find_or_create_oauth_user(
-        self, provider_name: str, user_info: Dict[str, Any]
+        self,
+        provider_name: str,
+        user_info: Dict[str, Any],
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> Tuple[Optional[User], Optional[UserSession]]:
         """
         Find existing user or create new user from OAuth info
@@ -450,6 +463,8 @@ class OAuthService:
         Args:
             provider_name: Name of OAuth provider
             user_info: User information from OAuth provider
+            ip_address: Client IP address for the new session
+            user_agent: Client User-Agent header for the new session
 
         Returns:
             Tuple of (user, session)
@@ -559,15 +574,13 @@ class OAuthService:
 
                 # Update last login
                 user.last_login = datetime.utcnow()
-                user.last_login_ip = request.environ.get(
-                    "HTTP_X_FORWARDED_FOR", request.remote_addr
-                )
+                user.last_login_ip = ip_address
 
                 # Create session
                 user_session = UserSession(
                     user_id=user.id,
-                    ip_address=user.last_login_ip,
-                    user_agent=request.headers.get("User-Agent"),
+                    ip_address=ip_address,
+                    user_agent=user_agent,
                 )
                 session.add(user_session)
                 session.commit()

@@ -65,6 +65,31 @@ def test_handle_oauth_callback_rejects_provider_mismatch():
     assert success is False
 
 
+def test_handle_oauth_callback_passes_ip_and_user_agent_through():
+    service = OAuthService.__new__(OAuthService)
+    service.providers = {"authentik": _FakeProvider()}
+    success, auth_url, state = service.initiate_oauth_flow("authentik")
+
+    with patch.object(
+        OAuthService, "_find_or_create_oauth_user"
+    ) as mock_find_or_create:
+        mock_find_or_create.return_value = (_FakeUser(), _FakeSession())
+        service.handle_oauth_callback(
+            "authentik",
+            "fake-code",
+            state,
+            ip_address="203.0.113.5",
+            user_agent="TestAgent/1.0",
+        )
+
+    mock_find_or_create.assert_called_once_with(
+        "authentik",
+        {"id": "123", "email": "test@example.com"},
+        ip_address="203.0.113.5",
+        user_agent="TestAgent/1.0",
+    )
+
+
 class _FakeProvider:
     def get_authorization_url(self, state):
         return f"https://example.com/authorize?state={state}"

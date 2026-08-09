@@ -404,8 +404,10 @@ async def oauth_callback(
                 detail="Missing authorization code or state",
             )
 
+        ip_address = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("User-Agent")
         success, message, user, session_obj = oauth_service.handle_oauth_callback(
-            provider, code, state
+            provider, code, state, ip_address=ip_address, user_agent=user_agent
         )
 
         if success and user and session_obj:
