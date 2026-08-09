@@ -214,17 +214,26 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.23 - Released
+### Current Phase: v0.12.24 - Released
 
-#### Versioning Policy (Updated 2026-08-02)
-- **Current Version**: 0.12.23 (Released 2026-08-02)
-- **Next Version**: 0.12.24 (Planning)
+#### Versioning Policy (Updated 2026-08-09)
+- **Current Version**: 0.12.24 (Released 2026-08-09)
+- **Next Version**: 0.12.25 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (current phase)
   - **1.0.0**: First production-ready release (future)
 
 #### Version History (Recent)
+- **v0.12.24** (2026-08-09): Security Sweep (aiohttp CVE fix, MKV warning fix, thumbnail hardening)
+  - ✅ Security: aiohttp 3.14.1 → 3.14.3 — CVE-2026-69244/GHSA-cq5v-8q36-5273 (HIGH, OOB heap read in C HTTP response parser error path), CVE-2026-69243/GHSA-mfx4-hv73-q22v (MEDIUM, WS upgrade request smuggling), CVE-2026-59881/GHSA-mq44-7p77-q5h7 (MEDIUM, WS client decompresses frames without negotiated permessage-deflate)
+  - ✅ Fix #307: removed a premature 3-second false-positive "format not supported" warning on MKV/AVI playback (`frontend/templates/videos.html`) that raced against real-time transcoding and destroyed the live video element; the existing 30-second `loadTimeout` already handles genuine load failures
+  - ✅ Fix #306 (partial/defensive, root cause not fully reproduced): `scan_missing_thumbnails()` in `src/api/fastapi/artists_thumbnails.py` no longer treats a failed filesystem check (`OSError`) as proof a thumbnail was deleted — only a clean, confirmed-missing file now clears `thumbnail_path`/`thumbnail_url`, and the checked path is logged; flagged for reopening if the symptom recurs
+  - ✅ Verified via rebuilt local Docker (`--no-cache`): full pytest suite passed (58 passed, 1 skipped), health endpoint healthy on v0.12.24; prod (192.168.1.68:5050) independently confirmed healthy on v0.12.24
+  - ✅ Closed/superseded Dependabot PR #308
+  - ✅ Security scan: Dependabot alerts #23–#28 and code-scanning alerts #79–#81 all confirmed `state: fixed` after a manually-triggered fresh Security Scan run (not just pushed — verified via GitHub API)
+  - ✅ Docs: README.md trimmed to last 5 releases (LATEST + 4 previous); full version history moved into `CHANGELOG.md` (brought current from its prior stopping point at v0.12.3 through v0.12.24)
+  - 🐛 Still open (out of scope, not fixed): prod's `/api/health/version` still reports `git_commit`/`git_branch` as `"unknown"` (same GHCR-image-path issue noted since v0.12.22)
 - **v0.12.23** (2026-08-02): Dependency Sweep (pytest, tqdm, sphinx, sphinx-rtd-theme, redis, psutil)
   - ✅ Dependency: pytest 9.0.3 → 9.1.1 (dev), tqdm 4.68.3 → 4.70.0
   - ✅ Dependency: sphinx 7.2.6 → 9.1.0, sphinx-rtd-theme 1.3.0 → 3.1.0 (dev-only) — rtd-theme 1.3.0 pins `sphinx<8`, so it had to move too; verified via `pip install --dry-run` full resolve, no conflicts
@@ -505,9 +514,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.23 (Dependency Sweep — pytest, tqdm, sphinx, sphinx-rtd-theme, redis, psutil)
+- **Current Version**: v0.12.24 (Security Sweep — aiohttp CVE fix, MKV warning fix, thumbnail hardening)
 - **Development Focus**: Stability, security
-- **Next Version**: v0.12.24
+- **Next Version**: v0.12.25
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -604,8 +613,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.23 (2026-08-02)
-- **Next Release**: Version 0.12.24 (Planning)
+- **Current Release**: Version 0.12.24 (2026-08-09)
+- **Next Release**: Version 0.12.25 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
