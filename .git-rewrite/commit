@@ -1,6 +1,0 @@
-tree 5afab0106193ddec913bbd53e526ccbc21736c75
-parent dfe8d5436a99a6674b827f31858c02810db2dd02
-author Mark McDowall <markus.mcd5@gmail.com> 1369376983 -0700
-committer Mark McDowall <markus.mcd5@gmail.com> 1369376983 -0700
-
-Validator will allow empty Path when RootFolderPath has a value
