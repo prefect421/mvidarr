@@ -693,10 +693,13 @@ class FastAPITemplateRoutes:
     # Authentication pages
     async def login(self, request: Request) -> HTMLResponse:
         """Login page"""
+        from src.services.oauth_service import oauth_service
+
         context = {
             "page_title": "Login",
             "page_description": "Sign in to MVidarr",
             "hide_navigation": True,
+            "oauth_providers": oauth_service.get_available_providers(),
         }
         return await self.template_system.render_response(
             "auth/login.html", request, context
