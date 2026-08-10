@@ -72,8 +72,7 @@ class LoginVerificationRequest(BaseModel):
     """Login verification request model"""
 
     ticket: str = Field(..., min_length=1)
-    token: str = Field(..., min_length=6, max_length=6)
-    backup_code: Optional[str] = None
+    token: str = Field(..., min_length=6, max_length=8)
 
 
 # ========================================================================================
@@ -366,7 +365,10 @@ async def verify_login(
         )
 
         if not success:
-            raise HTTPException(status_code=401, detail=message)
+            logger.warning(
+                f"2FA login verification failed for user {user.username}: {message}"
+            )
+            raise HTTPException(status_code=401, detail="Invalid verification code")
 
         from src.services.session_store import SessionStore
 

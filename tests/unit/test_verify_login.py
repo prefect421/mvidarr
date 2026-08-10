@@ -126,3 +126,60 @@ class TestVerifyLogin:
             json={"ticket": "never-issued", "token": "123456"},
         )
         assert response.status_code == 401
+
+    def test_ticket_is_burned_after_a_failed_attempt(self, session_factory):
+        """The whole point of this revision: a ticket must be consumed on
+        every attempt, right or wrong, so a bad code guess can't just be
+        retried against the same ticket. If a future refactor moves ticket
+        consumption to only happen on success, this test must fail."""
+        user_id = _seed_user(session_factory, "twofa_user")
+        ticket = TwoFactorService.create_pending_ticket(user_id)
+        client = _make_client(session_factory)
+
+        with patch(
+            "src.services.two_factor_service.TwoFactorService.verify_two_factor_login",
+            return_value=(False, "Invalid code"),
+        ):
+            first = client.post(
+                "/2fa/api/verify-login",
+                json={"ticket": ticket, "token": "000000"},
+            )
+
+        assert first.status_code == 401
+
+        # Re-POST the same ticket, this time with a token that would
+        # succeed if the ticket were still valid.
+        with patch(
+            "src.services.two_factor_service.TwoFactorService.verify_two_factor_login",
+            return_value=(True, "Verified"),
+        ):
+            second = client.post(
+                "/2fa/api/verify-login",
+                json={"ticket": ticket, "token": "123456"},
+            )
+
+        assert second.status_code == 401
+
+    def test_eight_character_token_reaches_verify_two_factor_login(
+        self, session_factory
+    ):
+        """Backup codes are 8 characters (see TwoFactorService.generate_backup_codes
+        and the "Check if token is a backup code" branch in
+        verify_two_factor_login). LoginVerificationRequest.token must accept
+        them, not just 6-digit TOTP codes, or a self-hoster who loses their
+        authenticator has no recovery path through this endpoint."""
+        user_id = _seed_user(session_factory, "twofa_user")
+        ticket = TwoFactorService.create_pending_ticket(user_id)
+        client = _make_client(session_factory)
+
+        with patch(
+            "src.services.two_factor_service.TwoFactorService.verify_two_factor_login",
+            return_value=(True, "Backup code accepted"),
+        ) as mock_verify:
+            response = client.post(
+                "/2fa/api/verify-login",
+                json={"ticket": ticket, "token": "ABCD1234"},
+            )
+
+        assert response.status_code == 200
+        mock_verify.assert_called_once_with(user_id, "ABCD1234")
