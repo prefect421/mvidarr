@@ -1,68 +1,80 @@
-"""Tests for oauth_service's CSRF state storage, now server-side instead
-of Flask-session-based (Flask has no request context in this FastAPI-only
-process, so the old flask_session code always failed — see #312 / the
-2026-08-09 Task 5 audit)."""
+"""Tests for OAuth CSRF state handling — now browser-bound via cookie at
+the route layer (auth.py), not server-side dict storage in oauth_service.py.
+Per RFC 9700 / OWASP OAuth2 Cheat Sheet: state must be securely bound to
+the user agent, which a server-only store cannot provide. See the
+2026-08-10 Part D revision for why the original dict approach (Part A)
+was replaced.
+"""
 
 from unittest.mock import patch
 
-from src.services.oauth_service import OAuthService, _oauth_states
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from src.api.fastapi.auth import router
+from src.services.oauth_service import OAuthService
 
 
-def setup_function():
-    _oauth_states.clear()
+def _make_client():
+    app = FastAPI()
+    app.include_router(router)
+    return TestClient(app)
 
 
-def test_initiate_oauth_flow_stores_state_without_flask():
-    service = OAuthService.__new__(OAuthService)
-    service.providers = {"authentik": _FakeProvider()}
+class TestOAuthLoginSetsCookie:
+    def test_oauth_login_sets_oauth_state_cookie(self):
+        client = _make_client()
 
-    success, auth_url, state = service.initiate_oauth_flow("authentik")
+        with patch(
+            "src.api.fastapi.auth.oauth_service.initiate_oauth_flow",
+            return_value=(
+                True,
+                "https://provider.example/authorize?state=abc123",
+                "abc123",
+            ),
+        ):
+            response = client.get("/api/auth/oauth/authentik/login")
 
-    assert success is True
-    assert state in _oauth_states
-    assert _oauth_states[state]["provider"] == "authentik"
+        assert response.status_code == 200
+        assert response.cookies.get("oauth_state") == "abc123"
 
 
-def test_handle_oauth_callback_accepts_matching_state():
-    service = OAuthService.__new__(OAuthService)
-    service.providers = {"authentik": _FakeProvider()}
-    success, auth_url, state = service.initiate_oauth_flow("authentik")
-
-    with patch.object(
-        OAuthService,
-        "_find_or_create_oauth_user",
-        return_value=(_FakeUser(), _FakeSession()),
-    ):
-        success, message, user, session_obj = service.handle_oauth_callback(
-            "authentik", "fake-code", state
+class TestOAuthCallbackValidatesCookie:
+    def test_callback_rejects_missing_cookie(self):
+        client = _make_client()
+        response = client.get(
+            "/api/auth/oauth/authentik/callback?code=fake&state=abc123"
         )
+        assert response.status_code == 400
+        assert "state" in response.json()["detail"].lower()
 
-    assert success is True
-    assert state not in _oauth_states  # cleaned up after use
+    def test_callback_rejects_mismatched_cookie(self):
+        client = _make_client()
+        client.cookies.set("oauth_state", "different-value")
+        response = client.get(
+            "/api/auth/oauth/authentik/callback?code=fake&state=abc123"
+        )
+        assert response.status_code == 400
 
+    def test_callback_accepts_matching_cookie(self):
+        client = _make_client()
+        client.cookies.set("oauth_state", "abc123")
 
-def test_handle_oauth_callback_rejects_unknown_state():
-    service = OAuthService.__new__(OAuthService)
-    service.providers = {"authentik": _FakeProvider()}
+        with patch(
+            "src.api.fastapi.auth.oauth_service.handle_oauth_callback",
+            return_value=(False, "Failed to obtain access token", None, None),
+        ):
+            response = client.get(
+                "/api/auth/oauth/authentik/callback?code=fake&state=abc123"
+            )
 
-    success, message, user, session_obj = service.handle_oauth_callback(
-        "authentik", "fake-code", "state-that-was-never-issued"
-    )
-
-    assert success is False
-    assert "state" in message.lower()
-
-
-def test_handle_oauth_callback_rejects_provider_mismatch():
-    service = OAuthService.__new__(OAuthService)
-    service.providers = {"authentik": _FakeProvider(), "google": _FakeProvider()}
-    success, auth_url, state = service.initiate_oauth_flow("authentik")
-
-    success, message, user, session_obj = service.handle_oauth_callback(
-        "google", "fake-code", state
-    )
-
-    assert success is False
+        # Cookie matched, so the request proceeds past the CSRF check into
+        # the actual OAuth exchange (which fails here for an unrelated,
+        # expected reason — the point of this test is that it got past
+        # the 400 CSRF rejection, not that the full flow succeeds).
+        assert response.status_code != 400 or "CSRF" not in response.json().get(
+            "detail", ""
+        )
 
 
 def test_handle_oauth_callback_passes_ip_and_user_agent_through():

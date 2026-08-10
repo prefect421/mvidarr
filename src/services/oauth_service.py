@@ -4,7 +4,7 @@ Supports multiple OAuth providers including Authentik, Google, GitHub, etc.
 """
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlencode
 
@@ -18,23 +18,6 @@ logger = get_logger("mvidarr.oauth")
 
 # Default timeout for HTTP requests (in seconds)
 DEFAULT_REQUEST_TIMEOUT = 30
-
-# Short-lived server-side store for OAuth CSRF state. No cookie needed —
-# the state token round-trips through the provider's own redirect back to
-# our callback URL. Replaces the old flask_session-based storage, which
-# always failed (no Flask request context exists in this FastAPI-only
-# process) — see #312.
-_oauth_states: Dict[str, Dict[str, Any]] = {}
-_OAUTH_STATE_EXPIRY_MINUTES = 10
-
-
-def _cleanup_expired_oauth_states() -> None:
-    now = datetime.utcnow()
-    expired = [
-        state for state, data in _oauth_states.items() if data["expires_at"] < now
-    ]
-    for state in expired:
-        _oauth_states.pop(state, None)
 
 
 class OAuthError(Exception):
@@ -353,14 +336,6 @@ class OAuthService:
             # Generate state for CSRF protection
             state = secrets.token_urlsafe(32)
 
-            # Store state server-side (see _oauth_states above)
-            _cleanup_expired_oauth_states()
-            _oauth_states[state] = {
-                "provider": provider_name,
-                "expires_at": datetime.utcnow()
-                + timedelta(minutes=_OAUTH_STATE_EXPIRY_MINUTES),
-            }
-
             # Generate authorization URL
             auth_url = provider.get_authorization_url(state)
 
@@ -395,21 +370,6 @@ class OAuthService:
             Tuple of (success, message, user, session)
         """
         try:
-            # Verify state for CSRF protection
-            _cleanup_expired_oauth_states()
-            stored = _oauth_states.get(state)
-
-            if not stored:
-                return (
-                    False,
-                    "Invalid or expired state parameter - possible CSRF attack",
-                    None,
-                    None,
-                )
-
-            if stored["provider"] != provider_name:
-                return False, "Provider mismatch", None, None
-
             # Get provider
             provider = self.get_provider(provider_name)
             if not provider:
@@ -436,9 +396,6 @@ class OAuthService:
             )
 
             if user and session_obj:
-                # Clear used state
-                _oauth_states.pop(state, None)
-
                 logger.info(
                     f"OAuth authentication successful for user: {user.username}"
                 )

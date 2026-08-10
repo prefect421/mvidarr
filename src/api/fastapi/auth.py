@@ -363,7 +363,17 @@ async def oauth_login(provider: str):
                 success=True,
             )
 
-            return {"auth_url": auth_url, "state": state}
+            from fastapi.responses import JSONResponse
+
+            response = JSONResponse(content={"auth_url": auth_url, "state": state})
+            response.set_cookie(
+                key="oauth_state",
+                value=state,
+                max_age=600,  # 10 minutes — matches the old dict's expiry window
+                httponly=True,
+                samesite="lax",
+            )
+            return response
         else:
             log_oauth_login_failed(provider, auth_url)
             raise HTTPException(
@@ -402,6 +412,16 @@ async def oauth_callback(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Missing authorization code or state",
+            )
+
+        cookie_state = request.cookies.get("oauth_state")
+        if not cookie_state or cookie_state != state:
+            log_oauth_login_failed(
+                provider, "State parameter mismatch - possible CSRF attack"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid state parameter - possible CSRF attack",
             )
 
         ip_address = request.client.host if request.client else "unknown"
@@ -443,6 +463,7 @@ async def oauth_callback(
                 secure=is_https,
                 samesite="lax",
             )
+            response.delete_cookie("oauth_state")
             return response
         else:
             log_oauth_login_failed(provider, message)
