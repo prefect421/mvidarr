@@ -33,10 +33,26 @@ class TestOAuthLoginSetsCookie:
                 "abc123",
             ),
         ):
-            response = client.get("/api/auth/oauth/authentik/login")
+            response = client.get(
+                "/api/auth/oauth/authentik/login",
+                headers={"x-forwarded-proto": "https"},
+            )
 
         assert response.status_code == 200
         assert response.cookies.get("oauth_state") == "abc123"
+
+        # Pin the cookie's security attributes directly, not just its
+        # value — httponly/secure/samesite are exactly what commit
+        # 27798c67 exists to guarantee, and response.cookies alone can't
+        # see them (those flags aren't exposed via Cookies, only the raw
+        # Set-Cookie header). x-forwarded-proto: https above exercises
+        # the is_https=True branch so `Secure` is actually asserted, not
+        # skipped.
+        set_cookie_header = response.headers.get("set-cookie")
+        assert set_cookie_header is not None
+        assert "httponly" in set_cookie_header.lower()
+        assert "secure" in set_cookie_header.lower()
+        assert "samesite=lax" in set_cookie_header.lower()
 
 
 class TestOAuthCallbackValidatesCookie:
@@ -70,11 +86,11 @@ class TestOAuthCallbackValidatesCookie:
 
         # Cookie matched, so the request proceeds past the CSRF check into
         # the actual OAuth exchange (which fails here for an unrelated,
-        # expected reason — the point of this test is that it got past
-        # the 400 CSRF rejection, not that the full flow succeeds).
-        assert response.status_code != 400 or "CSRF" not in response.json().get(
-            "detail", ""
-        )
+        # mocked reason — 401, not 400). Asserting the exact status pins
+        # "got past the CSRF gate, failed for the downstream reason"
+        # rather than a looser check that would also pass on unrelated
+        # failures.
+        assert response.status_code == 401
 
 
 def test_handle_oauth_callback_passes_ip_and_user_agent_through():

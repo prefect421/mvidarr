@@ -202,7 +202,7 @@
         <div class="oauth-section">
             <div class="oauth-title">Or sign in with</div>
             {% for provider, name in oauth_providers.items() %}
-            <a href="/auth/oauth/{{ provider }}/login" class="oauth-button">
+            <a href="/api/auth/oauth/{{ provider }}/login" class="oauth-button">
                 {{ name }}
             </a>
             {% endfor %}
@@ -291,6 +291,26 @@
                 button.disabled = false;
                 button.textContent = 'Verify';
             }
+        });
+
+        document.querySelectorAll('.oauth-button').forEach(function (button) {
+            button.addEventListener('click', async function (e) {
+                e.preventDefault();
+                hideError();
+
+                try {
+                    const response = await fetch(button.getAttribute('href'));
+                    const data = await response.json();
+
+                    if (response.ok && data.auth_url) {
+                        window.location.href = data.auth_url;
+                    } else {
+                        showError(data.detail || data.message || 'OAuth login failed');
+                    }
+                } catch (err) {
+                    showError('OAuth login failed — could not reach the server');
+                }
+            });
         });
 
         document.getElementById('username').focus();
