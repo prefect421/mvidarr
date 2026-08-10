@@ -88,6 +88,12 @@ async def simple_login(
                 from src.services.two_factor_service import TwoFactorService
 
                 ticket = TwoFactorService.create_pending_ticket(user.id)
+                AuditService.log_event(
+                    AuditEventType.TWO_FACTOR_REQUIRED,
+                    "Password verified; two-factor authentication required to complete login",
+                    user_id=user.id,
+                    username=user.username,
+                )
                 return JSONResponse(
                     status_code=202,
                     content={
@@ -96,6 +102,11 @@ async def simple_login(
                         "ticket": ticket,
                         "message": "Two-factor authentication required",
                     },
+                )
+            elif user is None:
+                logger.warning(
+                    f"SimpleAuthService authenticated '{username}' but no matching "
+                    "User row exists — 2FA check skipped"
                 )
 
             # Create real session via SessionStore
@@ -184,6 +195,12 @@ async def login(
                 from src.services.two_factor_service import TwoFactorService
 
                 ticket = TwoFactorService.create_pending_ticket(user.id)
+                AuditService.log_event(
+                    AuditEventType.TWO_FACTOR_REQUIRED,
+                    "Password verified; two-factor authentication required to complete login",
+                    user_id=user.id,
+                    username=user.username,
+                )
                 return JSONResponse(
                     status_code=202,
                     content={
@@ -192,6 +209,11 @@ async def login(
                         "ticket": ticket,
                         "message": "Two-factor authentication required",
                     },
+                )
+            elif user is None:
+                logger.warning(
+                    f"SimpleAuthService authenticated '{username}' but no matching "
+                    "User row exists — 2FA check skipped"
                 )
 
             # Create real session

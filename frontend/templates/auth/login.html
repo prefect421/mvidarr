@@ -283,7 +283,15 @@
                 if (response.ok && data.success) {
                     window.location.href = '/';
                 } else {
-                    showError(data.detail || data.message || 'Verification failed');
+                    // The ticket is single-use even on a failed attempt
+                    // (Task 9's rate-limit on guessing), so it cannot be
+                    // retried — send the user back to the password form to
+                    // get a fresh one instead of leaving this form stuck.
+                    pendingTicket = null;
+                    document.getElementById('twoFactorToken').value = '';
+                    twoFactorSection.style.display = 'none';
+                    loginForm.style.display = 'block';
+                    showError('Verification failed — please sign in again.');
                 }
             } catch (err) {
                 showError('Verification failed — could not reach the server');
