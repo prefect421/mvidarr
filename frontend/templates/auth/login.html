@@ -215,7 +215,7 @@
         const twoFactorForm = document.getElementById('twoFactorForm');
         const twoFactorSection = document.getElementById('twoFactorSection');
         const errorMessage = document.getElementById('errorMessage');
-        let pendingUsername = null;
+        let pendingTicket = null;
 
         function showError(message) {
             errorMessage.textContent = message;
@@ -248,7 +248,7 @@
                 if (response.ok && data.success) {
                     window.location.href = '/';
                 } else if (response.status === 202 && data.requires_2fa) {
-                    pendingUsername = username;
+                    pendingTicket = data.ticket;
                     loginForm.style.display = 'none';
                     twoFactorSection.style.display = 'block';
                 } else {
@@ -276,7 +276,7 @@
                 const response = await fetch('/2fa/api/verify-login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: pendingUsername, token }),
+                    body: JSON.stringify({ ticket: pendingTicket, token }),
                 });
                 const data = await response.json();
 

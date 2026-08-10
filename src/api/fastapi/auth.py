@@ -8,8 +8,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication
+from src.database.connection import get_db_session
 from src.services.audit_service import (
     AuditEventType,
     AuditService,
@@ -59,6 +61,7 @@ class CredentialsRequest(BaseModel):
 async def simple_login(
     login_data: LoginRequest,
     request: Request,
+    session: Session = Depends(get_db_session),
 ):
     """Simple login endpoint using SimpleAuthService"""
     try:
@@ -76,6 +79,25 @@ async def simple_login(
 
         success, message = SimpleAuthService.authenticate(username, password)
         if success:
+            from src.database.models import User
+
+            user = session.query(User).filter(User.username == username).first()
+            if user and user.two_factor_enabled:
+                from fastapi.responses import JSONResponse
+
+                from src.services.two_factor_service import TwoFactorService
+
+                ticket = TwoFactorService.create_pending_ticket(user.id)
+                return JSONResponse(
+                    status_code=202,
+                    content={
+                        "success": False,
+                        "requires_2fa": True,
+                        "ticket": ticket,
+                        "message": "Two-factor authentication required",
+                    },
+                )
+
             # Create real session via SessionStore
             ip_address = request.client.host if request.client else "unknown"
             session_token = SessionStore.create_session(username, ip_address)
@@ -130,6 +152,7 @@ async def simple_login(
 async def login(
     login_data: LoginRequest,
     request: Request,
+    session: Session = Depends(get_db_session),
 ):
     """User login endpoint using SimpleAuthService"""
     try:
@@ -152,6 +175,25 @@ async def login(
         success, message = SimpleAuthService.authenticate(username, password)
 
         if success:
+            from src.database.models import User
+
+            user = session.query(User).filter(User.username == username).first()
+            if user and user.two_factor_enabled:
+                from fastapi.responses import JSONResponse
+
+                from src.services.two_factor_service import TwoFactorService
+
+                ticket = TwoFactorService.create_pending_ticket(user.id)
+                return JSONResponse(
+                    status_code=202,
+                    content={
+                        "success": False,
+                        "requires_2fa": True,
+                        "ticket": ticket,
+                        "message": "Two-factor authentication required",
+                    },
+                )
+
             # Create real session
             session_token = SessionStore.create_session(username, ip_address)
 
