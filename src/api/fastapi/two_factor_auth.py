@@ -71,7 +71,7 @@ class DisableTwoFactorRequest(BaseModel):
 class LoginVerificationRequest(BaseModel):
     """Login verification request model"""
 
-    username: str = Field(..., min_length=1)
+    ticket: str = Field(..., min_length=1)
     token: str = Field(..., min_length=6, max_length=6)
     backup_code: Optional[str] = None
 
@@ -351,11 +351,13 @@ async def verify_login(
 ):
     """Complete login by verifying a 2FA token for a user pending verification"""
     try:
-        user = (
-            session.query(User)
-            .filter(User.username == verification_request.username)
-            .first()
-        )
+        user_id = TwoFactorService.consume_pending_ticket(verification_request.ticket)
+        if user_id is None:
+            raise HTTPException(
+                status_code=401, detail="Invalid or expired verification request"
+            )
+
+        user = session.query(User).filter(User.id == user_id).first()
         if not user or not user.two_factor_enabled:
             raise HTTPException(status_code=401, detail="Invalid verification request")
 

@@ -4,6 +4,12 @@ Before this fix, this endpoint unconditionally returned 501 — 2FA was
 fully built (TwoFactorService.verify_two_factor_login already existed
 and is used by the setup-verification flow) but never reachable from an
 actual login (#311/#312 investigation).
+
+Updated 2026-08-10 (security revision): the endpoint now requires a
+short-lived, single-use ticket from TwoFactorService.create_pending_ticket
+instead of a bare username — see tests/unit/test_two_factor_pending_ticket.py
+and the "Task 9 revision" section of the plan for why a bare username let
+anyone with a guessed/stolen TOTP code log in without a password at all.
 """
 
 from contextlib import contextmanager
@@ -19,6 +25,11 @@ from sqlalchemy.pool import StaticPool
 from src.api.fastapi.two_factor_auth import router
 from src.database.connection import Base, get_db_session
 from src.database.models import User, UserRole
+from src.services.two_factor_service import TwoFactorService, _pending_2fa_tickets
+
+
+def setup_function():
+    _pending_2fa_tickets.clear()
 
 
 @pytest.fixture
@@ -75,7 +86,8 @@ def _make_client(session_factory):
 
 class TestVerifyLogin:
     def test_valid_token_creates_session(self, session_factory):
-        _seed_user(session_factory, "twofa_user")
+        user_id = _seed_user(session_factory, "twofa_user")
+        ticket = TwoFactorService.create_pending_ticket(user_id)
         client = _make_client(session_factory)
 
         with patch(
@@ -84,7 +96,7 @@ class TestVerifyLogin:
         ):
             response = client.post(
                 "/2fa/api/verify-login",
-                json={"username": "twofa_user", "token": "123456"},
+                json={"ticket": ticket, "token": "123456"},
             )
 
         assert response.status_code == 200
@@ -92,7 +104,8 @@ class TestVerifyLogin:
         assert "session_token" in response.cookies
 
     def test_invalid_token_returns_401(self, session_factory):
-        _seed_user(session_factory, "twofa_user")
+        user_id = _seed_user(session_factory, "twofa_user")
+        ticket = TwoFactorService.create_pending_ticket(user_id)
         client = _make_client(session_factory)
 
         with patch(
@@ -101,15 +114,15 @@ class TestVerifyLogin:
         ):
             response = client.post(
                 "/2fa/api/verify-login",
-                json={"username": "twofa_user", "token": "000000"},
+                json={"ticket": ticket, "token": "000000"},
             )
 
         assert response.status_code == 401
 
-    def test_unknown_username_returns_401(self, session_factory):
+    def test_unknown_ticket_returns_401(self, session_factory):
         client = _make_client(session_factory)
         response = client.post(
             "/2fa/api/verify-login",
-            json={"username": "nobody", "token": "123456"},
+            json={"ticket": "never-issued", "token": "123456"},
         )
         assert response.status_code == 401
