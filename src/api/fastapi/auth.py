@@ -350,7 +350,7 @@ async def get_session_info(request: Request):
 
 
 @router.get("/oauth/{provider}/login")
-async def oauth_login(provider: str):
+async def oauth_login(provider: str, request: Request):
     """Initiate OAuth login flow"""
     try:
         success, auth_url, state = oauth_service.initiate_oauth_flow(provider)
@@ -366,11 +366,13 @@ async def oauth_login(provider: str):
             from fastapi.responses import JSONResponse
 
             response = JSONResponse(content={"auth_url": auth_url, "state": state})
+            is_https = request.headers.get("x-forwarded-proto") == "https"
             response.set_cookie(
                 key="oauth_state",
                 value=state,
                 max_age=600,  # 10 minutes — matches the old dict's expiry window
                 httponly=True,
+                secure=is_https,
                 samesite="lax",
             )
             return response
