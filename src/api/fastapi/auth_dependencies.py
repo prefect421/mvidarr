@@ -9,6 +9,8 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 
+from src.database.models import UserRole
+
 logger = logging.getLogger("mvidarr.fastapi.auth_deps")
 
 # Optional bearer token security (for API tokens if needed)
@@ -98,7 +100,7 @@ async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
         )
 
-    if not current_user.get("is_admin", False):
+    if current_user.get("role") != UserRole.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
         )

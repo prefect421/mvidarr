@@ -260,10 +260,87 @@ def ensure_default_credentials(force_reset=False):
             else:
                 logger.info("Default authentication credentials already exist")
 
+            configured_username = username_setting.value
+
+        # Reconcile the Settings-table credential with a matching User row so
+        # that SessionStore.create_session can resolve a real ADMIN role for it
+        # instead of failing closed to READONLY.
+        ensure_admin_user_for_credentials(configured_username)
+
         return True
 
     except Exception as e:
         logger.error(f"Failed to ensure default credentials: {e}")
+        return False
+
+
+def ensure_admin_user_for_credentials(username):
+    """
+    Ensure a User row with ADMIN role exists for the configured
+    simple_auth_username.
+
+    SessionStore.create_session looks the username up in the users table to
+    resolve the session role and fails closed to READONLY when no row exists.
+    Installs that never ran the installation wizard only have Setting rows, so
+    their sole admin account would get a READONLY session. This reconciles that.
+
+    The User row's own password_hash is a random, unusable value: real
+    authentication for this account goes through SimpleAuthService against the
+    Settings table, never through User.check_password.
+
+    Idempotent: safe to run on every boot. Never modifies an existing row.
+
+    Returns:
+        True if a matching ADMIN user exists (or was created), False on error
+    """
+    import secrets
+
+    from src.database.connection import get_db
+    from src.database.models import UserRole
+
+    if not username:
+        logger.warning(
+            "No simple_auth_username configured; skipping user reconciliation"
+        )
+        return False
+
+    try:
+        with get_db() as session:
+            existing = session.query(User).filter(User.username == username).first()
+
+            if existing is not None:
+                if existing.role != UserRole.ADMIN:
+                    # Leave it alone: an operator may have deliberately
+                    # downgraded this account. Warn loudly instead.
+                    logger.warning(
+                        f"User '{username}' exists with role "
+                        f"{existing.role.value}, not ADMIN. Leaving it "
+                        f"untouched; admin-only endpoints will 403 for it."
+                    )
+                else:
+                    logger.debug(f"Admin user row for '{username}' already exists")
+                return True
+
+            # Random unusable password; complexity suffix satisfies
+            # PasswordValidator so User.__init__ does not raise.
+            placeholder_password = secrets.token_urlsafe(32) + "aA1!"
+
+            user = User(
+                username=username,
+                email=f"{username}@localhost",
+                password=placeholder_password,
+                role=UserRole.ADMIN,
+            )
+            session.add(user)
+            session.commit()
+            logger.info(
+                f"Created ADMIN user row for configured credential '{username}' "
+                f"(authentication still goes through SimpleAuthService)"
+            )
+            return True
+
+    except Exception as e:
+        logger.error(f"Failed to reconcile admin user for '{username}': {e}")
         return False
 
 

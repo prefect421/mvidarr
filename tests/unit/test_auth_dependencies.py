@@ -6,8 +6,10 @@ pushed in the live process — and must not silently grant access).
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
-from src.api.fastapi.auth_dependencies import get_current_user_session
+from src.api.fastapi.auth_dependencies import get_current_user_session, require_admin
+from src.database.models import UserRole
 
 
 class _FakeRequest:
@@ -52,3 +54,36 @@ async def test_invalid_session_token_returns_none():
         result = await get_current_user_session(request)
 
     assert result is None
+
+
+class TestRequireAdmin:
+    """require_admin used to check an `is_admin` key that SessionStore no
+    longer returns, so it denied every user including real admins.
+    """
+
+    @pytest.mark.asyncio
+    async def test_admin_role_is_allowed(self):
+        session = {
+            "username": "boss",
+            "authenticated": True,
+            "role": UserRole.ADMIN.value,
+        }
+        assert await require_admin(session) is session
+
+    @pytest.mark.parametrize(
+        "role",
+        [UserRole.MANAGER.value, UserRole.USER.value, UserRole.READONLY.value],
+    )
+    @pytest.mark.asyncio
+    async def test_non_admin_roles_are_denied(self, role):
+        session = {"username": "someone", "authenticated": True, "role": role}
+        with pytest.raises(HTTPException) as exc:
+            await require_admin(session)
+        assert exc.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_missing_role_is_denied(self):
+        session = {"username": "someone", "authenticated": True}
+        with pytest.raises(HTTPException) as exc:
+            await require_admin(session)
+        assert exc.value.status_code == 403

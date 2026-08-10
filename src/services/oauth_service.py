@@ -552,14 +552,11 @@ class OAuthService:
         """Check if any OAuth providers are configured"""
         return len(self.providers) > 0
 
-    def get_oauth_login_urls(self) -> Dict[str, str]:
-        """Get OAuth login URLs for all configured providers"""
-        urls = {}
-        for provider_name in self.providers:
-            success, auth_url, state = self.initiate_oauth_flow(provider_name)
-            if success:
-                urls[provider_name] = auth_url
-        return urls
+    # get_oauth_login_urls() was removed: it discarded the CSRF state that
+    # initiate_oauth_flow() returns, so any URL it produced could never pass
+    # the callback's oauth_state cookie check. Callers must use
+    # initiate_oauth_flow() directly and set the state cookie (see
+    # /api/auth/oauth/{provider}/login).
 
 
 # Global OAuth service instance

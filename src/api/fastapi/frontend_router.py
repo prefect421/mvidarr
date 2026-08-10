@@ -352,16 +352,10 @@ async def two_fa_setup_page(request: Request, user=Depends(require_authenticatio
         raise HTTPException(status_code=500, detail="Failed to load 2FA setup page")
 
 
-@frontend_router.get(
-    "/auth/2fa/verify", response_class=HTMLResponse, name="auth_2fa_verify"
-)
-async def two_fa_verify_page(request: Request):
-    """Two-factor authentication verification page"""
-    try:
-        return await template_routes.two_fa_verify(request)
-    except Exception as e:
-        logger.error(f"Error rendering 2FA verify page: {e}")
-        raise HTTPException(status_code=500, detail="Failed to load 2FA verify page")
+# NOTE: /auth/2fa/verify (auth/2fa_verify.html) was removed. It was a second,
+# separate 2FA page that POSTed {user_id, token} to /2fa/api/verify-login,
+# which now requires the bound {ticket, token} contract. The live 2FA
+# verification UI is the step embedded in auth/login.html.
 
 
 @frontend_router.get("/auth/logout", name="auth_logout")

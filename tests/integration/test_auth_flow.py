@@ -19,6 +19,8 @@ from src.api.fastapi.two_factor_auth import router as two_factor_router
 from src.api.fastapi.users import router as users_router
 from src.database.connection import Base, get_db_session
 from src.database.models import User, UserRole
+from src.services.settings_service import SettingsService
+from src.services.simple_auth_service import SimpleAuthService
 from src.services.two_factor_service import TwoFactorService
 
 
@@ -92,6 +94,36 @@ def _patch_get_db(session_factory):
     return patch(
         "src.database.connection.get_db", lambda: _fake_get_db(session_factory)
     )
+
+
+@contextmanager
+def _settings_store(initial=None):
+    """Back SettingsService with an in-memory dict.
+
+    SimpleAuthService (the thing the login endpoints actually authenticate
+    against) stores its single credential pair in the Settings table. The
+    in-memory SQLite fixture only creates the users table, and
+    SettingsService binds get_db at import time, so stubbing get/set is the
+    cheapest way to exercise the REAL SimpleAuthService end to end.
+    """
+    from unittest.mock import patch
+
+    store = dict(initial or {})
+
+    def _get(key, default=None):
+        value = store.get(key)
+        if value is None:
+            return "" if default is None else str(default)
+        return value
+
+    def _set(key, value, *args, **kwargs):
+        store[key] = value
+        return True
+
+    with patch.object(SettingsService, "get", staticmethod(_get)), patch.object(
+        SettingsService, "set", staticmethod(_set)
+    ):
+        yield store
 
 
 class TestFullLoginFlow:
@@ -176,15 +208,41 @@ class TestTwoFactorFlow:
 
 class TestPasswordReset:
     def test_reset_then_login_with_new_password(self, session_factory):
+        """The reset must restore ACTUAL login access, not just rewrite
+        users.password_hash. Checking user.check_password() alone is what let
+        the credential-store mismatch ship unnoticed, so this drives the real
+        /api/auth/simple-login endpoint with the real SimpleAuthService.
+        """
         _seed_user(session_factory, "forgetful", "Sup3rSecretOld!", UserRole.USER)
-        session = session_factory()
-        success, _ = reset_user_password(session, "forgetful", "Sup3rSecretNew!")
-        assert success is True
 
-        session2 = session_factory()
-        user = session2.query(User).filter(User.username == "forgetful").first()
-        assert user.check_password("Sup3rSecretNew!")
-        assert not user.check_password("Sup3rSecretOld!")
+        with _settings_store({"simple_auth_username": "forgetful"}):
+            # Seed the credential the login form actually reads.
+            SimpleAuthService.set_credentials("forgetful", "Sup3rSecretOld!")
+
+            session = session_factory()
+            success, _ = reset_user_password(session, "forgetful", "Sup3rSecretNew!")
+            assert success is True
+
+            session2 = session_factory()
+            user = session2.query(User).filter(User.username == "forgetful").first()
+            assert user.check_password("Sup3rSecretNew!")
+            assert not user.check_password("Sup3rSecretOld!")
+
+            client = _make_client(session_factory)
+            with _patch_get_db(session_factory):
+                login_response = client.post(
+                    "/api/auth/simple-login",
+                    json={"username": "forgetful", "password": "Sup3rSecretNew!"},
+                )
+            assert login_response.status_code == 200
+            assert "session_token" in login_response.cookies
+
+            with _patch_get_db(session_factory):
+                stale_response = client.post(
+                    "/api/auth/simple-login",
+                    json={"username": "forgetful", "password": "Sup3rSecretOld!"},
+                )
+            assert stale_response.status_code == 401
 
     def test_reset_does_not_affect_other_users(self, session_factory):
         _seed_user(session_factory, "user_a", "Sup3rSecretA!", UserRole.USER)

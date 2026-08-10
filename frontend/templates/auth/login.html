@@ -193,7 +193,12 @@
         <form id="twoFactorForm">
             <div id="twoFactorSection" class="form-group">
                 <label for="twoFactorToken">Verification Code</label>
-                <input type="text" id="twoFactorToken" name="token" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code">
+                <!-- Accepts either a 6-digit TOTP code or a 6-8 character
+                     alphanumeric backup code. Do not narrow this back to
+                     [0-9]{6}: HTML5 constraint validation fires before the JS
+                     submit handler and would silently block backup-code
+                     recovery. -->
+                <input type="text" id="twoFactorToken" name="token" pattern="[A-Za-z0-9]{6,8}" maxlength="8" autocomplete="one-time-code">
                 <button type="submit" class="login-button" id="twoFactorButton" style="margin-top: 12px;">Verify</button>
             </div>
         </form>

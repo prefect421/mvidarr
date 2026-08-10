@@ -90,7 +90,6 @@ class AsyncTemplateSystem:
                 "auth.logout": "/auth/logout",
                 "auth.simple_login": "/auth/simple-login",
                 "auth.2fa_setup": "/auth/2fa/setup",
-                "auth.2fa_verify": "/auth/2fa/verify",
                 # API routes
                 "api.videos": "/api/videos",
                 "api.artists": "/api/artists",
@@ -187,7 +186,6 @@ class AsyncTemplateSystem:
             "/auth/login": "auth/login.html",
             "/auth/simple-login": "auth/simple_login.html",
             "/auth/2fa/setup": "auth/2fa_setup.html",
-            "/auth/2fa/verify": "auth/2fa_verify.html",
         }
 
     def add_context_processor(self, processor: Callable):
@@ -725,17 +723,6 @@ class FastAPITemplateRoutes:
         }
         return await self.template_system.render_response(
             "auth/2fa_setup.html", request, context
-        )
-
-    async def two_fa_verify(self, request: Request) -> HTMLResponse:
-        """Two-factor authentication verification"""
-        context = {
-            "page_title": "2FA Verification",
-            "page_description": "Verify your two-factor authentication code",
-            "hide_navigation": True,
-        }
-        return await self.template_system.render_response(
-            "auth/2fa_verify.html", request, context
         )
 
     # Admin pages
