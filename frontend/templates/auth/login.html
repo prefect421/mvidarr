@@ -273,7 +273,7 @@
             const token = document.getElementById('twoFactorToken').value;
 
             try {
-                const response = await fetch('/api/verify-login', {
+                const response = await fetch('/2fa/api/verify-login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: pendingUsername, token }),
