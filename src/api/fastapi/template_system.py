@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from src.database.models import UserRole
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
@@ -794,6 +795,48 @@ def render_template_response(template_name: str):
 
 
 # Authentication dependency for protected templates
+async def _current_template_user(request: Request):
+    """Resolve the authenticated user for this request by validating its
+    session_token cookie directly via SessionStore, exactly like
+    auth_dependencies.get_optional_user does for API routes.
+
+    This does NOT rely on request.state.user/.session_user, and that is
+    deliberate: JWTAuthMiddleware only populates those for paths outside
+    its own public_paths list — and /settings, /admin, /dashboard, and
+    every other page this file protects are ALL listed as public there,
+    so the middleware returns early and never touches request.state for
+    them at all, regardless of whether a valid session cookie is present.
+    An earlier version of this function checked request.state.user (and
+    later request.state.session_user too) and, for these specific
+    routes, found neither — REAL logged-in users were bounced to
+    /auth/login exactly like anonymous ones (found via direct testing
+    immediately after that fix shipped, ahead of v1.0.0, 2026-08-11).
+
+    Delegating to get_optional_user reuses the same, already-hardened
+    session-validation logic every /api/* route depends on, instead of
+    maintaining a second, independently-buggy copy of it here.
+    """
+    from src.api.fastapi.auth_dependencies import get_optional_user
+
+    return await get_optional_user(request)
+
+
+def _template_user_role(user) -> str:
+    """Extract a role string from SessionStore.validate_session's dict
+    shape (the only shape _current_template_user can now return). Always
+    uppercase — UserRole enum values (ADMIN, USER, MANAGER, READONLY)
+    are stored/compared uppercase throughout this codebase's session-
+    based auth; an earlier version of require_admin compared against the
+    literal lowercase "admin", which would have 403'd even a genuine
+    ADMIN session.
+    """
+    if isinstance(user, dict):
+        role = user.get("role", "")
+    else:
+        role = getattr(user, "role", "")
+    return str(role).upper()
+
+
 async def require_authentication(request: Request):
     """Require authentication for template access.
 
@@ -809,26 +852,21 @@ async def require_authentication(request: Request):
     the pattern require_admin below already used (by relying on the same
     accidental side effect, not deliberately).
     """
-    if not hasattr(request.state, "user") or request.state.user is None:
+    user = await _current_template_user(request)
+    if user is None:
         if settings.get_bool("require_authentication", True):
             raise HTTPException(
                 status_code=status.HTTP_302_FOUND,
                 headers={"Location": "/auth/login"},
             )
 
-    # getattr, not a bare attribute access: request.state is a Starlette
-    # State object whose __getattr__ raises AttributeError for a key that
-    # was never set (hasattr() above only *looks* safe because hasattr()
-    # itself swallows that exception) — reachable whenever authentication
-    # is genuinely not required and no session/JWT middleware ever touched
-    # request.state.user at all.
-    return getattr(request.state, "user", None)
+    return user
 
 
 async def require_admin(request: Request):
     """Require admin role for template access"""
     user = await require_authentication(request)
-    if user and getattr(user, "role", "user") != "admin":
+    if user and _template_user_role(user) != UserRole.ADMIN.value:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
