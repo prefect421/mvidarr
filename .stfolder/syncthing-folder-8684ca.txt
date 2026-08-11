@@ -1,5 +1,0 @@
-# This directory is a Syncthing folder marker.
-# Do not delete.
-
-folderID: zmibh-ybsnc
-created: 2025-07-22T10:41:48-05:00

@@ -17,7 +17,6 @@ Comprehensive documentation and guides for MVidarr users, administrators, and de
 
 ### Core Features
 - **[Video Organization](https://github.com/prefect421/mvidarr/blob/main/docs/VIDEO_ORGANIZATION.md)** - Organizing and managing your video library
-- **[Features Overview](https://github.com/prefect421/mvidarr/blob/main/docs/requirements/Features.md)** - Complete feature documentation
 
 ## 🛡️ Security Documentation
 
@@ -30,31 +29,16 @@ Comprehensive documentation and guides for MVidarr users, administrators, and de
 
 ### Docker & Containerization
 - **[Docker Optimization Guide](https://github.com/prefect421/mvidarr/blob/main/docs/DOCKER_OPTIMIZATION_GUIDE.md)** - Container build optimization and monitoring
-- **[Docker Compose Review](https://github.com/prefect421/mvidarr/blob/main/docs/DOCKER_COMPOSE_REVIEW_2025.md)** - 2025 Docker Compose improvements
 
 
 ## 💻 Development Documentation
 
 ### Contributing
 - **[Contributing Guide](https://github.com/prefect421/mvidarr/blob/main/CONTRIBUTING.md)** - How to contribute to the project
-- **[Quality Assurance Plan](https://github.com/prefect421/mvidarr/blob/main/docs/0.9.6-QUALITY_ASSURANCE_PLAN.md)** - QA standards and testing procedures
-- **[Comprehensive Testing Report](https://github.com/prefect421/mvidarr/blob/main/docs/COMPREHENSIVE_TESTING_REPORT.md)** - Complete testing documentation
-
-### Project Status & Strategy
-- **[Final Project Status](https://github.com/prefect421/mvidarr/blob/main/docs/FINAL_PROJECT_STATUS.md)** - Complete project overview and status
-- **[Strategic Pivot](https://github.com/prefect421/mvidarr/blob/main/docs/0.9.5-STRATEGIC_PIVOT.md)** - Strategic direction and focus areas
-- **[Documentation Summary](https://github.com/prefect421/mvidarr/blob/main/docs/DOCUMENTATION-SUMMARY.md)** - Complete documentation overview
 
 ### Release Information
 - **[Release Notes](releases/)** - Detailed release information
-- **[Final Project Status](https://github.com/prefect421/mvidarr/blob/main/docs/FINAL_PROJECT_STATUS.md)** - Complete feature status
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-- **[Issues Documentation](https://github.com/prefect421/mvidarr/blob/main/docs/issues/Issues.md)** - Known issues and solutions
-- **[Documentation Review](https://github.com/prefect421/mvidarr/blob/main/docs/DOCUMENTATION_REVIEW_2025.md)** - 2025 documentation improvements
-
+- **[Changelog](https://github.com/prefect421/mvidarr/blob/main/CHANGELOG.md)** - Full version history
 
 ## 📋 Archive Documentation
 
@@ -62,6 +46,11 @@ Comprehensive documentation and guides for MVidarr users, administrators, and de
 - **[Installation Archive](https://github.com/prefect421/mvidarr/blob/main/docs/archive/INSTALLATION_GUIDE.md)** - Historical installation guides
 - **[Docker Archive](https://github.com/prefect421/mvidarr/blob/main/docs/archive/DOCKER-QUICKSTART.md)** - Archived Docker documentation
 - **[Quickstart Archive](https://github.com/prefect421/mvidarr/blob/main/docs/archive/QUICKSTART.md)** - Historical quick start guides
+- **[v1.0.0 Master TODO List (2025)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/V1.0.0_TODO_MASTER_LIST.md)** - Superseded first attempt at v1.0.0 planning; all referenced issues closed
+- **[v1.0.0 Development Start (2025)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/V1.0.0_DEVELOPMENT_START.md)** - Superseded, same effort as above
+- **[Issues Log (2025 snapshot)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/issues/Issues.md)** - Point-in-time issue log, superseded by [GitHub Issues](https://github.com/prefect421/mvidarr/issues)
+- **[Features Snapshot (early)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/requirements/Features.md)** - Early feature-completion snapshot
+- **[Production Incident Diagnostics](https://github.com/prefect421/mvidarr/tree/main/docs/archive/diagnostics)** - One-off scripts/notes from specific past production incidents
 
 ## 📖 Development Journal
 
@@ -72,10 +61,9 @@ Comprehensive documentation and guides for MVidarr users, administrators, and de
 ### Community Support
 - **[GitHub Discussions](https://github.com/prefect421/mvidarr/discussions)** - Community Q&A and discussions
 - **[GitHub Issues](https://github.com/prefect421/mvidarr/issues)** - Bug reports and feature requests
-- **[Discord Server](https://discord.gg/mvidarr)** - Real-time community chat (if available)
 
 
 
 ---
 
-**Can't find what you're looking for?** Check our [Issues Documentation](https://github.com/prefect421/mvidarr/blob/main/docs/issues/Issues.md) or ask in [GitHub Discussions](https://github.com/prefect421/mvidarr/discussions)!
+**Can't find what you're looking for?** Ask in [GitHub Discussions](https://github.com/prefect421/mvidarr/discussions) or open a [GitHub Issue](https://github.com/prefect421/mvidarr/issues)!
