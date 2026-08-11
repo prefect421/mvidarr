@@ -437,8 +437,29 @@ async def complete_wizard_step(
             next_step = step_order[current_index + 1]
             wizard_state.advance_to_step(next_step)
 
+        just_completed = wizard_state.status == WizardStatus.COMPLETED
+
         session.commit()
         session.refresh(wizard_state)
+
+        # Mirrors skip_wizard's own reconciliation call below: if this step
+        # just brought the wizard to COMPLETED without ever going through
+        # POST /create-admin (e.g. a direct API caller advancing the
+        # admin_account step without creating an admin), the configured
+        # SimpleAuth credential would otherwise resolve to a READONLY
+        # session until the next application restart (#325).
+        if just_completed:
+            try:
+                from src.database.init_db import ensure_admin_user_for_credentials
+                from src.services.settings_service import SettingsService
+
+                ensure_admin_user_for_credentials(
+                    SettingsService.get("simple_auth_username")
+                )
+            except Exception as reconcile_err:
+                logger.error(
+                    f"Failed to reconcile admin user after wizard completion: {reconcile_err}"
+                )
 
         return WizardStateResponse(**wizard_state.to_dict())
 
