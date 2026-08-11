@@ -771,8 +771,38 @@ document.addEventListener('DOMContentLoaded', function() {
             updateUserManagementSection(); // Initial check
             updateUserCredentialsSection(); // Initial check for credentials section
         }
+        loadTwoFactorStatus();
     }
 });
+
+// Load and display the current user's 2FA status on the Settings page.
+// The only pre-existing entry point to /2fa/setup was in an unreachable
+// template (dashboard.html, which nothing ever routes to) — this wires a
+// real, reachable one into Settings instead (#334 investigation).
+async function loadTwoFactorStatus() {
+    // Distinct ID from the pre-existing (dead, unreachable) 'twoFactorStatus'
+    // element referenced elsewhere in settings.html's dead
+    // adminUserManagement-adjacent code — see #334 investigation.
+    const statusEl = document.getElementById('securityTwoFactorStatus');
+    const enableLink = document.getElementById('twoFactorEnableLink');
+    if (!statusEl) return;
+
+    try {
+        const response = await apiRequest('/2fa/api/status');
+        let message = 'Two-factor authentication is not enabled for your account.';
+        if (response.enabled) {
+            message = '✅ Two-factor authentication is enabled.';
+            if (typeof response.backup_codes_remaining === 'number') {
+                message += ` ${response.backup_codes_remaining} backup code(s) remaining.`;
+            }
+        }
+        statusEl.textContent = message;
+        if (enableLink) enableLink.style.display = response.enabled ? 'none' : 'inline-block';
+    } catch (error) {
+        console.log('Could not load 2FA status:', error);
+        statusEl.textContent = 'Could not load two-factor authentication status.';
+    }
+}
 
 // Metadata Services Functions
 
