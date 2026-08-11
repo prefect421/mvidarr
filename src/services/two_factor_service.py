@@ -7,7 +7,7 @@ import base64
 import io
 import json
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import pyotp
@@ -19,6 +19,16 @@ from src.services.audit_service import AuditService
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.two_factor")
+
+# Short-lived, single-use tickets proving a password check just succeeded
+# for a given user, exchanged for a session once the second factor is
+# confirmed via verify_two_factor_login. See the 2026-08-10 security
+# revision to Task 9 for why verify-login can't just trust a bare
+# username — there's no rate-limiting on 2FA code guesses in this
+# codebase, so binding to a fresh password check is what actually limits
+# guessing attempts.
+_pending_2fa_tickets: Dict[str, Dict[str, Any]] = {}
+_PENDING_2FA_TICKET_EXPIRY_MINUTES = 5
 
 
 class TwoFactorService:
@@ -232,6 +242,39 @@ class TwoFactorService:
         except Exception as e:
             logger.error(f"Error disabling 2FA for user {user_id}: {e}")
             return False, f"Disable failed: {e}"
+
+    @staticmethod
+    def create_pending_ticket(user_id: int) -> str:
+        """
+        Issue a short-lived, single-use ticket proving a password check
+        just succeeded for this user, to be exchanged for a session via
+        verify_two_factor_login once the second factor is confirmed.
+        """
+        ticket = secrets.token_urlsafe(32)
+        _pending_2fa_tickets[ticket] = {
+            "user_id": user_id,
+            "expires_at": datetime.utcnow()
+            + timedelta(minutes=_PENDING_2FA_TICKET_EXPIRY_MINUTES),
+        }
+        return ticket
+
+    @staticmethod
+    def consume_pending_ticket(ticket: str) -> Optional[int]:
+        """
+        Validate and immediately invalidate a pending-2FA ticket — single
+        use regardless of what happens next, even a failed verification
+        attempt consumes it (see module-level comment on
+        _pending_2fa_tickets for why).
+
+        Returns the associated user_id if the ticket was valid and
+        unexpired, None otherwise.
+        """
+        data = _pending_2fa_tickets.pop(ticket, None)
+        if not data:
+            return None
+        if data["expires_at"] < datetime.utcnow():
+            return None
+        return data["user_id"]
 
     @staticmethod
     def verify_two_factor_login(user_id: int, token: str) -> Tuple[bool, str]:

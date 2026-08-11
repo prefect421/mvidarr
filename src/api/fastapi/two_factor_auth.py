@@ -71,8 +71,8 @@ class DisableTwoFactorRequest(BaseModel):
 class LoginVerificationRequest(BaseModel):
     """Login verification request model"""
 
-    token: str = Field(..., min_length=6, max_length=6)
-    backup_code: Optional[str] = None
+    ticket: str = Field(..., min_length=1)
+    token: str = Field(..., min_length=6, max_length=8)
 
 
 # ========================================================================================
@@ -345,13 +345,59 @@ async def verify_page(request: Request):
 @router.post("/api/verify-login")
 async def verify_login(
     verification_request: LoginVerificationRequest,
+    request: Request,
     session: Session = Depends(get_db_session),
 ):
-    """Verify 2FA token during login process - not yet implemented"""
-    raise HTTPException(
-        status_code=501,
-        detail="Two-factor authentication is not yet implemented",
-    )
+    """Complete login by verifying a 2FA token for a user pending verification"""
+    try:
+        user_id = TwoFactorService.consume_pending_ticket(verification_request.ticket)
+        if user_id is None:
+            raise HTTPException(
+                status_code=401, detail="Invalid or expired verification request"
+            )
+
+        user = session.query(User).filter(User.id == user_id).first()
+        if not user or not user.two_factor_enabled:
+            raise HTTPException(status_code=401, detail="Invalid verification request")
+
+        success, message = TwoFactorService.verify_two_factor_login(
+            user.id, verification_request.token
+        )
+
+        if not success:
+            logger.warning(
+                f"2FA login verification failed for user {user.username}: {message}"
+            )
+            raise HTTPException(status_code=401, detail="Invalid verification code")
+
+        from src.services.session_store import SessionStore
+
+        ip_address = request.client.host if request.client else "unknown"
+        session_token = SessionStore.create_session(user.username, ip_address)
+
+        from fastapi.responses import JSONResponse
+
+        response = JSONResponse(
+            content={"success": True, "message": "Login successful"}
+        )
+        is_https = request.headers.get("x-forwarded-proto") == "https"
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            max_age=86400,
+            httponly=True,
+            secure=is_https,
+            samesite="lax",
+        )
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"2FA login verification error: {e}")
+        raise HTTPException(
+            status_code=500, detail="Verification failed due to internal error"
+        )
 
 
 # ========================================================================================

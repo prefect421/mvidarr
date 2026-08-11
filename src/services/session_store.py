@@ -35,18 +35,37 @@ class SessionStore:
         token = secrets.token_urlsafe(32)
         expires_at = datetime.utcnow() + timedelta(hours=SESSION_EXPIRY_HOURS)
 
+        # Fail closed: if the role lookup fails for any reason, grant the
+        # lowest privilege level rather than defaulting to admin.
+        role = "READONLY"
+        user_id = None
+        try:
+            from src.database.connection import get_db
+            from src.database.models import User
+
+            with get_db() as db_session:
+                user = db_session.query(User).filter(User.username == username).first()
+                if user:
+                    role = user.role.value
+                    user_id = user.id
+                else:
+                    logger.warning(
+                        f"No user record found for '{username}' during session "
+                        f"creation; granting READONLY"
+                    )
+        except Exception as e:
+            logger.warning(
+                f"Could not look up role for '{username}', granting READONLY: {e}"
+            )
+
         session_data = {
             "username": username,
             "ip": ip,
             "created_at": datetime.utcnow().isoformat(),
             "expires_at": expires_at.isoformat(),
             "authenticated": True,
-            "user_id": 1,  # Single-user system
-            "role": "admin",
-            "is_admin": True,
-            "can_admin": True,
-            "can_modify": True,
-            "can_delete": True,
+            "user_id": user_id if user_id is not None else 1,
+            "role": role,
         }
 
         # Try DB-backed storage first
@@ -125,11 +144,7 @@ class SessionStore:
             "username": session_data.get("username", "admin"),
             "authenticated": True,
             "user_id": session_data.get("user_id", 1),
-            "role": session_data.get("role", "admin"),
-            "is_admin": session_data.get("is_admin", True),
-            "can_admin": session_data.get("can_admin", True),
-            "can_modify": session_data.get("can_modify", True),
-            "can_delete": session_data.get("can_delete", True),
+            "role": session_data.get("role", "READONLY"),
         }
 
     @staticmethod

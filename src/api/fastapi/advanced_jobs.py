@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from src.api.fastapi.auth_dependencies import require_authentication
+from src.database.models import UserRole
 from src.services.job_queue import (
     BackgroundJob,
     JobPriority,
@@ -242,7 +243,10 @@ async def get_job(job_id: str, current_user: dict = Depends(require_authenticati
 
         # Check if user has permission to view this job
         user_id = str(current_user.get("user_id", "unknown"))
-        if job.created_by != user_id and not current_user.get("is_admin", False):
+        if (
+            job.created_by != user_id
+            and current_user.get("role") != UserRole.ADMIN.value
+        ):
             raise HTTPException(status_code=403, detail="Permission denied")
 
         return JobResponse(
@@ -287,7 +291,10 @@ async def add_job_dependency(
 
         # Check if user has permission to modify this job
         user_id = str(current_user.get("user_id", "unknown"))
-        if job.created_by != user_id and not current_user.get("is_admin", False):
+        if (
+            job.created_by != user_id
+            and current_user.get("role") != UserRole.ADMIN.value
+        ):
             raise HTTPException(status_code=403, detail="Permission denied")
 
         # Check if dependency job exists
@@ -327,7 +334,10 @@ async def cancel_job(job_id: str, current_user: dict = Depends(require_authentic
 
         # Check if user has permission to cancel this job
         user_id = str(current_user.get("user_id", "unknown"))
-        if job.created_by != user_id and not current_user.get("is_admin", False):
+        if (
+            job.created_by != user_id
+            and current_user.get("role") != UserRole.ADMIN.value
+        ):
             raise HTTPException(status_code=403, detail="Permission denied")
 
         if job.status not in [
@@ -379,7 +389,7 @@ async def process_scheduled_jobs(
 ):
     """Manually trigger processing of scheduled jobs (admin only)"""
     try:
-        if not current_user.get("is_admin", False):
+        if current_user.get("role") != UserRole.ADMIN.value:
             raise HTTPException(status_code=403, detail="Admin access required")
 
         job_queue = await get_job_queue()
@@ -401,7 +411,7 @@ async def process_waiting_jobs(
 ):
     """Manually trigger processing of jobs waiting for dependencies (admin only)"""
     try:
-        if not current_user.get("is_admin", False):
+        if current_user.get("role") != UserRole.ADMIN.value:
             raise HTTPException(status_code=403, detail="Admin access required")
 
         job_queue = await get_job_queue()
@@ -424,7 +434,7 @@ async def cleanup_old_jobs(
 ):
     """Clean up old completed/failed jobs (admin only)"""
     try:
-        if not current_user.get("is_admin", False):
+        if current_user.get("role") != UserRole.ADMIN.value:
             raise HTTPException(status_code=403, detail="Admin access required")
 
         job_queue = await get_job_queue()

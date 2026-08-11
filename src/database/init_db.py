@@ -260,10 +260,168 @@ def ensure_default_credentials(force_reset=False):
             else:
                 logger.info("Default authentication credentials already exist")
 
+            configured_username = username_setting.value
+
+        # Reconcile the Settings-table credential with a matching User row so
+        # that SessionStore.create_session can resolve a real ADMIN role for it
+        # instead of failing closed to READONLY.
+        ensure_admin_user_for_credentials(configured_username)
+
         return True
 
     except Exception as e:
         logger.error(f"Failed to ensure default credentials: {e}")
+        return False
+
+
+def is_wizard_setup_pending():
+    """
+    Check whether the installation wizard still owns first-run setup.
+
+    Mirrors FirstRunDetectionMiddleware._check_wizard_completed() exactly: a
+    missing WizardState row, or one that is NOT_STARTED/IN_PROGRESS, means the
+    whole application is locked to /wizard and the wizard is the component
+    responsible for creating the first admin User. COMPLETED or SKIPPED means
+    first-run setup is over and the install is live.
+
+    On any error this returns True (pending), which is the safe direction:
+    skipping reconciliation on a live install costs at worst a READONLY session
+    that a later boot fixes, whereas pre-seeding an admin row on a fresh install
+    permanently blocks the wizard's create-account step.
+
+    Returns:
+        True if the wizard has not yet been completed or skipped
+    """
+    from src.database.connection import get_db
+    from src.database.models import WizardStatus
+
+    try:
+        with get_db() as session:
+            wizard_state = session.query(WizardState).first()
+
+            if wizard_state is None:
+                # No row at all: the wizard has never been opened, and the
+                # first-run middleware is redirecting every request to /wizard.
+                return True
+
+            return wizard_state.status not in (
+                WizardStatus.COMPLETED,
+                WizardStatus.SKIPPED,
+            )
+
+    except Exception as e:
+        logger.warning(
+            f"Could not determine installation wizard state ({e}); "
+            f"assuming first-run setup is still pending"
+        )
+        return True
+
+
+def ensure_admin_user_for_credentials(username):
+    """
+    Ensure a User row with ADMIN role exists for the configured
+    simple_auth_username.
+
+    SessionStore.create_session looks the username up in the users table to
+    resolve the session role and fails closed to READONLY when no row exists.
+    Installs that finished (or skipped) the wizard before this reconciliation
+    existed only have Setting rows, so their sole admin account would get a
+    READONLY session. This reconciles that.
+
+    Deliberately a no-op while the installation wizard is still pending: on a
+    fresh install the wizard's POST /api/wizard/create-admin rejects setup with
+    "Admin user already exists" if any ADMIN User row is present, so seeding one
+    at boot would permanently break first-run setup. Until the wizard is
+    completed or skipped, the first-run middleware locks the app to /wizard
+    anyway, so no session role can be needed yet. The wizard creates the real
+    admin row itself on completion, and skip_wizard() calls back into this
+    function so a skipped install is reconciled immediately rather than on the
+    next boot.
+
+    The User row's own password_hash is a random, unusable value: real
+    authentication for this account goes through SimpleAuthService against the
+    Settings table, never through User.check_password.
+
+    Idempotent: safe to run on every boot. Never modifies an existing row.
+
+    Returns:
+        True if a matching ADMIN user exists (or was created), False on error
+        or when reconciliation was skipped because the wizard is still pending
+    """
+    import secrets
+
+    from src.database.connection import get_db
+    from src.database.models import UserRole
+
+    if not username:
+        logger.warning(
+            "No simple_auth_username configured; skipping user reconciliation"
+        )
+        return False
+
+    if is_wizard_setup_pending():
+        logger.info(
+            "Installation wizard has not been completed or skipped; leaving "
+            "admin user creation to the wizard"
+        )
+        return False
+
+    try:
+        with get_db() as session:
+            existing = session.query(User).filter(User.username == username).first()
+
+            if existing is not None:
+                if existing.role != UserRole.ADMIN:
+                    # Leave it alone: an operator may have deliberately
+                    # downgraded this account. Warn loudly instead.
+                    logger.warning(
+                        f"User '{username}' exists with role "
+                        f"{existing.role.value}, not ADMIN. Leaving it "
+                        f"untouched; admin-only endpoints will 403 for it."
+                    )
+                else:
+                    logger.debug(f"Admin user row for '{username}' already exists")
+                return True
+
+            # Random unusable password; complexity suffix satisfies
+            # PasswordValidator's length/character-class rules so User()
+            # does not raise. token_urlsafe's own random output occasionally
+            # trips PasswordValidator's sequential- or repeated-character
+            # checks by chance (e.g. contains "abc" or "123"), so retry with
+            # a fresh draw on the rare occasions that happens rather than
+            # trying to construct one immune to rules this function doesn't
+            # own the definition of. A handful of attempts is enough that
+            # exhausting them all is not a realistic outcome.
+            from src.utils.security import PasswordValidator
+
+            for _ in range(10):
+                candidate = secrets.token_urlsafe(32) + "aA1!"
+                if PasswordValidator.validate_password_strength(candidate)[0]:
+                    placeholder_password = candidate
+                    break
+            else:
+                logger.error(
+                    f"Could not generate a placeholder password for '{username}' "
+                    "that passes strength validation after 10 attempts"
+                )
+                return False
+
+            user = User(
+                username=username,
+                email=f"{username}@localhost",
+                password=placeholder_password,
+                role=UserRole.ADMIN,
+            )
+            session.add(user)
+            session.commit()
+            logger.info(
+                f"Created ADMIN user row for configured credential '{username}' "
+                f"(authentication still goes through SimpleAuthService)"
+            )
+            return True
+
+    except Exception as e:
+        logger.error(f"Failed to reconcile admin user for '{username}': {e}")
         return False
 
 

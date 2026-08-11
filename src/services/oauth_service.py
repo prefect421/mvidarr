@@ -9,8 +9,6 @@ from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlencode
 
 import requests
-from flask import request
-from flask import session as flask_session
 
 from src.database.connection import get_db
 from src.database.models import User, UserRole, UserSession
@@ -338,10 +336,6 @@ class OAuthService:
             # Generate state for CSRF protection
             state = secrets.token_urlsafe(32)
 
-            # Store state in session
-            flask_session["oauth_state"] = state
-            flask_session["oauth_provider"] = provider_name
-
             # Generate authorization URL
             auth_url = provider.get_authorization_url(state)
 
@@ -353,7 +347,12 @@ class OAuthService:
             return False, "Failed to initiate OAuth flow", None
 
     def handle_oauth_callback(
-        self, provider_name: str, code: str, state: str
+        self,
+        provider_name: str,
+        code: str,
+        state: str,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> Tuple[bool, str, Optional[User], Optional[UserSession]]:
         """
         Handle OAuth callback and authenticate user
@@ -362,26 +361,15 @@ class OAuthService:
             provider_name: Name of OAuth provider
             code: Authorization code from provider
             state: State parameter for CSRF protection
+            ip_address: Client IP address for the new session (from the
+                real FastAPI Request; this service has no Flask request
+                context to read it from itself)
+            user_agent: Client User-Agent header for the new session
 
         Returns:
             Tuple of (success, message, user, session)
         """
         try:
-            # Verify state for CSRF protection
-            session_state = flask_session.get("oauth_state")
-            session_provider = flask_session.get("oauth_provider")
-
-            if not session_state or session_state != state:
-                return (
-                    False,
-                    "Invalid state parameter - possible CSRF attack",
-                    None,
-                    None,
-                )
-
-            if session_provider != provider_name:
-                return False, "Provider mismatch", None, None
-
             # Get provider
             provider = self.get_provider(provider_name)
             if not provider:
@@ -404,14 +392,10 @@ class OAuthService:
 
             # Find or create user
             user, session_obj = self._find_or_create_oauth_user(
-                provider_name, user_info
+                provider_name, user_info, ip_address=ip_address, user_agent=user_agent
             )
 
             if user and session_obj:
-                # Clear OAuth session data
-                flask_session.pop("oauth_state", None)
-                flask_session.pop("oauth_provider", None)
-
                 logger.info(
                     f"OAuth authentication successful for user: {user.username}"
                 )
@@ -424,7 +408,11 @@ class OAuthService:
             return False, "OAuth authentication failed", None, None
 
     def _find_or_create_oauth_user(
-        self, provider_name: str, user_info: Dict[str, Any]
+        self,
+        provider_name: str,
+        user_info: Dict[str, Any],
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> Tuple[Optional[User], Optional[UserSession]]:
         """
         Find existing user or create new user from OAuth info
@@ -432,6 +420,8 @@ class OAuthService:
         Args:
             provider_name: Name of OAuth provider
             user_info: User information from OAuth provider
+            ip_address: Client IP address for the new session
+            user_agent: Client User-Agent header for the new session
 
         Returns:
             Tuple of (user, session)
@@ -541,15 +531,13 @@ class OAuthService:
 
                 # Update last login
                 user.last_login = datetime.utcnow()
-                user.last_login_ip = request.environ.get(
-                    "HTTP_X_FORWARDED_FOR", request.remote_addr
-                )
+                user.last_login_ip = ip_address
 
                 # Create session
                 user_session = UserSession(
                     user_id=user.id,
-                    ip_address=user.last_login_ip,
-                    user_agent=request.headers.get("User-Agent"),
+                    ip_address=ip_address,
+                    user_agent=user_agent,
                 )
                 session.add(user_session)
                 session.commit()
@@ -564,14 +552,11 @@ class OAuthService:
         """Check if any OAuth providers are configured"""
         return len(self.providers) > 0
 
-    def get_oauth_login_urls(self) -> Dict[str, str]:
-        """Get OAuth login URLs for all configured providers"""
-        urls = {}
-        for provider_name in self.providers:
-            success, auth_url, state = self.initiate_oauth_flow(provider_name)
-            if success:
-                urls[provider_name] = auth_url
-        return urls
+    # get_oauth_login_urls() was removed: it discarded the CSRF state that
+    # initiate_oauth_flow() returns, so any URL it produced could never pass
+    # the callback's oauth_state cookie check. Callers must use
+    # initiate_oauth_flow() directly and set the state cookie (see
+    # /api/auth/oauth/{provider}/login).
 
 
 # Global OAuth service instance

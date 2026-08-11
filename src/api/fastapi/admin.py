@@ -55,7 +55,9 @@ async def get_current_user(request: Request) -> UserInfo:
     return UserInfo(
         id=user_data.get("user_id", 1),
         username=user_data.get("username", "admin"),
-        role=UserRole.ADMIN.value,  # Simple auth user has admin privileges
+        # Read the real role from the session; fail closed to READONLY if the
+        # session carries no role rather than granting admin by default.
+        role=user_data.get("role", UserRole.READONLY.value),
         is_active=True,
     )
 

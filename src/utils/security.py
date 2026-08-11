@@ -15,11 +15,8 @@ try:
     BLEACH_AVAILABLE = True
 except ImportError:
     BLEACH_AVAILABLE = False
-from functools import wraps
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
-
-from flask import jsonify, redirect, request
 
 # Handle different versions of werkzeug
 try:
@@ -503,77 +500,6 @@ class RateLimiter:
         return False
 
 
-def require_rate_limit(max_requests: int = 100, window_seconds: int = 3600):
-    """
-    Decorator to apply rate limiting to Flask routes
-
-    Args:
-        max_requests: Maximum requests allowed in window
-        window_seconds: Time window in seconds
-    """
-
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Use IP address as identifier
-            identifier = request.environ.get(
-                "HTTP_X_FORWARDED_FOR", request.remote_addr
-            )
-
-            if RateLimiter.is_rate_limited(identifier, max_requests, window_seconds):
-                return (
-                    jsonify(
-                        {
-                            "error": "Rate limit exceeded",
-                            "message": f"Maximum {max_requests} requests per {window_seconds} seconds",
-                        }
-                    ),
-                    429,
-                )
-
-            return f(*args, **kwargs)
-
-        return decorated_function
-
-    return decorator
-
-
-def validate_request_data(
-    required_fields: List[str] = None, max_payload_size: int = 1024 * 1024
-):
-    """
-    Decorator to validate request data
-
-    Args:
-        required_fields: List of required field names
-        max_payload_size: Maximum payload size in bytes
-    """
-
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            try:
-                data = request.get_json()
-                if data is None:
-                    return jsonify({"error": "Invalid JSON payload"}), 400
-
-                # Validate payload
-                is_valid, error_msg = InputValidator.validate_json_payload(
-                    data, required_fields, max_payload_size
-                )
-
-                if not is_valid:
-                    return jsonify({"error": error_msg}), 400
-
-                return f(*args, **kwargs)
-            except Exception as e:
-                return jsonify({"error": "Request validation failed"}), 400
-
-        return decorated_function
-
-    return decorator
-
-
 class SecureConfig:
     """Secure configuration management"""
 
@@ -616,52 +542,3 @@ def apply_security_headers(response):
     for header, value in headers.items():
         response.headers[header] = value
     return response
-
-
-def safe_redirect(
-    url: str, default_endpoint: str = "/", allowed_hosts: List[str] = None
-):
-    """
-    Safely redirect to a URL, preventing open redirect vulnerabilities
-
-    Args:
-        url: The URL to redirect to
-        default_endpoint: Default endpoint if URL is invalid
-        allowed_hosts: List of allowed hostnames (defaults to current app's host)
-
-    Returns:
-        Flask redirect response to a safe URL
-    """
-    if not url:
-        return redirect(default_endpoint)
-
-    try:
-        parsed = urlparse(url)
-
-        # If it's a relative URL (no scheme or netloc), it's safe
-        if not parsed.scheme and not parsed.netloc:
-            # Ensure it starts with / to prevent protocol-relative URLs
-            if not url.startswith("/"):
-                url = "/" + url
-            return redirect(url)
-
-        # For absolute URLs, validate the host
-        if allowed_hosts is None:
-            # Default to current request host if available
-            try:
-                current_host = request.host
-                allowed_hosts = [current_host]
-            except RuntimeError:
-                # Outside request context, be restrictive
-                allowed_hosts = ["localhost", "127.0.0.1"]
-
-        # Check if the host is in the allowed list
-        if parsed.netloc.lower() in [host.lower() for host in allowed_hosts]:
-            return redirect(url)
-
-        # If host is not allowed, redirect to default
-        return redirect(default_endpoint)
-
-    except Exception:
-        # If URL parsing fails, redirect to default
-        return redirect(default_endpoint)

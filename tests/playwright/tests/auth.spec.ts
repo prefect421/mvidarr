@@ -161,8 +161,7 @@ test.describe('2FA Authentication Tests', () => {
     await expect(page).toHaveURL('/auth/2fa/setup');
   });
 
-  test('should display 2FA verify page', async ({ page }) => {
-    await page.goto('/auth/2fa/verify');
-    await expect(page).toHaveURL('/auth/2fa/verify');
-  });
+  // The standalone /auth/2fa/verify page was removed: it POSTed the old
+  // {user_id, token} payload against the new {ticket, token} contract. 2FA
+  // verification now happens inline on the login page.
 });

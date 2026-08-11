@@ -6,8 +6,6 @@ Uses bcrypt for password hashing with lazy migration from SHA-256.
 import hashlib
 from typing import Optional, Tuple
 
-from flask import session as flask_session
-
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 
@@ -137,56 +135,6 @@ class SimpleAuthService:
         except Exception as e:
             logger.error(f"Error authenticating user: {e}")
             return False, "Authentication failed"
-
-    @staticmethod
-    def login_user(username: str) -> bool:
-        """
-        Set user as logged in using Flask session.
-
-        Args:
-            username: Username to log in
-
-        Returns:
-            True if successful
-        """
-        try:
-            flask_session["authenticated"] = True
-            flask_session["username"] = username
-            flask_session.permanent = True
-            logger.info(f"User logged in: {username}")
-            return True
-        except Exception as e:
-            logger.error(f"Error logging in user: {e}")
-            return False
-
-    @staticmethod
-    def logout_user() -> bool:
-        """
-        Log out current user by clearing Flask session.
-
-        Returns:
-            True if successful
-        """
-        try:
-            username = flask_session.get("username", "unknown")
-            flask_session.clear()
-            logger.info(f"User logged out: {username}")
-            return True
-        except Exception as e:
-            logger.error(f"Error logging out user: {e}")
-            return False
-
-    @staticmethod
-    def is_authenticated() -> bool:
-        """Check if current user is authenticated."""
-        return flask_session.get("authenticated", False)
-
-    @staticmethod
-    def get_current_username() -> Optional[str]:
-        """Get current logged in username."""
-        if SimpleAuthService.is_authenticated():
-            return flask_session.get("username")
-        return None
 
     @staticmethod
     def get_credentials() -> Tuple[Optional[str], bool]:

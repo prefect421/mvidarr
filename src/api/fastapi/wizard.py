@@ -479,6 +479,23 @@ async def skip_wizard(
         session.commit()
         session.refresh(wizard_state)
 
+        # Skipping means no admin User row will ever be created by the wizard,
+        # so the configured SimpleAuth credential would resolve to a READONLY
+        # session. Reconcile now (the status is already committed as SKIPPED,
+        # so the reconciliation's wizard gate passes) instead of making the
+        # operator restart the application to get an admin session.
+        try:
+            from src.database.init_db import ensure_admin_user_for_credentials
+            from src.services.settings_service import SettingsService
+
+            ensure_admin_user_for_credentials(
+                SettingsService.get("simple_auth_username")
+            )
+        except Exception as reconcile_err:
+            logger.error(
+                f"Failed to reconcile admin user after wizard skip: {reconcile_err}"
+            )
+
         return WizardStateResponse(**wizard_state.to_dict())
 
     except Exception as e:
