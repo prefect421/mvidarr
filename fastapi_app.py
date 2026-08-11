@@ -146,7 +146,9 @@ async def lifespan(app: FastAPI):
         if result.get("status") == "started":
             logger.info("✅ Scheduler V2 service started successfully")
         else:
-            logger.warning(f"⚠️ Scheduler V2: {result.get('message', 'Unknown status')}")
+            logger.warning(
+                f"⚠️ Scheduler V2: {result.get('message', 'Unknown status')}"
+            )
 
         # ytdlp_service is already initialized and pending downloads resumed during import
         logger.info(
@@ -469,7 +471,6 @@ from src.middleware.circuit_breaker_middleware import (
     CircuitBreakerConfig,
     CircuitBreakerMiddleware,
 )
-from src.middleware.jwt_auth_middleware import JWTAuthMiddleware, TokenConfig
 
 # Add performance monitoring middleware
 from src.middleware.performance_middleware import (
@@ -488,24 +489,18 @@ from src.middleware.security_validation_middleware import (
     SecurityValidationMiddleware,
 )
 
-# Add middleware in correct order (last added = first executed)
-# Re-enabling basic authentication middleware with safe configuration
-try:
-    from src.middleware.jwt_auth_middleware import JWTAuthMiddleware, TokenConfig
-
-    # Use basic token config to prevent timeout issues
-    basic_token_config = TokenConfig(
-        access_token_expire_minutes=60,  # Longer timeout
-        refresh_token_expire_days=7,  # Shorter refresh period
-        algorithm="HS256",
-    )
-
-    app.add_middleware(JWTAuthMiddleware, config=basic_token_config)
-    logger.info("✅ JWT Authentication middleware enabled with safe configuration")
-except Exception as e:
-    logger.warning(
-        f"⚠️ Failed to load JWT middleware: {e}, continuing without authentication middleware"
-    )
+# Note: a JWTAuthMiddleware previously ran here as an app-wide auth gate.
+# #323's investigation confirmed it was already a fully inert no-op for
+# every request (its own public_paths allowlist had a bare "/" entry,
+# which every path matches, so it always short-circuited straight
+# through) — and nothing in the codebase ever read the request.state it
+# would have set even if that bug were fixed. Removed rather than fixed:
+# real auth enforcement lives entirely in route-level dependencies
+# (src/api/fastapi/auth_dependencies.py for API routes,
+# src/api/fastapi/template_system.py for frontend pages), both backed by
+# the one real UserRole enum in src.database.models. A second, app-wide
+# gate duplicating that would reintroduce the exact parallel-systems
+# hazard #323 was filed to close.
 
 # Setup structured logging middleware for production monitoring
 setup_logging_middleware(app)

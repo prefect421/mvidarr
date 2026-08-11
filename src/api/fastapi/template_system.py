@@ -800,17 +800,20 @@ async def _current_template_user(request: Request):
     session_token cookie directly via SessionStore, exactly like
     auth_dependencies.get_optional_user does for API routes.
 
-    This does NOT rely on request.state.user/.session_user, and that is
-    deliberate: JWTAuthMiddleware only populates those for paths outside
-    its own public_paths list — and /settings, /admin, /dashboard, and
-    every other page this file protects are ALL listed as public there,
-    so the middleware returns early and never touches request.state for
-    them at all, regardless of whether a valid session cookie is present.
-    An earlier version of this function checked request.state.user (and
-    later request.state.session_user too) and, for these specific
-    routes, found neither — REAL logged-in users were bounced to
-    /auth/login exactly like anonymous ones (found via direct testing
-    immediately after that fix shipped, ahead of v1.0.0, 2026-08-11).
+    This does NOT rely on request.state.user/.session_user — an app-wide
+    middleware used to populate those, but only for paths outside its own
+    public_paths allowlist, and /settings, /admin, /dashboard, and every
+    other page this file protects were ALL listed as public there, so it
+    never touched request.state for them regardless of whether a valid
+    session cookie was present. An earlier version of this function
+    checked request.state.user (and later request.state.session_user
+    too) and, for these specific routes, found neither — REAL logged-in
+    users were bounced to /auth/login exactly like anonymous ones (found
+    via direct testing immediately after that fix shipped, ahead of
+    v1.0.0, 2026-08-11). That middleware has since been deleted entirely
+    (#323) — it turned out to be a no-op for every request, not just
+    these ones, so this function's independence from it was doubly
+    correct.
 
     Delegating to get_optional_user reuses the same, already-hardened
     session-validation logic every /api/* route depends on, instead of
