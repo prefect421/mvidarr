@@ -362,7 +362,9 @@ class DownloadServiceAdapter:
 
                         # Use add_music_video_download to start the download
                         result = self.add_music_video_download(
-                            artist=video.artist,
+                            artist=(
+                                video.artist.name if video.artist else "Unknown Artist"
+                            ),
                             title=video.title,
                             url=video.url,
                             quality=download.quality or "best",
