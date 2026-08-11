@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication
+from src.api.fastapi.auth_dependencies import require_admin
 from src.database.connection import get_db_session
 from src.database.models import UserRole
 from src.services.audit_service import (
@@ -591,9 +591,16 @@ async def get_credentials():
 @router.post("/credentials")
 async def update_credentials(
     credentials: CredentialsRequest,
-    current_user: dict = Depends(require_authentication),
+    current_user: dict = Depends(require_admin),
 ):
-    """Update username and password for simple auth (requires authentication)"""
+    """Update username and password for simple auth (requires ADMIN role).
+
+    This changes the credential SimpleAuthService authenticates every
+    browser login against — not just the caller's own account — so it must
+    be gated on role, not merely on being logged in (found during dev
+    testing ahead of v1.0.0: any authenticated USER/MANAGER/READONLY
+    session could previously change the instance-wide login credentials).
+    """
     try:
         from src.services.simple_auth_service import SimpleAuthService
 

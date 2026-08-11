@@ -252,5 +252,10 @@ app.log
 *.bak
 *.old
 
+# Claude Code local tooling (worktrees, session state) — never belongs in
+# a build context; can contain full nested checkouts + venvs
+.claude/
+.claude/**
+
 # Large log files
 *.log

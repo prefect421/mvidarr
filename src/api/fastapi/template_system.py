@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Union
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -317,7 +317,7 @@ class AsyncTemplateSystem:
             # Check if authentication middleware is enabled
             from src.services.settings_service import settings
 
-            auth_enabled = settings.get("require_authentication", True)
+            auth_enabled = settings.get_bool("require_authentication", True)
             auth_context["auth_enabled"] = auth_enabled
 
             # If authentication is disabled, provide a mock user context
@@ -378,7 +378,9 @@ class AsyncTemplateSystem:
                 "app_name": settings.get("app_name", "MVidarr"),
                 "app_version": settings.get("app_version", "1.0.0"),
                 "theme": settings.get("default_theme", "dark"),
-                "require_authentication": settings.get("require_authentication", True),
+                "require_authentication": settings.get_bool(
+                    "require_authentication", True
+                ),
                 "enable_2fa": settings.get("enable_2fa", False),
                 "max_upload_size": settings.get("max_upload_size_mb", 100),
             }
@@ -793,15 +795,34 @@ def render_template_response(template_name: str):
 
 # Authentication dependency for protected templates
 async def require_authentication(request: Request):
-    """Require authentication for template access"""
+    """Require authentication for template access.
+
+    Raises (rather than returns) the redirect: a value *returned* from a
+    FastAPI `Depends()` callable is just an ordinary parameter passed to
+    the route handler — it is never used as the actual HTTP response
+    unless the handler explicitly checks and returns it. None of this
+    file's callers do, so a previous version of this function that
+    `return`ed a RedirectResponse here was silently ignored by every
+    route using it (found during manual testing ahead of v1.0.0: /settings
+    and 8 other pages rendered normally for fully anonymous requests).
+    Raising an HTTPException halts the request unconditionally, matching
+    the pattern require_admin below already used (by relying on the same
+    accidental side effect, not deliberately).
+    """
     if not hasattr(request.state, "user") or request.state.user is None:
-        if settings.get("require_authentication", True):
-            # Redirect to login page
-            from fastapi.responses import RedirectResponse
+        if settings.get_bool("require_authentication", True):
+            raise HTTPException(
+                status_code=status.HTTP_302_FOUND,
+                headers={"Location": "/auth/login"},
+            )
 
-            return RedirectResponse(url="/auth/login", status_code=302)
-
-    return request.state.user
+    # getattr, not a bare attribute access: request.state is a Starlette
+    # State object whose __getattr__ raises AttributeError for a key that
+    # was never set (hasattr() above only *looks* safe because hasattr()
+    # itself swallows that exception) — reachable whenever authentication
+    # is genuinely not required and no session/JWT middleware ever touched
+    # request.state.user at all.
+    return getattr(request.state, "user", None)
 
 
 async def require_admin(request: Request):
