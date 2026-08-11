@@ -53,6 +53,12 @@
             margin-bottom: 28px;
         }
 
+        .logo img {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 12px;
+        }
+
         .logo h1 {
             font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
             color: var(--text-accent, #4a9eff);
@@ -170,6 +176,7 @@
 <body>
     <div class="login-container">
         <div class="logo">
+            <img src="{{ url_for('frontend.static_files', filename='MVidarr.png') }}" alt="MVidarr">
             <h1>MVidarr</h1>
             <p>Music Video Management System</p>
         </div>
