@@ -302,13 +302,18 @@ async def get_two_factor_status(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Get status from service
-        status_data = TwoFactorService.get_user_two_factor_status(user.id)
+        # Get status from service. Note: get_two_factor_status's return
+        # dict has no "last_used" or "setup_date" keys — this codebase
+        # doesn't track either yet, so these always fall through to the
+        # response model's None defaults. Not a regression: they never
+        # had real values before this fix either, since the service call
+        # itself always raised (see git history for the prior bug).
+        status_data = TwoFactorService.get_two_factor_status(user.id)
 
         return TwoFactorStatusResponse(
             enabled=status_data.get("enabled", False),
             last_used=status_data.get("last_used"),
-            backup_codes_remaining=status_data.get("backup_codes_remaining", 0),
+            backup_codes_remaining=status_data.get("backup_codes_count", 0),
             setup_date=status_data.get("setup_date"),
         )
 
