@@ -691,7 +691,7 @@ function updateUserCredentialsSection() {
 // Load current credentials for display
 async function loadCurrentCredentials() {
     try {
-        const response = await apiRequest('/auth/credentials');
+        const response = await apiRequest('/api/auth/credentials');
         const usernameField = document.getElementById('auth_username');
         if (usernameField && response.username) {
             usernameField.value = response.username;
@@ -736,7 +736,7 @@ async function updateCredentials() {
     try {
         showLoading('Updating credentials...');
         
-        await apiRequest('/auth/credentials', {
+        await apiRequest('/api/auth/credentials', {
             method: 'POST',
             body: JSON.stringify({
                 username: username,
@@ -752,31 +752,6 @@ async function updateCredentials() {
         
     } catch (error) {
         showError('Failed to update credentials: ' + error.message);
-    }
-}
-
-// Reset credentials to default
-async function resetCredentials() {
-    if (!confirm('Are you sure you want to reset credentials to default values?')) {
-        return;
-    }
-    
-    try {
-        showLoading('Resetting credentials...');
-        
-        await apiRequest('/auth/credentials/reset', {
-            method: 'POST'
-        });
-        
-        showSuccess('Credentials reset to default (admin/mvidarr)');
-        loadCurrentCredentials();
-        
-        // Clear password fields
-        document.getElementById('auth_password').value = '';
-        document.getElementById('auth_password_confirm').value = '';
-        
-    } catch (error) {
-        showError('Failed to reset credentials: ' + error.message);
     }
 }
 
