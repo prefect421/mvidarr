@@ -38,7 +38,7 @@
 
         .login-container {
             position: relative;
-            background: var(--bg-card, #2a2a2a);
+            background: #000000;
             border: 1px solid var(--border-primary, #444444);
             border-radius: 10px;
             box-shadow: 0 12px 40px var(--shadow, rgba(0,0,0,0.3));
@@ -54,25 +54,9 @@
         }
 
         .logo img {
-            width: 64px;
-            height: 64px;
-            margin-bottom: 12px;
-        }
-
-        .logo h1 {
-            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-            color: var(--text-accent, #4a9eff);
-            font-size: 14px;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            margin: 0;
-            font-weight: 600;
-        }
-
-        .logo p {
-            color: var(--text-secondary, #cccccc);
-            margin: 6px 0 0 0;
-            font-size: 0.85rem;
+            width: 100%;
+            max-width: 220px;
+            height: auto;
         }
 
         .form-group {
@@ -176,9 +160,7 @@
 <body>
     <div class="login-container">
         <div class="logo">
-            <img src="{{ url_for('frontend.static_files', filename='MVidarr.png') }}" alt="MVidarr">
-            <h1>MVidarr</h1>
-            <p>Music Video Management System</p>
+            <img src="{{ url_for('frontend.static_files', filename='MVIDARR-1.0.0-rock.png') }}" alt="MVidarr">
         </div>
 
         <div id="errorMessage" class="error-message" style="display: none;"></div>
