@@ -1,7 +1,6 @@
 """Tests for template_system.py's require_authentication/require_admin —
-found broken during manual dev testing ahead of v1.0.0 (2026-08-11).
-
-Two independent bugs, both fixed here:
+found broken during manual dev testing ahead of v1.0.0 (2026-08-11), in
+three rounds as each fix exposed the next layer:
 
 1. require_authentication tried to enforce a redirect by *returning* a
    RedirectResponse from a FastAPI Depends() callable. A value returned
@@ -11,33 +10,40 @@ Two independent bugs, both fixed here:
    routes using this dependency did (settings, scheduler dashboard/jobs,
    youtube-playlists, spotify/lastfm/lidarr managers, enrichment, 2FA
    setup), so every one of them rendered normally for fully anonymous
-   requests. Fixed by raising an HTTPException instead — that halts the
-   request unconditionally regardless of what the handler does with the
-   dependency's return value.
+   requests. Fixed by raising an HTTPException instead.
 
 2. The "require_authentication" setting is stored as the string "false"
-   in the database. `if settings.get("require_authentication", True):`
-   checks Python truthiness on that STRING, and any non-empty string
-   (including the literal text "false") is truthy — so this check always
-   took the "auth is required" branch regardless of the setting's actual
-   value. Fixed by using SettingsService.get_bool(), which parses the
-   string content instead of checking non-emptiness.
+   in the database and was checked with plain Python truthiness, where
+   any non-empty string (including the literal text "false") is truthy.
+   Fixed by using SettingsService.get_bool().
+
+3. Fixing #1 immediately exposed a third, pre-existing bug: this file's
+   user-resolution logic depended on request.state.user (and, briefly,
+   request.state.session_user too) — attributes JWTAuthMiddleware only
+   populates for paths OUTSIDE its own public_paths list. /settings,
+   /admin, and every other page this file protects are ALL listed as
+   public there, so the middleware never touches request.state for them
+   regardless of whether a valid session cookie is present. Real
+   logged-in users were bounced to /auth/login exactly like anonymous
+   visitors (reported directly by the user testing dev immediately after
+   the round-2 fix shipped). Fixed by delegating to
+   auth_dependencies.get_optional_user, which validates the session_token
+   cookie directly via SessionStore — the same, already-hardened logic
+   every /api/* route already depends on — instead of maintaining a
+   second, independently-buggy copy of session resolution here.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
 from src.api.fastapi.template_system import require_admin, require_authentication
+from src.database.models import UserRole
 
 
-def _make_anonymous_request():
-    """A request with no request.state.user set at all — the state of
-    every real anonymous request that never goes through the JWT/session
-    middleware's authenticated branch.
-    """
+def _make_request():
     scope = {
         "type": "http",
         "method": "GET",
@@ -52,19 +58,26 @@ def _make_anonymous_request():
     return Request(scope)
 
 
-def _make_authenticated_request(role="USER"):
-    request = _make_anonymous_request()
-    user = MagicMock()
-    user.role = role
-    request.state.user = user
-    return request
+def _session_user(role="USER"):
+    """SessionStore.validate_session's real return shape."""
+    return {
+        "username": "someone",
+        "authenticated": True,
+        "user_id": 1,
+        "role": role,
+    }
+
+
+TEMPLATE_SYSTEM_GET_OPTIONAL_USER = (
+    "src.api.fastapi.auth_dependencies.get_optional_user"
+)
 
 
 class TestRequireAuthenticationRaisesInsteadOfReturning:
     @pytest.mark.asyncio
     async def test_anonymous_request_raises_a_redirect_when_auth_required(self):
-        request = _make_anonymous_request()
-        with patch(
+        request = _make_request()
+        with patch(TEMPLATE_SYSTEM_GET_OPTIONAL_USER, return_value=None), patch(
             "src.api.fastapi.template_system.settings.get_bool", return_value=True
         ):
             with pytest.raises(HTTPException) as exc_info:
@@ -74,37 +87,66 @@ class TestRequireAuthenticationRaisesInsteadOfReturning:
 
     @pytest.mark.asyncio
     async def test_anonymous_request_passes_through_when_auth_not_required(self):
-        request = _make_anonymous_request()
-        with patch(
+        request = _make_request()
+        with patch(TEMPLATE_SYSTEM_GET_OPTIONAL_USER, return_value=None), patch(
             "src.api.fastapi.template_system.settings.get_bool", return_value=False
         ):
             result = await require_authentication(request)
         assert result is None
 
+
+class TestRequireAuthenticationValidatesTheSessionCookieDirectly:
+    """The real-world bug: /settings (and every page this file protects)
+    is in JWTAuthMiddleware's public_paths, so request.state is never
+    populated for it — this function must resolve the session itself.
+    """
+
     @pytest.mark.asyncio
-    async def test_authenticated_request_passes_through_regardless_of_setting(self):
-        request = _make_authenticated_request(role="USER")
-        with patch(
+    async def test_valid_session_passes_through(self):
+        request = _make_request()
+        user = _session_user(role="USER")
+        with patch(TEMPLATE_SYSTEM_GET_OPTIONAL_USER, return_value=user), patch(
             "src.api.fastapi.template_system.settings.get_bool", return_value=True
         ):
             result = await require_authentication(request)
-        assert result is request.state.user
+        assert result == user
+
+    @pytest.mark.asyncio
+    async def test_valid_session_is_not_redirected_to_login(self):
+        # Regression pin for the exact bug reported during manual testing:
+        # a genuinely logged-in user kept getting bounced back to
+        # /auth/login when visiting /settings, on a page that
+        # JWTAuthMiddleware itself never blocks (it's in public_paths).
+        request = _make_request()
+        user = _session_user(role="ADMIN")
+        with patch(TEMPLATE_SYSTEM_GET_OPTIONAL_USER, return_value=user), patch(
+            "src.api.fastapi.template_system.settings.get_bool", return_value=True
+        ):
+            try:
+                await require_authentication(request)
+            except HTTPException:
+                pytest.fail(
+                    "a request with a valid session cookie must not be "
+                    "redirected to login"
+                )
 
 
 class TestRequireAdminStillEnforcesRoleForRealUsers:
     @pytest.mark.asyncio
     async def test_admin_user_passes(self):
-        request = _make_authenticated_request(role="admin")
-        with patch(
+        request = _make_request()
+        user = _session_user(role=UserRole.ADMIN.value)
+        with patch(TEMPLATE_SYSTEM_GET_OPTIONAL_USER, return_value=user), patch(
             "src.api.fastapi.template_system.settings.get_bool", return_value=True
         ):
             result = await require_admin(request)
-        assert result is request.state.user
+        assert result == user
 
     @pytest.mark.asyncio
     async def test_non_admin_user_is_rejected(self):
-        request = _make_authenticated_request(role="user")
-        with patch(
+        request = _make_request()
+        user = _session_user(role=UserRole.USER.value)
+        with patch(TEMPLATE_SYSTEM_GET_OPTIONAL_USER, return_value=user), patch(
             "src.api.fastapi.template_system.settings.get_bool", return_value=True
         ):
             with pytest.raises(HTTPException) as exc_info:
@@ -113,13 +155,8 @@ class TestRequireAdminStillEnforcesRoleForRealUsers:
 
     @pytest.mark.asyncio
     async def test_anonymous_request_is_redirected_not_silently_admitted(self):
-        # Regression pin: before the fix, require_authentication's ignored
-        # RedirectResponse return value was truthy and had no .role
-        # attribute, so require_admin happened to 403 anonymous users by
-        # accident. Now it must raise the same 302 require_authentication
-        # itself raises, for the correct reason.
-        request = _make_anonymous_request()
-        with patch(
+        request = _make_request()
+        with patch(TEMPLATE_SYSTEM_GET_OPTIONAL_USER, return_value=None), patch(
             "src.api.fastapi.template_system.settings.get_bool", return_value=True
         ):
             with pytest.raises(HTTPException) as exc_info:
