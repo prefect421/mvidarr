@@ -55,7 +55,7 @@ def init_default_settings():
         ("debug_mode", "false", "Enable debug mode"),
         (
             "require_authentication",
-            "false",
+            "true",
             "Require user login to access the application",
         ),
         (
