@@ -580,6 +580,27 @@ class OAuthService:
                     user_agent=user_agent,
                 )
                 session.add(user_session)
+
+                # Every caller of this method reads plain attributes off
+                # the returned User after this `with get_db()` block has
+                # closed the session (handle_oauth_callback's own log
+                # line, then auth.py's response-building code). By
+                # default SQLAlchemy expires every loaded attribute on
+                # commit (expire_on_commit=True) so it can re-fetch fresh
+                # values on next access — but there IS no session left to
+                # fetch from by the time those callers run, so that first
+                # access raises "Instance <User> is not bound to a
+                # Session" instead of just working. This is the standard
+                # fix for returning an ORM object out of the session that
+                # loaded it: disable the post-commit expiry on this one
+                # session (scoped to this call, not the shared
+                # sessionmaker) so the already-loaded values stay valid.
+                # Touching a curated list of attributes here instead
+                # isn't enough: get_db()'s own context manager runs a
+                # SECOND, implicit commit right as this function returns
+                # (see DatabaseManager.get_session()), re-expiring
+                # everything a second time with nothing left to reload it.
+                session.expire_on_commit = False
                 session.commit()
 
                 return user, user_session
