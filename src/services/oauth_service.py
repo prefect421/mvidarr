@@ -572,16 +572,19 @@ class OAuthService:
                         username = f"{base_username}_{counter}"
                         counter += 1
 
-                    # Determine user role based on provider
-                    user_role = UserRole.USER
-                    if provider_name == "authentik" and isinstance(
-                        self.providers[provider_name], AuthentikProvider
-                    ):
-                        groups = user_info.get("groups", [])
-                        roles = user_info.get("roles", [])
-                        user_role = self.providers[provider_name].map_groups_to_role(
-                            groups, roles
-                        )
+                    # Admin-only OAuth access policy (explicit product
+                    # decision, 2026-08-12): granular roles (USER/
+                    # MANAGER/READONLY) aren't well-defined enough yet
+                    # in this app to safely auto-assign via OAuth —
+                    # deferred, tiered self-service access to a later
+                    # version. Anyone trusted enough to pass the
+                    # oauth_allowed_emails allowlist above is trusted
+                    # enough to be a full admin for now.
+                    #
+                    # AuthentikProvider.map_groups_to_role still exists
+                    # for when that later version revisits granular
+                    # access, but is intentionally not called here.
+                    user_role = UserRole.ADMIN
 
                     # Create user
                     user = User(
@@ -626,20 +629,17 @@ class OAuthService:
                         }
                     )
 
-                    # Update role for Authentik users based on current groups
-                    if provider_name == "authentik" and isinstance(
-                        self.providers[provider_name], AuthentikProvider
-                    ):
-                        groups = user_info.get("groups", [])
-                        roles = user_info.get("roles", [])
-                        new_role = self.providers[provider_name].map_groups_to_role(
-                            groups, roles
-                        )
-                        if new_role != user.role:
-                            logger.info(
-                                f"Updated user role for {user.username}: {user.role.value} -> {new_role.value}"
-                            )
-                            user.role = new_role
+                    # Deliberately NOT syncing role from Authentik
+                    # groups here anymore. This exact mechanism — an
+                    # existing user's role silently overwritten based
+                    # on current group membership on every login — was
+                    # the live mechanism behind the privilege-escalation
+                    # incident fixed in #349 (even with the substring-
+                    # match bug fixed, an *exact*-match generic group
+                    # name would still have caused the same class of
+                    # surprise). Role changes for existing accounts are
+                    # an /admin/users decision now, not something that
+                    # happens implicitly on next login.
 
                 # Update last login
                 user.last_login = datetime.utcnow()

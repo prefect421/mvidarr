@@ -98,7 +98,12 @@ class TestOAuthCallbackSurvivesSessionClose:
         # line and auth.py's response-building code do next.
         assert user.username == "newperson"
         assert user.email == "newperson@example.test"
-        assert user.role == UserRole.USER
+        # New OAuth accounts are admin-only for now (see
+        # test_oauth_admin_only_signup.py) — role value here is
+        # incidental to what this test actually covers (attribute
+        # readability after the session closes), not asserting the
+        # role-assignment policy itself.
+        assert user.role == UserRole.ADMIN
         assert isinstance(user.id, int)
 
     def test_existing_user_attributes_are_readable_after_the_session_closes(
