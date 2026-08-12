@@ -266,8 +266,10 @@
                 <h2>➕ Create New User</h2>
                 <p>Add a new user to the MVidarr system</p>
             </div>
-            
-            <form method="POST">
+
+            <div id="createUserError" class="alert alert-error" style="display: none;"></div>
+
+            <form id="createUserForm">
                 <div class="form-group">
                     <label for="username">Username <span class="required">*</span></label>
                     <input type="text" id="username" name="username" required 
@@ -429,7 +431,57 @@
 
         // Initialize role description
         document.getElementById('role').dispatchEvent(new Event('change'));
-        
+
+        // Form submission — POSTs JSON to the real, working
+        // /api/admin/users endpoint. Without this, the bare <form> above
+        // would native-POST to this page's own URL (/admin/users/create),
+        // which only has a GET route registered — see issue #331.
+        document.getElementById('createUserForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const errorBox = document.getElementById('createUserError');
+            errorBox.style.display = 'none';
+
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            if (password !== confirmPassword) {
+                errorBox.textContent = 'Passwords do not match';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            const payload = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: password,
+                role: document.getElementById('role').value,
+            };
+
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+
+            fetch('/api/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+                .then(async (response) => {
+                    const data = await response.json();
+                    if (response.ok && data.success) {
+                        window.location.href = '/admin/users';
+                        return;
+                    }
+                    errorBox.textContent = data.detail || data.message || 'Failed to create user';
+                    errorBox.style.display = 'block';
+                    submitButton.disabled = false;
+                })
+                .catch(function () {
+                    errorBox.textContent = 'Failed to create user — could not reach the server';
+                    errorBox.style.display = 'block';
+                    submitButton.disabled = false;
+                });
+        });
+
         // Theme management
         window.currentTheme = window.currentTheme || 'default';
         window.currentMode = window.currentMode || 'dark';
