@@ -160,6 +160,7 @@ class TwoFactorService:
                     # Log failed verification attempt
                     AuditService.log_security_event(
                         "2fa_verification_failed",
+                        "2FA setup verification failed — invalid TOTP token",
                         user=user,
                         additional_data={
                             "setup_confirmation": True,
@@ -175,11 +176,12 @@ class TwoFactorService:
 
                 # Log successful 2FA setup
                 AuditService.log_user_action(
-                    "2fa_enabled",
+                    "enabled",
+                    "2fa",
                     user=user,
-                    admin_user_id=admin_user_id,
                     additional_data={
-                        "setup_timestamp": datetime.now(timezone.utc).isoformat()
+                        "admin_user_id": admin_user_id,
+                        "setup_timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
 
@@ -212,6 +214,7 @@ class TwoFactorService:
                     if not check_password_hash(user.password_hash, password):
                         AuditService.log_security_event(
                             "2fa_disable_failed",
+                            "2FA disable attempt failed — incorrect password",
                             user=user,
                             additional_data={"reason": "incorrect_password"},
                         )
@@ -226,10 +229,11 @@ class TwoFactorService:
 
                 # Log 2FA disable
                 AuditService.log_user_action(
-                    "2fa_disabled",
+                    "disabled",
+                    "2fa",
                     user=user,
-                    admin_user_id=admin_user_id,
                     additional_data={
+                        "admin_user_id": admin_user_id,
                         "disabled_by_admin": admin_user_id is not None,
                         "disable_timestamp": datetime.now(timezone.utc).isoformat(),
                     },
@@ -305,6 +309,7 @@ class TwoFactorService:
                             # Log backup code usage
                             AuditService.log_security_event(
                                 "2fa_backup_code_used",
+                                "2FA login accepted a backup recovery code",
                                 user=user,
                                 additional_data={"remaining_codes": len(backup_codes)},
                             )
@@ -315,11 +320,16 @@ class TwoFactorService:
 
                 # Verify TOTP token
                 if TwoFactorService.verify_totp_token(user.two_factor_secret, token):
-                    AuditService.log_security_event("2fa_login_success", user=user)
+                    AuditService.log_security_event(
+                        "2fa_login_success",
+                        "2FA login verification succeeded",
+                        user=user,
+                    )
                     return True, "Two-factor authentication successful"
                 else:
                     AuditService.log_security_event(
                         "2fa_login_failed",
+                        "2FA login verification failed — invalid TOTP token",
                         user=user,
                         additional_data={"provided_token": token},
                     )
@@ -358,10 +368,11 @@ class TwoFactorService:
 
                 # Log backup code regeneration
                 AuditService.log_user_action(
-                    "2fa_backup_codes_regenerated",
+                    "backup_codes_regenerated",
+                    "2fa",
                     user=user,
-                    admin_user_id=admin_user_id,
                     additional_data={
+                        "admin_user_id": admin_user_id,
                         "regenerated_by_admin": admin_user_id is not None,
                         "regenerate_timestamp": datetime.now(timezone.utc).isoformat(),
                     },
