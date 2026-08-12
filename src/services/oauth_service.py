@@ -321,12 +321,39 @@ class OAuthService:
         except Exception as e:
             logger.error(f"Error loading OAuth providers: {e}")
 
+    def _ensure_providers_loaded(self):
+        """Retry loading if no providers are currently configured.
+
+        OAuthService is a module-level singleton constructed at Python
+        import time — before fastapi_app.py finishes initializing the
+        database connection. A load attempted during that window
+        silently fails (SettingsService.get() returns "" for every
+        oauth_* key) and, without this, self.providers would stay
+        permanently empty for the rest of the process's life — no
+        automatic retry, no error surfaced anywhere a user would see it.
+        Confirmed via fastapi_error.log during a real incident
+        (2026-08-12): "Database not initialized" immediately followed by
+        "Setting 'oauth_authentik_base_url' not found" for settings that
+        were, in fact, already saved.
+
+        Retrying here whenever providers is empty is cheap
+        (SettingsService caches its own DB reads after the first
+        successful query) and self-heals the very next time this is
+        called after the database is actually ready — e.g. the next
+        login page render — with no need for an admin to re-save
+        settings or restart again.
+        """
+        if not self.providers:
+            self._load_providers()
+
     def get_provider(self, provider_name: str) -> Optional[OAuthProvider]:
         """Get OAuth provider by name"""
+        self._ensure_providers_loaded()
         return self.providers.get(provider_name)
 
     def get_available_providers(self) -> Dict[str, str]:
         """Get list of available OAuth providers"""
+        self._ensure_providers_loaded()
         return {name: provider.name for name, provider in self.providers.items()}
 
     def initiate_oauth_flow(
@@ -563,6 +590,7 @@ class OAuthService:
 
     def is_oauth_enabled(self) -> bool:
         """Check if any OAuth providers are configured"""
+        self._ensure_providers_loaded()
         return len(self.providers) > 0
 
     # get_oauth_login_urls() was removed: it discarded the CSRF state that
