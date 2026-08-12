@@ -42,21 +42,26 @@
             border: 1px solid var(--border-primary, #444444);
             border-radius: 10px;
             box-shadow: 0 12px 40px var(--shadow, rgba(0,0,0,0.3));
-            padding: 32px 28px;
+            padding: 16px 20px 28px;
             width: 100%;
-            max-width: 380px;
+            max-width: 600px;
             margin: 1rem;
         }
 
         .logo {
             text-align: center;
-            margin-bottom: 28px;
+            margin-bottom: 12px;
         }
 
         .logo img {
-            width: 100%;
-            max-width: 220px;
+            display: block;
+            margin: 0 auto;
+            /* Native asset is 612x562 — cap at 500px tall on screens with
+               room for it, but shrink proportionally (never crop/overflow)
+               on narrower viewports via max-width. */
             height: auto;
+            max-height: 500px;
+            max-width: 100%;
         }
 
         .form-group {
@@ -152,7 +157,7 @@
         @media (max-width: 480px) {
             .login-container {
                 margin: 0.5rem;
-                padding: 24px 20px;
+                padding: 12px 16px 20px;
             }
         }
     </style>
