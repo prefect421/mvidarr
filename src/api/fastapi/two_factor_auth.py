@@ -101,7 +101,7 @@ async def setup_page(
             return JSONResponse(
                 content={
                     "message": "Two-factor authentication is already enabled for your account.",
-                    "redirect": "/profile",
+                    "redirect": "/settings#twoFactorSection",
                 },
                 status_code=200,
             )
