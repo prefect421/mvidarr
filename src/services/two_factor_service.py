@@ -207,11 +207,18 @@ class TwoFactorService:
                 if not user.two_factor_enabled:
                     return False, "Two-factor authentication is not enabled"
 
-                # Verify password (unless admin is disabling)
+                # Verify password (unless admin is disabling). Checked
+                # against SimpleAuthService — the live credential store the
+                # user actually logs in with — not User.password_hash,
+                # which is a separate, independently-writable column that
+                # can silently drift out of sync with it (#334).
                 if admin_user_id is None:
-                    from werkzeug.security import check_password_hash
+                    from src.services.simple_auth_service import SimpleAuthService
 
-                    if not check_password_hash(user.password_hash, password):
+                    auth_success, _ = SimpleAuthService.authenticate(
+                        user.username, password
+                    )
+                    if not auth_success:
                         AuditService.log_security_event(
                             "2fa_disable_failed",
                             "2FA disable attempt failed — incorrect password",

@@ -19,7 +19,6 @@ from src.api.fastapi.auth_dependencies import (
 from src.database.connection import get_db_session
 from src.database.models import User
 from src.services.audit_service import AuditService
-from src.services.auth_service import AuthService
 from src.services.two_factor_service import TwoFactorService
 
 logger = logging.getLogger("mvidarr.fastapi.two_factor")
@@ -220,18 +219,14 @@ async def disable_two_factor(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Verify password
-        username = current_user.get("username", "admin")
-        auth_success, _, _, _, _ = AuthService.authenticate_user(
-            username, disable_request.password, "127.0.0.1", "FastAPI-2FA-Disable"
-        )
-
-        if not auth_success:
-            raise HTTPException(status_code=400, detail="Invalid password")
-
-        # Disable 2FA
+        # Disable 2FA. Password is verified inside disable_two_factor
+        # against SimpleAuthService — the live credential store — not
+        # here: a prior version of this endpoint duplicated that check
+        # against the wrong store (User.password_hash, #334) AND passed
+        # disable_request.token instead of .password to the service call
+        # below, so disabling 2FA never actually worked via this endpoint.
         success, message = TwoFactorService.disable_two_factor(
-            user.id, disable_request.token
+            user.id, disable_request.password
         )
 
         if success:

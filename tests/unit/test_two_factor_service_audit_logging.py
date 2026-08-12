@@ -126,10 +126,18 @@ class TestConfirmTwoFactorSetup:
 
 
 class TestDisableTwoFactor:
+    # disable_two_factor verifies the password via SimpleAuthService — the
+    # live credential store the user actually logs in with, not
+    # User.password_hash (see test_2fa_disable_password_store.py for the
+    # #334 regression coverage of that specific distinction). Patched here
+    # since these tests are only exercising the audit-logging fix.
     def test_correct_password_disables_2fa_and_returns_success(self, session_factory):
         user_id = _seed_user(session_factory, two_factor_enabled=True)
 
-        with _patch_get_db(session_factory):
+        with _patch_get_db(session_factory), patch(
+            "src.services.simple_auth_service.SimpleAuthService.authenticate",
+            return_value=(True, "OK"),
+        ):
             success, message = TwoFactorService.disable_two_factor(
                 user_id, "Sup3rSecret!"
             )
@@ -145,7 +153,10 @@ class TestDisableTwoFactor:
     def test_wrong_password_returns_failure_without_crashing(self, session_factory):
         user_id = _seed_user(session_factory, two_factor_enabled=True)
 
-        with _patch_get_db(session_factory):
+        with _patch_get_db(session_factory), patch(
+            "src.services.simple_auth_service.SimpleAuthService.authenticate",
+            return_value=(False, "Invalid username or password"),
+        ):
             success, message = TwoFactorService.disable_two_factor(
                 user_id, "WrongPassword!"
             )
