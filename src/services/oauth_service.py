@@ -131,23 +131,25 @@ class AuthentikProvider(OAuthProvider):
     def map_groups_to_role(self, groups: list, roles: list = None) -> UserRole:
         """Map Authentik groups/roles to MVidarr user role"""
         # Default role mapping - can be configured
-        admin_groups = ["mvidarr_admin", "admins", "administrators"]
-        manager_groups = ["mvidarr_manager", "managers", "moderators"]
-        user_groups = ["mvidarr_user", "users"]
+        admin_groups = {"mvidarr_admin", "admins", "administrators"}
+        manager_groups = {"mvidarr_manager", "managers", "moderators"}
+        user_groups = {"mvidarr_user", "users"}
 
-        # Check all groups and roles
-        all_memberships = groups + (roles or [])
+        # Exact match only (case-insensitive) — NOT substring. A prior
+        # version used `admin_group in membership_lower`, so any group
+        # merely CONTAINING "admin"/"manager"/"user" granted that role:
+        # confirmed live, Authentik's own built-in "authentik Admins"
+        # group (for administering Authentik itself, unrelated to
+        # MVidarr) silently promoted a member to MVidarr ADMIN, since
+        # "admins" in "authentik admins" is True.
+        all_memberships = {m.lower() for m in groups + (roles or [])}
 
-        for membership in all_memberships:
-            membership_lower = membership.lower()
-            if any(admin_group in membership_lower for admin_group in admin_groups):
-                return UserRole.ADMIN
-            elif any(
-                manager_group in membership_lower for manager_group in manager_groups
-            ):
-                return UserRole.MANAGER
-            elif any(user_group in membership_lower for user_group in user_groups):
-                return UserRole.USER
+        if all_memberships & admin_groups:
+            return UserRole.ADMIN
+        elif all_memberships & manager_groups:
+            return UserRole.MANAGER
+        elif all_memberships & user_groups:
+            return UserRole.USER
 
         # Default to readonly if no matching groups
         return UserRole.READONLY
