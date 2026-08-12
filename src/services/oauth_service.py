@@ -3,6 +3,7 @@ OAuth authentication service for MVidarr
 Supports multiple OAuth providers including Authentik, Google, GitHub, etc.
 """
 
+import re
 import secrets
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
@@ -447,6 +448,49 @@ class OAuthService:
             logger.error(f"Error handling OAuth callback: {e}")
             return False, "OAuth authentication failed", None, None
 
+    @staticmethod
+    def _is_email_allowed_for_oauth_signup(email: Optional[str]) -> bool:
+        """
+        Check whether a brand-new OAuth account is allowed to be
+        auto-created for this email, per the oauth_allowed_emails
+        setting. Only gates NEW account creation — see the call site in
+        _find_or_create_oauth_user for why existing users always bypass
+        this check.
+
+        Entries in the setting are comma- or newline-separated, each
+        either:
+        - an exact email address ("friend@example.com"), or
+        - a domain wildcard ("@example.com" — matches any address at
+          that domain; must match the domain exactly, not as a
+          substring, so "@mycompany.com" does not also match
+          "@notmycompany.com")
+
+        An unset/empty setting denies ALL new signups (fail closed) —
+        the self-hosted-appropriate default until an admin explicitly
+        opts specific people in.
+        """
+        if not email:
+            return False
+
+        from src.services.settings_service import SettingsService
+
+        raw = SettingsService.get("oauth_allowed_emails", "")
+        if not raw or not raw.strip():
+            return False
+
+        email_lower = email.strip().lower()
+        for entry in re.split(r"[,\n]", raw):
+            entry = entry.strip().lower()
+            if not entry:
+                continue
+            if entry.startswith("@"):
+                if email_lower.endswith(entry):
+                    return True
+            elif email_lower == entry:
+                return True
+
+        return False
+
     def _find_or_create_oauth_user(
         self,
         provider_name: str,
@@ -485,8 +529,34 @@ class OAuthService:
                 if not user and username:
                     user = session.query(User).filter_by(username=username).first()
 
-                # Create new user if not found
+                # Create new user if not found. Gated on an allowlist —
+                # without this, ANY account that can complete a
+                # configured provider's consent screen gets a brand-new
+                # MVidarr account auto-created with zero approval step
+                # (confirmed live, 2026-08-12: two unintended
+                # self-registrations during OAuth testing). This check
+                # only applies to genuinely NEW accounts — an OAuth
+                # login matching an EXISTING user (found by email/
+                # username just above) is always allowed, since that
+                # account was already created intentionally.
                 if not user:
+                    if not self._is_email_allowed_for_oauth_signup(email):
+                        logger.warning(
+                            f"OAuth signup denied for unauthorized email: "
+                            f"{email} (provider: {provider_name})"
+                        )
+                        from src.services.audit_service import AuditService
+
+                        AuditService.log_security_event(
+                            "oauth_signup_denied",
+                            "OAuth signup denied — email not on the allowlist",
+                            additional_data={
+                                "provider": provider_name,
+                                "email": email,
+                            },
+                        )
+                        return None, None
+
                     # Generate username if not provided
                     if not username:
                         username = (

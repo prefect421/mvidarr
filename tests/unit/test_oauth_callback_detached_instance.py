@@ -78,6 +78,12 @@ class TestOAuthCallbackSurvivesSessionClose:
         with _patch_get_db(session_factory), patch(
             "src.services.oauth_service.secrets.token_urlsafe",
             return_value="Xk9#mQ7z!vR2wL",
+        ), patch(
+            # New-account creation is gated by an allowlist (#336
+            # follow-up) — irrelevant to what this test covers, so
+            # allow the email through unconditionally.
+            "src.services.oauth_service.OAuthService._is_email_allowed_for_oauth_signup",
+            return_value=True,
         ):
             user, user_session = service._find_or_create_oauth_user(
                 "google",
