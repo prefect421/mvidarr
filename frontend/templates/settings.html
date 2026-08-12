@@ -311,7 +311,13 @@ input:checked + .slider:before {
                 <small id="securityTwoFactorStatus">Loading status…</small>
             </div>
             <div class="form-group">
-                <a id="twoFactorEnableLink" href="/2fa/setup" class="btn btn-primary" style="display: none;">🔐 Enable Two-Factor Authentication</a>
+                <!-- /auth/2fa/setup renders the real HTML setup page
+                     (frontend_router.py's two_fa_setup_page -> auth/2fa_setup.html).
+                     Do not point this at /2fa/setup: that path collides with an
+                     unfinished JSON-stub route of the same name under the /2fa
+                     API router (two_factor_auth.py's setup_page), which always
+                     returns raw JSON regardless of its response_class annotation. -->
+                <a id="twoFactorEnableLink" href="/auth/2fa/setup" class="btn btn-primary" style="display: none;">🔐 Enable Two-Factor Authentication</a>
             </div>
         </div>
 
