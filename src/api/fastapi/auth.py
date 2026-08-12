@@ -521,23 +521,15 @@ async def oauth_callback(
 
             log_oauth_login_success(user, provider)
 
-            from fastapi.responses import JSONResponse
+            # This endpoint is only ever reached via a real, top-level
+            # browser navigation — the OAuth provider's own server-side
+            # redirect after the user authorizes, not a fetch()/XHR call
+            # from MVidarr's frontend JS. Returning JSON here (as this
+            # used to) left a successful login showing the user a raw
+            # JSON blob instead of landing them back in the app.
+            from fastapi.responses import RedirectResponse
 
-            response_data = {
-                "success": True,
-                "message": "OAuth login successful",
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "role": user.role.value,
-                    "can_admin": user.can_access_admin(),
-                    "can_modify": user.can_modify_content(),
-                    "can_delete": user.can_delete_content(),
-                },
-            }
-
-            response = JSONResponse(content=response_data)
+            response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
             is_https = request.headers.get("x-forwarded-proto") == "https"
             response.set_cookie(
                 key="session_token",
