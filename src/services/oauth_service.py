@@ -266,6 +266,19 @@ class OAuthService:
         self.providers = {}
         self._load_providers()
 
+    def reload_settings(self):
+        """Force reload of OAuth provider configuration from settings.
+
+        self.providers is only populated once, at process start
+        (__init__ -> _load_providers). Without this, an admin saving new
+        oauth_* settings via the UI would have no effect until the app
+        was restarted. Mirrors SpotifyService.reload_settings()'s role
+        in the same bulk-settings-update flow (#336).
+        """
+        self.providers = {}
+        self._load_providers()
+        logger.info("OAuth provider settings reloaded from database")
+
     def _load_providers(self):
         """Load OAuth providers from configuration"""
         try:

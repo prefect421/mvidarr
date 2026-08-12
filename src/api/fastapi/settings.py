@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from src.services.oauth_service import oauth_service
 from src.services.settings_service import SettingsService, settings
 from src.utils.logger import get_logger
 
@@ -20,6 +21,14 @@ logger = get_logger("mvidarr.fastapi.settings")
 
 # Create FastAPI router
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+# Never round-tripped back to the browser on load (see settings.html) —
+# a blank value on bulk update means "leave unchanged", not "clear it".
+OAUTH_SECRET_KEYS = {
+    "oauth_authentik_client_secret",
+    "oauth_google_client_secret",
+    "oauth_github_client_secret",
+}
 
 # ====================================
 # Authentication (Mock for now)
@@ -187,8 +196,17 @@ async def update_multiple_settings(
 ):
     """Update multiple settings at once"""
     try:
-        # Convert values to strings for the settings service
-        settings_data = {key: str(value) for key, value in bulk_update.settings.items()}
+        # Convert values to strings for the settings service. OAuth
+        # client secrets are deliberately never sent back to the browser
+        # on load (see settings.html), so a blank value here means
+        # "unchanged", not "clear it" — the settings page's single
+        # page-wide Save button would otherwise wipe a saved secret any
+        # time an admin saved an unrelated setting (#336).
+        settings_data = {
+            key: str(value)
+            for key, value in bulk_update.settings.items()
+            if not (key in OAUTH_SECRET_KEYS and not value)
+        }
 
         success = settings.set_multiple(settings_data)
 
@@ -744,6 +762,28 @@ async def _handle_bulk_special_updates(settings_data: Dict[str, Any]):
                 )
             except Exception as e:
                 logger.error(f"Failed to reload Scheduler V2 after bulk update: {e}")
+                # Continue with the response even if reload fails
+
+        # Auto-reload OAuth provider config if any oauth_ settings were
+        # updated (#336) — oauth_service loads its provider dict once at
+        # process start, so without this a saved client_id/secret would
+        # be invisible to the running app until it was restarted.
+        oauth_settings_updated = any(
+            key.startswith("oauth_") for key in settings_data.keys()
+        )
+        if oauth_settings_updated:
+            try:
+                updated_oauth_keys = [
+                    key for key in settings_data.keys() if key.startswith("oauth_")
+                ]
+                logger.info(
+                    f"Reloading OAuth provider config after bulk update of: {updated_oauth_keys}"
+                )
+                oauth_service.reload_settings()
+            except Exception as e:
+                logger.error(
+                    f"Failed to reload OAuth provider config after bulk update: {e}"
+                )
                 # Continue with the response even if reload fails
 
     except Exception as e:
