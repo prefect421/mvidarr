@@ -11,7 +11,7 @@ No thumbnail/poster art: self-hosted MVidarr instances often have no
 publicly reachable URL for Discord's servers to fetch an image from.
 """
 
-from src.services.webhook_service import WebhookEvent, WebhookEventType
+from src.services.webhook_models import WebhookEvent, WebhookEventType
 
 # Discord embed colors (decimal, as Discord's API expects) by outcome.
 _COLOR_GREEN = 0x2ECC71  # success: added/downloaded/completed

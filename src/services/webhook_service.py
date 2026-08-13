@@ -10,57 +10,25 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 import requests
 
+from src.services.apprise_notification_service import send_apprise_notification
+from src.services.discord_notification_formatter import format_discord_embed
 from src.services.settings_service import SettingsService
+
+# WebhookEvent/WebhookEventType live in webhook_models.py, not here, and are
+# re-exported below. apprise_notification_service.py and
+# discord_notification_formatter.py (imported above) also depend on those
+# two types -- keeping them in this module would make the imports above a
+# circular import that breaks `import webhook_service` entirely. See
+# webhook_models.py's docstring for the full explanation.
+from src.services.webhook_models import WebhookEvent, WebhookEventType
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.webhook")
-
-
-class WebhookEventType(Enum):
-    """Webhook event types"""
-
-    ARTIST_ADDED = "artist.added"
-    ARTIST_UPDATED = "artist.updated"
-    ARTIST_DELETED = "artist.deleted"
-    VIDEO_ADDED = "video.added"
-    VIDEO_UPDATED = "video.updated"
-    VIDEO_DELETED = "video.deleted"
-    VIDEO_DOWNLOADED = "video.downloaded"
-    VIDEO_DOWNLOAD_FAILED = "video.download_failed"
-    DOWNLOAD_STARTED = "download.started"
-    DOWNLOAD_COMPLETED = "download.completed"
-    DOWNLOAD_FAILED = "download.failed"
-    PLAYLIST_SYNC_STARTED = "playlist.sync_started"
-    PLAYLIST_SYNC_COMPLETED = "playlist.sync_completed"
-    EXTERNAL_IMPORT_STARTED = "external.import_started"
-    EXTERNAL_IMPORT_COMPLETED = "external.import_completed"
-    SYSTEM_HEALTH_CHANGED = "system.health_changed"
-    SYSTEM_ERROR = "system.error"
-
-
-@dataclass
-class WebhookEvent:
-    """Webhook event data structure"""
-
-    event_type: WebhookEventType
-    timestamp: datetime
-    data: Dict[str, Any]
-    metadata: Dict[str, Any] = None
-
-    def to_dict(self) -> Dict:
-        """Convert to dictionary for JSON serialization"""
-        return {
-            "event_type": self.event_type.value,
-            "timestamp": self.timestamp.isoformat(),
-            "data": self.data,
-            "metadata": self.metadata or {},
-        }
 
 
 @dataclass
@@ -274,7 +242,33 @@ class WebhookService:
         """Deliver webhook to endpoint with retry logic"""
 
         def delivery_task():
-            payload = event.to_dict()
+            # Apprise owns its own delivery mechanics entirely (it isn't
+            # an HTTP POST of a JSON body at all) -- handle it separately
+            # from the HTTP-based generic/discord path below, but still
+            # under this same retry loop so a transient failure still
+            # gets MVidarr-level retries.
+            if endpoint.provider_type == "apprise":
+                for attempt in range(endpoint.max_retries + 1):
+                    if send_apprise_notification(endpoint.url, event):
+                        logger.info(
+                            f"Apprise notification delivered to {endpoint.url} (attempt {attempt + 1})"
+                        )
+                        return
+                    logger.warning(
+                        f"Apprise notification failed to {endpoint.url} (attempt {attempt + 1})"
+                    )
+                    if attempt < endpoint.max_retries:
+                        time.sleep((2**attempt) * 1)
+                logger.error(
+                    f"Apprise notification failed permanently to {endpoint.url} after {endpoint.max_retries + 1} attempts"
+                )
+                return
+
+            if endpoint.provider_type == "discord":
+                payload = format_discord_embed(event)
+            else:
+                payload = event.to_dict()
+
             headers = {
                 "Content-Type": "application/json",
                 "User-Agent": "MVidarr-Enhanced-Webhook/1.0",
@@ -285,7 +279,10 @@ class WebhookService:
             # Add custom headers
             headers.update(endpoint.headers)
 
-            # Add signature if secret is configured
+            # Add signature if secret is configured (Discord webhooks
+            # don't use HMAC signatures -- the UI never collects a secret
+            # for provider_type == "discord", so endpoint.secret is None
+            # there and this block is a no-op for that case)
             if endpoint.secret:
                 signature = self._generate_signature(
                     endpoint.secret, json.dumps(payload)
@@ -343,7 +340,9 @@ class WebhookService:
         ).hexdigest()
         return f"sha256={signature}"
 
-    def test_endpoint(self, url: str, secret: Optional[str] = None) -> Dict:
+    def test_endpoint(
+        self, url: str, secret: Optional[str] = None, provider_type: str = "generic"
+    ) -> Dict:
         """Test webhook endpoint with a test event"""
         try:
             test_event = WebhookEvent(
@@ -360,7 +359,17 @@ class WebhookService:
                 },
             )
 
-            payload = test_event.to_dict()
+            # Apprise test delivery bypasses the HTTP-POST path entirely
+            # -- it isn't one.
+            if provider_type == "apprise":
+                success = send_apprise_notification(url, test_event)
+                return {"success": success}
+
+            if provider_type == "discord":
+                payload = format_discord_embed(test_event)
+            else:
+                payload = test_event.to_dict()
+
             headers = {
                 "Content-Type": "application/json",
                 "User-Agent": "MVidarr-Enhanced-Webhook/1.0",

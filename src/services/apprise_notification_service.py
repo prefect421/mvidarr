@@ -17,7 +17,7 @@ yet.
 
 import apprise
 
-from src.services.webhook_service import WebhookEvent, WebhookEventType
+from src.services.webhook_models import WebhookEvent, WebhookEventType
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.apprise_notification")
