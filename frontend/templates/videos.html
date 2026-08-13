@@ -211,6 +211,7 @@
             
             <div class="filter-actions" role="toolbar" aria-label="Filter actions">
                 <button onclick="clearAllVideoFilters()" class="btn btn-secondary" aria-label="Clear all active filters">Clear All</button>
+                <button onclick="showRecentlyFound()" class="btn btn-secondary" aria-label="Show recently found videos, newest first">Recently Found</button>
                 <button onclick="saveVideoSearchPreset()" class="btn btn-secondary" aria-label="Save current search as preset">Save Preset</button>
                 <button onclick="exportVideoSearchResults()" class="btn btn-info" aria-label="Export search results to file">Export Results</button>
             </div>
@@ -672,6 +673,19 @@ function clearAllVideoFilters() {
     searchActive = false;
     loadVideos();
     updateVideoFilterCount();
+}
+
+function showRecentlyFound() {
+    // One-click "what's new" view (#316). Re-scoped from an "upcoming
+    // release calendar" -- no integrated data source (IMVDb,
+    // MusicBrainz, YouTube, Spotify, Last.fm) exposes a reliable future
+    // release-date signal, so this surfaces what MVidarr has already
+    // discovered instead, sorted by date_added, newest first.
+    document.getElementById('videoStatusFilter').value = '';
+    document.getElementById('videoSortBy').value = 'date_added';
+    document.getElementById('videoSortOrder').value = 'desc';
+    history.pushState({}, '', '/videos?sort_by=date_added&sort_order=desc&status=');
+    applyVideoFilters();
 }
 
 function updateVideoFilterCount() {
