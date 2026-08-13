@@ -53,3 +53,24 @@ class TestRecentlyFoundButton:
         end = self.html.index("\n}", start)
         body = self.html[start:end]
         assert "applyVideoFilters()" in body
+
+    def test_page_load_reads_deep_link_params_before_first_render(self):
+        # Anchor on the unique comment immediately preceding the videos-init
+        # listener, not the listener's opening line alone -- the file has a
+        # second, unrelated `document.addEventListener('DOMContentLoaded', ...)`
+        # listener (search presets UI) earlier in the file with byte-identical
+        # opening text, which `.index()` would match first.
+        marker = self.html.index("// Initialize videos when page loads")
+        start = self.html.index(
+            "document.addEventListener('DOMContentLoaded', function() {", marker
+        )
+        end = self.html.index("});", start)
+        init_block = self.html[start:end]
+        assert "URLSearchParams(window.location.search)" in init_block
+        assert "get('sort_by')" in init_block
+        assert "get('sort_order')" in init_block
+        assert "applyVideoFilters()" in init_block, (
+            "deep-linked sort_by/sort_order must route through "
+            "applyVideoFilters(), not the unrelated loadVideos() call, "
+            "since loadVideos() ignores the filter dropdowns entirely"
+        )

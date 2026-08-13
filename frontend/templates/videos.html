@@ -4651,7 +4651,24 @@ function refreshVideoList() {
 // Initialize videos when page loads
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Videos page loaded, initializing...');
-    loadVideos();
+
+    // Deep-link support for the "Recently Found" view (#316) and any
+    // future URL that carries these three params. loadVideos() below
+    // ignores the filter dropdowns entirely (it fetches /api/videos
+    // with its own hardcoded sort/order), so a deep link must route
+    // through applyVideoFilters() instead, which does read them.
+    const deepLinkParams = new URLSearchParams(window.location.search);
+    const deepLinkSortBy = deepLinkParams.get('sort_by');
+    const deepLinkSortOrder = deepLinkParams.get('sort_order');
+
+    if (deepLinkSortBy && deepLinkSortOrder) {
+        document.getElementById('videoStatusFilter').value = deepLinkParams.get('status') || '';
+        document.getElementById('videoSortBy').value = deepLinkSortBy;
+        document.getElementById('videoSortOrder').value = deepLinkSortOrder;
+        applyVideoFilters();
+    } else {
+        loadVideos();
+    }
 });
 
 // Event delegation for video actions
