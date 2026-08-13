@@ -30,6 +30,16 @@ class TestRecentlyFoundButton:
         actions_bar = self.html[start:end]
         assert 'onclick="showRecentlyFound()"' in actions_bar
 
+    def test_always_visible_button_is_in_the_secondary_actions_bar(self):
+        # There are now two onclick="showRecentlyFound()" buttons: the
+        # original inside the (collapsed-by-default) filter panel, and this
+        # always-visible one in the secondary-actions bar, which requires no
+        # panel to be expanded to reach.
+        start = self.html.index('class="secondary-actions"')
+        end = self.html.index("</div>", start)
+        actions_bar = self.html[start:end]
+        assert 'onclick="showRecentlyFound()"' in actions_bar
+
     def test_show_recently_found_function_exists(self):
         assert "function showRecentlyFound()" in self.html
 
