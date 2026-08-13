@@ -484,28 +484,39 @@ async def oauth_callback(
     error: Optional[str] = None,
 ):
     """Handle OAuth callback"""
+    # This endpoint is only ever reached via a real, top-level browser
+    # navigation — the OAuth provider's own server-side redirect after
+    # the user authorizes (or denies) access, not a fetch()/XHR call
+    # from MVidarr's frontend JS. Every failure path below redirects to
+    # the login page with a readable reason instead of returning a raw
+    # JSON error body, which previously left the user staring at a JSON
+    # blob (#353 — same root cause as #347's success-path fix).
+    from fastapi.responses import RedirectResponse
+
+    def _oauth_error_redirect(reason: str) -> RedirectResponse:
+        from urllib.parse import quote
+
+        return RedirectResponse(
+            url=f"/auth/login?oauth_error={quote(reason)}",
+            status_code=status.HTTP_302_FOUND,
+        )
+
     try:
         if error:
             log_oauth_login_failed(provider, f"OAuth provider error: {error}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"OAuth error: {error}"
-            )
+            return _oauth_error_redirect(f"OAuth error: {error}")
 
         if not code or not state:
             log_oauth_login_failed(provider, "Missing authorization code or state")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing authorization code or state",
-            )
+            return _oauth_error_redirect("Missing authorization code or state")
 
         cookie_state = request.cookies.get("oauth_state")
         if not cookie_state or cookie_state != state:
             log_oauth_login_failed(
                 provider, "State parameter mismatch - possible CSRF attack"
             )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid state parameter - possible CSRF attack",
+            return _oauth_error_redirect(
+                "Invalid state parameter - possible CSRF attack"
             )
 
         ip_address = request.client.host if request.client else "unknown"
@@ -521,14 +532,6 @@ async def oauth_callback(
 
             log_oauth_login_success(user, provider)
 
-            # This endpoint is only ever reached via a real, top-level
-            # browser navigation — the OAuth provider's own server-side
-            # redirect after the user authorizes, not a fetch()/XHR call
-            # from MVidarr's frontend JS. Returning JSON here (as this
-            # used to) left a successful login showing the user a raw
-            # JSON blob instead of landing them back in the app.
-            from fastapi.responses import RedirectResponse
-
             response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
             is_https = request.headers.get("x-forwarded-proto") == "https"
             response.set_cookie(
@@ -543,19 +546,15 @@ async def oauth_callback(
             return response
         else:
             log_oauth_login_failed(provider, message)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail=message
-            )
+            return _oauth_error_redirect(message)
 
-    except HTTPException:
-        raise
     except Exception as e:
+        # Deliberately generic — unlike the branches above, `e` is not
+        # a message this codebase generated, so its text must not leak
+        # into a redirect URL the user's browser will show.
         logger.error(f"OAuth callback error: {e}")
         log_oauth_login_failed(provider, str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="OAuth authentication failed",
-        )
+        return _oauth_error_redirect("OAuth authentication failed")
 
 
 # ====================================

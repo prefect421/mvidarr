@@ -7,6 +7,7 @@ was replaced.
 """
 
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -56,21 +57,29 @@ class TestOAuthLoginSetsCookie:
 
 
 class TestOAuthCallbackValidatesCookie:
+    # Failure responses redirect to /auth/login?oauth_error=... rather
+    # than returning a JSON error body — see test_oauth_callback_error_
+    # redirect.py's module docstring (#353) for why: this endpoint is
+    # only ever reached via a real browser navigation, not a fetch()/XHR
+    # call, so a JSON body just showed the user a raw JSON blob.
     def test_callback_rejects_missing_cookie(self):
         client = _make_client()
         response = client.get(
-            "/api/auth/oauth/authentik/callback?code=fake&state=abc123"
+            "/api/auth/oauth/authentik/callback?code=fake&state=abc123",
+            follow_redirects=False,
         )
-        assert response.status_code == 400
-        assert "state" in response.json()["detail"].lower()
+        assert response.status_code in (302, 303, 307)
+        assert response.headers["location"].startswith("/auth/login?oauth_error=")
 
     def test_callback_rejects_mismatched_cookie(self):
         client = _make_client()
         client.cookies.set("oauth_state", "different-value")
         response = client.get(
-            "/api/auth/oauth/authentik/callback?code=fake&state=abc123"
+            "/api/auth/oauth/authentik/callback?code=fake&state=abc123",
+            follow_redirects=False,
         )
-        assert response.status_code == 400
+        assert response.status_code in (302, 303, 307)
+        assert response.headers["location"].startswith("/auth/login?oauth_error=")
 
     def test_callback_accepts_matching_cookie(self):
         client = _make_client()
@@ -81,16 +90,20 @@ class TestOAuthCallbackValidatesCookie:
             return_value=(False, "Failed to obtain access token", None, None),
         ):
             response = client.get(
-                "/api/auth/oauth/authentik/callback?code=fake&state=abc123"
+                "/api/auth/oauth/authentik/callback?code=fake&state=abc123",
+                follow_redirects=False,
             )
 
-        # Cookie matched, so the request proceeds past the CSRF check into
-        # the actual OAuth exchange (which fails here for an unrelated,
-        # mocked reason — 401, not 400). Asserting the exact status pins
-        # "got past the CSRF gate, failed for the downstream reason"
-        # rather than a looser check that would also pass on unrelated
-        # failures.
-        assert response.status_code == 401
+        # Cookie matched, so the request proceeds past the CSRF check
+        # into the actual OAuth exchange (which fails here for an
+        # unrelated, mocked reason). Still a redirect, but carrying the
+        # downstream failure's message — pins "got past the CSRF gate,
+        # failed for the downstream reason" rather than a looser check
+        # that would also pass on the CSRF failure itself.
+        assert response.status_code in (302, 303, 307)
+        location = response.headers["location"]
+        query = parse_qs(urlparse(location).query)
+        assert query["oauth_error"][0] == "Failed to obtain access token"
 
 
 def test_handle_oauth_callback_passes_ip_and_user_agent_through():
