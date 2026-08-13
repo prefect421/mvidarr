@@ -51,6 +51,34 @@ class TestLoginPageRedesign:
         assert "max-height" in rule
         assert "overflow-y: auto" in rule
 
+    # --- logo panel fixed width (live-testing follow-up, 2026-08-13) ---
+
+    def test_logo_panel_is_fixed_at_450px_wide(self):
+        start = self.html.index(".login-panel-logo {")
+        end = self.html.index("}", start)
+        rule = self.html[start:end]
+        assert "flex: 0 0 450px" in rule, (
+            "the logo panel must stay a fixed 450px wide on desktop -- "
+            "the form panel (flex: 1) shrinks to fit around it, not the "
+            "other way around"
+        )
+
+    # --- no doubled rule above the OAuth divider text (live-testing
+    #     follow-up, 2026-08-13: .oauth-section's own border-top plus the
+    #     .oauth-divider's ::before/::after lines rendered two rules
+    #     stacked right above "or sign in with") ---
+
+    def test_oauth_section_does_not_double_up_the_divider_rule(self):
+        start = self.html.index(".oauth-section {")
+        end = self.html.index("}", start)
+        rule = self.html[start:end]
+        assert "border-top" not in rule, (
+            ".oauth-divider already draws its own flanking lines via "
+            "::before/::after -- an extra border-top on .oauth-section "
+            "renders as a second, redundant horizontal rule directly "
+            "above the divider"
+        )
+
     # --- existing behavior must survive the redesign untouched ---
 
     def test_existing_element_ids_are_all_still_present(self):
