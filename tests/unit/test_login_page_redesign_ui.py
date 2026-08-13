@@ -88,3 +88,12 @@ class TestOAuthIconAssetsExist:
             assert icon_path.is_file(), f"missing {icon_path}"
             content = icon_path.read_text()
             assert content.strip().startswith("<svg")
+
+
+class TestBackgroundAndLogoAssetsExist:
+    def test_each_paired_bg_and_logo_image_exists(self):
+        for n in range(1, 9):
+            bg_path = STATIC_DIR / "music" / "BG" / f"bg{n}.jpg"
+            logo_path = STATIC_DIR / "music" / "Logo" / f"{n}.png"
+            assert bg_path.is_file(), f"missing {bg_path}"
+            assert logo_path.is_file(), f"missing {logo_path}"
