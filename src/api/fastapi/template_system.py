@@ -5,6 +5,7 @@ Comprehensive template migration from Flask to FastAPI with async support
 
 import asyncio
 import json
+import random
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Union
@@ -701,6 +702,10 @@ class FastAPITemplateRoutes:
             "page_description": "Sign in to MVidarr",
             "hide_navigation": True,
             "oauth_providers": oauth_service.get_available_providers(),
+            # Paired background-photo/logo-image rotation (#351): N shared
+            # between frontend/static/music/BG/bg{N}.jpg and
+            # frontend/static/music/Logo/{N}.png so the two always match.
+            "bg_index": random.randint(1, 8),
         }
         return await self.template_system.render_response(
             "auth/login.html", request, context
