@@ -327,12 +327,6 @@ input:checked + .slider:before {
                 <small>Let users sign in via Authentik, Google, or GitHub instead of (or in addition to) a password. Leave a provider's fields blank to keep it disabled. Client secret fields are never pre-filled for security — leave one blank on save to keep the previously-saved value.</small>
             </div>
 
-            <div class="form-group">
-                <label for="oauth_allowed_emails">New Account Signup Allowlist:</label>
-                <input type="text" id="oauth_allowed_emails" name="oauth_allowed_emails" placeholder="you@example.com, @yourcompany.com">
-                <small>Comma separated. Each entry is either an exact email address, or <code>@domain.com</code> to allow anyone at that domain. This only gates <strong>new</strong> accounts — anyone who already has a MVidarr account can still sign in via OAuth regardless of this list. Leave empty to block all new OAuth signups (existing accounts are unaffected).</small>
-            </div>
-
             <h3>Authentik</h3>
             <div class="form-group">
                 <label for="oauth_authentik_base_url">Base URL:</label>
@@ -383,6 +377,15 @@ input:checked + .slider:before {
                 <label for="oauth_github_redirect_uri">Redirect URI:</label>
                 <input type="text" id="oauth_github_redirect_uri" name="oauth_github_redirect_uri" class="oauth-redirect-uri-input" data-provider="github">
                 <small>Typically <code class="oauth-redirect-uri-hint" data-provider="github">{origin}/api/auth/oauth/github/callback</code> — register this exact URL with the provider.</small>
+            </div>
+        </div>
+
+        <div class="settings-section" id="oauthAllowlistSection">
+            <h2>✅ OAuth New Account Signup Allowlist</h2>
+            <div class="form-group">
+                <label for="oauth_allowed_emails">New Account Signup Allowlist:</label>
+                <input type="text" id="oauth_allowed_emails" name="oauth_allowed_emails" placeholder="you@example.com, @yourcompany.com">
+                <small>Comma separated. Each entry is either an exact email address, or <code>@domain.com</code> to allow anyone at that domain. This only gates <strong>new</strong> accounts — anyone who already has a MVidarr account can still sign in via OAuth regardless of this list. Leave empty to block all new OAuth signups (existing accounts are unaffected).</small>
             </div>
         </div>
 
