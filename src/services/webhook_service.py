@@ -74,6 +74,11 @@ class WebhookEndpoint:
     max_retries: int = 3
     timeout: int = 30
     headers: Dict[str, str] = None
+    # "generic" (today's raw MVidarr envelope), "discord" (embed-formatted),
+    # or "apprise" (delivered via the apprise library). Defaults to
+    # "generic" so every endpoint saved before this field existed keeps
+    # behaving exactly as it does today -- no migration needed.
+    provider_type: str = "generic"
 
     def __post_init__(self):
         if self.events is None:
@@ -115,6 +120,7 @@ class WebhookService:
                     max_retries=endpoint_config.get("max_retries", 3),
                     timeout=endpoint_config.get("timeout", 30),
                     headers=endpoint_config.get("headers", {}),
+                    provider_type=endpoint_config.get("provider_type", "generic"),
                 )
                 self.endpoints.append(endpoint)
 
@@ -137,6 +143,7 @@ class WebhookService:
                     "max_retries": endpoint.max_retries,
                     "timeout": endpoint.timeout,
                     "headers": endpoint.headers,
+                    "provider_type": endpoint.provider_type,
                 }
                 endpoints_data.append(endpoint_data)
 
@@ -224,6 +231,7 @@ class WebhookService:
                 "max_retries": ep.max_retries,
                 "timeout": ep.timeout,
                 "headers": ep.headers,
+                "provider_type": ep.provider_type,
             }
             for ep in self.endpoints
         ]
