@@ -531,9 +531,18 @@ function debounceVideoFilters() {
 }
 
 // Video filtering functions - previously missing
-function applyVideoFilters() {
+function applyVideoFilters(page = 1, resetPage = true) {
     console.log('Applying video filters...');
-    
+
+    // Marks that a filtered/search view is active, so the pagination
+    // controls below route back through here (with limit/offset) instead
+    // of falling through to loadVideos() -- which fetches /api/videos
+    // with its own hardcoded sort/no filters and would otherwise silently
+    // discard every filter here on Next/Prev/goToPage/page-size-change
+    // (#357).
+    searchActive = true;
+    currentPage = resetPage ? 1 : page;
+
     // Get all filter values
     const filters = {
         q: document.getElementById('videoSearchInput').value,  // Add the main search query
@@ -553,17 +562,22 @@ function applyVideoFilters() {
         sort_by: document.getElementById('videoSortBy').value,
         sort_order: document.getElementById('videoSortOrder').value
     };
-    
+
     // Build query parameters
     const params = new URLSearchParams();
-    
+
     // Add non-empty filters
     for (const [key, value] of Object.entries(filters)) {
         if (value && value.trim() !== '') {
             params.append(key, value);
         }
     }
-    
+
+    // Pagination -- without these, every page past the first silently
+    // dropped back to the unfiltered default (#357).
+    params.append('limit', pageSize);
+    params.append('offset', (currentPage - 1) * pageSize);
+
     // Make API call to search/filter videos
     // Add cache busting to ensure fresh data
     params.append('_t', Date.now());
@@ -4336,7 +4350,15 @@ window.addEventListener('click', function(event) {
 
 function nextPage() {
     if (currentPage < totalPages) {
-        loadVideos(currentPage + 1, pageSize);
+        // A filtered/search view (#357) must page through
+        // applyVideoFilters(), not loadVideos() -- the latter ignores
+        // every active filter and re-fetches an unfiltered, title-sorted
+        // page instead.
+        if (searchActive) {
+            applyVideoFilters(currentPage + 1, false);
+        } else {
+            loadVideos(currentPage + 1, pageSize);
+        }
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -4344,7 +4366,11 @@ function nextPage() {
 
 function previousPage() {
     if (currentPage > 1) {
-        loadVideos(currentPage - 1, pageSize);
+        if (searchActive) {
+            applyVideoFilters(currentPage - 1, false);
+        } else {
+            loadVideos(currentPage - 1, pageSize);
+        }
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -4353,7 +4379,11 @@ function previousPage() {
 function goToPage(page) {
     const pageNum = parseInt(page);
     if (pageNum >= 1 && pageNum <= totalPages && pageNum !== currentPage) {
-        loadVideos(pageNum, pageSize);
+        if (searchActive) {
+            applyVideoFilters(pageNum, false);
+        } else {
+            loadVideos(pageNum, pageSize);
+        }
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -4368,7 +4398,11 @@ function changePageSize(newSize) {
     if (size !== pageSize) {
         pageSize = size;
         // Reset to page 1 when changing page size
-        loadVideos(1, pageSize, true);
+        if (searchActive) {
+            applyVideoFilters(1, true);
+        } else {
+            loadVideos(1, pageSize, true);
+        }
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
