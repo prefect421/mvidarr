@@ -321,6 +321,17 @@
         });
 
         document.getElementById('username').focus();
+
+        // Surface OAuth failures redirected back here with
+        // ?oauth_error=... (see auth.py's oauth_callback, #353) —
+        // without this, a failed OAuth login would just land on a
+        // blank login page with no explanation.
+        const oauthError = new URLSearchParams(window.location.search).get('oauth_error');
+        if (oauthError) {
+            showError(oauthError);
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
     </script>
 </body>
 </html>
