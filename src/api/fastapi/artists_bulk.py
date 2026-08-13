@@ -960,9 +960,10 @@ async def bulk_thumbnail_scan(
     rather than scanning all artists at once.
     """
     try:
+        from src.services.artist_thumbnail_search_service import (
+            search_artist_thumbnails,
+        )
         from src.services.thumbnail_service import ThumbnailService
-        from src.services.wikipedia_service import wikipedia_service
-        from src.services.youtube_search_service import youtube_search_service
 
         if not request.artist_ids:
             raise HTTPException(status_code=400, detail="No artist IDs provided")
@@ -985,32 +986,20 @@ async def bulk_thumbnail_scan(
                     logger.debug(f"Artist {artist.name} already has thumbnail")
                     continue
 
-                thumbnail_url = None
-
-                # Try Wikipedia first
-                try:
-                    wikipedia_url = wikipedia_service.search_artist_thumbnail(
-                        artist.name
+                # Same shared cascade as the single-artist search
+                # endpoint (#320) — Spotify, Last.fm, cached metadata,
+                # Wikipedia, YouTube, in that priority order.
+                # stop_at_first_result=True: a bulk scan wants one good
+                # hit per artist, not every source queried for all of
+                # them.
+                results = search_artist_thumbnails(
+                    artist.name, artist=artist, stop_at_first_result=True
+                )
+                thumbnail_url = results[0]["url"] if results else None
+                if thumbnail_url:
+                    logger.info(
+                        f"Found {results[0]['source']} thumbnail for {artist.name}"
                     )
-                    if wikipedia_url:
-                        thumbnail_url = wikipedia_url
-                        logger.info(f"Found Wikipedia thumbnail for {artist.name}")
-                except Exception as e:
-                    logger.debug(f"Wikipedia search failed for {artist.name}: {e}")
-
-                # Try YouTube if Wikipedia didn't work
-                if not thumbnail_url:
-                    try:
-                        youtube_url = (
-                            youtube_search_service.search_artist_channel_thumbnail(
-                                artist.name
-                            )
-                        )
-                        if youtube_url:
-                            thumbnail_url = youtube_url
-                            logger.info(f"Found YouTube thumbnail for {artist.name}")
-                    except Exception as e:
-                        logger.debug(f"YouTube search failed for {artist.name}: {e}")
 
                 # Download and save thumbnail
                 if thumbnail_url:
