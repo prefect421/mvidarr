@@ -146,7 +146,11 @@ class WikipediaService:
                 "format": "json",
                 "titles": page_title,
                 "prop": "pageimages|pageimagesthumbnails",
-                "pithumbsize": 500,  # Request 500px thumbnail
+                # Ask the API for the size directly -- it rounds this to
+                # a width it can actually generate for the specific
+                # source image (see _enhance_thumbnail_url's removal
+                # below for why that matters).
+                "pithumbsize": 800,
                 "pilimit": 1,
             }
 
@@ -160,10 +164,18 @@ class WikipediaService:
 
                 for page_id, page_data in pages.items():
                     if "thumbnail" in page_data:
-                        thumbnail_url = page_data["thumbnail"]["source"]
-                        # Prefer larger images by modifying the URL
-                        thumbnail_url = self._enhance_thumbnail_url(thumbnail_url)
-                        return thumbnail_url
+                        # Return the URL exactly as Wikipedia's API
+                        # provided it. A previous version rewrote the
+                        # width segment to a hardcoded "/800px-" via
+                        # regex -- Wikimedia's thumb-serving proxy only
+                        # supports a fixed set of widths per image, and
+                        # rejects ones it never generated with HTTP 400
+                        # ("Use thumbnail sizes listed on..."). This
+                        # silently broke every Wikipedia-sourced
+                        # thumbnail download (#320 follow-up, live
+                        # incident 2026-08-13) even though the search
+                        # step reported success.
+                        return page_data["thumbnail"]["source"]
                     elif "pageimage" in page_data:
                         # Try to construct image URL from pageimage
                         image_title = page_data["pageimage"]
@@ -290,25 +302,6 @@ class WikipediaService:
                     return True
 
         return False
-
-    def _enhance_thumbnail_url(self, thumbnail_url):
-        """
-        Enhance thumbnail URL to get better quality image
-
-        Args:
-            thumbnail_url (str): Original thumbnail URL
-
-        Returns:
-            str: Enhanced thumbnail URL
-        """
-        # Try to increase image size by modifying URL parameters
-        if "thumb" in thumbnail_url and "/thumb/" in thumbnail_url:
-            # Try to get a larger version
-            enhanced_url = re.sub(r"/(\d+)px-", "/800px-", thumbnail_url)
-            if enhanced_url != thumbnail_url:
-                return enhanced_url
-
-        return thumbnail_url
 
 
 # Global service instance
