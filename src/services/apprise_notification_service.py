@@ -43,6 +43,16 @@ _TITLES = {
 }
 
 
+def _redact_apprise_url(apprise_url: str) -> str:
+    """Apprise URLs embed their credential directly in the URL string by
+    design (e.g. tgram://<bot_token>/<chat_id>, discord://<id>/<token>,
+    mailto://user:password@host). Log only the scheme so a delivery
+    failure doesn't write a live, usable credential into observability
+    output."""
+    scheme = apprise_url.split("://", 1)[0] if "://" in apprise_url else "unknown"
+    return f"{scheme}://***"
+
+
 def _title_for(event: WebhookEvent) -> str:
     return _TITLES.get(event.event_type, event.event_type.value)
 
@@ -78,5 +88,7 @@ def send_apprise_notification(apprise_url: str, event: WebhookEvent) -> bool:
         result = notifier.notify(title=_title_for(event), body=_body_for(event))
         return bool(result)
     except Exception as e:
-        logger.warning(f"Apprise notification failed for {apprise_url}: {e}")
+        logger.warning(
+            f"Apprise notification failed for {_redact_apprise_url(apprise_url)}: {e}"
+        )
         return False

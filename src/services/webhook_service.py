@@ -15,7 +15,10 @@ from urllib.parse import urlparse
 
 import requests
 
-from src.services.apprise_notification_service import send_apprise_notification
+from src.services.apprise_notification_service import (
+    _redact_apprise_url,
+    send_apprise_notification,
+)
 from src.services.discord_notification_formatter import format_discord_embed
 from src.services.settings_service import SettingsService
 
@@ -248,19 +251,20 @@ class WebhookService:
             # under this same retry loop so a transient failure still
             # gets MVidarr-level retries.
             if endpoint.provider_type == "apprise":
+                redacted_url = _redact_apprise_url(endpoint.url)
                 for attempt in range(endpoint.max_retries + 1):
                     if send_apprise_notification(endpoint.url, event):
                         logger.info(
-                            f"Apprise notification delivered to {endpoint.url} (attempt {attempt + 1})"
+                            f"Apprise notification delivered to {redacted_url} (attempt {attempt + 1})"
                         )
                         return
                     logger.warning(
-                        f"Apprise notification failed to {endpoint.url} (attempt {attempt + 1})"
+                        f"Apprise notification failed to {redacted_url} (attempt {attempt + 1})"
                     )
                     if attempt < endpoint.max_retries:
                         time.sleep((2**attempt) * 1)
                 logger.error(
-                    f"Apprise notification failed permanently to {endpoint.url} after {endpoint.max_retries + 1} attempts"
+                    f"Apprise notification failed permanently to {redacted_url} after {endpoint.max_retries + 1} attempts"
                 )
                 return
 
