@@ -180,6 +180,8 @@ class WebhookService:
                         endpoint.timeout = updates["timeout"]
                     if "headers" in updates:
                         endpoint.headers = updates["headers"]
+                    if "provider_type" in updates:
+                        endpoint.provider_type = updates["provider_type"]
 
                     self.save_endpoints()
                     logger.info(f"Updated webhook endpoint: {url}")

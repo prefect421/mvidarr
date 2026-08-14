@@ -5,6 +5,7 @@ Migrated from Flask src/api/webhooks.py - Event-driven notification webhooks
 
 import logging
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field, HttpUrl, validator
@@ -37,7 +38,21 @@ router = APIRouter(
 class WebhookEndpointRequest(BaseModel):
     """Webhook endpoint creation request"""
 
-    url: HttpUrl = Field(..., description="Webhook URL endpoint")
+    # Declared FIRST, before url: pydantic's @validator only sees fields
+    # in `values` that were declared (and already validated) earlier in
+    # the class body. validate_url below reads values["provider_type"],
+    # so provider_type must be declared above url or that lookup always
+    # misses and silently falls back to the "generic" default.
+    provider_type: str = Field(
+        default="generic",
+        pattern="^(generic|discord|apprise)$",
+        description="Payload format/delivery mechanism for this endpoint",
+    )
+    # Plain str, not HttpUrl: Apprise endpoints use non-HTTP URL schemes
+    # (e.g. "tgram://bottoken/ChatID", "discord://webhook_id/token") that
+    # HttpUrl would reject outright. Real URL-shape validation for
+    # generic/discord happens in validate_url below instead.
+    url: str = Field(..., min_length=1, description="Webhook URL or Apprise URL string")
     secret: Optional[str] = Field(
         None, max_length=256, description="Secret for webhook verification"
     )
@@ -65,6 +80,20 @@ class WebhookEndpointRequest(BaseModel):
                 raise ValueError(f"Invalid event type: {event_str}")
         return v
 
+    @validator("url")
+    def validate_url(cls, v, values):
+        """Apprise URLs are not standard HTTP(S) URLs -- only require
+        real URL shape for generic/discord, which are always plain HTTP(S)
+        webhook endpoints."""
+        provider_type = values.get("provider_type", "generic")
+        if provider_type != "apprise":
+            parsed = urlparse(v)
+            if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                raise ValueError(
+                    "url must be a valid http(s) URL for generic/discord endpoints"
+                )
+        return v
+
 
 class WebhookEndpointUpdate(BaseModel):
     """Webhook endpoint update request"""
@@ -75,6 +104,7 @@ class WebhookEndpointUpdate(BaseModel):
     max_retries: Optional[int] = Field(None, ge=0, le=10)
     timeout: Optional[int] = Field(None, ge=1, le=300)
     headers: Optional[Dict[str, str]] = None
+    provider_type: Optional[str] = Field(None, pattern="^(generic|discord|apprise)$")
 
     @validator("events")
     def validate_events(cls, v):
@@ -91,10 +121,22 @@ class WebhookEndpointUpdate(BaseModel):
 class WebhookTestRequest(BaseModel):
     """Webhook test request"""
 
-    url: HttpUrl = Field(..., description="Webhook URL to test")
+    provider_type: str = Field(default="generic", pattern="^(generic|discord|apprise)$")
+    url: str = Field(..., min_length=1, description="Webhook URL or Apprise URL string")
     secret: Optional[str] = Field(
         None, max_length=256, description="Secret for verification"
     )
+
+    @validator("url")
+    def validate_url(cls, v, values):
+        provider_type = values.get("provider_type", "generic")
+        if provider_type != "apprise":
+            parsed = urlparse(v)
+            if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                raise ValueError(
+                    "url must be a valid http(s) URL for generic/discord endpoints"
+                )
+        return v
 
 
 class WebhookTriggerRequest(BaseModel):
@@ -202,6 +244,7 @@ async def create_webhook(
             max_retries=webhook_request.max_retries,
             timeout=webhook_request.timeout,
             headers=webhook_request.headers,
+            provider_type=webhook_request.provider_type,
         )
 
         success = webhook_service.add_endpoint(endpoint)
@@ -305,7 +348,9 @@ async def test_webhook(
         )
 
         result = webhook_service.test_endpoint(
-            str(test_request.url), test_request.secret
+            str(test_request.url),
+            test_request.secret,
+            provider_type=test_request.provider_type,
         )
 
         return {"test_result": result, "url": str(test_request.url)}
