@@ -487,12 +487,25 @@
     <div id="webhookForm" class="form-section" style="display: none;">
         <h3 id="formTitle">Add New Webhook</h3>
         <form id="webhookConfigForm">
+            <div class="form-group">
+                <label for="webhookProviderType">Type</label>
+                <select id="webhookProviderType" onchange="updateWebhookFormForProviderType()">
+                    <option value="generic">Generic (custom HTTP webhook)</option>
+                    <option value="discord">Discord</option>
+                    <option value="apprise">Apprise</option>
+                </select>
+            </div>
+
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="webhookUrl">Webhook URL *</label>
+                    <label for="webhookUrl" id="webhookUrlLabel">Webhook URL *</label>
                     <input type="url" id="webhookUrl" required placeholder="https://example.com/webhook">
+                    <small id="webhookUrlHint" style="display: none;">
+                        Apprise URL string, e.g. <code>tgram://bottoken/ChatID</code> --
+                        see <a href="https://github.com/caronc/apprise#popular-notification-services" target="_blank" rel="noopener">Apprise's supported services</a>.
+                    </small>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="webhookSecretGroup">
                     <label for="webhookSecret">Secret (optional)</label>
                     <input type="password" id="webhookSecret" placeholder="Secret for signature verification">
                 </div>
@@ -523,7 +536,7 @@
                 </div>
             </div>
             
-            <div class="form-group">
+            <div class="form-group" id="customHeadersGroup">
                 <label for="customHeaders">Custom Headers (JSON format)</label>
                 <textarea id="customHeaders" placeholder='{"Authorization": "Bearer token", "X-Custom-Header": "value"}'></textarea>
             </div>
@@ -773,10 +786,44 @@ function validateWebhook() {
     });
 }
 
+function updateWebhookFormForProviderType() {
+    const providerType = document.getElementById('webhookProviderType').value;
+    const urlInput = document.getElementById('webhookUrl');
+    const urlLabel = document.getElementById('webhookUrlLabel');
+    const urlHint = document.getElementById('webhookUrlHint');
+    const secretGroup = document.getElementById('webhookSecretGroup');
+    const customHeadersGroup = document.getElementById('customHeadersGroup');
+
+    if (providerType === 'apprise') {
+        // Apprise URLs (tgram://..., discord://webhook_id/token, etc.)
+        // aren't standard http(s) URLs -- an HTML5 type="url" input
+        // would reject some of them client-side before the form ever
+        // reaches the API's own (permissive-for-apprise) validation.
+        urlInput.type = 'text';
+        urlLabel.textContent = 'Apprise URL *';
+        urlHint.style.display = 'block';
+        secretGroup.style.display = 'none';
+        customHeadersGroup.style.display = 'none';
+    } else if (providerType === 'discord') {
+        urlInput.type = 'url';
+        urlLabel.textContent = 'Discord Webhook URL *';
+        urlHint.style.display = 'none';
+        // Discord webhooks don't use HMAC signatures.
+        secretGroup.style.display = 'none';
+        customHeadersGroup.style.display = 'none';
+    } else {
+        urlInput.type = 'url';
+        urlLabel.textContent = 'Webhook URL *';
+        urlHint.style.display = 'none';
+        secretGroup.style.display = '';
+        customHeadersGroup.style.display = '';
+    }
+}
+
 function getFormData() {
     const selectedEvents = Array.from(document.querySelectorAll('#eventTypesSelector input:checked'))
         .map(checkbox => checkbox.value);
-    
+
     let headers = {};
     const customHeadersText = document.getElementById('customHeaders').value.trim();
     if (customHeadersText) {
@@ -786,7 +833,7 @@ function getFormData() {
             headers = {};
         }
     }
-    
+
     return {
         url: document.getElementById('webhookUrl').value,
         secret: document.getElementById('webhookSecret').value,
@@ -794,7 +841,8 @@ function getFormData() {
         enabled: document.getElementById('webhookEnabled').checked,
         max_retries: parseInt(document.getElementById('maxRetries').value),
         timeout: parseInt(document.getElementById('timeout').value),
-        headers: headers
+        headers: headers,
+        provider_type: document.getElementById('webhookProviderType').value
     };
 }
 
