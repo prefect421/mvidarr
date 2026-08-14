@@ -682,6 +682,16 @@ class FastAPITemplateRoutes:
             "lastfm.html", request, context
         )
 
+    async def webhooks(self, request: Request) -> HTMLResponse:
+        """Webhook/notification management page (Discord, Apprise, generic)"""
+        context = {
+            "page_title": "Webhooks & Notifications",
+            "page_description": "Manage outbound webhooks, Discord, and Apprise notifications",
+        }
+        return await self.template_system.render_response(
+            "webhooks.html", request, context
+        )
+
     async def lidarr(self, request: Request) -> HTMLResponse:
         """Lidarr Manager page"""
         context = {
