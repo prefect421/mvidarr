@@ -58,21 +58,42 @@ class WebhookEndpoint:
             self.headers = {}
 
 
-def _log_safe_url(url: str) -> str:
+_DISCORD_WEBHOOK_HOSTS = ("discord.com", "discordapp.com")
+
+
+def log_safe_url(url: str) -> str:
     """Redact a URL for logging if it's credential-bearing.
 
-    Apprise URLs embed their credential directly in the URL string itself
-    (tgram://<bot_token>/<chat_id>, discord://<id>/<token>,
-    mailto://user:password@host, ...) -- any URL that isn't a plain
-    http(s) endpoint is, by construction, an Apprise URL and therefore a
-    live credential. Checking the scheme directly (rather than requiring
-    a WebhookEndpoint's tracked provider_type) means this stays correct
+    Two cases (#369, following the same reasoning as #315's Apprise fix):
+
+    - Apprise URLs embed their credential directly in the URL string
+      itself (tgram://<bot_token>/<chat_id>, discord://<id>/<token>,
+      mailto://user:password@host, ...) -- any URL that isn't a plain
+      http(s) endpoint is, by construction, an Apprise URL and therefore
+      a live credential.
+    - Discord webhook URLs (https://discord.com/api/webhooks/{id}/{token})
+      always carry a credential too -- the token IS the URL path, not a
+      separate secret field.
+
+    A generic http(s) URL that is neither of the above is logged
+    unchanged: not every generic webhook URL is guaranteed to carry a
+    credential (unlike Apprise's and Discord's, which always do), so
+    blanket-redacting every http(s) URL would throw away genuinely
+    useful, non-sensitive debugging information.
+
+    Checking the URL string directly (rather than requiring a
+    WebhookEndpoint's tracked provider_type) means this stays correct
     even in call sites like remove_endpoint() that only ever receive a
     bare URL string.
     """
-    if url.startswith(("http://", "https://")):
-        return url
-    return redact_apprise_url(url)
+    if not url.startswith(("http://", "https://")):
+        return redact_apprise_url(url)
+
+    parsed = urlparse(url)
+    if parsed.hostname in _DISCORD_WEBHOOK_HOSTS:
+        return f"{parsed.scheme}://{parsed.hostname}/api/webhooks/***"
+
+    return url
 
 
 class WebhookService:
@@ -158,7 +179,7 @@ class WebhookService:
 
             self.endpoints.append(endpoint)
             self.save_endpoints()
-            logger.info(f"Added webhook endpoint: {_log_safe_url(endpoint.url)}")
+            logger.info(f"Added webhook endpoint: {log_safe_url(endpoint.url)}")
             return True
 
         except Exception as e:
@@ -170,7 +191,7 @@ class WebhookService:
         try:
             self.endpoints = [ep for ep in self.endpoints if ep.url != url]
             self.save_endpoints()
-            logger.info(f"Removed webhook endpoint: {_log_safe_url(url)}")
+            logger.info(f"Removed webhook endpoint: {log_safe_url(url)}")
             return True
 
         except Exception as e:
@@ -201,7 +222,7 @@ class WebhookService:
                         endpoint.provider_type = updates["provider_type"]
 
                     self.save_endpoints()
-                    logger.info(f"Updated webhook endpoint: {_log_safe_url(url)}")
+                    logger.info(f"Updated webhook endpoint: {log_safe_url(url)}")
                     return True
 
             raise ValueError("Endpoint not found")
@@ -321,6 +342,13 @@ class WebhookService:
 
             validate_url_or_raise(endpoint.url, allow_local_network=True)
 
+            # Discord webhook URLs carry their credential directly in the
+            # path (https://discord.com/api/webhooks/{id}/{token}), same
+            # risk class as Apprise's always-credential-bearing URLs
+            # (#369) -- log_safe_url() redacts both; a truly generic
+            # http(s) URL passes through unchanged.
+            safe_url = log_safe_url(endpoint.url)
+
             # Retry logic
             for attempt in range(endpoint.max_retries + 1):
                 try:
@@ -333,17 +361,17 @@ class WebhookService:
 
                     if response.status_code in [200, 201, 202, 204]:
                         logger.info(
-                            f"Webhook delivered successfully to {endpoint.url} (attempt {attempt + 1})"
+                            f"Webhook delivered successfully to {safe_url} (attempt {attempt + 1})"
                         )
                         return
                     else:
                         logger.warning(
-                            f"Webhook delivery failed to {endpoint.url}: HTTP {response.status_code}"
+                            f"Webhook delivery failed to {safe_url}: HTTP {response.status_code}"
                         )
 
                 except requests.exceptions.RequestException as e:
                     logger.warning(
-                        f"Webhook delivery failed to {endpoint.url} (attempt {attempt + 1}): {e}"
+                        f"Webhook delivery failed to {safe_url} (attempt {attempt + 1}): {e}"
                     )
 
                 # Wait before retry (exponential backoff)
@@ -352,7 +380,7 @@ class WebhookService:
                     time.sleep(wait_time)
 
             logger.error(
-                f"Webhook delivery failed permanently to {endpoint.url} after {endpoint.max_retries + 1} attempts"
+                f"Webhook delivery failed permanently to {safe_url} after {endpoint.max_retries + 1} attempts"
             )
 
         # Run delivery in separate thread
