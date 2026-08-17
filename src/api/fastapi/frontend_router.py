@@ -280,6 +280,16 @@ async def lastfm_manager(request: Request, user=Depends(require_authentication))
         raise HTTPException(status_code=500, detail="Failed to load Last.fm page")
 
 
+@frontend_router.get("/webhooks", response_class=HTMLResponse, name="webhooks_manager")
+async def webhooks_manager(request: Request, user=Depends(require_authentication)):
+    """Webhooks & Notifications page (authentication required)"""
+    try:
+        return await template_routes.webhooks(request)
+    except Exception as e:
+        logger.error(f"Error rendering Webhooks page: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load Webhooks page")
+
+
 @frontend_router.get("/lidarr", response_class=HTMLResponse, name="lidarr_manager")
 async def lidarr_manager(request: Request, user=Depends(require_authentication)):
     """Lidarr Manager page (authentication required)"""

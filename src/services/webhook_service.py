@@ -10,57 +10,28 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 import requests
 
+from src.services.apprise_notification_service import (
+    redact_apprise_url,
+    send_apprise_notification,
+)
+from src.services.discord_notification_formatter import format_discord_embed
 from src.services.settings_service import SettingsService
+
+# WebhookEvent/WebhookEventType live in webhook_models.py, not here, and are
+# re-exported below. apprise_notification_service.py and
+# discord_notification_formatter.py (imported above) also depend on those
+# two types -- keeping them in this module would make the imports above a
+# circular import that breaks `import webhook_service` entirely. See
+# webhook_models.py's docstring for the full explanation.
+from src.services.webhook_models import WebhookEvent, WebhookEventType
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.webhook")
-
-
-class WebhookEventType(Enum):
-    """Webhook event types"""
-
-    ARTIST_ADDED = "artist.added"
-    ARTIST_UPDATED = "artist.updated"
-    ARTIST_DELETED = "artist.deleted"
-    VIDEO_ADDED = "video.added"
-    VIDEO_UPDATED = "video.updated"
-    VIDEO_DELETED = "video.deleted"
-    VIDEO_DOWNLOADED = "video.downloaded"
-    VIDEO_DOWNLOAD_FAILED = "video.download_failed"
-    DOWNLOAD_STARTED = "download.started"
-    DOWNLOAD_COMPLETED = "download.completed"
-    DOWNLOAD_FAILED = "download.failed"
-    PLAYLIST_SYNC_STARTED = "playlist.sync_started"
-    PLAYLIST_SYNC_COMPLETED = "playlist.sync_completed"
-    EXTERNAL_IMPORT_STARTED = "external.import_started"
-    EXTERNAL_IMPORT_COMPLETED = "external.import_completed"
-    SYSTEM_HEALTH_CHANGED = "system.health_changed"
-    SYSTEM_ERROR = "system.error"
-
-
-@dataclass
-class WebhookEvent:
-    """Webhook event data structure"""
-
-    event_type: WebhookEventType
-    timestamp: datetime
-    data: Dict[str, Any]
-    metadata: Dict[str, Any] = None
-
-    def to_dict(self) -> Dict:
-        """Convert to dictionary for JSON serialization"""
-        return {
-            "event_type": self.event_type.value,
-            "timestamp": self.timestamp.isoformat(),
-            "data": self.data,
-            "metadata": self.metadata or {},
-        }
 
 
 @dataclass
@@ -74,12 +45,34 @@ class WebhookEndpoint:
     max_retries: int = 3
     timeout: int = 30
     headers: Dict[str, str] = None
+    # "generic" (today's raw MVidarr envelope), "discord" (embed-formatted),
+    # or "apprise" (delivered via the apprise library). Defaults to
+    # "generic" so every endpoint saved before this field existed keeps
+    # behaving exactly as it does today -- no migration needed.
+    provider_type: str = "generic"
 
     def __post_init__(self):
         if self.events is None:
             self.events = []
         if self.headers is None:
             self.headers = {}
+
+
+def _log_safe_url(url: str) -> str:
+    """Redact a URL for logging if it's credential-bearing.
+
+    Apprise URLs embed their credential directly in the URL string itself
+    (tgram://<bot_token>/<chat_id>, discord://<id>/<token>,
+    mailto://user:password@host, ...) -- any URL that isn't a plain
+    http(s) endpoint is, by construction, an Apprise URL and therefore a
+    live credential. Checking the scheme directly (rather than requiring
+    a WebhookEndpoint's tracked provider_type) means this stays correct
+    even in call sites like remove_endpoint() that only ever receive a
+    bare URL string.
+    """
+    if url.startswith(("http://", "https://")):
+        return url
+    return redact_apprise_url(url)
 
 
 class WebhookService:
@@ -115,6 +108,7 @@ class WebhookService:
                     max_retries=endpoint_config.get("max_retries", 3),
                     timeout=endpoint_config.get("timeout", 30),
                     headers=endpoint_config.get("headers", {}),
+                    provider_type=endpoint_config.get("provider_type", "generic"),
                 )
                 self.endpoints.append(endpoint)
 
@@ -137,6 +131,7 @@ class WebhookService:
                     "max_retries": endpoint.max_retries,
                     "timeout": endpoint.timeout,
                     "headers": endpoint.headers,
+                    "provider_type": endpoint.provider_type,
                 }
                 endpoints_data.append(endpoint_data)
 
@@ -163,7 +158,7 @@ class WebhookService:
 
             self.endpoints.append(endpoint)
             self.save_endpoints()
-            logger.info(f"Added webhook endpoint: {endpoint.url}")
+            logger.info(f"Added webhook endpoint: {_log_safe_url(endpoint.url)}")
             return True
 
         except Exception as e:
@@ -175,7 +170,7 @@ class WebhookService:
         try:
             self.endpoints = [ep for ep in self.endpoints if ep.url != url]
             self.save_endpoints()
-            logger.info(f"Removed webhook endpoint: {url}")
+            logger.info(f"Removed webhook endpoint: {_log_safe_url(url)}")
             return True
 
         except Exception as e:
@@ -202,9 +197,11 @@ class WebhookService:
                         endpoint.timeout = updates["timeout"]
                     if "headers" in updates:
                         endpoint.headers = updates["headers"]
+                    if "provider_type" in updates:
+                        endpoint.provider_type = updates["provider_type"]
 
                     self.save_endpoints()
-                    logger.info(f"Updated webhook endpoint: {url}")
+                    logger.info(f"Updated webhook endpoint: {_log_safe_url(url)}")
                     return True
 
             raise ValueError("Endpoint not found")
@@ -217,13 +214,18 @@ class WebhookService:
         """Get all webhook endpoints"""
         return [
             {
-                "url": ep.url,
+                "url": (
+                    redact_apprise_url(ep.url)
+                    if ep.provider_type == "apprise"
+                    else ep.url
+                ),
                 "secret": "***" if ep.secret else None,
                 "events": [event.value for event in ep.events],
                 "enabled": ep.enabled,
                 "max_retries": ep.max_retries,
                 "timeout": ep.timeout,
                 "headers": ep.headers,
+                "provider_type": ep.provider_type,
             }
             for ep in self.endpoints
         ]
@@ -266,7 +268,34 @@ class WebhookService:
         """Deliver webhook to endpoint with retry logic"""
 
         def delivery_task():
-            payload = event.to_dict()
+            # Apprise owns its own delivery mechanics entirely (it isn't
+            # an HTTP POST of a JSON body at all) -- handle it separately
+            # from the HTTP-based generic/discord path below, but still
+            # under this same retry loop so a transient failure still
+            # gets MVidarr-level retries.
+            if endpoint.provider_type == "apprise":
+                redacted_url = redact_apprise_url(endpoint.url)
+                for attempt in range(endpoint.max_retries + 1):
+                    if send_apprise_notification(endpoint.url, event):
+                        logger.info(
+                            f"Apprise notification delivered to {redacted_url} (attempt {attempt + 1})"
+                        )
+                        return
+                    logger.warning(
+                        f"Apprise notification failed to {redacted_url} (attempt {attempt + 1})"
+                    )
+                    if attempt < endpoint.max_retries:
+                        time.sleep((2**attempt) * 1)
+                logger.error(
+                    f"Apprise notification failed permanently to {redacted_url} after {endpoint.max_retries + 1} attempts"
+                )
+                return
+
+            if endpoint.provider_type == "discord":
+                payload = format_discord_embed(event)
+            else:
+                payload = event.to_dict()
+
             headers = {
                 "Content-Type": "application/json",
                 "User-Agent": "MVidarr-Enhanced-Webhook/1.0",
@@ -277,7 +306,10 @@ class WebhookService:
             # Add custom headers
             headers.update(endpoint.headers)
 
-            # Add signature if secret is configured
+            # Add signature if secret is configured (Discord webhooks
+            # don't use HMAC signatures -- the UI never collects a secret
+            # for provider_type == "discord", so endpoint.secret is None
+            # there and this block is a no-op for that case)
             if endpoint.secret:
                 signature = self._generate_signature(
                     endpoint.secret, json.dumps(payload)
@@ -335,7 +367,9 @@ class WebhookService:
         ).hexdigest()
         return f"sha256={signature}"
 
-    def test_endpoint(self, url: str, secret: Optional[str] = None) -> Dict:
+    def test_endpoint(
+        self, url: str, secret: Optional[str] = None, provider_type: str = "generic"
+    ) -> Dict:
         """Test webhook endpoint with a test event"""
         try:
             test_event = WebhookEvent(
@@ -352,7 +386,23 @@ class WebhookService:
                 },
             )
 
-            payload = test_event.to_dict()
+            # Apprise test delivery bypasses the HTTP-POST path entirely
+            # -- it isn't one.
+            if provider_type == "apprise":
+                success = send_apprise_notification(url, test_event)
+                return {
+                    "success": success,
+                    "status_code": None,
+                    "response_time": None,
+                    "response_text": "Apprise notification sent" if success else None,
+                    "error": None if success else "Apprise delivery failed",
+                }
+
+            if provider_type == "discord":
+                payload = format_discord_embed(test_event)
+            else:
+                payload = test_event.to_dict()
+
             headers = {
                 "Content-Type": "application/json",
                 "User-Agent": "MVidarr-Enhanced-Webhook/1.0",
