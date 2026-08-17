@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import subprocess
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from src.database.connection import get_db
@@ -16,6 +17,46 @@ from src.database.models import Artist, Video, VideoStatus
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.video_batch")
+
+
+def claim_video_for_download(video_id: int) -> bool:
+    """Atomically claim a WANTED video for download by flipping its
+    status to DOWNLOADING, but only if it is still WANTED (#329).
+
+    Two independently-implemented "download all wanted videos" functions
+    exist in this codebase (this module's download_all_wanted_videos_internal
+    and videos_downloads.py's bulk_download_wanted_videos), reachable
+    concurrently from a Celery worker and a FastAPI background thread --
+    separate OS processes with no shared memory. Without an atomic claim,
+    both can select and dispatch the same video, and whichever process's
+    result writes last silently wins, regardless of which one was
+    actually correct.
+
+    Returns True if this caller won the claim (the video was WANTED and
+    is now DOWNLOADING), False if it wasn't WANTED to begin with, doesn't
+    exist, or a concurrent caller already claimed it. MariaDB/MySQL's
+    row-level locking makes this correct under concurrency: two callers
+    racing on the same row serialize at the database level, and the
+    loser's WHERE clause re-evaluates against the now-committed
+    DOWNLOADING value, matching zero rows.
+
+    Must be called -- and its result checked -- before dispatching a
+    download, never after.
+    """
+    from sqlalchemy import update
+
+    try:
+        with get_db() as session:
+            result = session.execute(
+                update(Video)
+                .where(Video.id == video_id, Video.status == VideoStatus.WANTED)
+                .values(status=VideoStatus.DOWNLOADING, updated_at=datetime.utcnow())
+            )
+            session.commit()
+            return result.rowcount == 1
+    except Exception as e:
+        logger.error(f"Failed to claim video {video_id} for download: {e}")
+        return False
 
 
 def get_ytdlp_path() -> str:
