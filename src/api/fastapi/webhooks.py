@@ -13,10 +13,10 @@ from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
-from src.services.apprise_notification_service import redact_apprise_url
 from src.services.webhook_service import (
     WebhookEndpoint,
     WebhookEventType,
+    log_safe_url,
     webhook_service,
 )
 
@@ -240,13 +240,9 @@ async def create_webhook(
     try:
         user_id = current_user.get("user_id", 1)
 
-        log_url = (
-            redact_apprise_url(webhook_request.url)
-            if webhook_request.provider_type == "apprise"
-            else webhook_request.url
-        )
         logger.info(
-            f"Creating webhook endpoint for URL '{log_url}' by user {current_user.get('username')}"
+            f"Creating webhook endpoint for URL '{log_safe_url(webhook_request.url)}' "
+            f"by user {current_user.get('username')}"
         )
 
         # Convert event strings to enum values
@@ -361,13 +357,9 @@ async def test_webhook(
     try:
         user_id = current_user.get("user_id", 1)
 
-        log_url = (
-            redact_apprise_url(test_request.url)
-            if test_request.provider_type == "apprise"
-            else test_request.url
-        )
         logger.info(
-            f"Testing webhook endpoint '{log_url}' for user {current_user.get('username')}"
+            f"Testing webhook endpoint '{log_safe_url(test_request.url)}' "
+            f"for user {current_user.get('username')}"
         )
 
         result = webhook_service.test_endpoint(
