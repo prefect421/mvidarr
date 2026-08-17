@@ -644,16 +644,24 @@ class UnifiedDownloadService:
                     }
                 )
             else:
-                self._update_database_failure(context.video_id, result.error_message)
-                logger.error(f"Download {download_id} failed: {result.error_message}")
-                trigger_video_download_failed(
-                    {
-                        "id": context.video_id,
-                        "title": context.title,
-                        "artist_name": context.artist,
-                    },
-                    result.error_message,
+                wrote_failure = self._update_database_failure(
+                    context.video_id, result.error_message
                 )
+                logger.error(f"Download {download_id} failed: {result.error_message}")
+                # #329: only notify subscribers if the failure was actually
+                # written -- the already-DOWNLOADED guard in
+                # _update_database_failure() suppresses stale duplicate-
+                # dispatch failures, and firing this webhook anyway would
+                # falsely report a DOWNLOADED video as failed.
+                if wrote_failure:
+                    trigger_video_download_failed(
+                        {
+                            "id": context.video_id,
+                            "title": context.title,
+                            "artist_name": context.artist,
+                        },
+                        result.error_message,
+                    )
 
             # Execute callbacks
             for callback in self.download_callbacks.get(download_id, []):
@@ -664,15 +672,18 @@ class UnifiedDownloadService:
 
         except Exception as e:
             logger.error(f"Download {download_id} exception: {e}")
-            self._update_database_failure(context.video_id, str(e))
-            trigger_video_download_failed(
-                {
-                    "id": context.video_id,
-                    "title": context.title,
-                    "artist_name": context.artist,
-                },
-                str(e),
-            )
+            wrote_failure = self._update_database_failure(context.video_id, str(e))
+            # #329: same gating as the normal-failure path above -- don't
+            # notify subscribers for a no-op failure write.
+            if wrote_failure:
+                trigger_video_download_failed(
+                    {
+                        "id": context.video_id,
+                        "title": context.title,
+                        "artist_name": context.artist,
+                    },
+                    str(e),
+                )
 
         finally:
             # Cleanup
@@ -940,8 +951,17 @@ class UnifiedDownloadService:
         except Exception as e:
             logger.error(f"Database success update failed: {e}", exc_info=True)
 
-    def _update_database_failure(self, video_id: int, error_message: str):
-        """Update database on failed download"""
+    def _update_database_failure(self, video_id: int, error_message: str) -> bool:
+        """Update database on failed download.
+
+        Returns True if a failure was actually written (video status
+        flipped to FAILED / Download row recorded), False if this call
+        was a no-op -- either the video wasn't found, or the #329
+        already-DOWNLOADED guard below suppressed it. Callers (see
+        _execute_download()) must gate trigger_video_download_failed()
+        on this return value: firing that webhook for a no-op write
+        would falsely notify that a DOWNLOADED video failed.
+        """
         try:
             from src.database.connection import get_db
             from src.database.models import Download, Video, VideoStatus
@@ -950,6 +970,21 @@ class UnifiedDownloadService:
                 # Update video status
                 video = session.query(Video).filter(Video.id == video_id).first()
                 if video:
+                    # #329: a video already confirmed DOWNLOADED must never
+                    # be downgraded by a failure -- this is exactly the
+                    # scenario claim_video_for_download() (video_batch_service.py)
+                    # closes the *source* of, but this check is an
+                    # independent safety net: it protects correctness even
+                    # if some other, not-yet-identified path ever manages
+                    # to dispatch a duplicate download for an
+                    # already-succeeded video.
+                    if video.status == VideoStatus.DOWNLOADED:
+                        logger.warning(
+                            f"Ignoring stale failure for video {video_id} "
+                            f"(already DOWNLOADED): {error_message}"
+                        )
+                        return False
+
                     video.status = VideoStatus.FAILED.value
 
                     # Create or update Download record with error message
@@ -989,8 +1024,11 @@ class UnifiedDownloadService:
                         )
 
                     session.commit()
+                    return True
+                return False
         except Exception as e:
             logger.error(f"Database failure update failed: {e}", exc_info=True)
+            return False
 
     def get_active_downloads(self) -> Dict[int, str]:
         """Get currently active downloads"""

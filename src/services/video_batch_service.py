@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import subprocess
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from src.database.connection import get_db
@@ -16,6 +17,62 @@ from src.database.models import Artist, Video, VideoStatus
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.video_batch")
+
+
+def claim_video_for_download(video_id: int) -> bool:
+    """Atomically claim a WANTED video for download by flipping its
+    status to DOWNLOADING, but only if it is still WANTED (#329).
+
+    Two independently-implemented "download all wanted videos" functions
+    exist in this codebase (this module's download_all_wanted_videos_internal
+    and videos_downloads.py's bulk_download_wanted_videos), reachable
+    concurrently from a Celery worker and a FastAPI background thread --
+    separate OS processes with no shared memory. Without an atomic claim,
+    both can select and dispatch the same video, and whichever process's
+    result writes last silently wins, regardless of which one was
+    actually correct.
+
+    Returns True if this caller won the claim (the video was WANTED and
+    is now DOWNLOADING), False if it wasn't WANTED to begin with, doesn't
+    exist, or a concurrent caller already claimed it. MariaDB/MySQL's
+    row-level locking makes this correct under concurrency: two callers
+    racing on the same row serialize at the database level, and the
+    loser's WHERE clause re-evaluates against the now-committed
+    DOWNLOADING value, matching zero rows.
+
+    Must be called -- and its result checked -- before dispatching a
+    download, never after.
+
+    Deliberately does NOT use get_db() here: get_db() wraps a
+    thread-local scoped_session, and both current callers
+    (bulk_download_wanted_videos() and
+    download_all_wanted_videos_internal()) already hold their own
+    get_db() session open on the same thread when they call this. A
+    nested get_db() call can silently resolve to that *same* underlying
+    Session object, and this function's own commit()/close() would then
+    tear down the caller's session mid-iteration. Using a dedicated
+    engine connection/transaction instead makes this function immune to
+    whatever session state its caller happens to hold (#329 final
+    review).
+    """
+    from sqlalchemy import update
+
+    import src.database.connection as db_connection
+
+    try:
+        if db_connection.db_manager is None:
+            db_connection.init_db_standalone()
+        engine = db_connection.db_manager.create_engine()
+        with engine.begin() as conn:
+            result = conn.execute(
+                update(Video)
+                .where(Video.id == video_id, Video.status == VideoStatus.WANTED)
+                .values(status=VideoStatus.DOWNLOADING, updated_at=datetime.utcnow())
+            )
+            return result.rowcount == 1
+    except Exception as e:
+        logger.error(f"Failed to claim video {video_id} for download: {e}")
+        return False
 
 
 def get_ytdlp_path() -> str:
@@ -124,6 +181,7 @@ def download_all_wanted_videos_internal(
         results = []
         success_count = 0
         failed_count = 0
+        skipped_count = 0
         wanted_video_ids = []
 
         # Import settings service for subtitle configuration
@@ -168,6 +226,7 @@ def download_all_wanted_videos_internal(
                     "message": "No wanted videos found",
                     "success_count": 0,
                     "failed_count": 0,
+                    "skipped_count": 0,
                     "results": [],
                 }
 
@@ -175,6 +234,7 @@ def download_all_wanted_videos_internal(
 
         # Process each video individually to avoid session issues
         for video_id, video_title, artist_name in wanted_video_ids:
+            claimed = False
             try:
                 with get_db() as session:
                     # Get fresh video object for each download
@@ -209,10 +269,32 @@ def download_all_wanted_videos_internal(
                         failed_count += 1
                         continue
 
+                    # Atomically claim this video before dispatching (#329)
+                    # -- bulk_download_wanted_videos() (the manual-trigger
+                    # equivalent of this function) can run concurrently and
+                    # select the same WANTED video; only one of them may
+                    # win. A failed claim means another process already has
+                    # it -- report as skipped, not failed, and move on.
+                    if not claim_video_for_download(video_id):
+                        results.append(
+                            {
+                                "video_id": video_id,
+                                "title": video_title,
+                                "artist": artist_name,
+                                "success": False,
+                                "skipped": True,
+                                "error": "Already claimed by another download process",
+                            }
+                        )
+                        skipped_count += 1
+                        continue
+                    claimed = True
+
                     # Import yt-dlp service
                     from src.services.download_service_adapter import ytdlp_service
 
-                    # Queue download
+                    # Queue download -- video.status is already DOWNLOADING,
+                    # set and committed by claim_video_for_download() above.
                     result = ytdlp_service.add_music_video_download(
                         artist=artist_name,
                         title=video_title,
@@ -224,10 +306,6 @@ def download_all_wanted_videos_internal(
                     )
 
                     if result and result.get("success"):
-                        # Update the video status in a separate transaction
-                        video.status = VideoStatus.DOWNLOADING
-                        session.commit()
-
                         results.append(
                             {
                                 "video_id": video_id,
@@ -240,6 +318,16 @@ def download_all_wanted_videos_internal(
                         )
                         success_count += 1
                     else:
+                        # #329: the claim above already committed
+                        # DOWNLOADING -- dispatch then failed (falsy
+                        # result), so revert to WANTED here or this video
+                        # is stuck at DOWNLOADING forever: invisible to
+                        # every status == WANTED query, never retried by
+                        # the next scheduled run. Matches the
+                        # revert-on-dispatch-failure precedent in
+                        # videos_downloads.py.
+                        video.status = VideoStatus.WANTED
+                        session.commit()
                         results.append(
                             {
                                 "video_id": video_id,
@@ -253,6 +341,29 @@ def download_all_wanted_videos_internal(
 
             except Exception as e:
                 logger.error(f"Failed to process video {video_id} ({video_title}): {e}")
+                if claimed:
+                    # #329: the claim committed DOWNLOADING before this
+                    # exception was raised -- the `with get_db() as
+                    # session` block above has already rolled back and
+                    # closed on the way out, so revert with a fresh
+                    # session rather than reusing it. Same
+                    # stuck-forever concern as the dispatch-failure
+                    # branch above.
+                    try:
+                        with get_db() as revert_session:
+                            revert_video = (
+                                revert_session.query(Video)
+                                .filter(Video.id == video_id)
+                                .first()
+                            )
+                            if revert_video:
+                                revert_video.status = VideoStatus.WANTED
+                                revert_session.commit()
+                    except Exception as revert_error:
+                        logger.error(
+                            f"Failed to revert video {video_id} to WANTED "
+                            f"after dispatch exception: {revert_error}"
+                        )
                 results.append(
                     {
                         "video_id": video_id,
@@ -266,9 +377,10 @@ def download_all_wanted_videos_internal(
 
         return {
             "success": True,
-            "message": f"Processed {len(wanted_video_ids)} videos: {success_count} succeeded, {failed_count} failed",
+            "message": f"Processed {len(wanted_video_ids)} videos: {success_count} succeeded, {failed_count} failed, {skipped_count} skipped",
             "success_count": success_count,
             "failed_count": failed_count,
+            "skipped_count": skipped_count,
             "results": results,
         }
 
@@ -279,6 +391,7 @@ def download_all_wanted_videos_internal(
             "error": str(e),
             "success_count": 0,
             "failed_count": 0,
+            "skipped_count": 0,
             "results": [],
         }
 

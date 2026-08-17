@@ -25,6 +25,7 @@ from src.api.fastapi.auth_dependencies import get_current_user
 from src.api.fastapi.videos_models import BulkDownloadRequest
 from src.database.connection import get_db_session
 from src.database.models import Artist, Download, Video, VideoStatus
+from src.services.video_batch_service import claim_video_for_download
 from src.utils.logger import get_logger
 
 router = APIRouter()
@@ -614,6 +615,16 @@ async def bulk_download_wanted_videos(
                     skipped_count += 1
                     continue
 
+                # Atomically claim this video before dispatching (#329) --
+                # download_all_wanted_videos_internal() (the Celery-side
+                # equivalent of this function) can run concurrently and
+                # select the same WANTED video; only one of them may win.
+                # A failed claim means another process already has it --
+                # a normal, healthy skip, not an error.
+                if not claim_video_for_download(video.id):
+                    skipped_count += 1
+                    continue
+
                 # Create download entry
                 download = Download(
                     artist_id=video.artist_id,
@@ -635,9 +646,16 @@ async def bulk_download_wanted_videos(
                 session.add(download)
                 session.flush()  # Ensure download.id is available
 
-                # Update video status to downloading/queued
-                video.status = VideoStatus.DOWNLOADING
-                video.updated_at = datetime.utcnow()
+                # video.status is already DOWNLOADING, committed by
+                # claim_video_for_download() above. We never reassign
+                # video.status anywhere in this loop after the claim, so
+                # SQLAlchemy's dirty-tracking emits no UPDATE for it at
+                # this function's final session.commit() -- the claim
+                # can't be stomped. (A session.refresh() here would not
+                # even see the post-claim value under MariaDB's default
+                # REPEATABLE READ isolation, since this outer session's
+                # snapshot predates the claim -- confirmed during final
+                # review, not worth the round-trip either way.)
 
                 # Create background job for download processing via ytdlp_service
                 try:
