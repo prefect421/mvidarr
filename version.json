@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "build_date": "2026-08-17T15:27:53.318527",
-  "git_commit": "565b33dd",
+  "build_date": "2026-08-17T19:11:16.655781",
+  "git_commit": "1b14354a",
   "git_branch": "dev",
   "release_name": "v1.0.0 - First Production-Ready Release",
   "features": [

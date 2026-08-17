@@ -646,12 +646,16 @@ async def bulk_download_wanted_videos(
                 session.add(download)
                 session.flush()  # Ensure download.id is available
 
-                # video.status is already DOWNLOADING -- claim_video_for_download()
-                # set and committed it above. Refresh the in-memory object so
-                # later code in this loop iteration (and the final bulk
-                # session.commit()) sees the current value rather than a
-                # stale pre-claim copy.
-                session.refresh(video)
+                # video.status is already DOWNLOADING, committed by
+                # claim_video_for_download() above. We never reassign
+                # video.status anywhere in this loop after the claim, so
+                # SQLAlchemy's dirty-tracking emits no UPDATE for it at
+                # this function's final session.commit() -- the claim
+                # can't be stomped. (A session.refresh() here would not
+                # even see the post-claim value under MariaDB's default
+                # REPEATABLE READ isolation, since this outer session's
+                # snapshot predates the claim -- confirmed during final
+                # review, not worth the round-trip either way.)
 
                 # Create background job for download processing via ytdlp_service
                 try:

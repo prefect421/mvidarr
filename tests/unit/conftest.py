@@ -27,7 +27,10 @@ import src.database.connection as connection
 from src.database.models import Artist, Video
 
 # Test modules that want a real (unpatched) get_db() backed by a real DB.
-_REAL_DB_MODULES = {"test_claim_video_for_download.py"}
+_REAL_DB_MODULES = {
+    "test_claim_video_for_download.py",
+    "test_failure_write_protects_downloaded_status.py",
+}
 
 
 @pytest.fixture(autouse=True)
@@ -70,6 +73,14 @@ def _wire_real_sqlite_db(request, monkeypatch):
     class _FakeDbManager:
         def get_session(self):
             return _fake_get_session()
+
+        def create_engine(self):
+            # claim_video_for_download() (#329) deliberately uses its own
+            # engine connection/transaction instead of get_db()'s scoped
+            # session -- see that function's docstring. Return the same
+            # engine backing get_session() above so both routes see the
+            # same SQLite-backed data.
+            return engine
 
     monkeypatch.setattr(connection, "db_manager", _FakeDbManager())
 

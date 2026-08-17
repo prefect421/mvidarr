@@ -42,17 +42,33 @@ def claim_video_for_download(video_id: int) -> bool:
 
     Must be called -- and its result checked -- before dispatching a
     download, never after.
+
+    Deliberately does NOT use get_db() here: get_db() wraps a
+    thread-local scoped_session, and both current callers
+    (bulk_download_wanted_videos() and
+    download_all_wanted_videos_internal()) already hold their own
+    get_db() session open on the same thread when they call this. A
+    nested get_db() call can silently resolve to that *same* underlying
+    Session object, and this function's own commit()/close() would then
+    tear down the caller's session mid-iteration. Using a dedicated
+    engine connection/transaction instead makes this function immune to
+    whatever session state its caller happens to hold (#329 final
+    review).
     """
     from sqlalchemy import update
 
+    import src.database.connection as db_connection
+
     try:
-        with get_db() as session:
-            result = session.execute(
+        if db_connection.db_manager is None:
+            db_connection.init_db_standalone()
+        engine = db_connection.db_manager.create_engine()
+        with engine.begin() as conn:
+            result = conn.execute(
                 update(Video)
                 .where(Video.id == video_id, Video.status == VideoStatus.WANTED)
                 .values(status=VideoStatus.DOWNLOADING, updated_at=datetime.utcnow())
             )
-            session.commit()
             return result.rowcount == 1
     except Exception as e:
         logger.error(f"Failed to claim video {video_id} for download: {e}")
@@ -165,6 +181,7 @@ def download_all_wanted_videos_internal(
         results = []
         success_count = 0
         failed_count = 0
+        skipped_count = 0
         wanted_video_ids = []
 
         # Import settings service for subtitle configuration
@@ -209,6 +226,7 @@ def download_all_wanted_videos_internal(
                     "message": "No wanted videos found",
                     "success_count": 0,
                     "failed_count": 0,
+                    "skipped_count": 0,
                     "results": [],
                 }
 
@@ -216,6 +234,7 @@ def download_all_wanted_videos_internal(
 
         # Process each video individually to avoid session issues
         for video_id, video_title, artist_name in wanted_video_ids:
+            claimed = False
             try:
                 with get_db() as session:
                     # Get fresh video object for each download
@@ -267,7 +286,9 @@ def download_all_wanted_videos_internal(
                                 "error": "Already claimed by another download process",
                             }
                         )
+                        skipped_count += 1
                         continue
+                    claimed = True
 
                     # Import yt-dlp service
                     from src.services.download_service_adapter import ytdlp_service
@@ -297,6 +318,16 @@ def download_all_wanted_videos_internal(
                         )
                         success_count += 1
                     else:
+                        # #329: the claim above already committed
+                        # DOWNLOADING -- dispatch then failed (falsy
+                        # result), so revert to WANTED here or this video
+                        # is stuck at DOWNLOADING forever: invisible to
+                        # every status == WANTED query, never retried by
+                        # the next scheduled run. Matches the
+                        # revert-on-dispatch-failure precedent in
+                        # videos_downloads.py.
+                        video.status = VideoStatus.WANTED
+                        session.commit()
                         results.append(
                             {
                                 "video_id": video_id,
@@ -310,6 +341,29 @@ def download_all_wanted_videos_internal(
 
             except Exception as e:
                 logger.error(f"Failed to process video {video_id} ({video_title}): {e}")
+                if claimed:
+                    # #329: the claim committed DOWNLOADING before this
+                    # exception was raised -- the `with get_db() as
+                    # session` block above has already rolled back and
+                    # closed on the way out, so revert with a fresh
+                    # session rather than reusing it. Same
+                    # stuck-forever concern as the dispatch-failure
+                    # branch above.
+                    try:
+                        with get_db() as revert_session:
+                            revert_video = (
+                                revert_session.query(Video)
+                                .filter(Video.id == video_id)
+                                .first()
+                            )
+                            if revert_video:
+                                revert_video.status = VideoStatus.WANTED
+                                revert_session.commit()
+                    except Exception as revert_error:
+                        logger.error(
+                            f"Failed to revert video {video_id} to WANTED "
+                            f"after dispatch exception: {revert_error}"
+                        )
                 results.append(
                     {
                         "video_id": video_id,
@@ -323,9 +377,10 @@ def download_all_wanted_videos_internal(
 
         return {
             "success": True,
-            "message": f"Processed {len(wanted_video_ids)} videos: {success_count} succeeded, {failed_count} failed",
+            "message": f"Processed {len(wanted_video_ids)} videos: {success_count} succeeded, {failed_count} failed, {skipped_count} skipped",
             "success_count": success_count,
             "failed_count": failed_count,
+            "skipped_count": skipped_count,
             "results": results,
         }
 
@@ -336,6 +391,7 @@ def download_all_wanted_videos_internal(
             "error": str(e),
             "success_count": 0,
             "failed_count": 0,
+            "skipped_count": 0,
             "results": [],
         }
 
