@@ -950,6 +950,21 @@ class UnifiedDownloadService:
                 # Update video status
                 video = session.query(Video).filter(Video.id == video_id).first()
                 if video:
+                    # #329: a video already confirmed DOWNLOADED must never
+                    # be downgraded by a failure -- this is exactly the
+                    # scenario claim_video_for_download() (video_batch_service.py)
+                    # closes the *source* of, but this check is an
+                    # independent safety net: it protects correctness even
+                    # if some other, not-yet-identified path ever manages
+                    # to dispatch a duplicate download for an
+                    # already-succeeded video.
+                    if video.status == VideoStatus.DOWNLOADED.value:
+                        logger.warning(
+                            f"Ignoring stale failure for video {video_id} "
+                            f"(already DOWNLOADED): {error_message}"
+                        )
+                        return
+
                     video.status = VideoStatus.FAILED.value
 
                     # Create or update Download record with error message
