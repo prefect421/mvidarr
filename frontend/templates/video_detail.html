@@ -2296,7 +2296,14 @@ video::-moz-text-track-container {
 }
 
 .video-transcoding-notice p {
+    /* Explicit, not just inherited from the container: typography.css's
+       global `p, .text-base { color: var(--text-primary); }` targets
+       <p> directly, which always beats a color merely inherited from an
+       ancestor -- var(--text-primary) is white in the default dark
+       theme, so this notice's text was rendering white on its own
+       light-yellow/beige (#fff3cd) background. */
     margin: 0.5rem 0;
+    color: #856404;
 }
 
 .video-transcoding-notice .btn {
