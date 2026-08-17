@@ -214,17 +214,27 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.19 - Released
+### Current Phase: v1.0.0 - Released
 
-#### Versioning Policy (Updated 2026-08-13)
-- **Current Version**: 0.12.19 (Released 2026-08-13)
-- **Next Version**: 0.12.20 (Planning)
+#### Versioning Policy (Updated 2026-08-17)
+- **Current Version**: 1.0.0 (Released 2026-08-17)
+- **Next Version**: 1.0.1 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
-  - **0.x.y**: Pre-production development (current phase)
-  - **1.0.0**: First production-ready release (future)
+  - **0.x.y**: Pre-production development (past phase)
+  - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **v1.0.0** (2026-08-17): First Production-Ready Release
+  - ✅ Gated on (per the v1.0.0 GitHub milestone): RBAC actually enforced, a working/modern login page (OAuth reachable, no dead placeholder), and auth-path test coverage — all closed
+  - ✅ OAuth login (Authentik, Google, GitHub) with a signup allowlist, admin-only new-account policy, and a fixed privilege-escalation bug in Authentik group-role mapping
+  - ✅ Real RBAC enforcement (was previously decorative — every session hardcoded admin)
+  - ✅ Login page redesign: paired rotating background/logo art, real OAuth provider buttons, scrollable card, fixed logo panel width
+  - ✅ Two-Factor Authentication (TOTP + backup codes), password reset flow
+  - ✅ Native Discord and Apprise notification providers, wired to real download/artist activity (not just a manual test endpoint)
+  - ✅ "Recently Found" videos view, live artist thumbnail sourcing (Spotify/Last.fm before Wikipedia)
+  - ✅ Numerous live-testing bug fixes: 2FA audit logging, OAuth callback error handling, Videos-page pagination dropping active filters, webhook URL credential logging, header username display, Edit Webhook modal scroll
+  - See GitHub milestone "v1.0.0" for the complete issue list
 - **v0.12.19** (2026-08-13): Recently Found Videos View
   - ✅ Feature: "Recently Found" one-click view on Videos page (#316) — shows all videos sorted by date_added desc, regardless of status, via a new button + shareable deep-link URL (`?sort_by=date_added&sort_order=desc&status=`)
   - ✅ Re-scoped from an "upcoming release calendar" after confirming no integrated data source (IMVDb, MusicBrainz, YouTube, Spotify, Last.fm) exposes reliable future release dates
@@ -479,9 +489,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.19 (Recently Found Videos View — #316)
+- **Current Version**: v1.0.0 (First Production-Ready Release)
 - **Development Focus**: Stability, security
-- **Next Version**: v0.12.20
+- **Next Version**: v1.0.1
 
 ### Code Development Process
 1. Create feature branch from `dev` branch

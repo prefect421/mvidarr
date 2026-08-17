@@ -1612,45 +1612,35 @@
         }
         
         // User Authentication and Menu Management
+        //
+        // Previously fetched a nonexistent '/auth/check' route and looked
+        // for #userMenu/#username -- neither exists in the current header
+        // markup (only #headerUsername/#headerUserRole/#headerUserSection
+        // do, from an earlier header refactor this function never caught
+        // up with), and this function was never even called anywhere. The
+        // real, working endpoint is GET /api/auth/user
+        // (src/api/fastapi/auth.py's get_current_user_info).
         function checkUserAuthentication() {
-            fetch('/auth/check')
+            fetch('/api/auth/user')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.authenticated && data.user) {
-                        // Show user menu
-                        const userMenu = document.getElementById('userMenu');
-                        const username = document.getElementById('username');
-                        
-                        if (userMenu && username) {
-                            userMenu.style.display = 'block';
-                            username.textContent = data.user.username;
-                        }
-                        
-                        // User management menu item removed
-                    } else {
-                        // Hide user menu if not authenticated
-                        const userMenu = document.getElementById('userMenu');
-                        const userMgmtSidebarItem = document.getElementById('userManagementSidebarItem');
-                        
-                        if (userMenu) {
-                            userMenu.style.display = 'none';
-                        }
-                        if (userMgmtSidebarItem) {
-                            userMgmtSidebarItem.style.display = 'none';
-                        }
+                    const headerUserSection = document.getElementById('headerUserSection');
+                    const headerUsername = document.getElementById('headerUsername');
+                    const headerUserRole = document.getElementById('headerUserRole');
+
+                    if (data.success && data.user) {
+                        if (headerUserSection) headerUserSection.style.display = 'flex';
+                        if (headerUsername) headerUsername.textContent = data.user.username;
+                        if (headerUserRole) headerUserRole.textContent = data.user.role;
+                    } else if (headerUserSection) {
+                        headerUserSection.style.display = 'none';
                     }
                 })
                 .catch(error => {
                     console.error('Error checking authentication:', error);
-                    // Hide user menu on error
-                    const userMenu = document.getElementById('userMenu');
-                    const userMgmtSidebarItem = document.getElementById('userManagementSidebarItem');
-                    
-                    if (userMenu) {
-                        userMenu.style.display = 'none';
-                    }
-                    if (userMgmtSidebarItem) {
-                        userMgmtSidebarItem.style.display = 'none';
+                    const headerUserSection = document.getElementById('headerUserSection');
+                    if (headerUserSection) {
+                        headerUserSection.style.display = 'none';
                     }
                 });
         }
@@ -2313,7 +2303,12 @@
             
             // Header user menu is now a direct link to settings page
             // No dropdown functionality needed - link goes directly to /settings
-            
+
+            // Populate the header username/role from the real session
+            // (was never called anywhere -- see checkUserAuthentication()'s
+            // comment above)
+            checkUserAuthentication();
+
             // Show/hide header user section based on authentication
             updateHeaderUserSection();
             
