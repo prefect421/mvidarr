@@ -250,10 +250,30 @@ def download_all_wanted_videos_internal(
                         failed_count += 1
                         continue
 
+                    # Atomically claim this video before dispatching (#329)
+                    # -- bulk_download_wanted_videos() (the manual-trigger
+                    # equivalent of this function) can run concurrently and
+                    # select the same WANTED video; only one of them may
+                    # win. A failed claim means another process already has
+                    # it -- report as skipped, not failed, and move on.
+                    if not claim_video_for_download(video_id):
+                        results.append(
+                            {
+                                "video_id": video_id,
+                                "title": video_title,
+                                "artist": artist_name,
+                                "success": False,
+                                "skipped": True,
+                                "error": "Already claimed by another download process",
+                            }
+                        )
+                        continue
+
                     # Import yt-dlp service
                     from src.services.download_service_adapter import ytdlp_service
 
-                    # Queue download
+                    # Queue download -- video.status is already DOWNLOADING,
+                    # set and committed by claim_video_for_download() above.
                     result = ytdlp_service.add_music_video_download(
                         artist=artist_name,
                         title=video_title,
@@ -265,10 +285,6 @@ def download_all_wanted_videos_internal(
                     )
 
                     if result and result.get("success"):
-                        # Update the video status in a separate transaction
-                        video.status = VideoStatus.DOWNLOADING
-                        session.commit()
-
                         results.append(
                             {
                                 "video_id": video_id,
