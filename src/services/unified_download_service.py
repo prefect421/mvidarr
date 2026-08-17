@@ -15,6 +15,10 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Callable, Dict, List, Optional
 
+from src.services.webhook_service import (
+    trigger_video_download_failed,
+    trigger_video_downloaded,
+)
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.unified_download")
@@ -628,9 +632,28 @@ class UnifiedDownloadService:
                 logger.info(
                     f"Download {download_id} completed successfully: {result.file_path}"
                 )
+                # #370: notify webhook subscribers (Discord/Apprise/generic)
+                # now that the DB reflects the video as downloaded -- never
+                # fire before the DB update, or a notification could arrive
+                # for a video the DB doesn't yet show as downloaded.
+                trigger_video_downloaded(
+                    {
+                        "id": context.video_id,
+                        "title": context.title,
+                        "artist_name": context.artist,
+                    }
+                )
             else:
                 self._update_database_failure(context.video_id, result.error_message)
                 logger.error(f"Download {download_id} failed: {result.error_message}")
+                trigger_video_download_failed(
+                    {
+                        "id": context.video_id,
+                        "title": context.title,
+                        "artist_name": context.artist,
+                    },
+                    result.error_message,
+                )
 
             # Execute callbacks
             for callback in self.download_callbacks.get(download_id, []):
@@ -642,6 +665,14 @@ class UnifiedDownloadService:
         except Exception as e:
             logger.error(f"Download {download_id} exception: {e}")
             self._update_database_failure(context.video_id, str(e))
+            trigger_video_download_failed(
+                {
+                    "id": context.video_id,
+                    "title": context.title,
+                    "artist_name": context.artist,
+                },
+                str(e),
+            )
 
         finally:
             # Cleanup
