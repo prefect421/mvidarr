@@ -742,12 +742,14 @@ function loadStats() {
 function showAddWebhookForm() {
     document.getElementById('formTitle').textContent = 'Add New Webhook';
     document.getElementById('webhookForm').style.display = 'block';
+    updateWebhookFormForProviderType();
     document.getElementById('webhookUrl').focus();
 }
 
 function hideWebhookForm() {
     document.getElementById('webhookForm').style.display = 'none';
     document.getElementById('webhookConfigForm').reset();
+    updateWebhookFormForProviderType();
     document.getElementById('validationErrors').style.display = 'none';
 }
 

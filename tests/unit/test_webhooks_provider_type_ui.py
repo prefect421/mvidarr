@@ -39,3 +39,23 @@ class TestWebhooksProviderTypeUI:
         body = self.html[start:end]
         assert "provider_type" in body
         assert "webhookProviderType" in body
+
+    def test_hide_webhook_form_resyncs_provider_type_toggle_state(self):
+        # hideWebhookForm() calls webhookConfigForm.reset(), which resets the
+        # <select> back to "generic" but does NOT undo the field
+        # show/hide/relabel side effects applied by
+        # updateWebhookFormForProviderType(). Without an explicit resync
+        # call, reopening the form after a reset leaves the URL
+        # field/label/hint and Secret/Custom-Headers groups stuck in
+        # whatever provider mode was last selected, desynced from the
+        # (reset) dropdown value.
+        start = self.html.index("function hideWebhookForm()")
+        end = self.html.index("\n}", start)
+        body = self.html[start:end]
+        assert "updateWebhookFormForProviderType()" in body
+
+    def test_show_add_webhook_form_syncs_provider_type_toggle_state(self):
+        start = self.html.index("function showAddWebhookForm()")
+        end = self.html.index("\n}", start)
+        body = self.html[start:end]
+        assert "updateWebhookFormForProviderType()" in body
