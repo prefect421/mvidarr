@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 import requests
 
 from src.services.apprise_notification_service import (
-    _redact_apprise_url,
+    redact_apprise_url,
     send_apprise_notification,
 )
 from src.services.discord_notification_formatter import format_discord_embed
@@ -56,6 +56,23 @@ class WebhookEndpoint:
             self.events = []
         if self.headers is None:
             self.headers = {}
+
+
+def _log_safe_url(url: str) -> str:
+    """Redact a URL for logging if it's credential-bearing.
+
+    Apprise URLs embed their credential directly in the URL string itself
+    (tgram://<bot_token>/<chat_id>, discord://<id>/<token>,
+    mailto://user:password@host, ...) -- any URL that isn't a plain
+    http(s) endpoint is, by construction, an Apprise URL and therefore a
+    live credential. Checking the scheme directly (rather than requiring
+    a WebhookEndpoint's tracked provider_type) means this stays correct
+    even in call sites like remove_endpoint() that only ever receive a
+    bare URL string.
+    """
+    if url.startswith(("http://", "https://")):
+        return url
+    return redact_apprise_url(url)
 
 
 class WebhookService:
@@ -141,7 +158,7 @@ class WebhookService:
 
             self.endpoints.append(endpoint)
             self.save_endpoints()
-            logger.info(f"Added webhook endpoint: {endpoint.url}")
+            logger.info(f"Added webhook endpoint: {_log_safe_url(endpoint.url)}")
             return True
 
         except Exception as e:
@@ -153,7 +170,7 @@ class WebhookService:
         try:
             self.endpoints = [ep for ep in self.endpoints if ep.url != url]
             self.save_endpoints()
-            logger.info(f"Removed webhook endpoint: {url}")
+            logger.info(f"Removed webhook endpoint: {_log_safe_url(url)}")
             return True
 
         except Exception as e:
@@ -184,7 +201,7 @@ class WebhookService:
                         endpoint.provider_type = updates["provider_type"]
 
                     self.save_endpoints()
-                    logger.info(f"Updated webhook endpoint: {url}")
+                    logger.info(f"Updated webhook endpoint: {_log_safe_url(url)}")
                     return True
 
             raise ValueError("Endpoint not found")
@@ -197,7 +214,11 @@ class WebhookService:
         """Get all webhook endpoints"""
         return [
             {
-                "url": ep.url,
+                "url": (
+                    redact_apprise_url(ep.url)
+                    if ep.provider_type == "apprise"
+                    else ep.url
+                ),
                 "secret": "***" if ep.secret else None,
                 "events": [event.value for event in ep.events],
                 "enabled": ep.enabled,
@@ -253,7 +274,7 @@ class WebhookService:
             # under this same retry loop so a transient failure still
             # gets MVidarr-level retries.
             if endpoint.provider_type == "apprise":
-                redacted_url = _redact_apprise_url(endpoint.url)
+                redacted_url = redact_apprise_url(endpoint.url)
                 for attempt in range(endpoint.max_retries + 1):
                     if send_apprise_notification(endpoint.url, event):
                         logger.info(
@@ -369,7 +390,13 @@ class WebhookService:
             # -- it isn't one.
             if provider_type == "apprise":
                 success = send_apprise_notification(url, test_event)
-                return {"success": success}
+                return {
+                    "success": success,
+                    "status_code": None,
+                    "response_time": None,
+                    "response_text": "Apprise notification sent" if success else None,
+                    "error": None if success else "Apprise delivery failed",
+                }
 
             if provider_type == "discord":
                 payload = format_discord_embed(test_event)

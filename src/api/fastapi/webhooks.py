@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
+from src.services.apprise_notification_service import redact_apprise_url
 from src.services.webhook_service import (
     WebhookEndpoint,
     WebhookEventType,
@@ -92,6 +93,10 @@ class WebhookEndpointRequest(BaseModel):
                 raise ValueError(
                     "url must be a valid http(s) URL for generic/discord endpoints"
                 )
+            if any(char in v for char in ("<", ">", '"', "'")):
+                raise ValueError(
+                    "url must not contain '<', '>', '\"', or \"'\" characters"
+                )
         return v
 
 
@@ -136,6 +141,10 @@ class WebhookTestRequest(BaseModel):
                 raise ValueError(
                     "url must be a valid http(s) URL for generic/discord endpoints"
                 )
+            if any(char in v for char in ("<", ">", '"', "'")):
+                raise ValueError(
+                    "url must not contain '<', '>', '\"', or \"'\" characters"
+                )
         return v
 
 
@@ -159,7 +168,11 @@ class WebhookTriggerRequest(BaseModel):
 class WebhookValidationRequest(BaseModel):
     """Webhook validation request"""
 
-    url: Optional[HttpUrl] = None
+    # Declared FIRST, before url -- same ordering requirement as
+    # WebhookEndpointRequest above: pydantic's @validator only sees
+    # earlier-declared fields via `values`.
+    provider_type: str = Field(default="generic", pattern="^(generic|discord|apprise)$")
+    url: Optional[str] = None
     secret: Optional[str] = Field(None, max_length=256)
     events: Optional[List[str]] = None
     enabled: Optional[bool] = None
@@ -227,8 +240,13 @@ async def create_webhook(
     try:
         user_id = current_user.get("user_id", 1)
 
+        log_url = (
+            redact_apprise_url(webhook_request.url)
+            if webhook_request.provider_type == "apprise"
+            else webhook_request.url
+        )
         logger.info(
-            f"Creating webhook endpoint for URL '{webhook_request.url}' by user {current_user.get('username')}"
+            f"Creating webhook endpoint for URL '{log_url}' by user {current_user.get('username')}"
         )
 
         # Convert event strings to enum values
@@ -343,8 +361,13 @@ async def test_webhook(
     try:
         user_id = current_user.get("user_id", 1)
 
+        log_url = (
+            redact_apprise_url(test_request.url)
+            if test_request.provider_type == "apprise"
+            else test_request.url
+        )
         logger.info(
-            f"Testing webhook endpoint '{test_request.url}' for user {current_user.get('username')}"
+            f"Testing webhook endpoint '{log_url}' for user {current_user.get('username')}"
         )
 
         result = webhook_service.test_endpoint(
@@ -377,10 +400,16 @@ async def validate_webhook(
         validation_errors = []
         data = validation_request.dict()
 
-        # Validate URL
-        if "url" not in data or data["url"] is None:
+        # Validate URL. Apprise URLs aren't http(s) -- they're arbitrary
+        # Apprise service URL strings (tgram://, discord://, mailto://,
+        # ...) -- so only enforce the http(s)-prefix check for
+        # generic/discord; an Apprise URL is valid as long as it's
+        # non-empty.
+        if "url" not in data or data["url"] is None or not str(data["url"]):
             validation_errors.append("URL is required")
-        elif not str(data["url"]).startswith(("http://", "https://")):
+        elif validation_request.provider_type != "apprise" and not str(
+            data["url"]
+        ).startswith(("http://", "https://")):
             validation_errors.append("URL must start with http:// or https://")
 
         # Validate event types

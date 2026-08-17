@@ -15,8 +15,6 @@ are simple enough that a shared abstraction isn't worth the coupling
 yet.
 """
 
-import apprise
-
 from src.services.webhook_models import WebhookEvent, WebhookEventType
 from src.utils.logger import get_logger
 
@@ -43,7 +41,7 @@ _TITLES = {
 }
 
 
-def _redact_apprise_url(apprise_url: str) -> str:
+def redact_apprise_url(apprise_url: str) -> str:
     """Apprise URLs embed their credential directly in the URL string by
     design (e.g. tgram://<bot_token>/<chat_id>, discord://<id>/<token>,
     mailto://user:password@host). Log only the scheme so a delivery
@@ -81,14 +79,24 @@ def _body_for(event: WebhookEvent) -> str:
 def send_apprise_notification(apprise_url: str, event: WebhookEvent) -> bool:
     """Deliver a webhook event via Apprise. Never raises -- returns False
     on any failure so the caller's retry loop can treat it the same way
-    as a failed HTTP request."""
+    as a failed HTTP request.
+
+    `apprise` is imported here rather than at module scope so that a
+    missing/broken `apprise` install only breaks Apprise delivery (an
+    ImportError caught below, same as any other failure) instead of
+    taking down the entire FastAPI app at boot -- webhook_service.py
+    imports this module unconditionally, and the API layer imports
+    webhook_service.
+    """
     try:
+        import apprise
+
         notifier = apprise.Apprise()
         notifier.add(apprise_url)
         result = notifier.notify(title=_title_for(event), body=_body_for(event))
         return bool(result)
     except Exception as e:
         logger.warning(
-            f"Apprise notification failed for {_redact_apprise_url(apprise_url)}: {e}"
+            f"Apprise notification failed for {redact_apprise_url(apprise_url)}: {e}"
         )
         return False

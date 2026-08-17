@@ -24,8 +24,14 @@ class TestSendAppriseNotification:
         mock_apprise_instance = MagicMock()
         mock_apprise_instance.notify.return_value = True
 
+        # apprise_notification_service.py imports `apprise` locally inside
+        # send_apprise_notification() (#315 Finding 7 -- so a missing
+        # apprise install is a per-delivery failure, not a boot-time
+        # ImportError for the whole app), so there's no module-level
+        # `apprise` attribute on apprise_notification_service to patch
+        # through -- patch the real `apprise` package directly instead.
         with patch(
-            "src.services.apprise_notification_service.apprise.Apprise",
+            "apprise.Apprise",
             return_value=mock_apprise_instance,
         ):
             result = send_apprise_notification("tgram://bottoken/ChatID", _event())
@@ -38,8 +44,14 @@ class TestSendAppriseNotification:
         mock_apprise_instance = MagicMock()
         mock_apprise_instance.notify.return_value = True
 
+        # apprise_notification_service.py imports `apprise` locally inside
+        # send_apprise_notification() (#315 Finding 7 -- so a missing
+        # apprise install is a per-delivery failure, not a boot-time
+        # ImportError for the whole app), so there's no module-level
+        # `apprise` attribute on apprise_notification_service to patch
+        # through -- patch the real `apprise` package directly instead.
         with patch(
-            "src.services.apprise_notification_service.apprise.Apprise",
+            "apprise.Apprise",
             return_value=mock_apprise_instance,
         ):
             send_apprise_notification(
@@ -56,8 +68,14 @@ class TestSendAppriseNotification:
         mock_apprise_instance = MagicMock()
         mock_apprise_instance.notify.return_value = False
 
+        # apprise_notification_service.py imports `apprise` locally inside
+        # send_apprise_notification() (#315 Finding 7 -- so a missing
+        # apprise install is a per-delivery failure, not a boot-time
+        # ImportError for the whole app), so there's no module-level
+        # `apprise` attribute on apprise_notification_service to patch
+        # through -- patch the real `apprise` package directly instead.
         with patch(
-            "src.services.apprise_notification_service.apprise.Apprise",
+            "apprise.Apprise",
             return_value=mock_apprise_instance,
         ):
             result = send_apprise_notification("tgram://bottoken/ChatID", _event())
@@ -68,8 +86,14 @@ class TestSendAppriseNotification:
         mock_apprise_instance = MagicMock()
         mock_apprise_instance.notify.side_effect = RuntimeError("boom")
 
+        # apprise_notification_service.py imports `apprise` locally inside
+        # send_apprise_notification() (#315 Finding 7 -- so a missing
+        # apprise install is a per-delivery failure, not a boot-time
+        # ImportError for the whole app), so there's no module-level
+        # `apprise` attribute on apprise_notification_service to patch
+        # through -- patch the real `apprise` package directly instead.
         with patch(
-            "src.services.apprise_notification_service.apprise.Apprise",
+            "apprise.Apprise",
             return_value=mock_apprise_instance,
         ):
             result = send_apprise_notification("tgram://bottoken/ChatID", _event())

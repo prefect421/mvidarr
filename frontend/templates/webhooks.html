@@ -555,6 +555,11 @@
     <div class="test-section">
         <h3>Test Webhook</h3>
         <div class="test-controls">
+            <select id="testWebhookProviderType" class="form-control">
+                <option value="generic">Generic (custom HTTP webhook)</option>
+                <option value="discord">Discord</option>
+                <option value="apprise">Apprise</option>
+            </select>
             <input type="url" id="testWebhookUrl" placeholder="Webhook URL to test" class="form-control">
             <input type="password" id="testWebhookSecret" placeholder="Secret (optional)" class="form-control">
             <button onclick="testWebhook()" class="btn btn-warning">Test Webhook</button>
@@ -690,21 +695,40 @@ function loadWebhooks() {
         });
 }
 
+// Escapes HTML special characters for safe interpolation into innerHTML
+// text/attribute content (e.g. webhook.url, which is stored verbatim --
+// see WebhookEndpointRequest.url in src/api/fastapi/webhooks.py -- and
+// could otherwise carry a stored-XSS payload).
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Same as escapeHtml, but also escapes single quotes. Use this wherever
+// a value is interpolated inside a single-quoted JS string literal that
+// itself sits inside a double-quoted HTML attribute, e.g.
+// onclick="fn('${escapeHtmlAttr(value)}')" -- escapeHtml alone leaves a
+// bare `'` free to break out of the JS string literal.
+function escapeHtmlAttr(text) {
+    return escapeHtml(text).replace(/'/g, '&#39;');
+}
+
 function displayWebhooks(webhooks) {
     const container = document.getElementById('webhooksList');
     container.innerHTML = '';
-    
+
     webhooks.forEach(webhook => {
         const webhookDiv = document.createElement('div');
         webhookDiv.className = 'webhook-item';
-        
-        const eventsHtml = webhook.events.length > 0 
-            ? webhook.events.map(event => `<span class="event-tag">${event}</span>`).join('')
+
+        const eventsHtml = webhook.events.length > 0
+            ? webhook.events.map(event => `<span class="event-tag">${escapeHtml(event)}</span>`).join('')
             : '<span class="event-tag">All Events</span>';
-        
+
         webhookDiv.innerHTML = `
             <div class="webhook-info">
-                <div class="webhook-url">${webhook.url}</div>
+                <div class="webhook-url">${escapeHtml(webhook.url)}</div>
                 <div class="webhook-details">
                     Retries: ${webhook.max_retries} | Timeout: ${webhook.timeout}s
                     ${webhook.secret ? ' | Secret: Configured' : ''}
@@ -716,8 +740,8 @@ function displayWebhooks(webhooks) {
                 <span>${webhook.enabled ? 'Enabled' : 'Disabled'}</span>
             </div>
             <div class="webhook-actions">
-                <button onclick="editWebhook('${webhook.url}')" class="btn btn-sm btn-primary">Edit</button>
-                <button onclick="deleteWebhook('${webhook.url}')" class="btn btn-sm btn-danger">Delete</button>
+                <button onclick="editWebhook('${escapeHtmlAttr(webhook.url)}')" class="btn btn-sm btn-primary">Edit</button>
+                <button onclick="deleteWebhook('${escapeHtmlAttr(webhook.url)}')" class="btn btn-sm btn-danger">Delete</button>
             </div>
         `;
         container.appendChild(webhookDiv);
@@ -1012,20 +1036,24 @@ function testWebhook() {
         },
         body: JSON.stringify({
             url: url,
-            secret: secret
+            secret: secret,
+            provider_type: document.getElementById('testWebhookProviderType').value
         })
     })
     .then(response => response.json())
     .then(data => {
         const result = data.test_result;
-        
+
         if (result.success) {
+            const statusCode = result.status_code != null ? result.status_code : 'N/A';
+            const responseTime = result.response_time != null ? result.response_time.toFixed(2) : 'N/A';
+            const responseText = result.response_text != null ? result.response_text : 'N/A';
             resultsDiv.innerHTML = `
                 <div class="test-success">
                     <h4>✅ Test Successful</h4>
-                    <p>Status Code: ${result.status_code}</p>
-                    <p>Response Time: ${result.response_time}s</p>
-                    <p>Response: ${result.response_text}</p>
+                    <p>Status Code: ${statusCode}</p>
+                    <p>Response Time: ${responseTime}s</p>
+                    <p>Response: ${escapeHtml(responseText)}</p>
                 </div>
             `;
         } else {
