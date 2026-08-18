@@ -77,10 +77,12 @@ async def bulk_download_videos(
         errors = []
 
         for video in videos:
+            claimed = False
+            original_status = None
             try:
                 video_id = video.id  # Store ID before any operations
                 # Skip if already downloaded
-                if video.status == "downloaded":
+                if video.status == VideoStatus.DOWNLOADED:
                     skipped_count += 1
                     continue
 
@@ -115,6 +117,21 @@ async def bulk_download_videos(
                         continue
                     video_url = resolved_url
 
+                from src.services.video_batch_service import (
+                    claim_video_for_redownload,
+                )
+
+                # Capture the real pre-claim status so a revert (below)
+                # restores it exactly, rather than assuming WANTED -- the
+                # claim below can succeed from FAILED, MONITORED, or
+                # DOWNLOADED too (#377).
+                original_status = video.status
+
+                if not claim_video_for_redownload(video_id):
+                    skipped_count += 1
+                    continue
+                claimed = True
+
                 # Create download entry with all required fields
                 download = Download(
                     artist_id=video.artist_id,
@@ -129,9 +146,23 @@ async def bulk_download_videos(
                 session.add(download)
                 session.flush()  # Get the download ID
 
-                # Update video status to downloading
-                video.status = VideoStatus.DOWNLOADING
-                video.updated_at = datetime.utcnow()
+                # Commit per-video, immediately after the flush above,
+                # instead of once at the very end of the whole loop
+                # (#377). Two reasons:
+                #   1. The claim above already committed
+                #      status=DOWNLOADING durably on its own connection.
+                #      If this session's terminal commit lived at the end
+                #      of the loop instead and *that* commit failed, every
+                #      Download row staged across the entire batch would
+                #      be discarded while every claim in the batch stayed
+                #      durably committed -- stranding the whole batch at
+                #      DOWNLOADING with zero Download rows.
+                #   2. Narrows the lock hold time on this FK-referencing
+                #      flush/commit to a single row, rather than holding
+                #      it open across the whole batch concurrent with
+                #      claims taking exclusive locks on separate
+                #      connections from other requests (deadlock risk).
+                session.commit()
 
                 # Submit job to ytdlp_service
                 try:
@@ -156,7 +187,11 @@ async def bulk_download_videos(
                     logger.error(
                         f"Failed to submit download task for video {video_id}: {download_error}"
                     )
-                    # Still count as queued since it's in the database
+                    # Still count as queued since it's in the database.
+                    # Deliberately no revert here (#377): the Download row
+                    # above is already committed, so this video isn't
+                    # stranded with no record at all -- pre-existing
+                    # behavior, out of scope for this finding.
 
                 queued_count += 1
 
@@ -164,8 +199,52 @@ async def bulk_download_videos(
                 video_id = getattr(video, "id", "unknown")  # Safe ID retrieval
                 errors.append(f"Video {video_id}: {str(e)}")
                 logger.error(f"Error queuing download for video {video_id}: {e}")
+                # Roll back this request's shared session before moving on
+                # to the next video in the loop. Unlike
+                # download_all_wanted_videos_internal()'s precedent (which
+                # opens a brand-new get_db() session per iteration, so a
+                # failure there can't affect the next video), this endpoint
+                # loops over one FastAPI-injected session shared across the
+                # whole batch. A failed flush/commit above leaves that
+                # shared session in a pending-rollback state; without this
+                # rollback, every subsequent iteration's session.query/add
+                # would raise PendingRollbackError -- the same
+                # whole-batch-lost failure mode Finding 1 closes for
+                # video_discovery_service.py, just reachable here too.
+                try:
+                    session.rollback()
+                except Exception:
+                    pass
+                if claimed and original_status is not None:
+                    # The claim above already committed DOWNLOADING
+                    # durably on its own connection before whatever raised
+                    # here. Revert it using a *fresh* session, not this
+                    # request's own `session` -- it may be in a broken
+                    # transaction state after whatever raised (e.g. a
+                    # flush/commit failure), mirroring
+                    # download_all_wanted_videos_internal()'s
+                    # revert-via-fresh-session pattern (#329/#377). Without
+                    # this, the video is stuck at DOWNLOADING forever:
+                    # invisible to every status == WANTED query, never
+                    # retried by any subsequent run.
+                    try:
+                        from src.database.connection import get_db
 
-        session.commit()
+                        with get_db() as revert_session:
+                            revert_video = (
+                                revert_session.query(Video)
+                                .filter(Video.id == video_id)
+                                .first()
+                            )
+                            if revert_video:
+                                revert_video.status = original_status
+                                revert_session.commit()
+                    except Exception as revert_error:
+                        logger.error(
+                            f"Failed to revert video {video_id} to "
+                            f"{original_status} after bulk download "
+                            f"exception: {revert_error}"
+                        )
 
         logger.info(f"Bulk queued {queued_count} downloads, skipped {skipped_count}")
 
@@ -278,14 +357,33 @@ async def queue_video_download(
 
         session.add(download)
 
-        # Update video status
-        video.status = VideoStatus.DOWNLOADING
-        video.updated_at = datetime.utcnow()
+        # Claim the video for (re)download now that the URL has been
+        # resolved and the Download row is staged. Claiming any earlier
+        # (e.g. before URL resolution) risks permanently stranding the
+        # video in DOWNLOADING if resolution then fails, since the claim
+        # commits its own independent transaction immediately (#377).
+        original_status = video.status
 
-        session.commit()
+        from src.services.video_batch_service import claim_video_for_redownload
+
+        if not claim_video_for_redownload(video_id):
+            return {
+                "message": "Video is currently downloading",
+                "video_id": video_id,
+            }
 
         # Submit download to unified service via ytdlp_service adapter
         try:
+            # Persist the staged Download row now that the claim has
+            # succeeded. This commit lives inside this try block (not
+            # before it) so that if it raises -- lock timeout, transient
+            # DB error, constraint violation -- the except handler below
+            # still reverts video.status back to original_status instead
+            # of leaving the video permanently stranded at DOWNLOADING,
+            # since the claim already committed that write durably on its
+            # own separate connection (#377).
+            session.commit()
+
             from src.services.download_service_adapter import ytdlp_service
             from src.services.settings_service import settings
 
@@ -325,8 +423,12 @@ async def queue_video_download(
             logger.error(
                 f"Failed to submit download to unified service for video {video_id}: {download_error}"
             )
-            # Rollback video status if download submission failed
-            video.status = VideoStatus.WANTED
+            # Revert to the video's real pre-claim status, not a hardcoded
+            # WANTED -- claim_video_for_redownload() can claim from FAILED,
+            # MONITORED, or DOWNLOADED too (#377), and blindly reverting a
+            # retried FAILED video to WANTED would silently enroll it in the
+            # auto-download queue.
+            video.status = original_status
             session.commit()
             raise HTTPException(
                 status_code=500,
@@ -481,14 +583,36 @@ async def queue_download_video(
         session.add(download)
         session.flush()  # Get the download ID
 
-        # Update video status
-        video.status = VideoStatus.DOWNLOADING
-        video.updated_at = datetime.utcnow()
+        # Claim the video for (re)download now that the YouTube URL has
+        # been confirmed and the Download row is staged. Claiming any
+        # earlier (e.g. before the URL-availability check) risks
+        # permanently stranding the video in DOWNLOADING if that check
+        # then fails, since the claim commits its own independent
+        # transaction immediately (#377).
+        original_status = video.status
 
-        session.commit()
+        from src.services.video_batch_service import claim_video_for_redownload
+
+        if not claim_video_for_redownload(video_id):
+            return {
+                "success": True,
+                "message": "Video is currently downloading",
+                "video_id": video_id,
+                "status": "already_downloading",
+            }
 
         # Submit download to unified service via ytdlp_service adapter
         try:
+            # Persist the staged Download row now that the claim has
+            # succeeded. This commit lives inside this try block (not
+            # before it) so that if it raises -- lock timeout, transient
+            # DB error, constraint violation -- the except handler below
+            # still reverts video.status back to original_status instead
+            # of leaving the video permanently stranded at DOWNLOADING,
+            # since the claim already committed that write durably on its
+            # own separate connection (#377).
+            session.commit()
+
             from src.services.download_service_adapter import ytdlp_service
 
             # Submit to unified download service
@@ -519,8 +643,12 @@ async def queue_download_video(
             logger.error(
                 f"Failed to submit download to unified service for video {video_id}: {download_error}"
             )
-            # Rollback video status
-            video.status = VideoStatus.WANTED
+            # Revert to the video's real pre-claim status, not a hardcoded
+            # WANTED -- claim_video_for_redownload() can claim from FAILED,
+            # MONITORED, or DOWNLOADED too (#377), and blindly reverting a
+            # retried FAILED video to WANTED would silently enroll it in the
+            # auto-download queue.
+            video.status = original_status
             session.commit()
             return {
                 "success": False,

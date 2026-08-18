@@ -14,6 +14,8 @@ Authentication: All endpoints require session-based authentication via get_curre
 from datetime import datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import get_current_user
@@ -23,6 +25,37 @@ from src.utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_import")
+
+
+def _find_existing_video_after_integrity_error(session: Session, imvdb_id, youtube_id):
+    """Re-query for the Video row that collided after an IntegrityError
+    on insert, checking BOTH imvdb_id and youtube_id (#377 Finding 4).
+
+    import_from_imvdb() populates youtube_id from IMVDb metadata, so a
+    user who discovered a video via YouTube first (already in the
+    library under that youtube_id) and later imports its IMVDb record
+    for the same video hits the *youtube_id* unique constraint, not the
+    imvdb_id one. Re-querying by imvdb_id alone (the original bug) finds
+    nothing in that case and re-raises, turning a normal
+    discover-then-enrich workflow into a 500.
+
+    Extracted as its own function (rather than inlined in the except
+    block) so it's directly unit-testable without needing to invoke the
+    full async endpoint -- see
+    tests/unit/test_import_duplicate_video_race.py.
+    """
+    return (
+        session.query(Video)
+        .filter(
+            or_(
+                Video.imvdb_id == imvdb_id,
+                Video.youtube_id == youtube_id if youtube_id else False,
+            )
+        )
+        .first()
+    )
+
+
 # ========================================================================================
 # IMPORT OPERATIONS
 # ========================================================================================
@@ -99,9 +132,23 @@ async def import_from_youtube(
             new_video.artist_id = artist_obj.id
 
         session.add(new_video)
-        session.flush()  # Flush to get the ID without committing
-        video_id = new_video.id  # Get the ID while still bound to session
-        session.commit()
+        try:
+            session.flush()  # Flush to get the ID without committing
+            video_id = new_video.id  # Get the ID while still bound to session
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            existing = (
+                session.query(Video).filter(Video.youtube_id == youtube_id).first()
+            )
+            if existing:
+                return {
+                    "success": True,
+                    "message": "Video already exists in library",
+                    "video_id": existing.id,
+                    "status": "exists",
+                }
+            raise  # Constraint violation for a different reason -- don't swallow it
 
         logger.info(f"Imported YouTube video: {title} ({youtube_id})")
 
@@ -251,9 +298,26 @@ async def import_from_imvdb(
             new_video.artist_id = artist_obj.id
 
         session.add(new_video)
-        session.flush()  # Flush to get the ID without committing
-        video_id = new_video.id  # Get the ID while still bound to session
-        session.commit()
+        try:
+            session.flush()  # Flush to get the ID without committing
+            video_id = new_video.id  # Get the ID while still bound to session
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            # Re-query by imvdb_id OR youtube_id -- this insert can
+            # collide on either unique constraint, since new_video has
+            # both fields populated from IMVDb metadata (#377 Finding 4).
+            existing = _find_existing_video_after_integrity_error(
+                session, imvdb_id, youtube_id
+            )
+            if existing:
+                return {
+                    "success": True,
+                    "message": "Video already exists in library",
+                    "video_id": existing.id,
+                    "status": "exists",
+                }
+            raise  # Constraint violation for a different reason -- don't swallow it
 
         logger.info(f"Imported IMVDb video: {title} ({imvdb_id})")
 

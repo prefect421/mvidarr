@@ -75,6 +75,51 @@ def claim_video_for_download(video_id: int) -> bool:
         return False
 
 
+def claim_video_for_redownload(video_id: int) -> bool:
+    """Atomically claim a video for (re)download from any status except
+    DOWNLOADING itself (#377).
+
+    Unlike claim_video_for_download() (WANTED-only, used by the two
+    wanted-queue dispatchers from #329), this allows claiming from
+    WANTED, MONITORED, FAILED, IGNORED, or DOWNLOADED -- any status
+    except DOWNLOADING -- because none of this function's callers
+    (the bulk-by-IDs and single-video manual download endpoints) are
+    WANTED-only: they intentionally support retrying a FAILED video and,
+    with force_redownload, re-downloading an already-DOWNLOADED one.
+    Gating them on the WANTED-only claim would silently break those
+    working use cases. The only thing this refuses is claiming a video
+    that's already mid-download, which is exactly the #329-style race
+    this exists to prevent.
+
+    Returns True if this caller won the claim, False if the video
+    doesn't exist, is already DOWNLOADING, or a concurrent caller
+    already claimed it first.
+
+    Deliberately does NOT use get_db() here, for the same reason as
+    claim_video_for_download() -- see that function's docstring. Uses
+    its own dedicated engine connection/transaction instead, immune to
+    whatever get_db() session state its caller already holds open.
+    """
+    from sqlalchemy import update
+
+    import src.database.connection as db_connection
+
+    try:
+        if db_connection.db_manager is None:
+            db_connection.init_db_standalone()
+        engine = db_connection.db_manager.create_engine()
+        with engine.begin() as conn:
+            result = conn.execute(
+                update(Video)
+                .where(Video.id == video_id, Video.status != VideoStatus.DOWNLOADING)
+                .values(status=VideoStatus.DOWNLOADING, updated_at=datetime.utcnow())
+            )
+            return result.rowcount == 1
+    except Exception as e:
+        logger.error(f"Failed to claim video {video_id} for redownload: {e}")
+        return False
+
+
 def get_ytdlp_path() -> str:
     """Get the best available yt-dlp executable path"""
     ytdlp_paths = [
