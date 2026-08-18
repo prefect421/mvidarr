@@ -98,14 +98,6 @@ async def bulk_download_videos(
                     skipped_count += 1
                     continue
 
-                from src.services.video_batch_service import (
-                    claim_video_for_redownload,
-                )
-
-                if not claim_video_for_redownload(video_id):
-                    skipped_count += 1
-                    continue
-
                 # Validate and resolve video URL
                 video_url = (
                     video.url
@@ -122,6 +114,14 @@ async def bulk_download_videos(
                         errors.append(f"Video {video_id}: No valid URL found")
                         continue
                     video_url = resolved_url
+
+                from src.services.video_batch_service import (
+                    claim_video_for_redownload,
+                )
+
+                if not claim_video_for_redownload(video_id):
+                    skipped_count += 1
+                    continue
 
                 # Create download entry with all required fields
                 download = Download(

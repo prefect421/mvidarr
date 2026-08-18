@@ -6,7 +6,6 @@ yt-dlp-dependent singleton that raises RuntimeError in this test venv.
 """
 
 import ast
-import inspect
 from pathlib import Path
 
 SOURCE_PATH = (
@@ -44,6 +43,20 @@ class TestBulkDownloadByIdsClaimsBeforeDispatch:
         claim_pos = source.index("claim_video_for_redownload(")
         dispatch_pos = source.index("ytdlp_service.add_music_video_download(")
         assert claim_pos < dispatch_pos
+
+    def test_claim_is_called_after_url_resolution(self):
+        """Regression test for the reordering fix: the claim must not
+        fire until the video's URL has been confirmed resolvable,
+        otherwise a video whose URL can't be resolved gets stranded in
+        DOWNLOADING status with no Download row and no way to be
+        reclaimed by this endpoint. Assert the claim call's text
+        position comes after the URL-resolution block's key marker
+        text, and before the Download row is constructed."""
+        source = _function_source("bulk_download_videos")
+        url_resolution_pos = source.index("resolved_url = await resolve_video_url(")
+        claim_pos = source.index("claim_video_for_redownload(")
+        download_row_pos = source.index("download = Download(")
+        assert url_resolution_pos < claim_pos < download_row_pos
 
     def test_skips_dispatch_when_claim_fails(self):
         source = _function_source("bulk_download_videos")
