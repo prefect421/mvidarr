@@ -29,6 +29,7 @@ from src.database.models import Artist, Video
 # Test modules that want a real (unpatched) get_db() backed by a real DB.
 _REAL_DB_MODULES = {
     "test_claim_video_for_download.py",
+    "test_claim_video_for_redownload.py",
     "test_failure_write_protects_downloaded_status.py",
 }
 
