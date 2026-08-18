@@ -31,16 +31,12 @@ def upgrade(connection):
                 text("SHOW COLUMNS FROM artists LIKE 'thumbnail_source'")
             )
             if not result.fetchone():
-                connection.execute(
-                    text(
-                        """
+                connection.execute(text("""
                     ALTER TABLE artists
                     ADD COLUMN thumbnail_source VARCHAR(50) DEFAULT NULL,
                     ADD COLUMN thumbnail_metadata JSON DEFAULT NULL,
                     ADD COLUMN thumbnail_uploaded_at DATETIME DEFAULT NULL
-                """
-                    )
-                )
+                """))
                 logger.info("Added thumbnail metadata columns to artists table")
             else:
                 logger.info("Thumbnail metadata columns already exist in artists table")
@@ -50,40 +46,28 @@ def upgrade(connection):
                 text("SHOW COLUMNS FROM videos LIKE 'thumbnail_source'")
             )
             if not result.fetchone():
-                connection.execute(
-                    text(
-                        """
+                connection.execute(text("""
                     ALTER TABLE videos
                     ADD COLUMN thumbnail_source VARCHAR(50) DEFAULT NULL,
                     ADD COLUMN thumbnail_metadata JSON DEFAULT NULL,
                     ADD COLUMN thumbnail_uploaded_at DATETIME DEFAULT NULL
-                """
-                    )
-                )
+                """))
                 logger.info("Added thumbnail metadata columns to videos table")
             else:
                 logger.info("Thumbnail metadata columns already exist in videos table")
 
             # Set default source for existing thumbnails
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 UPDATE artists
                 SET thumbnail_source = 'imvdb'
                 WHERE thumbnail_url IS NOT NULL OR thumbnail_path IS NOT NULL
-            """
-                )
-            )
+            """))
 
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 UPDATE videos
                 SET thumbnail_source = 'imvdb'
                 WHERE thumbnail_url IS NOT NULL OR thumbnail_path IS NOT NULL
-            """
-                )
-            )
+            """))
 
             # DO NOT commit here - migration system handles the commit
             # session.commit() would close the connection that the migration system needs
@@ -102,28 +86,20 @@ def downgrade(connection):
         # Use the connection provided by the migration system
         if True:  # Keep indentation for minimal changes
             # Remove thumbnail metadata columns from artists table
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 ALTER TABLE artists
                 DROP COLUMN thumbnail_source,
                 DROP COLUMN thumbnail_metadata,
                 DROP COLUMN thumbnail_uploaded_at
-            """
-                )
-            )
+            """))
 
             # Remove thumbnail metadata columns from videos table
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 ALTER TABLE videos
                 DROP COLUMN thumbnail_source,
                 DROP COLUMN thumbnail_metadata,
                 DROP COLUMN thumbnail_uploaded_at
-            """
-                )
-            )
+            """))
 
             # DO NOT commit here - migration system handles the commit
             logger.info("Migration 004 downgrade completed successfully")

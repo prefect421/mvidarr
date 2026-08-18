@@ -3,7 +3,7 @@
 Migration: Add Advanced Search Tables for MVidarr 0.9.7 - Issue #73
 Version: 008
 Date: 2025-08-16
-Description: Creates tables for saved search presets, search analytics, 
+Description: Creates tables for saved search presets, search analytics,
 search result caching, and search suggestions.
 """
 
@@ -30,9 +30,7 @@ def upgrade(connection):
             logger.info("Starting migration 008: Adding advanced search tables")
 
             # Create search_presets table (MySQL/MariaDB syntax)
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE IF NOT EXISTS search_presets (
                     id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     user_id INTEGER,
@@ -48,9 +46,7 @@ def upgrade(connection):
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
-            """
-                )
-            )
+            """))
 
             # Create indexes for search_presets
             connection.execute(
@@ -87,9 +83,7 @@ def upgrade(connection):
             logger.info("Created search_presets table with indexes")
 
             # Create search_analytics table (MySQL/MariaDB syntax)
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE IF NOT EXISTS search_analytics (
                     id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     user_id INTEGER,
@@ -108,9 +102,7 @@ def upgrade(connection):
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                     FOREIGN KEY (preset_id) REFERENCES search_presets(id) ON DELETE SET NULL
                 )
-            """
-                )
-            )
+            """))
 
             # Create indexes for search_analytics
             connection.execute(
@@ -147,9 +139,7 @@ def upgrade(connection):
             logger.info("Created search_analytics table with indexes")
 
             # Create search_result_cache table (MySQL/MariaDB syntax)
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE IF NOT EXISTS search_result_cache (
                     id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     cache_key VARCHAR(64) UNIQUE NOT NULL,
@@ -162,9 +152,7 @@ def upgrade(connection):
                     expires_at DATETIME NOT NULL,
                     last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )
-            """
-                )
-            )
+            """))
 
             # Create indexes for search_result_cache
             connection.execute(
@@ -191,9 +179,7 @@ def upgrade(connection):
             logger.info("Created search_result_cache table with indexes")
 
             # Create search_suggestions table (MySQL/MariaDB syntax)
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE IF NOT EXISTS search_suggestions (
                     id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     suggestion_text VARCHAR(500) NOT NULL,
@@ -208,9 +194,7 @@ def upgrade(connection):
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     last_used DATETIME
                 )
-            """
-                )
-            )
+            """))
 
             # Create indexes for search_suggestions
             connection.execute(
@@ -343,19 +327,16 @@ def upgrade(connection):
             for preset in system_presets:
                 # Check if preset already exists
                 existing = connection.execute(
-                    text(
-                        """
+                    text("""
                     SELECT id FROM search_presets 
                     WHERE name = :name AND preset_type = 'SYSTEM'
-                """
-                    ),
+                """),
                     {"name": preset["name"]},
                 ).fetchone()
 
                 if not existing:
                     connection.execute(
-                        text(
-                            """
+                        text("""
                         INSERT INTO search_presets (
                             user_id, name, description, search_criteria, 
                             preset_type, is_public
@@ -363,8 +344,7 @@ def upgrade(connection):
                             NULL, :name, :description, :criteria, 
                             'SYSTEM', 1
                         )
-                    """
-                        ),
+                    """),
                         {
                             "name": preset["name"],
                             "description": preset["description"],
@@ -377,9 +357,7 @@ def upgrade(connection):
             # Populate search suggestions from existing data (MySQL/MariaDB syntax)
             try:
                 # Add artist names as suggestions (MySQL uses INSERT IGNORE not INSERT OR IGNORE)
-                connection.execute(
-                    text(
-                        """
+                connection.execute(text("""
                     INSERT IGNORE INTO search_suggestions (
                         suggestion_text, suggestion_type, category,
                         source_type, relevance_score
@@ -389,14 +367,10 @@ def upgrade(connection):
                         'existing_data', 2.0
                     FROM artists
                     WHERE name IS NOT NULL AND TRIM(name) != ''
-                """
-                    )
-                )
+                """))
 
                 # Add video titles as suggestions (limit to avoid too many)
-                connection.execute(
-                    text(
-                        """
+                connection.execute(text("""
                     INSERT IGNORE INTO search_suggestions (
                         suggestion_text, suggestion_type, category,
                         source_type, relevance_score
@@ -408,9 +382,7 @@ def upgrade(connection):
                     WHERE title IS NOT NULL AND TRIM(title) != ''
                     AND CHAR_LENGTH(title) > 3
                     LIMIT 1000
-                """
-                    )
-                )
+                """))
 
                 logger.info("Populated initial search suggestions from existing data")
 

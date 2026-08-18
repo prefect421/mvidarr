@@ -26,15 +26,11 @@ def upgrade(connection):
             logger.info("Starting migration 005: Fix missing artist folder paths")
 
             # Use raw SQL to avoid ORM model attribute issues
-            result = connection.execute(
-                text(
-                    """
+            result = connection.execute(text("""
                 SELECT id, name, folder_path
                 FROM artists
                 WHERE folder_path IS NULL OR folder_path = ''
-            """
-                )
-            )
+            """))
 
             artists_to_fix = result.fetchall()
 
@@ -52,11 +48,9 @@ def upgrade(connection):
                     folder_path = FilenameCleanup.sanitize_folder_name(artist_name)
 
                     connection.execute(
-                        text(
-                            """
+                        text("""
                         UPDATE artists SET folder_path = :folder_path WHERE id = :id
-                    """
-                        ),
+                    """),
                         {"folder_path": folder_path, "id": artist_id},
                     )
 
@@ -88,15 +82,11 @@ def downgrade(connection):
         if True:  # Keep indentation for minimal changes
             logger.info("Downgrading migration 005: Clearing folder paths")
 
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 UPDATE artists
                 SET folder_path = NULL
                 WHERE folder_path IS NOT NULL
-            """
-                )
-            )
+            """))
 
             logger.info(
                 "✅ Migration 005 downgrade completed: Cleared all folder paths"

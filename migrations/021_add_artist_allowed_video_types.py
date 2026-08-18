@@ -41,17 +41,13 @@ def upgrade(connection):
         logger.info("Starting migration 021: Add allowed_video_types to artists table")
 
         # Check if column already exists
-        result = connection.execute(
-            text(
-                """
+        result = connection.execute(text("""
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME = 'artists'
               AND COLUMN_NAME = 'allowed_video_types'
-            """
-            )
-        ).fetchone()
+            """)).fetchone()
 
         if result[0] > 0:
             logger.info(
@@ -61,15 +57,11 @@ def upgrade(connection):
 
         # Add allowed_video_types column
         logger.info("Adding allowed_video_types column to artists table...")
-        connection.execute(
-            text(
-                """
+        connection.execute(text("""
             ALTER TABLE artists
             ADD COLUMN allowed_video_types JSON NULL
             COMMENT 'List of allowed video types for auto-download filtering (Issue #191)'
-            """
-            )
-        )
+            """))
 
         logger.info("✅ Successfully added allowed_video_types column to artists table")
         logger.info("   - NULL = no filtering (download all types)")
@@ -91,17 +83,13 @@ def downgrade(connection):
         )
 
         # Check if column exists before dropping
-        result = connection.execute(
-            text(
-                """
+        result = connection.execute(text("""
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME = 'artists'
               AND COLUMN_NAME = 'allowed_video_types'
-            """
-            )
-        ).fetchone()
+            """)).fetchone()
 
         if result[0] == 0:
             logger.info(
@@ -111,14 +99,10 @@ def downgrade(connection):
 
         # Drop allowed_video_types column
         logger.info("Removing allowed_video_types column from artists table...")
-        connection.execute(
-            text(
-                """
+        connection.execute(text("""
             ALTER TABLE artists
             DROP COLUMN allowed_video_types
-            """
-            )
-        )
+            """))
 
         logger.info(
             "✅ Successfully removed allowed_video_types column from artists table"

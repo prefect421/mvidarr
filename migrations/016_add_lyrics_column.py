@@ -25,33 +25,25 @@ def upgrade(connection):
         logger.info("Starting migration 016: Adding lyrics column to videos table")
 
         # Check if column already exists
-        result = connection.execute(
-            text(
-                """
+        result = connection.execute(text("""
                 SELECT COUNT(*)
                 FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE TABLE_SCHEMA = DATABASE()
                 AND TABLE_NAME = 'videos'
                 AND COLUMN_NAME = 'lyrics'
-            """
-            )
-        )
+            """))
 
         if result.scalar() > 0:
             logger.info("Lyrics column already exists - skipping migration")
             return
 
         # Add lyrics column
-        connection.execute(
-            text(
-                """
+        connection.execute(text("""
                 ALTER TABLE videos
                 ADD COLUMN lyrics TEXT NULL
                 COMMENT 'Song lyrics'
                 AFTER last_enriched
-            """
-            )
-        )
+            """))
 
         logger.info("Migration 016 completed successfully: lyrics column added")
 
@@ -66,31 +58,23 @@ def downgrade(connection):
         logger.info("Starting downgrade of migration 016")
 
         # Check if column exists
-        result = connection.execute(
-            text(
-                """
+        result = connection.execute(text("""
                 SELECT COUNT(*)
                 FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE TABLE_SCHEMA = DATABASE()
                 AND TABLE_NAME = 'videos'
                 AND COLUMN_NAME = 'lyrics'
-            """
-            )
-        )
+            """))
 
         if result.scalar() == 0:
             logger.info("Lyrics column doesn't exist - skipping downgrade")
             return
 
         # Remove lyrics column
-        connection.execute(
-            text(
-                """
+        connection.execute(text("""
                 ALTER TABLE videos
                 DROP COLUMN lyrics
-            """
-            )
-        )
+            """))
 
         logger.info("Migration 016 downgrade completed successfully")
 

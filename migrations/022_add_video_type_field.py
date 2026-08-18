@@ -30,17 +30,13 @@ def upgrade(connection):
         logger.info("Starting migration 022: Add video_type to videos table")
 
         # Check if column already exists
-        result = connection.execute(
-            text(
-                """
+        result = connection.execute(text("""
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME = 'videos'
               AND COLUMN_NAME = 'video_type'
-            """
-            )
-        ).fetchone()
+            """)).fetchone()
 
         if result[0] > 0:
             logger.info("video_type column already exists - skipping migration")
@@ -48,25 +44,17 @@ def upgrade(connection):
 
         # Add video_type column
         logger.info("Adding video_type column to videos table...")
-        connection.execute(
-            text(
-                """
+        connection.execute(text("""
             ALTER TABLE videos
             ADD COLUMN video_type VARCHAR(50) NULL
             COMMENT 'Video type classification: official_music_video, live_performance, lyric_video, etc.'
-            """
-            )
-        )
+            """))
 
         # Add index for video_type for efficient filtering
         logger.info("Creating index on video_type column...")
-        connection.execute(
-            text(
-                """
+        connection.execute(text("""
             CREATE INDEX idx_video_type ON videos(video_type)
-            """
-            )
-        )
+            """))
 
         logger.info("✅ Successfully added video_type column and index to videos table")
         logger.info("   - Existing videos will have NULL type (unclassified)")
@@ -85,17 +73,13 @@ def downgrade(connection):
         logger.info("Starting migration 022 downgrade: Remove video_type from videos")
 
         # Check if column exists
-        result = connection.execute(
-            text(
-                """
+        result = connection.execute(text("""
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME = 'videos'
               AND COLUMN_NAME = 'video_type'
-            """
-            )
-        ).fetchone()
+            """)).fetchone()
 
         if result[0] == 0:
             logger.info("video_type column does not exist - skipping downgrade")
@@ -104,26 +88,18 @@ def downgrade(connection):
         # Drop index first
         logger.info("Dropping index on video_type column...")
         try:
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 DROP INDEX idx_video_type ON videos
-                """
-                )
-            )
+                """))
         except Exception:
             logger.warning("Index idx_video_type may not exist, continuing...")
 
         # Drop video_type column
         logger.info("Removing video_type column from videos table...")
-        connection.execute(
-            text(
-                """
+        connection.execute(text("""
             ALTER TABLE videos
             DROP COLUMN video_type
-            """
-            )
-        )
+            """))
 
         logger.info("✅ Successfully removed video_type column from videos table")
 

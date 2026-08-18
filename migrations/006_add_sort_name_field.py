@@ -33,17 +33,13 @@ def add_sort_name_column(connection):
         if True:  # Keep indentation for minimal changes
             conn = connection
             # Check if column already exists
-            result = conn.execute(
-                text(
-                    """
+            result = conn.execute(text("""
                 SELECT COUNT(*) as count
                 FROM information_schema.columns 
                 WHERE table_name = 'artists' 
                 AND column_name = 'sort_name'
                 AND table_schema = DATABASE()
-            """
-                )
-            )
+            """))
 
             column_exists = result.fetchone()[0] > 0
 
@@ -87,15 +83,11 @@ def populate_sort_names(connection):
             logger.info("Starting sort name population for existing artists")
 
             # Get artists needing sort names using raw SQL
-            result = connection.execute(
-                text(
-                    """
+            result = connection.execute(text("""
                 SELECT id, name
                 FROM artists
                 WHERE sort_name IS NULL OR sort_name = ''
-            """
-                )
-            )
+            """))
 
             artists_to_fix = result.fetchall()
             total_to_fix = len(artists_to_fix)
@@ -118,13 +110,11 @@ def populate_sort_names(connection):
 
                     # Update using raw SQL
                     connection.execute(
-                        text(
-                            """
+                        text("""
                         UPDATE artists
                         SET sort_name = :sort_name
                         WHERE id = :artist_id
-                    """
-                        ),
+                    """),
                         {"sort_name": sort_name, "artist_id": artist_id},
                     )
 
@@ -146,15 +136,11 @@ def populate_sort_names(connection):
             )
 
             # Verify the fix using raw SQL
-            result = connection.execute(
-                text(
-                    """
+            result = connection.execute(text("""
                 SELECT COUNT(*) as count
                 FROM artists
                 WHERE sort_name IS NULL OR sort_name = ''
-            """
-                )
-            )
+            """))
             remaining_without_sort_names = result.fetchone()[0]
 
             if remaining_without_sort_names == 0:

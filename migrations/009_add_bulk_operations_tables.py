@@ -3,7 +3,7 @@
 Migration: Add Bulk Operations Tables for MVidarr 0.9.7 - Issue #74
 Version: 009
 Date: 2025-08-16
-Description: Creates tables for bulk operations, progress tracking, audit trail, 
+Description: Creates tables for bulk operations, progress tracking, audit trail,
 templates, and undo/redo functionality.
 """
 
@@ -30,9 +30,7 @@ def upgrade(connection):
             logger.info("Starting migration 009: Adding bulk operations tables")
 
             # Create bulk_operations table (MySQL/MariaDB syntax)
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE IF NOT EXISTS bulk_operations (
                     id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     user_id INTEGER NOT NULL,
@@ -62,9 +60,7 @@ def upgrade(connection):
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                     FOREIGN KEY (undone_by) REFERENCES users(id) ON DELETE SET NULL
                 )
-            """
-                )
-            )
+            """))
 
             # Create indexes for bulk_operations
             connection.execute(
@@ -101,9 +97,7 @@ def upgrade(connection):
             logger.info("Created bulk_operations table with indexes")
 
             # Create bulk_operation_progress table
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE IF NOT EXISTS bulk_operation_progress (
                     id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     operation_id INTEGER NOT NULL,
@@ -117,9 +111,7 @@ def upgrade(connection):
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     FOREIGN KEY (operation_id) REFERENCES bulk_operations(id) ON DELETE CASCADE
                 )
-            """
-                )
-            )
+            """))
 
             # Create indexes for bulk_operation_progress
             connection.execute(
@@ -136,9 +128,7 @@ def upgrade(connection):
             logger.info("Created bulk_operation_progress table with indexes")
 
             # Create bulk_operation_audit table
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE IF NOT EXISTS bulk_operation_audit (
                     id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     operation_id INTEGER NOT NULL,
@@ -154,9 +144,7 @@ def upgrade(connection):
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (operation_id) REFERENCES bulk_operations(id) ON DELETE CASCADE
                 )
-            """
-                )
-            )
+            """))
 
             # Create indexes for bulk_operation_audit
             connection.execute(
@@ -183,9 +171,7 @@ def upgrade(connection):
             logger.info("Created bulk_operation_audit table with indexes")
 
             # Create bulk_operation_templates table
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE IF NOT EXISTS bulk_operation_templates (
                     id INTEGER PRIMARY KEY AUTO_INCREMENT,
                     user_id INTEGER,
@@ -202,9 +188,7 @@ def upgrade(connection):
                     last_used_at DATETIME,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
-            """
-                )
-            )
+            """))
 
             # Create indexes for bulk_operation_templates
             connection.execute(
@@ -278,19 +262,16 @@ def upgrade(connection):
             for template in system_templates:
                 # Check if template already exists
                 existing = connection.execute(
-                    text(
-                        """
+                    text("""
                     SELECT id FROM bulk_operation_templates 
                     WHERE name = :name AND is_system = 1
-                """
-                    ),
+                """),
                     {"name": template["name"]},
                 ).fetchone()
 
                 if not existing:
                     connection.execute(
-                        text(
-                            """
+                        text("""
                         INSERT INTO bulk_operation_templates (
                             user_id, name, description, operation_type, 
                             template_params, is_public, is_system
@@ -298,8 +279,7 @@ def upgrade(connection):
                             NULL, :name, :description, :operation_type, 
                             :template_params, 1, 1
                         )
-                    """
-                        ),
+                    """),
                         {
                             "name": template["name"],
                             "description": template["description"],

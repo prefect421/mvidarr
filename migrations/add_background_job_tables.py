@@ -25,16 +25,12 @@ def upgrade(connection):
             logger.info("Starting migration: Add background job tables")
 
             # Check if tables already exist (idempotency)
-            result = connection.execute(
-                text(
-                    """
+            result = connection.execute(text("""
                 SELECT COUNT(*)
                 FROM information_schema.tables
                 WHERE table_name = 'background_jobs'
                 AND table_schema = DATABASE()
-            """
-                )
-            )
+            """))
 
             jobs_table_exists = result.scalar() > 0
 
@@ -46,9 +42,7 @@ def upgrade(connection):
 
             # Background jobs table
             logger.info("Creating background_jobs table...")
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE background_jobs (
                     id VARCHAR(36) PRIMARY KEY,
                     type VARCHAR(50) NOT NULL,
@@ -68,9 +62,7 @@ def upgrade(connection):
                     created_by VARCHAR(50),
                     tags JSON
                 )
-            """
-                )
-            )
+            """))
 
             # Add indexes for performance
             connection.execute(
@@ -92,9 +84,7 @@ def upgrade(connection):
 
             # Job execution logs table
             logger.info("Creating job_execution_logs table...")
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE job_execution_logs (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     job_id VARCHAR(36) NOT NULL,
@@ -105,9 +95,7 @@ def upgrade(connection):
                     step VARCHAR(100),
                     data JSON
                 )
-            """
-                )
-            )
+            """))
 
             # Add indexes for log queries
             connection.execute(
@@ -123,9 +111,7 @@ def upgrade(connection):
 
             # Job schedules table (for future enhancement)
             logger.info("Creating job_schedules table...")
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE job_schedules (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     name VARCHAR(100) NOT NULL UNIQUE,
@@ -140,9 +126,7 @@ def upgrade(connection):
                     successful_runs INT DEFAULT 0,
                     failed_runs INT DEFAULT 0
                 )
-            """
-                )
-            )
+            """))
 
             # Add indexes for schedule queries
             connection.execute(

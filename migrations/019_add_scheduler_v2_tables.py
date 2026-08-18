@@ -44,23 +44,17 @@ def upgrade(connection):
         logger.info("Creating scheduled_jobs table...")
 
         # Check if table already exists
-        result = connection.execute(
-            text(
-                """
+        result = connection.execute(text("""
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
             AND table_name = 'scheduled_jobs'
-        """
-            )
-        )
+        """))
 
         table_exists = result.scalar() > 0
 
         if not table_exists:
-            connection.execute(
-                text(
-                    """
+            connection.execute(text("""
                 CREATE TABLE scheduled_jobs (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     job_type VARCHAR(50) NOT NULL COMMENT 'discovery, download, health_check',
@@ -88,9 +82,7 @@ def upgrade(connection):
                     INDEX idx_scheduled_job_artist_status (artist_id, status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 COMMENT='Scheduled job tracking for Scheduler V2'
-            """
-                )
-            )
+            """))
             logger.info("✅ scheduled_jobs table created successfully")
         else:
             logger.info("✅ scheduled_jobs table already exists - skipping")
@@ -135,32 +127,24 @@ def upgrade(connection):
 
         for field_name, field_type, field_comment in artist_fields_to_add:
             # Check if column already exists (idempotency)
-            result = connection.execute(
-                text(
-                    f"""
+            result = connection.execute(text(f"""
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'artists'
                 AND column_name = '{field_name}'
                 AND table_schema = DATABASE()
-            """
-                )
-            )
+            """))
 
             field_exists = result.scalar() > 0
 
             if not field_exists:
                 logger.info(f"Adding {field_name} column to artists table...")
 
-                connection.execute(
-                    text(
-                        f"""
+                connection.execute(text(f"""
                     ALTER TABLE artists
                     ADD COLUMN {field_name} {field_type}
                     COMMENT '{field_comment}'
-                """
-                    )
-                )
+                """))
 
                 logger.info(f"✅ {field_name} column added successfully")
             else:
@@ -179,17 +163,13 @@ def upgrade(connection):
 
         for index_name, column_name in artist_indexes_to_add:
             # Check if index already exists
-            result = connection.execute(
-                text(
-                    f"""
+            result = connection.execute(text(f"""
                 SELECT COUNT(*)
                 FROM information_schema.statistics
                 WHERE table_name = 'artists'
                 AND index_name = '{index_name}'
                 AND table_schema = DATABASE()
-            """
-                )
-            )
+            """))
 
             index_exists = result.scalar() > 0
 
@@ -204,28 +184,20 @@ def upgrade(connection):
 
         # Add composite index for scheduler queries
         composite_index = "idx_artist_scheduler_query"
-        result = connection.execute(
-            text(
-                f"""
+        result = connection.execute(text(f"""
             SELECT COUNT(*)
             FROM information_schema.statistics
             WHERE table_name = 'artists'
             AND index_name = '{composite_index}'
             AND table_schema = DATABASE()
-        """
-            )
-        )
+        """))
 
         if result.scalar() == 0:
             logger.info(f"Creating composite index {composite_index}...")
-            connection.execute(
-                text(
-                    f"""
+            connection.execute(text(f"""
                 CREATE INDEX {composite_index}
                 ON artists (monitored, discovery_enabled, schedule_priority)
-            """
-                )
-            )
+            """))
             logger.info(f"✅ Composite index {composite_index} created successfully")
         else:
             logger.info(f"✅ Composite index {composite_index} already exists")
@@ -252,32 +224,24 @@ def upgrade(connection):
 
         for field_name, field_type, field_comment in download_fields_to_add:
             # Check if column already exists
-            result = connection.execute(
-                text(
-                    f"""
+            result = connection.execute(text(f"""
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'downloads'
                 AND column_name = '{field_name}'
                 AND table_schema = DATABASE()
-            """
-                )
-            )
+            """))
 
             field_exists = result.scalar() > 0
 
             if not field_exists:
                 logger.info(f"Adding {field_name} column to downloads table...")
 
-                connection.execute(
-                    text(
-                        f"""
+                connection.execute(text(f"""
                     ALTER TABLE downloads
                     ADD COLUMN {field_name} {field_type}
                     COMMENT '{field_comment}'
-                """
-                    )
-                )
+                """))
 
                 logger.info(f"✅ {field_name} column added successfully")
             else:
@@ -292,17 +256,13 @@ def upgrade(connection):
         ]
 
         for index_name, column_name in download_indexes_to_add:
-            result = connection.execute(
-                text(
-                    f"""
+            result = connection.execute(text(f"""
                 SELECT COUNT(*)
                 FROM information_schema.statistics
                 WHERE table_name = 'downloads'
                 AND index_name = '{index_name}'
                 AND table_schema = DATABASE()
-            """
-                )
-            )
+            """))
 
             index_exists = result.scalar() > 0
 
@@ -317,28 +277,20 @@ def upgrade(connection):
 
         # Add composite index for retry queries
         retry_composite_index = "idx_download_retry_status"
-        result = connection.execute(
-            text(
-                f"""
+        result = connection.execute(text(f"""
             SELECT COUNT(*)
             FROM information_schema.statistics
             WHERE table_name = 'downloads'
             AND index_name = '{retry_composite_index}'
             AND table_schema = DATABASE()
-        """
-            )
-        )
+        """))
 
         if result.scalar() == 0:
             logger.info(f"Creating composite index {retry_composite_index}...")
-            connection.execute(
-                text(
-                    f"""
+            connection.execute(text(f"""
                 CREATE INDEX {retry_composite_index}
                 ON downloads (status, retry_count, next_retry_at)
-            """
-                )
-            )
+            """))
             logger.info(
                 f"✅ Composite index {retry_composite_index} created successfully"
             )

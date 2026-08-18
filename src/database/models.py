@@ -515,7 +515,11 @@ class Video(Base):
     __table_args__ = (
         Index("idx_video_artist_id", "artist_id"),
         Index("idx_video_imvdb_id", "imvdb_id"),
-        Index("idx_video_youtube_id", "youtube_id"),
+        # idx_video_youtube_id intentionally removed (#377 Finding 6):
+        # redundant with the unique=True index already created by the
+        # youtube_id column definition above, and keeping both risked a
+        # third, differently-named index being added on fresh installs
+        # via migration 024's (now column-based) idempotence check.
         Index("idx_video_playlist_id", "playlist_id"),
         Index("idx_video_status", "status"),
         Index("idx_video_title", "title"),

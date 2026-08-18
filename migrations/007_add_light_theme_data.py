@@ -26,27 +26,19 @@ def upgrade(connection):
         # DO NOT use get_db() as it will close the connection
         if True:  # Keep indentation for minimal changes
             # Check if the column already exists
-            result = connection.execute(
-                text(
-                    """
+            result = connection.execute(text("""
                 SELECT column_name
                 FROM information_schema.columns
                 WHERE table_name = 'custom_themes'
                 AND column_name = 'light_theme_data'
-            """
-                )
-            ).fetchone()
+            """)).fetchone()
 
             if not result:
                 # Add the light_theme_data column
-                connection.execute(
-                    text(
-                        """
+                connection.execute(text("""
                     ALTER TABLE custom_themes
                     ADD COLUMN light_theme_data JSON NULL
-                """
-                    )
-                )
+                """))
                 # DO NOT commit here - migration system handles the commit
                 logger.info("Added light_theme_data column to custom_themes table")
             else:
@@ -65,27 +57,19 @@ def downgrade(connection):
         # Use the connection provided by the migration system
         if True:  # Keep indentation for minimal changes
             # Check if the column exists
-            result = connection.execute(
-                text(
-                    """
+            result = connection.execute(text("""
                 SELECT column_name
                 FROM information_schema.columns
                 WHERE table_name = 'custom_themes'
                 AND column_name = 'light_theme_data'
-            """
-                )
-            ).fetchone()
+            """)).fetchone()
 
             if result:
                 # Remove the light_theme_data column
-                connection.execute(
-                    text(
-                        """
+                connection.execute(text("""
                     ALTER TABLE custom_themes
                     DROP COLUMN light_theme_data
-                """
-                    )
-                )
+                """))
                 # DO NOT commit here - migration system handles the commit
                 logger.info("Removed light_theme_data column from custom_themes table")
             else:
