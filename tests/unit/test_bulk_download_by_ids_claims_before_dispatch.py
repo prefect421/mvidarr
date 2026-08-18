@@ -81,3 +81,75 @@ class TestBulkDownloadByIdsClaimsBeforeDispatch:
         source = _function_source("bulk_download_videos")
         assert 'video.status == "downloaded"' not in source
         assert "video.status == VideoStatus.DOWNLOADED" in source
+
+
+class TestBulkDownloadRevertPath:
+    """Static source-assertion tests for the revert-path gaps closed by
+    the final-review fix wave (#377 Finding 3): bulk_download_videos()
+    had a full claim-then-dispatch treatment but no revert path, unlike
+    the two single-video endpoints. See
+    test_single_video_download_claims_before_dispatch.py for the same
+    style of check applied to those endpoints."""
+
+    def test_captures_original_status_before_claiming(self):
+        """Must snapshot video.status before calling the claim, so a
+        later failure can revert to the real pre-claim status instead
+        of a hardcoded WANTED."""
+        source = _function_source("bulk_download_videos")
+        original_status_pos = source.index("original_status = video.status")
+        claim_pos = source.index("claim_video_for_redownload(")
+        assert original_status_pos < claim_pos
+
+    def test_terminal_commit_moved_inside_loop_right_after_flush(self):
+        """The single end-of-loop `session.commit()` this task fixes
+        must be gone -- replaced by a per-video commit immediately after
+        `session.flush()`, narrowing the blast radius of a commit
+        failure from 'the whole batch' to 'one video' and collapsing the
+        FK-referencing flush's lock hold time to a single row."""
+        source = _function_source("bulk_download_videos")
+
+        # The old whole-loop-terminal commit (dedented back to the
+        # try-block's outer level, directly before the summary log line)
+        # must no longer be present.
+        old_terminal_commit = (
+            '        session.commit()\n\n        logger.info(f"Bulk queued'
+        )
+        assert old_terminal_commit not in source
+
+        # A commit must now appear shortly after the Download-row flush.
+        flush_marker = "session.flush()  # Get the download ID"
+        flush_pos = source.index(flush_marker)
+        window = source[flush_pos : flush_pos + 1200]
+        assert "session.commit()" in window
+
+    def test_reverts_to_original_status_in_exception_handler(self):
+        """The per-video `except Exception as e:` handler must revert a
+        successfully-claimed video back to its real pre-claim status --
+        via a fresh session, not the (possibly broken) request session --
+        mirroring download_all_wanted_videos_internal()'s
+        revert-via-fresh-session pattern."""
+        source = _function_source("bulk_download_videos")
+
+        except_marker = (
+            "except Exception as e:\n                video_id = getattr(video"
+        )
+        except_pos = source.index(except_marker)
+        except_to_end = source[except_pos:]
+
+        assert "claimed" in except_to_end
+        assert "get_db()" in except_to_end
+        assert "revert_video.status = original_status" in except_to_end
+        # Must not fall back to a hardcoded WANTED.
+        assert "revert_video.status = VideoStatus.WANTED" not in source
+
+    def test_claimed_flag_reset_and_set_per_iteration(self):
+        """`claimed` must be initialized False at the top of each loop
+        iteration (not once outside the loop) and flipped True only
+        after a successful claim -- otherwise a claim success for video N
+        would incorrectly trigger a revert attempt for video N+1 if N+1
+        fails before ever attempting its own claim."""
+        source = _function_source("bulk_download_videos")
+        for_pos = source.index("for video in videos:")
+        claim_success_pos = source.index("claim_video_for_redownload(video_id):")
+        between = source[for_pos:claim_success_pos]
+        assert "claimed = False" in between
