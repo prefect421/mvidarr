@@ -282,9 +282,20 @@ async def queue_video_download(
 
         session.add(download)
 
-        # Update video status
-        video.status = VideoStatus.DOWNLOADING
-        video.updated_at = datetime.utcnow()
+        # Claim the video for (re)download now that the URL has been
+        # resolved and the Download row is staged. Claiming any earlier
+        # (e.g. before URL resolution) risks permanently stranding the
+        # video in DOWNLOADING if resolution then fails, since the claim
+        # commits its own independent transaction immediately (#377).
+        original_status = video.status
+
+        from src.services.video_batch_service import claim_video_for_redownload
+
+        if not claim_video_for_redownload(video_id):
+            return {
+                "message": "Video is currently downloading",
+                "video_id": video_id,
+            }
 
         session.commit()
 
@@ -329,8 +340,12 @@ async def queue_video_download(
             logger.error(
                 f"Failed to submit download to unified service for video {video_id}: {download_error}"
             )
-            # Rollback video status if download submission failed
-            video.status = VideoStatus.WANTED
+            # Revert to the video's real pre-claim status, not a hardcoded
+            # WANTED -- claim_video_for_redownload() can claim from FAILED,
+            # MONITORED, or DOWNLOADED too (#377), and blindly reverting a
+            # retried FAILED video to WANTED would silently enroll it in the
+            # auto-download queue.
+            video.status = original_status
             session.commit()
             raise HTTPException(
                 status_code=500,
@@ -485,9 +500,23 @@ async def queue_download_video(
         session.add(download)
         session.flush()  # Get the download ID
 
-        # Update video status
-        video.status = VideoStatus.DOWNLOADING
-        video.updated_at = datetime.utcnow()
+        # Claim the video for (re)download now that the YouTube URL has
+        # been confirmed and the Download row is staged. Claiming any
+        # earlier (e.g. before the URL-availability check) risks
+        # permanently stranding the video in DOWNLOADING if that check
+        # then fails, since the claim commits its own independent
+        # transaction immediately (#377).
+        original_status = video.status
+
+        from src.services.video_batch_service import claim_video_for_redownload
+
+        if not claim_video_for_redownload(video_id):
+            return {
+                "success": True,
+                "message": "Video is currently downloading",
+                "video_id": video_id,
+                "status": "already_downloading",
+            }
 
         session.commit()
 
@@ -523,8 +552,12 @@ async def queue_download_video(
             logger.error(
                 f"Failed to submit download to unified service for video {video_id}: {download_error}"
             )
-            # Rollback video status
-            video.status = VideoStatus.WANTED
+            # Revert to the video's real pre-claim status, not a hardcoded
+            # WANTED -- claim_video_for_redownload() can claim from FAILED,
+            # MONITORED, or DOWNLOADED too (#377), and blindly reverting a
+            # retried FAILED video to WANTED would silently enroll it in the
+            # auto-download queue.
+            video.status = original_status
             session.commit()
             return {
                 "success": False,
