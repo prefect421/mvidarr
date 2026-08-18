@@ -80,7 +80,7 @@ async def bulk_download_videos(
             try:
                 video_id = video.id  # Store ID before any operations
                 # Skip if already downloaded
-                if video.status == "downloaded":
+                if video.status == VideoStatus.DOWNLOADED:
                     skipped_count += 1
                     continue
 
@@ -95,6 +95,14 @@ async def bulk_download_videos(
                 )
 
                 if existing_download:
+                    skipped_count += 1
+                    continue
+
+                from src.services.video_batch_service import (
+                    claim_video_for_redownload,
+                )
+
+                if not claim_video_for_redownload(video_id):
                     skipped_count += 1
                     continue
 
@@ -128,10 +136,6 @@ async def bulk_download_videos(
 
                 session.add(download)
                 session.flush()  # Get the download ID
-
-                # Update video status to downloading
-                video.status = VideoStatus.DOWNLOADING
-                video.updated_at = datetime.utcnow()
 
                 # Submit job to ytdlp_service
                 try:
