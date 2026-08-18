@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Duplicate Video Race (#377)**: Added a DB-level unique constraint on `videos.youtube_id` (migration 024) to close a race where two concurrent imports/discoveries of the same YouTube video could each pass the "does this video already exist" pre-check and create two separate rows, each independently triggering its own download. `videos.imvdb_id` already had this protection; `youtube_id` did not.
+
+### Fixed
+- **Video Discovery Dedup**: `_store_discovered_video()`'s dedup check is now global on `youtube_id` instead of scoped per-artist, matching the new global uniqueness constraint. A video legitimately found under two different artists (e.g. a collaboration) is now correctly recognized as already existing instead of raising `IntegrityError` and silently discarding the rest of that artist's discovery run.
+- **Bulk Download Revert Path**: `bulk_download_videos()` now reverts a claimed video back to its real pre-claim status if creating its `Download` row or dispatching it fails, instead of leaving it stranded at `DOWNLOADING` forever. The per-video commit also moved from once at the end of the whole batch to immediately after each video's `Download` row is staged, narrowing a commit failure's blast radius from the whole batch to one video.
+- **IMVDb Import Duplicate Handling**: `import_from_imvdb()`'s `IntegrityError` handler now re-queries by `imvdb_id` *or* `youtube_id` (previously `imvdb_id` only), so importing the IMVDb record for a video already discovered via YouTube returns "already exists" instead of a 500.
+
+### Migration Notes
+- **Before deploying this release**, check production for pre-existing duplicate `youtube_id` values -- migration 024 will refuse to start the application if any are found (with an actionable error naming the exact values and remediation SQL), rather than starting with a defective/blocked migration:
+  ```sql
+  SELECT youtube_id, COUNT(*) c FROM videos
+  WHERE youtube_id IS NOT NULL AND youtube_id != ''
+  GROUP BY youtube_id HAVING c > 1;
+  ```
+  If this returns any rows, resolve them first (e.g. keep the oldest row per `youtube_id` and null out the others) before upgrading -- the migration's own error message includes the exact remediation SQL.
+
 ## [0.12.3] - 2026-02-16
 
 ### Fixed
