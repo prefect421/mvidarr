@@ -25,13 +25,17 @@ def upgrade(connection):
             logger.info("Starting migration 011: Add thumbnail_url to playlists")
 
             # Check if thumbnail_url column already exists (idempotency)
-            result = connection.execute(text("""
+            result = connection.execute(
+                text(
+                    """
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'playlists'
                 AND column_name = 'thumbnail_url'
                 AND table_schema = DATABASE()
-            """))
+            """
+                )
+            )
 
             column_exists = result.scalar() > 0
 
@@ -63,13 +67,17 @@ def downgrade(connection):
             logger.info("Downgrading migration 011: Removing thumbnail_url column")
 
             # Check if column exists before dropping
-            result = connection.execute(text("""
+            result = connection.execute(
+                text(
+                    """
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'playlists'
                 AND column_name = 'thumbnail_url'
                 AND table_schema = DATABASE()
-            """))
+            """
+                )
+            )
 
             column_exists = result.scalar() > 0
 

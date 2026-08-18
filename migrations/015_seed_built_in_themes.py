@@ -368,11 +368,15 @@ def upgrade(connection):
         logger.info("Starting migration 015: Seeding built-in themes")
 
         # Check if any built-in themes already exist (idempotency)
-        result = connection.execute(text("""
+        result = connection.execute(
+            text(
+                """
                 SELECT COUNT(*)
                 FROM custom_themes
                 WHERE is_built_in = 1
-            """))
+            """
+            )
+        )
 
         existing_count = result.scalar()
 
@@ -386,10 +390,12 @@ def upgrade(connection):
         for theme in BUILT_IN_THEMES:
             # Check if this specific theme exists
             existing = connection.execute(
-                text("""
+                text(
+                    """
                     SELECT id FROM custom_themes
                     WHERE name = :name
-                """),
+                """
+                ),
                 {"name": theme["name"]},
             ).fetchone()
 
@@ -411,7 +417,8 @@ def upgrade(connection):
                     return  # Exit migration - themes will be seeded later
 
                 connection.execute(
-                    text("""
+                    text(
+                        """
                         INSERT INTO custom_themes (
                             name, display_name, description, created_by,
                             is_public, is_built_in, theme_data,
@@ -421,7 +428,8 @@ def upgrade(connection):
                             1, 1, :theme_data,
                             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                         )
-                    """),
+                    """
+                    ),
                     {
                         "name": theme["name"],
                         "display_name": theme["display_name"],
@@ -447,10 +455,14 @@ def downgrade(connection):
         logger.info("Starting downgrade of migration 015")
 
         # Delete all built-in themes
-        connection.execute(text("""
+        connection.execute(
+            text(
+                """
                 DELETE FROM custom_themes
                 WHERE is_built_in = 1
-            """))
+            """
+            )
+        )
 
         logger.info("Migration 015 downgrade completed successfully")
 

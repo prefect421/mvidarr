@@ -33,13 +33,17 @@ def upgrade(connection):
         logger.info("Starting migration 020: Alter settings.value to MEDIUMTEXT")
 
         # Check current column type
-        result = connection.execute(text("""
+        result = connection.execute(
+            text(
+                """
             SELECT COLUMN_TYPE
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME = 'settings'
               AND COLUMN_NAME = 'value'
-            """)).fetchone()
+            """
+            )
+        ).fetchone()
 
         if result:
             current_type = result[0]
@@ -47,13 +51,19 @@ def upgrade(connection):
 
             # Alter column to MEDIUMTEXT
             logger.info("Altering settings.value column to MEDIUMTEXT...")
-            connection.execute(text("""
+            connection.execute(
+                text(
+                    """
                 ALTER TABLE settings
                 MODIFY COLUMN value MEDIUMTEXT NULL
-                """))
+                """
+                )
+            )
             # Note: Transaction is managed by migration framework - no manual commit
 
-            logger.info("✅ Successfully altered settings.value column to MEDIUMTEXT")
+            logger.info(
+                "✅ Successfully altered settings.value column to MEDIUMTEXT"
+            )
             logger.info(
                 "   Old limit: 65,535 bytes (64KB) - New limit: 16,777,215 bytes (16MB)"
             )
@@ -73,11 +83,15 @@ def downgrade(connection):
         logger.info("Starting migration 020 downgrade: Revert to TEXT")
 
         # WARNING: Check for large values that would be truncated
-        result = connection.execute(text("""
+        result = connection.execute(
+            text(
+                """
             SELECT COUNT(*)
             FROM settings
             WHERE CHAR_LENGTH(value) > 65535
-            """)).fetchone()
+            """
+            )
+        ).fetchone()
 
         large_values_count = result[0] if result else 0
 
@@ -92,10 +106,14 @@ def downgrade(connection):
 
         # Safe to downgrade
         logger.info("No large values found - safe to downgrade to TEXT")
-        connection.execute(text("""
+        connection.execute(
+            text(
+                """
             ALTER TABLE settings
             MODIFY COLUMN value TEXT NULL
-            """))
+            """
+            )
+        )
         # Note: Transaction is managed by migration framework - no manual commit
 
         logger.info("✅ Successfully reverted settings.value column to TEXT")

@@ -26,13 +26,17 @@ def upgrade(connection):
             logger.info("Starting migration 012: Add dynamic playlist fields")
 
             # Check if columns already exist (idempotency)
-            result = connection.execute(text("""
+            result = connection.execute(
+                text(
+                    """
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'playlists'
                 AND column_name = 'playlist_type'
                 AND table_schema = DATABASE()
-            """))
+            """
+                )
+            )
 
             playlist_type_exists = result.scalar() > 0
 
@@ -40,29 +44,45 @@ def upgrade(connection):
                 logger.info("Adding dynamic playlist columns to playlists table...")
 
                 # Add playlist_type column with ENUM
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE playlists
                     ADD COLUMN playlist_type ENUM('STATIC', 'DYNAMIC')
                     DEFAULT 'STATIC' NOT NULL
-                """))
+                """
+                    )
+                )
 
                 # Add filter_criteria JSON column
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE playlists
                     ADD COLUMN filter_criteria JSON DEFAULT NULL
-                """))
+                """
+                    )
+                )
 
                 # Add auto_update column
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE playlists
                     ADD COLUMN auto_update BOOLEAN DEFAULT TRUE NOT NULL
-                """))
+                """
+                    )
+                )
 
                 # Add last_updated timestamp column
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE playlists
                     ADD COLUMN last_updated DATETIME DEFAULT NULL
-                """))
+                """
+                    )
+                )
 
                 logger.info("✅ Dynamic playlist columns added successfully")
             else:
@@ -93,13 +113,15 @@ def upgrade(connection):
             for index_name, create_sql in indexes_to_create:
                 # Check if index exists
                 result = connection.execute(
-                    text("""
+                    text(
+                        """
                     SELECT COUNT(*)
                     FROM information_schema.statistics
                     WHERE table_name = 'playlists'
                     AND index_name = :index_name
                     AND table_schema = DATABASE()
-                """),
+                """
+                    ),
                     {"index_name": index_name},
                 )
 

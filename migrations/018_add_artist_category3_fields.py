@@ -51,13 +51,17 @@ def upgrade(connection):
 
         for field_name, field_type, field_comment in fields_to_add:
             # Check if column already exists (idempotency)
-            result = connection.execute(text(f"""
+            result = connection.execute(
+                text(
+                    f"""
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'artists'
                 AND column_name = '{field_name}'
                 AND table_schema = DATABASE()
-            """))
+            """
+                )
+            )
 
             field_exists = result.scalar() > 0
 
@@ -65,11 +69,15 @@ def upgrade(connection):
                 logger.info(f"Adding {field_name} column to artists table...")
 
                 # Add column with appropriate type and comment
-                connection.execute(text(f"""
+                connection.execute(
+                    text(
+                        f"""
                     ALTER TABLE artists
                     ADD COLUMN {field_name} {field_type} DEFAULT NULL
                     COMMENT '{field_comment}'
-                """))
+                """
+                    )
+                )
 
                 logger.info(f"✅ {field_name} column added successfully")
             else:
@@ -87,13 +95,17 @@ def upgrade(connection):
 
         for index_name, column_name in indexes_to_add:
             # Check if index already exists
-            result = connection.execute(text(f"""
+            result = connection.execute(
+                text(
+                    f"""
                 SELECT COUNT(*)
                 FROM information_schema.statistics
                 WHERE table_name = 'artists'
                 AND index_name = '{index_name}'
                 AND table_schema = DATABASE()
-            """))
+            """
+                )
+            )
 
             index_exists = result.scalar() > 0
 

@@ -28,35 +28,51 @@ def upgrade(connection):
             logger.info("Starting migration 010: Adding video enrichment fields")
 
             # Check if album column exists
-            result = connection.execute(text("""
+            result = connection.execute(
+                text(
+                    """
                 SELECT column_name
                 FROM information_schema.columns
                 WHERE table_name = 'videos'
                 AND column_name = 'album'
-            """)).fetchone()
+            """
+                )
+            ).fetchone()
 
             if not result:
                 # Add album field for track album information
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE videos ADD COLUMN album VARCHAR(500)
-                """))
+                """
+                    )
+                )
                 logger.info("Added album column to videos table")
             else:
                 logger.info("album column already exists in videos table")
 
             # Check if last_enriched column exists
-            result = connection.execute(text("""
+            result = connection.execute(
+                text(
+                    """
                 SELECT column_name
                 FROM information_schema.columns
                 WHERE table_name = 'videos'
                 AND column_name = 'last_enriched'
-            """)).fetchone()
+            """
+                )
+            ).fetchone()
 
             if not result:
                 # Add last_enriched timestamp field
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE videos ADD COLUMN last_enriched DATETIME
-                """))
+                """
+                    )
+                )
                 logger.info("Added last_enriched column to videos table")
             else:
                 logger.info("last_enriched column already exists in videos table")
@@ -79,13 +95,21 @@ def downgrade(connection):
             )
 
             # Remove added columns
-            connection.execute(text("""
+            connection.execute(
+                text(
+                    """
                 ALTER TABLE videos DROP COLUMN last_enriched
-            """))
+            """
+                )
+            )
 
-            connection.execute(text("""
+            connection.execute(
+                text(
+                    """
                 ALTER TABLE videos DROP COLUMN album
-            """))
+            """
+                )
+            )
 
             # DO NOT commit here - migration system handles the commit
             logger.info(

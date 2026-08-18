@@ -21,13 +21,17 @@ def upgrade(connection):
         # Use the connection provided by the migration system
         if True:  # Keep indentation for minimal changes
             # Check if priority column already exists
-            result = connection.execute(text("""
+            result = connection.execute(
+                text(
+                    """
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'downloads'
                 AND column_name = 'priority'
                 AND table_schema = DATABASE()
-            """))
+            """
+                )
+            )
 
             priority_exists = result.scalar() > 0
 
@@ -35,18 +39,26 @@ def upgrade(connection):
                 logger.info("Adding priority column to downloads table...")
 
                 # Add priority column
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE downloads
                     ADD COLUMN priority INT DEFAULT 5
                     COMMENT '1-10, lower is higher priority (1=highest, 10=lowest)'
-                """))
+                """
+                    )
+                )
 
                 # Update existing records to have default priority
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     UPDATE downloads
                     SET priority = 5
                     WHERE priority IS NULL
-                """))
+                """
+                    )
+                )
 
                 logger.info("Priority column added successfully")
             else:
@@ -67,13 +79,15 @@ def upgrade(connection):
             for index_name, create_sql in indexes_to_create:
                 # Check if index exists
                 result = connection.execute(
-                    text("""
+                    text(
+                        """
                     SELECT COUNT(*)
                     FROM information_schema.statistics
                     WHERE table_name = 'downloads'
                     AND index_name = :index_name
                     AND table_schema = DATABASE()
-                """),
+                """
+                    ),
                     {"index_name": index_name},
                 )
 

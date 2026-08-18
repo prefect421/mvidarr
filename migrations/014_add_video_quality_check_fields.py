@@ -25,13 +25,17 @@ def upgrade(connection):
             logger.info("Starting migration 014: Add video quality check fields")
 
             # Check if available_qualities column already exists (idempotency)
-            result = connection.execute(text("""
+            result = connection.execute(
+                text(
+                    """
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'videos'
                 AND column_name = 'available_qualities'
                 AND table_schema = DATABASE()
-            """))
+            """
+                )
+            )
 
             available_qualities_exists = result.scalar() > 0
 
@@ -39,28 +43,44 @@ def upgrade(connection):
                 logger.info("Adding quality check fields to videos table...")
 
                 # Add available_qualities JSON field
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE videos
                     ADD COLUMN available_qualities JSON DEFAULT NULL
-                """))
+                """
+                    )
+                )
 
                 # Add quality_check_date field
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE videos
                     ADD COLUMN quality_check_date DATETIME DEFAULT NULL
-                """))
+                """
+                    )
+                )
 
                 # Add max_available_quality field
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE videos
                     ADD COLUMN max_available_quality VARCHAR(50) DEFAULT NULL
-                """))
+                """
+                    )
+                )
 
                 # Add quality_check_status field to track check results
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE videos
                     ADD COLUMN quality_check_status VARCHAR(50) DEFAULT NULL
-                """))
+                """
+                    )
+                )
 
                 logger.info("✅ Quality check fields added successfully")
             else:
@@ -92,13 +112,15 @@ def downgrade(connection):
             for column_name in columns_to_drop:
                 # Check if column exists before dropping
                 result = connection.execute(
-                    text("""
+                    text(
+                        """
                     SELECT COUNT(*)
                     FROM information_schema.columns
                     WHERE table_name = 'videos'
                     AND column_name = :column_name
                     AND table_schema = DATABASE()
-                """),
+                """
+                    ),
                     {"column_name": column_name},
                 )
 

@@ -26,13 +26,17 @@ def upgrade(connection):
             logger.info("Starting migration 013: Add artist labels and members fields")
 
             # Check if labels column already exists (idempotency)
-            result = connection.execute(text("""
+            result = connection.execute(
+                text(
+                    """
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'artists'
                 AND column_name = 'labels'
                 AND table_schema = DATABASE()
-            """))
+            """
+                )
+            )
 
             labels_exists = result.scalar() > 0
 
@@ -40,24 +44,32 @@ def upgrade(connection):
                 logger.info("Adding labels column to artists table...")
 
                 # Add labels column (JSON for record labels)
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE artists
                     ADD COLUMN labels JSON DEFAULT NULL
                     COMMENT 'Record labels associated with the artist'
-                """))
+                """
+                    )
+                )
 
                 logger.info("✅ labels column added successfully")
             else:
                 logger.info("✅ labels column already exists - skipping")
 
             # Check if members column already exists (idempotency)
-            result = connection.execute(text("""
+            result = connection.execute(
+                text(
+                    """
                 SELECT COUNT(*)
                 FROM information_schema.columns
                 WHERE table_name = 'artists'
                 AND column_name = 'members'
                 AND table_schema = DATABASE()
-            """))
+            """
+                )
+            )
 
             members_exists = result.scalar() > 0
 
@@ -65,11 +77,15 @@ def upgrade(connection):
                 logger.info("Adding members column to artists table...")
 
                 # Add members column (TEXT for band members)
-                connection.execute(text("""
+                connection.execute(
+                    text(
+                        """
                     ALTER TABLE artists
                     ADD COLUMN members TEXT DEFAULT NULL
                     COMMENT 'Band members (stored as text)'
-                """))
+                """
+                    )
+                )
 
                 logger.info("✅ members column added successfully")
             else:
@@ -98,13 +114,15 @@ def downgrade(connection):
             for column_name in columns_to_drop:
                 # Check if column exists before dropping
                 result = connection.execute(
-                    text("""
+                    text(
+                        """
                     SELECT COUNT(*)
                     FROM information_schema.columns
                     WHERE table_name = 'artists'
                     AND column_name = :column_name
                     AND table_schema = DATABASE()
-                """),
+                """
+                    ),
                     {"column_name": column_name},
                 )
 
