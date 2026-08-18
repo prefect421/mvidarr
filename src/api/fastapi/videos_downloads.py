@@ -297,10 +297,18 @@ async def queue_video_download(
                 "video_id": video_id,
             }
 
-        session.commit()
-
         # Submit download to unified service via ytdlp_service adapter
         try:
+            # Persist the staged Download row now that the claim has
+            # succeeded. This commit lives inside this try block (not
+            # before it) so that if it raises -- lock timeout, transient
+            # DB error, constraint violation -- the except handler below
+            # still reverts video.status back to original_status instead
+            # of leaving the video permanently stranded at DOWNLOADING,
+            # since the claim already committed that write durably on its
+            # own separate connection (#377).
+            session.commit()
+
             from src.services.download_service_adapter import ytdlp_service
             from src.services.settings_service import settings
 
@@ -518,10 +526,18 @@ async def queue_download_video(
                 "status": "already_downloading",
             }
 
-        session.commit()
-
         # Submit download to unified service via ytdlp_service adapter
         try:
+            # Persist the staged Download row now that the claim has
+            # succeeded. This commit lives inside this try block (not
+            # before it) so that if it raises -- lock timeout, transient
+            # DB error, constraint violation -- the except handler below
+            # still reverts video.status back to original_status instead
+            # of leaving the video permanently stranded at DOWNLOADING,
+            # since the claim already committed that write durably on its
+            # own separate connection (#377).
+            session.commit()
+
             from src.services.download_service_adapter import ytdlp_service
 
             # Submit to unified download service

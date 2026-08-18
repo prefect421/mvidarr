@@ -59,6 +59,43 @@ class TestQueueVideoDownloadClaimsBeforeDispatch:
             not in source
         )
 
+    def test_download_row_commit_is_inside_dispatch_try_block(self):
+        """The commit that persists the staged Download row (immediately
+        after claim success) must live inside the same try/except that
+        reverts video.status on failure -- not before it. Otherwise, if
+        that commit itself raises (lock timeout, transient DB error,
+        constraint violation), only the outer function-level except
+        catches it, and video.status is left stuck at DOWNLOADING since
+        the claim already committed it durably on its own separate
+        connection (#377 fix round 1)."""
+        source = _function_source(self.FUNCTION_NAME)
+
+        # The dispatch try/except is nested one level deeper (8-space
+        # indent) than the function's outer try/except (4-space indent),
+        # so anchor on indentation to unambiguously find the right one.
+        inner_try_marker = "\n        try:\n"
+        except_marker = "except Exception as download_error:"
+
+        claim_pos = source.index("claim_video_for_redownload(")
+        try_pos = source.index(inner_try_marker)
+        except_pos = source.index(except_marker)
+        assert claim_pos < try_pos < except_pos
+
+        # No bare session.commit() may sit between claim success and the
+        # dispatch try block -- that's exactly the gap that let a commit
+        # failure escape the revert logic.
+        between_claim_and_try = source[claim_pos:try_pos]
+        assert "session.commit()" not in between_claim_and_try
+
+        # The Download-row-persisting commit must be inside the try body.
+        try_body = source[try_pos:except_pos]
+        assert "session.commit()" in try_body
+
+        # And the revert-on-failure logic must still be in the except
+        # handler, downstream of that commit.
+        except_to_end = source[except_pos:]
+        assert "video.status = original_status" in except_to_end
+
 
 class TestQueueDownloadVideoClaimsBeforeDispatch(
     TestQueueVideoDownloadClaimsBeforeDispatch
