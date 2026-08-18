@@ -31,6 +31,7 @@ _REAL_DB_MODULES = {
     "test_claim_video_for_download.py",
     "test_claim_video_for_redownload.py",
     "test_failure_write_protects_downloaded_status.py",
+    "test_import_duplicate_video_race.py",
 }
 
 

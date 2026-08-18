@@ -14,6 +14,7 @@ Authentication: All endpoints require session-based authentication via get_curre
 from datetime import datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import get_current_user
@@ -99,9 +100,23 @@ async def import_from_youtube(
             new_video.artist_id = artist_obj.id
 
         session.add(new_video)
-        session.flush()  # Flush to get the ID without committing
-        video_id = new_video.id  # Get the ID while still bound to session
-        session.commit()
+        try:
+            session.flush()  # Flush to get the ID without committing
+            video_id = new_video.id  # Get the ID while still bound to session
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            existing = (
+                session.query(Video).filter(Video.youtube_id == youtube_id).first()
+            )
+            if existing:
+                return {
+                    "success": True,
+                    "message": "Video already exists in library",
+                    "video_id": existing.id,
+                    "status": "exists",
+                }
+            raise  # Constraint violation for a different reason -- don't swallow it
 
         logger.info(f"Imported YouTube video: {title} ({youtube_id})")
 
@@ -251,9 +266,21 @@ async def import_from_imvdb(
             new_video.artist_id = artist_obj.id
 
         session.add(new_video)
-        session.flush()  # Flush to get the ID without committing
-        video_id = new_video.id  # Get the ID while still bound to session
-        session.commit()
+        try:
+            session.flush()  # Flush to get the ID without committing
+            video_id = new_video.id  # Get the ID while still bound to session
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            existing = session.query(Video).filter(Video.imvdb_id == imvdb_id).first()
+            if existing:
+                return {
+                    "success": True,
+                    "message": "Video already exists in library",
+                    "video_id": existing.id,
+                    "status": "exists",
+                }
+            raise  # Constraint violation for a different reason -- don't swallow it
 
         logger.info(f"Imported IMVDb video: {title} ({imvdb_id})")
 

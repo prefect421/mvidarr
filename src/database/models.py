@@ -450,7 +450,7 @@ class Video(Base):
     artist_id = Column(Integer, ForeignKey("artists.id"), nullable=False)
     title = Column(String(500), nullable=False)
     imvdb_id = Column(String(100), unique=True, nullable=True)
-    youtube_id = Column(String(100), nullable=True)
+    youtube_id = Column(String(100), unique=True, nullable=True)
     youtube_url = Column(String(500), nullable=True)  # YouTube video URL
     url = Column(String(500), nullable=True)  # Video URL (YouTube, etc.)
     playlist_id = Column(
