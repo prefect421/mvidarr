@@ -22,7 +22,11 @@ from fastapi.testclient import TestClient
 # resolution, not any behavior under test.
 sys.modules.setdefault("netifaces", MagicMock())
 
-from src.api.fastapi.auth_dependencies import require_admin, require_authentication
+from src.api.fastapi.auth_dependencies import (
+    get_current_user,
+    require_admin,
+    require_authentication,
+)
 from src.api.fastapi.week29_integration import (
     backup_router,
     network_router,
@@ -121,19 +125,22 @@ class TestWeek29BehavioralAuth:
     def test_admin_tier_route_403s_for_non_admin_authenticated_user(self):
         app = FastAPI()
         app.include_router(backup_router, prefix="/api")
-        app.dependency_overrides[require_authentication] = lambda: {
+        # require_admin depends on get_current_user directly (see
+        # auth_dependencies.py), not on require_authentication -- so to reach
+        # require_admin's own role-check branch we must override
+        # get_current_user itself, not require_authentication (overriding the
+        # latter would be a no-op for this route and this test would pass for
+        # the wrong reason, or rather not exercise the branch at all).
+        app.dependency_overrides[get_current_user] = lambda: {
             "authenticated": True,
             "role": "user",
+            "user_id": 1,
         }
         client = TestClient(app)
         response = client.post("/api/backup/configure/google_drive", json={})
-        # require_admin itself calls the real get_current_user dependency chain,
-        # not require_authentication, so overriding require_authentication alone
-        # does not satisfy it -- this proves the two are genuinely independent
-        # dependencies, not the same check applied twice. Expect 401 (no real
-        # session), confirming require_admin is NOT satisfied merely by also
-        # overriding require_authentication.
-        assert response.status_code == 401
+        # Authenticated but non-admin: require_admin's role check
+        # (role != ADMIN) must reject with 403, not 401.
+        assert response.status_code == 403
 
     def test_admin_tier_route_succeeds_for_admin_session(self):
         app = FastAPI()
