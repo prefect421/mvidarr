@@ -33,6 +33,7 @@ _REAL_DB_MODULES = {
     "test_failure_write_protects_downloaded_status.py",
     "test_import_duplicate_video_race.py",
     "test_discovery_dedup_global_youtube_id.py",
+    "test_discovery_savepoint_preserves_earlier_inserts.py",
 }
 
 

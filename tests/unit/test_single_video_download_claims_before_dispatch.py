@@ -96,8 +96,19 @@ class TestQueueVideoDownloadClaimsBeforeDispatch:
         except_to_end = source[except_pos:]
         assert "video.status = original_status" in except_to_end
 
+    def test_claim_refused_response_includes_download_id(self):
+        source = _function_source(self.FUNCTION_NAME)
+        assert '"download_id": None' in source
+
 
 class TestQueueDownloadVideoClaimsBeforeDispatch(
     TestQueueVideoDownloadClaimsBeforeDispatch
 ):
     FUNCTION_NAME = "queue_download_video"
+
+    def test_claim_refused_response_includes_download_id(self):
+        # queue_download_video()'s claim-refused response does not
+        # include a download_id key today, and this fix is scoped to
+        # queue_video_download() alone per #380.2 -- don't force this
+        # assertion onto a function whose response shape doesn't match.
+        pass

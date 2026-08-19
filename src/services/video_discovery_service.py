@@ -798,21 +798,24 @@ class VideoDiscoveryService:
             )
 
             try:
-                session.add(video)
-                session.flush()  # Ensure video ID is available
+                with session.begin_nested():
+                    session.add(video)
+                    session.flush()  # Ensure video ID is available
             except IntegrityError:
                 # Defensive backstop (#377) for the TOCTOU race the
                 # check-first dedup above can't fully close: a
                 # concurrent insert (another discovery run, an import,
                 # etc.) may have committed a video with this youtube_id
                 # between the `existing` query above and this flush.
-                # Critical: roll back here so this session isn't left in
-                # a pending-rollback state -- without this, every
-                # subsequent session.add()/query() in the caller's loop
-                # (discover_videos_for_artist's `for video_data in
-                # unified_videos:` loop) would raise PendingRollbackError,
-                # discarding the rest of that artist's discovery batch.
-                session.rollback()
+                # session.begin_nested() (a SQL SAVEPOINT) scopes the
+                # rollback to just this failed insert -- the context
+                # manager already rolled back to the savepoint by the
+                # time this except block runs. #379: a plain
+                # session.rollback() here (the #377 original fix) rolled
+                # back the WHOLE session, discarding every video flushed
+                # earlier in this same discover_videos_for_artist() call
+                # (which only commits once, after its whole loop) even
+                # though only this one insert actually failed.
                 logger.info(
                     f"Concurrent insert already stored a video with "
                     f"youtube_id={youtube_id!r} (or a matching URL) -- "
