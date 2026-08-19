@@ -9,6 +9,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.integrations.youtube_importer import (
     ImportType,
     VideoQuality,
@@ -23,13 +24,6 @@ from src.services.personal_backup import (
 from src.services.sync_manager import SyncDirection, get_sync_manager
 from src.utils.logger import get_logger
 
-
-# Simple auth function for consistency with other API modules
-async def require_auth():
-    """Simple auth dependency - placeholder for now since Week 29 services are basic"""
-    return {"user_id": "admin", "username": "admin", "role": "admin"}
-
-
 logger = get_logger("mvidarr.api.week29")
 
 # Create routers
@@ -42,7 +36,9 @@ sync_router = APIRouter(prefix="/sync", tags=["sync", "cloud"])
 
 
 @backup_router.get("/status")
-async def get_backup_service_status():
+async def get_backup_service_status(
+    current_user: dict = Depends(require_authentication),
+):
     """Get personal backup service status"""
     try:
         backup_service = await get_personal_backup_service()
@@ -74,7 +70,9 @@ async def get_backup_service_status():
 
 @backup_router.post("/configure/{provider}")
 async def configure_cloud_provider(
-    provider: str, credentials: Dict[str, str], user=Depends(require_auth)
+    provider: str,
+    credentials: Dict[str, str],
+    current_user: dict = Depends(require_admin),
 ):
     """Configure cloud provider credentials"""
     try:
@@ -103,7 +101,7 @@ async def configure_cloud_provider(
 async def create_backup_job(
     backup_request: Dict[str, Any],
     background_tasks: BackgroundTasks,
-    user=Depends(require_auth),
+    current_user: dict = Depends(require_admin),
 ):
     """Create a new backup job"""
     try:
@@ -152,7 +150,9 @@ async def create_backup_job(
 
 
 @backup_router.get("/jobs")
-async def list_backup_jobs(limit: int = 20, user=Depends(require_auth)):
+async def list_backup_jobs(
+    limit: int = 20, current_user: dict = Depends(require_authentication)
+):
     """List recent backup jobs"""
     try:
         backup_service = await get_personal_backup_service()
@@ -166,7 +166,9 @@ async def list_backup_jobs(limit: int = 20, user=Depends(require_auth)):
 
 
 @backup_router.get("/jobs/{job_id}")
-async def get_backup_job_status(job_id: str, user=Depends(require_auth)):
+async def get_backup_job_status(
+    job_id: str, current_user: dict = Depends(require_authentication)
+):
     """Get backup job status"""
     try:
         backup_service = await get_personal_backup_service()
@@ -187,7 +189,7 @@ async def get_backup_job_status(job_id: str, user=Depends(require_auth)):
 
 @youtube_router.post("/search")
 async def search_youtube_videos(
-    search_request: Dict[str, Any], user=Depends(require_auth)
+    search_request: Dict[str, Any], current_user: dict = Depends(require_admin)
 ):
     """Search YouTube for videos"""
     try:
@@ -262,7 +264,9 @@ async def search_youtube_videos(
 
 
 @youtube_router.get("/status")
-async def get_youtube_import_status():
+async def get_youtube_import_status(
+    current_user: dict = Depends(require_authentication),
+):
     """Get YouTube importer status"""
     try:
         youtube_importer = await get_youtube_importer()
@@ -296,7 +300,7 @@ async def get_youtube_import_status():
 async def create_youtube_import(
     import_request: Dict[str, Any],
     background_tasks: BackgroundTasks,
-    user=Depends(require_auth),
+    current_user: dict = Depends(require_admin),
 ):
     """Create YouTube import job"""
     try:
@@ -347,7 +351,9 @@ async def create_youtube_import(
 
 
 @youtube_router.get("/jobs")
-async def list_youtube_jobs(limit: int = 20, user=Depends(require_auth)):
+async def list_youtube_jobs(
+    limit: int = 20, current_user: dict = Depends(require_authentication)
+):
     """List recent YouTube import jobs"""
     try:
         youtube_importer = await get_youtube_importer()
@@ -361,7 +367,9 @@ async def list_youtube_jobs(limit: int = 20, user=Depends(require_auth)):
 
 
 @youtube_router.get("/jobs/{job_id}")
-async def get_youtube_job_status(job_id: str, user=Depends(require_auth)):
+async def get_youtube_job_status(
+    job_id: str, current_user: dict = Depends(require_authentication)
+):
     """Get YouTube import job status"""
     try:
         youtube_importer = await get_youtube_importer()
@@ -378,7 +386,7 @@ async def get_youtube_job_status(job_id: str, user=Depends(require_auth)):
 
 
 @youtube_router.post("/jobs/{job_id}/cancel")
-async def cancel_youtube_job(job_id: str, user=Depends(require_auth)):
+async def cancel_youtube_job(job_id: str, current_user: dict = Depends(require_admin)):
     """Cancel YouTube import job"""
     try:
         youtube_importer = await get_youtube_importer()
@@ -395,7 +403,9 @@ async def cancel_youtube_job(job_id: str, user=Depends(require_auth)):
 
 
 @network_router.get("/status")
-async def get_network_sharing_status():
+async def get_network_sharing_status(
+    current_user: dict = Depends(require_authentication),
+):
     """Get network sharing service status"""
     try:
         network_share = await get_local_network_share()
@@ -409,7 +419,9 @@ async def get_network_sharing_status():
 
 
 @network_router.get("/shares")
-async def list_network_shares(user=Depends(require_auth)):
+async def list_network_shares(
+    current_user: dict = Depends(require_authentication),
+):
     """List all network shares"""
     try:
         network_share = await get_local_network_share()
@@ -423,7 +435,9 @@ async def list_network_shares(user=Depends(require_auth)):
 
 
 @network_router.get("/devices")
-async def get_connected_devices(user=Depends(require_auth)):
+async def get_connected_devices(
+    current_user: dict = Depends(require_authentication),
+):
     """Get connected devices on network"""
     try:
         network_share = await get_local_network_share()
@@ -437,7 +451,7 @@ async def get_connected_devices(user=Depends(require_auth)):
 
 
 @network_router.get("/shares/{share_id}/qr")
-async def get_share_qr_code(share_id: str, user=Depends(require_auth)):
+async def get_share_qr_code(share_id: str, current_user: dict = Depends(require_admin)):
     """Get QR code for mobile access to share"""
     try:
         network_share = await get_local_network_share()
@@ -461,7 +475,9 @@ async def get_share_qr_code(share_id: str, user=Depends(require_auth)):
 
 
 @sync_router.get("/status")
-async def get_sync_service_status():
+async def get_sync_service_status(
+    current_user: dict = Depends(require_authentication),
+):
     """Get sync service status"""
     try:
         sync_manager = await get_sync_manager()
@@ -489,7 +505,9 @@ async def get_sync_service_status():
 
 
 @sync_router.get("/profiles")
-async def list_sync_profiles(user=Depends(require_auth)):
+async def list_sync_profiles(
+    current_user: dict = Depends(require_authentication),
+):
     """List sync profiles"""
     try:
         sync_manager = await get_sync_manager()
@@ -506,7 +524,7 @@ async def list_sync_profiles(user=Depends(require_auth)):
 async def create_sync_profile(
     profile_request: Dict[str, Any],
     background_tasks: BackgroundTasks,
-    user=Depends(require_auth),
+    current_user: dict = Depends(require_admin),
 ):
     """Create sync profile"""
     try:
@@ -555,7 +573,9 @@ async def create_sync_profile(
 
 @sync_router.post("/profiles/{profile_id}/sync")
 async def start_sync_job(
-    profile_id: str, background_tasks: BackgroundTasks, user=Depends(require_auth)
+    profile_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """Start sync job for profile"""
     try:
@@ -588,7 +608,9 @@ async def start_sync_job(
 
 
 @backup_router.get("/week29/status")
-async def get_week29_status():
+async def get_week29_status(
+    current_user: dict = Depends(require_authentication),
+):
     """Get comprehensive Week 29 features status"""
     try:
         # Get status from all services
