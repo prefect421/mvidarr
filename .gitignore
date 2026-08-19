@@ -271,3 +271,6 @@ docs/archive/*TESTING*.md
 docs/archive/*TEST*.md
 
 docker-compose.dev-test.yml
+
+# SDD/worktree scratch (git-ignored)
+.worktrees/
