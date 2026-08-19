@@ -32,24 +32,40 @@ router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_downloads")
 
 
-async def resolve_video_url(video: Video, session: Session) -> Optional[str]:
+async def resolve_video_url(
+    video: Video, session: Session, timeout: int = 30
+) -> Optional[str]:
     """
-    Helper function to resolve video URL using yt-dlp search
+    Resolve a video's download URL via yt-dlp search, off the event loop.
 
-    This is a placeholder - the actual implementation should be imported
-    from the main videos module or moved to a shared utilities module.
+    #380.1: this used to import a same-named function from
+    src.api.fastapi.videos, which does not define one -- every call
+    raised ImportError. The real, working implementation lives in
+    video_batch_service.resolve_video_url() (checks video.url, falls
+    back to video.youtube_url, then does a live yt-dlp search as a
+    last resort, persisting the result on success). It is synchronous
+    (a blocking subprocess.run call), so it's run via asyncio.to_thread
+    here rather than awaited directly -- awaiting a non-coroutine would
+    raise a TypeError, and calling it bare would block this async
+    handler's event loop for up to `timeout` seconds.
 
     Args:
         video: Video object
         session: Database session
+        timeout: Max seconds to wait for the yt-dlp search subprocess,
+            default 30. Callers resolving many videos in a loop (e.g.
+            bulk_download_videos()) should pass a shorter value.
 
     Returns:
         str: Resolved URL or None
     """
-    # Import from parent module to avoid duplication
-    from src.api.fastapi.videos import resolve_video_url as _resolve_video_url
+    import asyncio
 
-    return await _resolve_video_url(video, session)
+    from src.services.video_batch_service import (
+        resolve_video_url as _resolve_video_url_sync,
+    )
+
+    return await asyncio.to_thread(_resolve_video_url_sync, video, session, timeout)
 
 
 # ========================================================================================

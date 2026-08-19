@@ -140,13 +140,15 @@ def get_ytdlp_path() -> str:
     return "/usr/local/bin/yt-dlp"
 
 
-def resolve_video_url(video, session) -> Optional[str]:
+def resolve_video_url(video, session, timeout: int = 30) -> Optional[str]:
     """
     Helper function to resolve video URL using yt-dlp search
 
     Args:
         video: Video object from database
         session: Database session
+        timeout: Max seconds to wait for the yt-dlp search subprocess,
+            default 30
 
     Returns:
         str: Resolved URL or None
@@ -179,7 +181,7 @@ def resolve_video_url(video, session) -> Optional[str]:
             f"ytsearch1:{search_query}",
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
         if result.returncode == 0 and result.stdout:
             video_info = json.loads(result.stdout.strip())
