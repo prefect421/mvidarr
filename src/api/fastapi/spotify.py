@@ -6,9 +6,9 @@ Provides Spotify-specific API endpoints for artist search and metadata
 import asyncio
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-# from src.middleware.fastapi_auth_middleware import require_authentication  # Temporarily disabled
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.spotify")
@@ -36,6 +36,7 @@ except Exception as e:
 async def search_artists(
     q: str = Query(..., description="Artist search query"),
     limit: int = Query(10, description="Number of results to return", ge=1, le=50),
+    current_user: dict = Depends(require_authentication),
 ):
     """Search Spotify for artists using direct HTTP calls"""
     try:
@@ -109,6 +110,7 @@ async def search_artists(
 @router.get("/artist/{spotify_id}")
 async def get_artist(
     spotify_id: str,
+    current_user: dict = Depends(require_authentication),
 ):
     """Get detailed artist information from Spotify"""
     try:
@@ -135,6 +137,7 @@ async def get_artist(
 async def get_artist_albums(
     spotify_id: str,
     limit: int = Query(20, description="Number of albums to return", ge=1, le=50),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get artist's albums from Spotify"""
     try:
@@ -163,6 +166,7 @@ async def get_artist_albums(
 async def get_artist_top_tracks(
     spotify_id: str,
     market: str = Query("US", description="Market/country code"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get artist's top tracks from Spotify"""
     try:
@@ -188,6 +192,7 @@ async def get_artist_top_tracks(
 @router.get("/artist/{spotify_id}/related-artists")
 async def get_related_artists(
     spotify_id: str,
+    current_user: dict = Depends(require_authentication),
 ):
     """Get related artists from Spotify"""
     try:
@@ -214,6 +219,7 @@ async def get_related_artists(
 async def get_user_playlists(
     limit: int = Query(50, description="Number of playlists to return", ge=1, le=50),
     offset: int = Query(0, description="Offset for pagination", ge=0),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get current user's Spotify playlists"""
     try:
@@ -287,6 +293,7 @@ async def get_user_playlists(
 @router.get("/playlist/{playlist_id}")
 async def get_playlist(
     playlist_id: str,
+    current_user: dict = Depends(require_authentication),
 ):
     """Get specific Spotify playlist"""
     try:
@@ -316,6 +323,7 @@ async def get_playlist_tracks(
     playlist_id: str,
     limit: int = Query(20, description="Number of tracks to return", ge=1, le=100),
     offset: int = Query(0, description="Offset for pagination", ge=0),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get tracks from Spotify playlist"""
     try:
@@ -345,6 +353,7 @@ async def get_playlist_tracks(
 async def search_tracks(
     q: str = Query(..., description="Track search query"),
     limit: int = Query(10, description="Number of results to return", ge=1, le=50),
+    current_user: dict = Depends(require_authentication),
 ):
     """Search Spotify for tracks"""
     try:
@@ -368,6 +377,7 @@ async def search_tracks(
 async def search_albums(
     q: str = Query(..., description="Album search query"),
     limit: int = Query(10, description="Number of results to return", ge=1, le=50),
+    current_user: dict = Depends(require_authentication),
 ):
     """Search Spotify for albums"""
     try:
@@ -388,7 +398,7 @@ async def search_albums(
 
 
 @router.get("/me/profile")
-async def get_user_profile():
+async def get_user_profile(current_user: dict = Depends(require_authentication)):
     """Get current user's Spotify profile"""
     try:
         if not spotify_available:
@@ -415,7 +425,7 @@ async def get_user_profile():
 
 
 @router.get("/status")
-async def get_spotify_status():
+async def get_spotify_status(current_user: dict = Depends(require_authentication)):
     """Get Spotify service status - checks configuration and authentication"""
     try:
         if not spotify_available:
@@ -488,7 +498,7 @@ async def get_spotify_status():
 
 
 @router.post("/test")
-async def test_spotify_integration():
+async def test_spotify_integration(current_user: dict = Depends(require_admin)):
     """Test Spotify API connection"""
     try:
         if not spotify_available:
@@ -520,7 +530,9 @@ async def test_spotify_integration():
 
 
 @router.post("/authorize")
-async def authorize_spotify(request: Request):
+async def authorize_spotify(
+    request: Request, current_user: dict = Depends(require_admin)
+):
     """Get Spotify authorization URL for user authentication"""
     try:
         if not spotify_available:
@@ -577,6 +589,7 @@ async def spotify_callback(
     request: Request,
     code: Optional[str] = Query(None, description="Authorization code from Spotify"),
     error: Optional[str] = Query(None, description="Error from Spotify OAuth"),
+    current_user: dict = Depends(require_admin),
 ):
     """Handle Spotify OAuth callback"""
     try:
@@ -674,7 +687,7 @@ async def spotify_callback(
 
 
 @router.post("/disconnect")
-async def disconnect_spotify():
+async def disconnect_spotify(current_user: dict = Depends(require_admin)):
     """Disconnect from Spotify"""
     try:
         # Note: In FastAPI, session management is different from Flask
@@ -691,7 +704,9 @@ async def disconnect_spotify():
 
 
 @router.post("/playlists/{playlist_id}/import")
-async def import_playlist(playlist_id: str):
+async def import_playlist(
+    playlist_id: str, current_user: dict = Depends(require_authentication)
+):
     """Import artists from a Spotify playlist"""
     try:
         if not spotify_available:
@@ -721,7 +736,9 @@ async def import_playlist(playlist_id: str):
 
 
 @router.post("/import-playlists")
-async def import_all_playlists():
+async def import_all_playlists(
+    current_user: dict = Depends(require_authentication),
+):
     """Import all user playlists from Spotify"""
     try:
         if not spotify_available:
@@ -751,7 +768,9 @@ async def import_all_playlists():
 
 
 @router.post("/followed/sync")
-async def sync_followed_artists():
+async def sync_followed_artists(
+    current_user: dict = Depends(require_authentication),
+):
     """Sync user's followed artists from Spotify"""
     try:
         if not spotify_available:
@@ -785,6 +804,7 @@ async def get_top_artists(
         "medium_term", description="Time range: short_term, medium_term, or long_term"
     ),
     limit: int = Query(50, description="Number of top artists to return", ge=1, le=50),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get user's top artists from Spotify"""
     try:
