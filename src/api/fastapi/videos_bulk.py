@@ -25,7 +25,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
 
-from src.api.fastapi.auth_dependencies import get_current_user
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.videos_models import (
     BulkDeleteRequest,
     BulkEditRequest,
@@ -44,7 +44,9 @@ logger = get_logger("mvidarr.api.fastapi.videos_bulk")
 
 @router.post("/bulk/delete")
 async def bulk_delete_videos(
-    request: BulkDeleteRequest = Body(...), session: Session = Depends(get_db_session)
+    request: BulkDeleteRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Bulk delete videos"""
     try:
@@ -104,6 +106,7 @@ async def bulk_delete_videos(
 @router.post("/bulk/status")
 async def bulk_update_status(
     request: Dict[str, Any] = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Bulk update video status"""
@@ -172,6 +175,7 @@ async def bulk_update_status(
 @router.post("/bulk/status-debug")
 async def bulk_update_status_debug(
     request: Dict[str, Any] = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Working bulk status update bypassing validation issues"""
@@ -244,7 +248,9 @@ async def bulk_update_status_debug(
 
 @router.post("/bulk/edit")
 async def bulk_edit_videos(
-    request: BulkEditRequest = Body(...), session: Session = Depends(get_db_session)
+    request: BulkEditRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Bulk edit videos with specified updates"""
     try:
@@ -323,7 +329,9 @@ async def bulk_edit_videos(
 
 @router.post("/bulk/organize")
 async def bulk_organize_videos(
-    request: BulkOrganizeRequest = Body(...), session: Session = Depends(get_db_session)
+    request: BulkOrganizeRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Bulk organize video files into proper directory structure"""
     try:
@@ -458,7 +466,7 @@ async def bulk_organize_videos(
 @router.post("/refresh-thumbnails")
 async def refresh_video_thumbnails(
     body: Optional[dict] = Body(None),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Refresh thumbnails for videos by downloading from source URLs with progress tracking"""
@@ -554,7 +562,9 @@ async def refresh_video_thumbnails(
 
 @router.post("/bulk/refresh-all-thumbnails")
 async def bulk_refresh_all_thumbnails(
-    request: dict = Body(...), session: Session = Depends(get_db_session)
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Refresh thumbnails for all videos of an artist"""
     try:

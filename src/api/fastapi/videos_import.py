@@ -18,7 +18,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import get_current_user
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video, VideoStatus
 from src.utils.logger import get_logger
@@ -63,7 +63,9 @@ def _find_existing_video_after_integrity_error(session: Session, imvdb_id, youtu
 
 @router.post("/import-from-youtube")
 async def import_from_youtube(
-    request: dict = Body(...), session: Session = Depends(get_db_session)
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Import a video from YouTube"""
     try:
@@ -207,7 +209,9 @@ async def import_from_youtube(
 
 @router.post("/import-from-imvdb")
 async def import_from_imvdb(
-    request: dict = Body(...), session: Session = Depends(get_db_session)
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Import a video from IMVDb"""
     try:

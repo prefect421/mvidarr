@@ -26,7 +26,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath
 from sqlalchemy.orm import Session, joinedload
 
-from src.api.fastapi.auth_dependencies import get_current_user
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.videos_models import BulkDownloadRequest
 from src.database.connection import get_db_session
 from src.database.models import Artist, Download, Video, VideoStatus
@@ -87,7 +87,9 @@ BULK_URL_RESOLUTION_BUDGET_SECONDS = 60
 
 @router.post("/bulk/download")
 async def bulk_download_videos(
-    request: BulkDownloadRequest = Body(...), session: Session = Depends(get_db_session)
+    request: BulkDownloadRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Bulk download videos"""
     try:
@@ -358,6 +360,7 @@ async def bulk_download_videos(
 async def queue_video_download(
     video_id: int = FastAPIPath(..., ge=1),
     request: Dict[str, Any] = Body(default={}),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Queue video download with flexible validation"""
@@ -541,6 +544,7 @@ async def queue_video_download(
 async def queue_video_download_debug(
     video_id: int = FastAPIPath(..., ge=1),
     request: Dict[str, Any] = Body(default={}),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Debug version of video download bypassing validation"""
@@ -592,6 +596,7 @@ async def queue_video_download_debug(
 @router.post("/{video_id}/queue-download")
 async def queue_download_video(
     video_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Queue video download via Celery processor"""
@@ -751,7 +756,9 @@ async def queue_download_video(
 
 @router.post("/bulk/download-wanted")
 async def bulk_download_wanted_videos(
-    request: dict = Body(...), session: Session = Depends(get_db_session)
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Download all videos with 'wanted' status"""
     try:
