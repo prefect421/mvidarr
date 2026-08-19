@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from src.api.fastapi.auth_dependencies import require_authentication
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.lastfm")
@@ -60,7 +60,7 @@ class SyncHistoryRequest(BaseModel):
 
 # Status and configuration endpoints
 @router.get("/status")
-async def get_lastfm_status():
+async def get_lastfm_status(current_user: dict = Depends(require_authentication)):
     """Get Last.fm service status - no authentication required"""
     try:
         if not lastfm_available:
@@ -107,7 +107,7 @@ async def get_lastfm_status():
 
 
 @router.post("/test")
-async def test_lastfm_connection():
+async def test_lastfm_connection(current_user: dict = Depends(require_admin)):
     """Test Last.fm API connection"""
     try:
         if not lastfm_available:
@@ -154,7 +154,7 @@ async def test_lastfm_connection():
 
 # Authentication endpoints
 @router.get("/auth/url")
-async def get_auth_url():
+async def get_auth_url(current_user: dict = Depends(require_admin)):
     """Get Last.fm authentication URL"""
     try:
         if not lastfm_available:
@@ -180,7 +180,9 @@ async def get_auth_url():
 
 
 @router.get("/callback")
-async def handle_callback(token: Optional[str] = Query(None)):
+async def handle_callback(
+    token: Optional[str] = Query(None), current_user: dict = Depends(require_admin)
+):
     """Handle Last.fm authentication callback"""
     try:
         if not lastfm_available:
@@ -218,7 +220,10 @@ async def handle_callback(token: Optional[str] = Query(None)):
 
 # User profile and data endpoints
 @router.get("/profile")
-async def get_profile(username: Optional[str] = Query(None)):
+async def get_profile(
+    username: Optional[str] = Query(None),
+    current_user: dict = Depends(require_authentication),
+):
     """Get Last.fm user profile"""
     try:
         if not lastfm_available:
@@ -252,6 +257,7 @@ async def get_top_artists(
     period: str = Query("overall", description="Time period"),
     limit: int = Query(50, ge=1, le=200, description="Number of results"),
     page: int = Query(1, ge=1, description="Page number"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get user's top artists from Last.fm"""
     try:
@@ -295,6 +301,7 @@ async def get_top_tracks(
     period: str = Query("overall", description="Time period"),
     limit: int = Query(50, ge=1, le=200, description="Number of results"),
     page: int = Query(1, ge=1, description="Page number"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get user's top tracks from Last.fm"""
     try:
@@ -339,6 +346,7 @@ async def get_recent_tracks(
     page: int = Query(1, ge=1, description="Page number"),
     from_timestamp: Optional[int] = Query(None, alias="from"),
     to_timestamp: Optional[int] = Query(None, alias="to"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get user's recent tracks from Last.fm"""
     try:
@@ -377,6 +385,7 @@ async def get_loved_tracks(
     username: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200, description="Number of results"),
     page: int = Query(1, ge=1, description="Page number"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get user's loved tracks from Last.fm"""
     try:
@@ -409,7 +418,11 @@ async def get_loved_tracks(
 
 
 @router.get("/artist/{artist_name}")
-async def get_artist_info(artist_name: str, username: Optional[str] = Query(None)):
+async def get_artist_info(
+    artist_name: str,
+    username: Optional[str] = Query(None),
+    current_user: dict = Depends(require_authentication),
+):
     """Get artist information from Last.fm"""
     try:
         if not lastfm_available:
@@ -433,6 +446,7 @@ async def get_artist_info(artist_name: str, username: Optional[str] = Query(None
 async def get_listening_stats(
     username: Optional[str] = Query(None),
     days: int = Query(30, ge=1, le=365, description="Number of days for stats"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get detailed listening statistics"""
     try:
@@ -513,7 +527,10 @@ async def import_top_artists(
 
 
 @router.post("/import/loved-tracks")
-async def import_loved_tracks(request: ImportTracksRequest):
+async def import_loved_tracks(
+    request: ImportTracksRequest,
+    current_user: dict = Depends(require_authentication),
+):
     """Import user's loved tracks and find music videos"""
     try:
         if not lastfm_available:
@@ -555,7 +572,10 @@ async def import_loved_tracks(request: ImportTracksRequest):
 
 
 @router.post("/sync-history")
-async def sync_history(request: SyncHistoryRequest):
+async def sync_history(
+    request: SyncHistoryRequest,
+    current_user: dict = Depends(require_authentication),
+):
     """Sync listening history from Last.fm"""
     try:
         if not lastfm_available:
@@ -598,7 +618,7 @@ async def sync_history(request: SyncHistoryRequest):
 
 
 @router.post("/disconnect")
-async def disconnect():
+async def disconnect(current_user: dict = Depends(require_admin)):
     """Disconnect from Last.fm"""
     try:
         if not lastfm_available:
