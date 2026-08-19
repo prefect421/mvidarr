@@ -19,25 +19,24 @@ import psutil
 logger = logging.getLogger(__name__)
 
 
-def get_disk_usage(paths: Optional[List[str]] = None) -> Dict[str, Dict]:
+def get_disk_usage() -> Dict[str, Dict]:
     """
-    Get disk usage for specified paths.
+    Get disk usage for MVidarr's own fixed set of data paths.
 
-    Args:
-        paths: List of paths to check. If None, checks common MVidarr paths.
+    Callers can no longer supply arbitrary paths (#386 follow-up: the old
+    `paths` parameter let an unauthenticated caller probe arbitrary host
+    filesystem paths for existence/usage stats).
 
     Returns:
         Dict with path as key and usage info as value
     """
-    if paths is None:
-        # Default paths for MVidarr
-        paths = [
-            "/app/data",
-            "/app/data/musicvideos",
-            "/app/data/thumbnails",
-            "/app/data/database",
-            "/app/data/logs",
-        ]
+    paths = [
+        "/app/data",
+        "/app/data/musicvideos",
+        "/app/data/thumbnails",
+        "/app/data/database",
+        "/app/data/logs",
+    ]
 
     disk_info = {}
 
@@ -261,7 +260,12 @@ def get_recent_logs(log_file: Optional[str] = None, lines: int = 100) -> List[st
     Get recent log entries.
 
     Args:
-        log_file: Path to log file. If None, searches for MVidarr log in common locations.
+        log_file: Path to log file. If None, searches for MVidarr log in
+            common locations. If provided, must resolve to a path inside
+            the application's logs directory (Config.LOGS_DIR) -- anything
+            outside it is rejected (#386 follow-up: this used to do a bare
+            open() on a fully caller-controlled path, a genuine arbitrary
+            file read).
         lines: Number of recent lines to return
 
     Returns:
@@ -290,6 +294,26 @@ def get_recent_logs(log_file: Optional[str] = None, lines: int = 100) -> List[st
                 "  - /tmp/mvidarr_dev.log",
                 "  - data/logs/mvidarr_structured.log",
             ]
+    else:
+        # Caller-supplied path: sandbox it inside the app's logs directory
+        from pathlib import Path
+
+        from src.config.config import Config
+
+        try:
+            logs_dir = Path(Config.LOGS_DIR).resolve()
+            resolved = Path(log_file).resolve()
+        except Exception as e:
+            logger.error(f"Error resolving log file path {log_file}: {e}")
+            return [f"Invalid log file path: {log_file}"]
+
+        if logs_dir != resolved and logs_dir not in resolved.parents:
+            logger.warning(
+                f"Rejected log_file outside logs directory: {log_file} -> {resolved}"
+            )
+            return ["Log file must be within the application logs directory"]
+
+        log_file = str(resolved)
 
     try:
         if not os.path.exists(log_file):
