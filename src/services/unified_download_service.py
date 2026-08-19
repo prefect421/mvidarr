@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -118,29 +119,50 @@ class YtDlpManager:
         return datetime.now() - self.last_version_check > self.version_check_interval
 
     def update_if_needed(self) -> bool:
-        """Update yt-dlp if necessary"""
+        """Update yt-dlp if necessary.
+
+        The update mechanism must match how this specific executable
+        was actually installed:
+        - self.current_executable == the pipx-managed path -> pipx
+          upgrade (the previous guard here,
+          `"/root/.local/bin/yt-dlp" in self.executable_paths`, was a
+          bug: it tested whether a hardcoded string literal is in a
+          hardcoded list containing that same literal, which is always
+          True regardless of which executable _find_best_executable()
+          actually found).
+        - anything else (this deployment's actual case -- yt-dlp is
+          pip-installed per requirements.txt, never pipx) -> pip
+          install --upgrade, via `sys.executable -m pip` for
+          environment-correctness rather than assuming a bare `pip` is
+          on PATH.
+        Each branch is tried in isolation: if the tool for the wrong
+        installation method is missing (the original bug's trigger --
+        pipx was never installed here), that must not raise past this
+        function and abort the download attempt that called it.
+        """
         if not self.needs_update():
             return True
 
         try:
-            # Try to update via pipx first (preferred)
-            if "/root/.local/bin/yt-dlp" in self.executable_paths:
+            if self.current_executable == "/root/.local/bin/yt-dlp":
                 result = subprocess.run(
                     ["pipx", "upgrade", "yt-dlp"], capture_output=True, timeout=300
                 )
-                if result.returncode == 0:
+                success = result.returncode == 0
+                if success:
                     self.last_version_check = datetime.now()
                     logger.info("yt-dlp updated successfully via pipx")
-                    return True
+                return success
 
-            # Fallback to self-update
             result = subprocess.run(
-                [self.current_executable, "-U"], capture_output=True, timeout=300
+                [sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"],
+                capture_output=True,
+                timeout=300,
             )
             success = result.returncode == 0
             if success:
                 self.last_version_check = datetime.now()
-                logger.info("yt-dlp updated successfully")
+                logger.info("yt-dlp updated successfully via pip")
 
             return success
 
@@ -238,8 +260,35 @@ class AntiDetectionManager:
         self.current_ua_index = (self.current_ua_index + 1) % len(self.USER_AGENTS)
         return ua
 
-    def handle_detection_error(self, error: str) -> AntiDetectionLevel:
-        """Determine escalated anti-detection level based on error"""
+    # Escalation ladder for the generic (unrecognized-error) path below.
+    _ESCALATION_ORDER = [
+        AntiDetectionLevel.MINIMAL,
+        AntiDetectionLevel.MODERATE,
+        AntiDetectionLevel.AGGRESSIVE,
+        AntiDetectionLevel.STEALTH,
+    ]
+
+    def handle_detection_error(
+        self,
+        error: str,
+        current_level: AntiDetectionLevel = AntiDetectionLevel.MODERATE,
+    ) -> AntiDetectionLevel:
+        """Determine escalated anti-detection level based on error and
+        the level the failed attempt actually used.
+
+        Specifically-diagnosed error signatures jump straight to the
+        countermeasure level known to address them. Anything else --
+        including "403: Forbidden", one of yt-dlp/YouTube's most common
+        failure signatures -- used to unconditionally return MODERATE
+        regardless of current_level, which meant a 403 at the retry
+        loop's starting level (MODERATE) never actually escalated on
+        any of its 3 attempts: three functionally-identical attempts
+        against a block MODERATE had already failed to avoid, since
+        AGGRESSIVE+ is what adds the explicit player_client=web,mweb,tv
+        fallback (see get_anti_detection_args() above). Progressively
+        stepping up the ladder instead means repeated failures keep
+        making forward progress.
+        """
         self.detection_count += 1
         self.last_detection = datetime.now()
 
@@ -250,7 +299,14 @@ class AntiDetectionManager:
         elif "429" in error or "rate" in error.lower():
             return AntiDetectionLevel.AGGRESSIVE
         else:
-            return AntiDetectionLevel.MODERATE
+            try:
+                current_index = self._ESCALATION_ORDER.index(current_level)
+            except ValueError:
+                current_index = self._ESCALATION_ORDER.index(
+                    AntiDetectionLevel.MODERATE
+                )
+            next_index = min(current_index + 1, len(self._ESCALATION_ORDER) - 1)
+            return self._ESCALATION_ORDER[next_index]
 
 
 class DownloadStrategy(ABC):
@@ -329,7 +385,7 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                 # Escalate anti-detection on failure
                 if attempt < max_attempts - 1:
                     current_level = self.anti_detection.handle_detection_error(
-                        result.error_message
+                        result.error_message, current_level
                     )
                     logger.info(
                         f"Download attempt {attempt + 1} failed, escalating to {current_level}"
