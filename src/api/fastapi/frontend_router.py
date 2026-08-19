@@ -8,6 +8,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from src.api.fastapi.auth_dependencies import (
+    require_authentication as require_api_authentication,
+)
 from src.api.fastapi.template_system import (
     require_admin,
     require_authentication,
@@ -492,7 +495,11 @@ async def job_dashboard_modal_component(request: Request):
 
 
 @frontend_router.get("/api/search", name="frontend_search")
-async def frontend_search(request: Request, q: Optional[str] = Query(None)):
+async def frontend_search(
+    request: Request,
+    q: Optional[str] = Query(None),
+    current_user: dict = Depends(require_api_authentication),
+):
     """Frontend search endpoint for universal search"""
     try:
         if not q:
@@ -701,56 +708,6 @@ async def internal_server_error_handler(request: Request, exc):
             """,
             status_code=500,
         )
-
-
-# =====================================
-# Template Development Helpers
-# =====================================
-
-
-@frontend_router.get("/dev/template-info", name="dev_template_info")
-async def template_development_info(request: Request):
-    """Development endpoint for template information"""
-    try:
-        from src.api.fastapi.template_system import TemplateMigrationHelper
-
-        migration_report = TemplateMigrationHelper.generate_migration_report()
-
-        return {
-            "template_system": "FastAPI Jinja2 with async support",
-            "migration_report": migration_report,
-            "context_processors": len(template_system.context_processors),
-            "registered_filters": list(template_system.env.filters.keys()),
-            "registered_globals": list(template_system.env.globals.keys()),
-        }
-    except Exception as e:
-        logger.error(f"Template dev info error: {e}")
-        return {"error": str(e)}
-
-
-@frontend_router.get("/dev/context-preview", name="dev_context_preview")
-async def template_context_preview(request: Request):
-    """Development endpoint to preview template context"""
-    try:
-        context = await template_system.get_template_context(request)
-
-        # Remove complex objects for JSON serialization
-        preview_context = {}
-        for key, value in context.items():
-            try:
-                if isinstance(value, (str, int, float, bool, list, dict)):
-                    preview_context[key] = value
-                elif hasattr(value, "__dict__"):
-                    preview_context[key] = f"<{type(value).__name__} object>"
-                else:
-                    preview_context[key] = str(type(value))
-            except:
-                preview_context[key] = "<unable to serialize>"
-
-        return preview_context
-    except Exception as e:
-        logger.error(f"Context preview error: {e}")
-        return {"error": str(e)}
 
 
 # Function to get the router
