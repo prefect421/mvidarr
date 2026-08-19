@@ -7,9 +7,10 @@ import json
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.services.local_network_share import get_local_network_share
 from src.services.performance_monitor import get_performance_monitor
 from src.utils.logger import get_logger
@@ -83,7 +84,9 @@ async def get_mobile_optimized_config(request: Request) -> Dict[str, Any]:
 
 
 @mobile_router.get("/discover")
-async def mobile_discover_server(request: Request):
+async def mobile_discover_server(
+    request: Request, current_user: dict = Depends(require_authentication)
+):
     """Discover MVidarr server capabilities for mobile apps"""
     try:
         config = await get_mobile_optimized_config(request)
@@ -124,7 +127,9 @@ async def mobile_discover_server(request: Request):
 
 
 @mobile_router.get("/status")
-async def get_mobile_server_status(request: Request):
+async def get_mobile_server_status(
+    request: Request, current_user: dict = Depends(require_authentication)
+):
     """Get server status optimized for mobile display"""
     try:
         config = await get_mobile_optimized_config(request)
@@ -162,6 +167,7 @@ async def get_mobile_collections(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     sort: str = Query("name", pattern="^(name|date|size|type)$"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get music video collections optimized for mobile"""
     try:
@@ -232,6 +238,7 @@ async def get_mobile_collection_videos(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=50),
     quality: str = Query("auto", pattern="^(auto|low|medium|high)$"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get videos in collection optimized for mobile"""
     try:
@@ -299,6 +306,7 @@ async def mobile_search_videos(
     type: str = Query("all", pattern="^(all|videos|artists|albums)$"),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
+    current_user: dict = Depends(require_authentication),
 ):
     """Search music videos optimized for mobile"""
     try:
@@ -362,6 +370,7 @@ async def stream_video_mobile(
     request: Request,
     quality: str = Query("auto", pattern="^(auto|low|medium|high)$"),
     range_header: Optional[str] = Header(None, alias="range"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Stream video optimized for mobile devices"""
     try:
@@ -402,6 +411,7 @@ async def get_mobile_thumbnail(
     request: Request,
     size: str = Query("auto", pattern="^(auto|small|medium|large)$"),
     quality: str = Query("medium", pattern="^(low|medium|high)$"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get thumbnail optimized for mobile display"""
     try:
@@ -449,6 +459,7 @@ async def download_video_mobile(
     request: Request,
     quality: str = Query("medium", pattern="^(low|medium|high)$"),
     format: str = Query("mp4", pattern="^(mp4|webm)$"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Download video with mobile-optimized settings"""
     try:
@@ -492,7 +503,10 @@ async def download_video_mobile(
 
 @mobile_router.get("/playlists")
 async def get_mobile_playlists(
-    request: Request, page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=25)
+    request: Request,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=25),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get playlists optimized for mobile"""
     try:
@@ -555,6 +569,7 @@ async def get_mobile_playlist_videos(
     request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(15, ge=1, le=30),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get playlist videos optimized for mobile"""
     try:
@@ -610,7 +625,9 @@ async def get_mobile_playlist_videos(
 
 
 @mobile_router.get("/app", response_class=HTMLResponse)
-async def get_mobile_app_interface(request: Request):
+async def get_mobile_app_interface(
+    request: Request, current_user: dict = Depends(require_authentication)
+):
     """Get mobile web app interface"""
     try:
         config = await get_mobile_optimized_config(request)
@@ -841,7 +858,11 @@ async def get_mobile_app_manifest():
 
 
 @mobile_router.post("/register-device")
-async def register_mobile_device(request: Request, device_info: Dict[str, Any]):
+async def register_mobile_device(
+    request: Request,
+    device_info: Dict[str, Any],
+    current_user: dict = Depends(require_authentication),
+):
     """Register mobile device for optimized experience"""
     try:
         config = await get_mobile_optimized_config(request)
