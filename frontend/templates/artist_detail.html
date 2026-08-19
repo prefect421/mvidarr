@@ -10920,31 +10920,13 @@ async function addVideosToPlaylist() {
     }
 }
 
-function bulkDownloadSelected() {
-    if (selectedVideos.size === 0) {
-        showError('Please select videos to download');
-        return;
-    }
-    
-    const videoIds = Array.from(selectedVideos);
-    // Implement bulk download logic here
-    showInfo(`Starting download for ${videoIds.length} selected videos...`);
-}
-
-
-
-function bulkDeleteSelected() {
-    if (selectedVideos.size === 0) {
-        showError('Please select videos to delete');
-        return;
-    }
-    
-    if (confirm(`Are you sure you want to delete ${selectedVideos.size} selected videos?`)) {
-        const videoIds = Array.from(selectedVideos);
-        // Implement bulk delete logic here
-        showInfo(`Deleting ${videoIds.length} selected videos...`);
-    }
-}
+// bulkDownloadSelected() and bulkDeleteSelected() are defined earlier
+// in this file (they actually call the /api/videos/bulk/download and
+// /api/videos/bulk/delete endpoints). Dead-stub duplicates of both
+// used to live here, silently shadowing the real implementations
+// (JS function declarations with the same name in the same scope: the
+// LAST one defined wins) -- removed as the fix for the "Download
+// Selected does nothing" bug report.
 
 function updateSelectionUI() {
     const count = selectedVideos.size;
