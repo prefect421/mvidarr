@@ -5,6 +5,12 @@ resolve_video_url), so every call raised ImportError. This test proves
 the fix: import the real, working implementation from
 video_batch_service, and run it off the event loop since it's a
 blocking subprocess call.
+
+The video_batch_service import was originally function-local; a later
+fix wave hoisted it to module level for consistency with this same
+file's other module-level imports (claim_video_for_download), so the
+module-level-import tests below check the whole file's source rather
+than just the function's.
 """
 
 import ast
@@ -17,6 +23,10 @@ SOURCE_PATH = (
     / "fastapi"
     / "videos_downloads.py"
 )
+
+
+def _module_source() -> str:
+    return SOURCE_PATH.read_text()
 
 
 def _function_source(function_name: str) -> str:
@@ -33,13 +43,16 @@ def _function_source(function_name: str) -> str:
 
 class TestResolveVideoUrlWrapperFix:
     def test_no_longer_imports_from_nonexistent_videos_module(self):
-        source = _function_source("resolve_video_url")
+        source = _module_source()
         assert "from src.api.fastapi.videos import" not in source
 
     def test_imports_the_real_implementation_from_video_batch_service(self):
-        source = _function_source("resolve_video_url")
+        source = _module_source()
         assert "from src.services.video_batch_service import" in source
-        assert "resolve_video_url" in source
+        assert "resolve_video_url as _resolve_video_url_sync" in source
+        # ...and the wrapper function actually calls the hoisted import.
+        function_source = _function_source("resolve_video_url")
+        assert "_resolve_video_url_sync" in function_source
 
     def test_runs_the_blocking_call_off_the_event_loop(self):
         source = _function_source("resolve_video_url")

@@ -6,6 +6,7 @@ bulk-specific URL-resolution time budget.
 """
 
 import ast
+import re
 from pathlib import Path
 
 SOURCE_PATH = (
@@ -36,7 +37,24 @@ class TestBulkDownloadFullRevertOnDispatchFailure:
 
     def test_reverts_video_status_on_falsy_result(self):
         source = _function_source("bulk_download_videos")
-        assert "video.status = original_status" in source
+        # Word-boundary match on `video.status = original_status` isn't
+        # enough by itself: this same function also contains an older,
+        # unrelated revert inside its outer exception handler --
+        # `revert_video.status = original_status` -- and a bare substring
+        # check on "video.status = original_status" matches inside that
+        # longer identifier too, so it would pass even without this
+        # task's new dispatch-failure revert block. Anchor on the
+        # specific new block instead: the plain (non-"revert_") `video`
+        # assignment sitting right next to `download.status = "failed"`.
+        match = re.search(
+            r'\bvideo\.status = original_status\s*\n\s*download\.status = "failed"',
+            source,
+        )
+        assert match is not None, (
+            "expected the dispatch-failure revert block "
+            "(`video.status = original_status` immediately followed by "
+            '`download.status = "failed"`) in bulk_download_videos()'
+        )
 
     def test_marks_download_row_failed_on_dispatch_failure(self):
         source = _function_source("bulk_download_videos")

@@ -9,11 +9,15 @@ These endpoints handle video download management:
 - Debug download endpoints
 
 Extracted from videos.py as part of the API modularization effort.
-Uses shared utility functions (resolve_video_url) from the parent module.
+The resolve_video_url() helper below wraps
+src.services.video_batch_service.resolve_video_url() (the real,
+working implementation) rather than defining its own resolution
+logic or importing from the parent module.
 
 Authentication: All endpoints require session-based authentication via get_current_user dependency.
 """
 
+import asyncio
 import time
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -26,7 +30,12 @@ from src.api.fastapi.auth_dependencies import get_current_user
 from src.api.fastapi.videos_models import BulkDownloadRequest
 from src.database.connection import get_db_session
 from src.database.models import Artist, Download, Video, VideoStatus
-from src.services.video_batch_service import claim_video_for_download
+from src.services.video_batch_service import (
+    claim_video_for_download,
+)
+from src.services.video_batch_service import (
+    resolve_video_url as _resolve_video_url_sync,
+)
 from src.utils.logger import get_logger
 
 router = APIRouter()
@@ -60,12 +69,6 @@ async def resolve_video_url(
     Returns:
         str: Resolved URL or None
     """
-    import asyncio
-
-    from src.services.video_batch_service import (
-        resolve_video_url as _resolve_video_url_sync,
-    )
-
     return await asyncio.to_thread(_resolve_video_url_sync, video, session, timeout)
 
 
@@ -158,16 +161,16 @@ async def bulk_download_videos(
                     claim_video_for_redownload,
                 )
 
-                # Refresh before capturing: for every video after the
-                # first in this batch, the prior video's per-video
-                # commit (#377) expires this session's objects, so this
-                # read is already fresh -- but the FIRST video has no
-                # such prior commit, and the await resolve_video_url()
-                # call above can take real wall-clock time, during
-                # which a concurrent process could change this video's
-                # status. Refreshing explicitly (instead of relying on
-                # that incidental expire-on-commit side effect) makes
-                # this correct uniformly, not just for videos 2+ (#379).
+                # Refresh before capturing. This does NOT by itself
+                # guarantee a fresh read: with no isolation_level set,
+                # MariaDB/InnoDB defaults to REPEATABLE READ, so a plain
+                # SELECT inside an already-open transaction (true for the
+                # FIRST video here) still returns that transaction's
+                # original snapshot. For videos 2+, it's the PRIOR video's
+                # commit (#377) that actually makes the read fresh. Real
+                # correctness against a concurrent status change comes
+                # from the atomic row-locked UPDATE inside the claim call
+                # below, not from this refresh (#379).
                 session.refresh(video, attribute_names=["status"])
                 # Capture the real pre-claim status so a revert (below)
                 # restores it exactly, rather than assuming WANTED -- the
@@ -246,7 +249,7 @@ async def bulk_download_videos(
 
                 if result and result.get("success"):
                     logger.info(
-                        f"✅ Submitted bulk download job {result.get('download_id')} for video {video_id}"
+                        f"✅ Submitted bulk download job {result.get('id')} for video {video_id}"
                     )
                     queued_count += 1
                 else:
@@ -256,6 +259,13 @@ async def bulk_download_videos(
                             if result
                             else "Unknown dispatch error"
                         )
+                    # This assignment only emits an UPDATE because the
+                    # earlier session.commit() above expired `video`
+                    # (expire_on_commit=True, the sessionmaker default in
+                    # src/database/connection.py) -- it re-sets a value
+                    # the attribute would otherwise already hold. If that
+                    # default ever changes, this write silently no-ops,
+                    # stranding the video at DOWNLOADING.
                     video.status = original_status
                     download.status = "failed"
                     download.error_message = dispatch_error_message
