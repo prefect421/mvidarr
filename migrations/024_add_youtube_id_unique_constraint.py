@@ -77,9 +77,29 @@ def upgrade(connection):
 
 
 def downgrade(connection):
-    """Remove the unique index"""
-    connection.execute(text("""
-        ALTER TABLE videos
-        DROP INDEX ux_videos_youtube_id
+    """Remove the unique index on videos.youtube_id, whatever it's
+    actually named. #379.5: this used to hardcode DROP INDEX
+    ux_videos_youtube_id, which fails on a fresh install where
+    create_all() auto-created the unique index under a different,
+    SQLAlchemy-generated name (upgrade() was already fixed to handle
+    this asymmetry -- #377 Finding 6 -- but downgrade() was not).
+    """
+    result = connection.execute(text("""
+        SELECT index_name FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+        AND table_name = 'videos'
+        AND column_name = 'youtube_id'
+        AND non_unique = 0
+        LIMIT 1
     """))
-    print("✅ Removed unique index ux_videos_youtube_id from videos.youtube_id")
+    row = result.fetchone()
+    if not row:
+        print("✅ No unique index on videos.youtube_id to remove (skipped)")
+        return
+
+    index_name = row[0]
+    connection.execute(text(f"""
+        ALTER TABLE videos
+        DROP INDEX {index_name}
+    """))
+    print(f"✅ Removed unique index {index_name} from videos.youtube_id")
