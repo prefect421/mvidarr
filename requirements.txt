@@ -69,7 +69,7 @@ netifaces==0.11.0
 zeroconf==0.150.0
 
 # Monitoring and Logging
-prometheus-client==0.19.0
+prometheus-client==0.26.0
 structlog==23.2.0
 sentry-sdk==2.66.1
 
