@@ -23,9 +23,10 @@ import asyncio
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.database.connection import get_db
 from src.database.models import ScheduledJob
 from src.services.scheduler_service_v2 import scheduler_v2
@@ -92,7 +93,9 @@ class HealthResponse(BaseModel):
 
 
 @router.get("/status", response_model=SchedulerStatusResponse)
-async def get_scheduler_status() -> Dict[str, Any]:
+async def get_scheduler_status(
+    current_user: dict = Depends(require_authentication),
+) -> Dict[str, Any]:
     """
     Get current scheduler status
 
@@ -108,7 +111,9 @@ async def get_scheduler_status() -> Dict[str, Any]:
 
 
 @router.post("/start")
-async def start_scheduler() -> Dict[str, Any]:
+async def start_scheduler(
+    current_user: dict = Depends(require_admin),
+) -> Dict[str, Any]:
     """
     Start the Scheduler V2 service
 
@@ -130,7 +135,9 @@ async def start_scheduler() -> Dict[str, Any]:
 
 
 @router.post("/stop")
-async def stop_scheduler() -> Dict[str, Any]:
+async def stop_scheduler(
+    current_user: dict = Depends(require_admin),
+) -> Dict[str, Any]:
     """
     Stop the Scheduler V2 service
 
@@ -155,6 +162,7 @@ async def stop_scheduler() -> Dict[str, Any]:
 async def trigger_discovery(
     background_tasks: BackgroundTasks,
     request: TriggerDiscoveryRequest = None,
+    current_user: dict = Depends(require_admin),
 ) -> Dict[str, Any]:
     """
     Manually trigger video discovery
@@ -191,7 +199,10 @@ async def trigger_discovery(
 
 
 @router.post("/trigger/downloads", response_model=TriggerResponse)
-async def trigger_downloads(background_tasks: BackgroundTasks) -> Dict[str, Any]:
+async def trigger_downloads(
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
+) -> Dict[str, Any]:
     """
     Manually trigger video downloads
 
@@ -308,6 +319,7 @@ async def get_job_history(
     job_type: Optional[str] = Query(
         None, description="Filter by job type (discovery, download)"
     ),
+    current_user: dict = Depends(require_authentication),
 ) -> Dict[str, Any]:
     """
     Get scheduled job history
@@ -329,7 +341,10 @@ async def get_job_history(
 
 
 @router.get("/jobs/{job_id}")
-async def get_job_details(job_id: str) -> Dict[str, Any]:
+async def get_job_details(
+    job_id: str,
+    current_user: dict = Depends(require_authentication),
+) -> Dict[str, Any]:
     """
     Get specific job details by Celery task ID
 
@@ -359,7 +374,10 @@ async def get_job_details(job_id: str) -> Dict[str, Any]:
 
 
 @router.post("/jobs/{job_id}/retry")
-async def retry_job(job_id: str) -> Dict[str, Any]:
+async def retry_job(
+    job_id: str,
+    current_user: dict = Depends(require_admin),
+) -> Dict[str, Any]:
     """
     Retry a failed job
 
@@ -411,7 +429,10 @@ async def retry_job(job_id: str) -> Dict[str, Any]:
 
 
 @router.delete("/jobs/{job_id}")
-async def cancel_job(job_id: str) -> Dict[str, Any]:
+async def cancel_job(
+    job_id: str,
+    current_user: dict = Depends(require_admin),
+) -> Dict[str, Any]:
     """
     Cancel a pending or running job
 
@@ -446,7 +467,9 @@ async def cancel_job(job_id: str) -> Dict[str, Any]:
 
 
 @router.get("/health", response_model=HealthResponse)
-async def get_scheduler_health() -> Dict[str, Any]:
+async def get_scheduler_health(
+    current_user: dict = Depends(require_authentication),
+) -> Dict[str, Any]:
     """
     Get scheduler health status
 
@@ -462,7 +485,9 @@ async def get_scheduler_health() -> Dict[str, Any]:
 
 
 @router.post("/settings/reload")
-async def reload_settings() -> Dict[str, Any]:
+async def reload_settings(
+    current_user: dict = Depends(require_admin),
+) -> Dict[str, Any]:
     """
     Reload scheduler settings from database
 
