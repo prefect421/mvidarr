@@ -456,8 +456,34 @@ async def queue_video_download(
         from src.services.video_batch_service import claim_video_for_redownload
 
         if not claim_video_for_redownload(video_id):
+            # claim_video_for_redownload() returns False both when the
+            # video genuinely lost a race to a concurrent claim AND when
+            # the claim attempt itself errored (live-observed: a
+            # transient `Lock wait timeout exceeded` DB error) -- it
+            # can't distinguish the two from its own return value alone.
+            # Re-check the video's actual status to tell them apart:
+            # only a real DOWNLOADING status means "someone else is
+            # already downloading this." Anything else means the claim
+            # failed for an unrelated reason, and telling the caller
+            # "it's already downloading" would be actively misleading --
+            # nothing is actually in progress, and the user is left with
+            # no record of the failed attempt at all.
+            session.refresh(video, attribute_names=["status"])
+            if video.status == VideoStatus.DOWNLOADING:
+                return {
+                    "message": "Video is currently downloading",
+                    "video_id": video_id,
+                    "download_id": None,
+                }
+            # Not a genuine race loss -- discard the staged (uncommitted)
+            # Download row explicitly, rather than relying on it being
+            # implicitly rolled back when the session closes, and report
+            # a real, retriable error so the failure is visible instead
+            # of silent.
+            session.rollback()
             return {
-                "message": "Video is currently downloading",
+                "success": False,
+                "error": "Failed to claim video for download (a database error occurred). Please try again.",
                 "video_id": video_id,
                 "download_id": None,
             }
@@ -686,11 +712,30 @@ async def queue_download_video(
         from src.services.video_batch_service import claim_video_for_redownload
 
         if not claim_video_for_redownload(video_id):
+            # See queue_video_download()'s identical comment above:
+            # claim_video_for_redownload() returning False doesn't by
+            # itself distinguish a genuine race loss from an unrelated
+            # claim error (live-observed: a transient DB lock-wait
+            # timeout). Re-check the video's real status before deciding
+            # which message is actually true.
+            session.refresh(video, attribute_names=["status"])
+            if video.status == VideoStatus.DOWNLOADING:
+                return {
+                    "success": True,
+                    "message": "Video is currently downloading",
+                    "video_id": video_id,
+                    "status": "already_downloading",
+                }
+            # Not a genuine race loss -- discard the staged (uncommitted)
+            # Download row explicitly and report a real, retriable error
+            # instead of a misleading "already downloading" message with
+            # no trace of the failure anywhere.
+            session.rollback()
             return {
-                "success": True,
-                "message": "Video is currently downloading",
+                "success": False,
+                "error": "Failed to claim video for download (a database error occurred). Please try again.",
                 "video_id": video_id,
-                "status": "already_downloading",
+                "download_id": None,
             }
 
         # Submit download to unified service via ytdlp_service adapter
