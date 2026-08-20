@@ -14,7 +14,7 @@ src.services.video_batch_service.resolve_video_url() (the real,
 working implementation) rather than defining its own resolution
 logic or importing from the parent module.
 
-Authentication: All endpoints require session-based authentication via get_current_user dependency.
+Authentication: All endpoints require session-based authentication via the require_authentication dependency.
 """
 
 import asyncio

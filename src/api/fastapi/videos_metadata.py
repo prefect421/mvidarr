@@ -11,7 +11,7 @@ These endpoints handle enriching video metadata from external sources:
 Extracted from videos.py as part of the API modularization effort.
 Uses Pydantic models from videos_models.py for request/response validation.
 
-Authentication: All endpoints require session-based authentication via get_current_user dependency.
+Authentication: All endpoints require session-based authentication via the require_authentication dependency.
 """
 
 from datetime import datetime, timedelta

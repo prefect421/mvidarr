@@ -8,7 +8,7 @@ These endpoints handle importing videos:
 
 Extracted from videos.py as part of the API modularization effort.
 
-Authentication: All endpoints require session-based authentication via get_current_user dependency.
+Authentication: All endpoints require session-based authentication via the require_authentication dependency.
 """
 
 from datetime import datetime

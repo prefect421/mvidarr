@@ -62,3 +62,14 @@ class TestVideosDownloadsBehavioralAuth:
         client = TestClient(app)
         response = client.post("/bulk/download", json={"video_ids": [1]})
         assert response.status_code == 401
+
+    def test_bulk_download_succeeds_for_authenticated_session(self):
+        app = FastAPI()
+        app.include_router(videos_downloads_router)
+        app.dependency_overrides[require_authentication] = lambda: {
+            "authenticated": True,
+            "role": "user",
+        }
+        client = TestClient(app)
+        response = client.post("/bulk/download", json={"video_ids": [1]})
+        assert response.status_code != 401

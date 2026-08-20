@@ -27,15 +27,24 @@ def get_disk_usage() -> Dict[str, Dict]:
     `paths` parameter let an unauthenticated caller probe arbitrary host
     filesystem paths for existence/usage stats).
 
+    Paths are anchored to this project's Config-based path constants
+    (the same approach get_recent_logs() uses via Config.LOGS_DIR)
+    rather than hardcoded `/app/data/...` strings, so this reports real
+    disk usage both in Docker (where Config.DATA_DIR resolves to
+    /app/data) and in a native-service/dev deployment (where it does
+    not) -- CLAUDE.md requires MVidarr run either way.
+
     Returns:
         Dict with path as key and usage info as value
     """
+    from src.config.config import Config
+
     paths = [
-        "/app/data",
-        "/app/data/musicvideos",
-        "/app/data/thumbnails",
-        "/app/data/database",
-        "/app/data/logs",
+        str(Config.DATA_DIR),
+        str(Config.MUSIC_VIDEOS_DIR),
+        str(Config.THUMBNAILS_DIR),
+        str(Config.DATA_DIR / "database"),
+        str(Config.LOGS_DIR),
     ]
 
     disk_info = {}

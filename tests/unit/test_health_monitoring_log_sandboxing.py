@@ -66,5 +66,12 @@ class TestGetDiskUsageNoLongerAcceptsArbitraryPaths:
         assert "paths" not in sig.parameters
 
     def test_returns_the_fixed_default_paths(self):
+        # Anchored to Config.DATA_DIR (which resolves to /app/data in
+        # Docker, but not in a native-service/dev deployment -- see
+        # health_monitoring.py's get_disk_usage() docstring), not a
+        # hardcoded "/app/data" literal, so this must check against the
+        # real constant to hold in both environments.
+        from src.config.config import Config
+
         result = get_disk_usage()
-        assert "/app/data" in result
+        assert str(Config.DATA_DIR) in result

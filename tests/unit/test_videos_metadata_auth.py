@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.videos_metadata import router as videos_metadata_router
 
 SOURCE_PATH = (
@@ -52,3 +53,14 @@ class TestVideosMetadataBehavioralAuth:
         client = TestClient(app)
         response = client.post("/bulk/refresh-metadata", json={"video_ids": [1]})
         assert response.status_code == 401
+
+    def test_bulk_refresh_metadata_succeeds_for_authenticated_session(self):
+        app = FastAPI()
+        app.include_router(videos_metadata_router)
+        app.dependency_overrides[require_authentication] = lambda: {
+            "authenticated": True,
+            "role": "user",
+        }
+        client = TestClient(app)
+        response = client.post("/bulk/refresh-metadata", json={"video_ids": [1]})
+        assert response.status_code != 401

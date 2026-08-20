@@ -1,8 +1,13 @@
 """Tests for videos_bulk.py's auth fix (closes #386's original scope).
 Includes normalizing the one route that already had SOME dependency
-(refresh_video_thumbnails, bare Depends(get_current_user)) to the real
-enforcing dependency, require_authentication -- get_current_user alone
-does not raise on an unauthenticated request.
+(refresh_video_thumbnails, bare Depends(get_current_user)) to
+require_authentication.
+
+Note: refresh_video_thumbnails previously used bare
+Depends(get_current_user), which DOES enforce authentication (raises
+HTTPException(401)) on its own -- this was not a bug. It's normalized to
+require_authentication here purely for consistency with the rest of this
+file's routes, not because it was unprotected.
 """
 
 import ast
@@ -11,6 +16,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.videos_bulk import router as videos_bulk_router
 
 SOURCE_PATH = (
@@ -60,3 +66,14 @@ class TestVideosBulkBehavioralAuth:
         client = TestClient(app)
         response = client.post("/bulk/delete", json={"video_ids": [1]})
         assert response.status_code == 401
+
+    def test_bulk_delete_succeeds_for_authenticated_session(self):
+        app = FastAPI()
+        app.include_router(videos_bulk_router)
+        app.dependency_overrides[require_authentication] = lambda: {
+            "authenticated": True,
+            "role": "user",
+        }
+        client = TestClient(app)
+        response = client.post("/bulk/delete", json={"video_ids": [1]})
+        assert response.status_code != 401

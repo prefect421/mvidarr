@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.fastapi.auth_dependencies import require_admin
+from src.api.fastapi.template_system import require_admin as require_admin_page
 from src.api.fastapi.template_system import template_system
 from src.services.health_monitoring import (
     get_celery_status,
@@ -145,7 +146,7 @@ page_router = APIRouter(tags=["System Health Pages"])
 
 @page_router.get("/system-health", response_class=HTMLResponse)
 async def system_health_page(
-    request: Request, current_user: dict = Depends(require_admin)
+    request: Request, current_user: dict = Depends(require_admin_page)
 ):
     """Render the system health dashboard page."""
     context = {"page_title": "System Health"}
