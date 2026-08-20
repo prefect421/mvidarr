@@ -20,3 +20,21 @@ class TestMigration024DowngradeIsNameAgnostic:
         # with no lookup first. The fix must look up the actual index
         # name via information_schema before dropping.
         assert "information_schema.statistics" in downgrade_source
+
+
+class TestMigration024DowngradeIndexLookupSafety:
+    """#385: the index-name lookup filters on column_name and
+    non_unique alone, with no seq_in_index/ORDER BY safety. If a
+    composite unique index containing youtube_id as a non-first column
+    were ever added, this could nondeterministically pick the wrong
+    index to drop. Low likelihood today, cheap to tighten."""
+
+    def test_filters_to_the_first_column_position_in_the_index(self):
+        source = MIGRATION_PATH.read_text()
+        downgrade_source = source[source.index("def downgrade(connection):") :]
+        assert "seq_in_index = 1" in downgrade_source
+
+    def test_orders_results_for_determinism(self):
+        source = MIGRATION_PATH.read_text()
+        downgrade_source = source[source.index("def downgrade(connection):") :]
+        assert "order by" in downgrade_source.lower()

@@ -36,7 +36,22 @@ def upgrade(connection):
 
 
 def downgrade(connection):
-    """Recreate the old non-unique index"""
+    """Recreate the old non-unique index, if not already present.
+
+    #385: guards symmetrically with upgrade() above -- without this
+    check, re-running downgrade() (or downgrading when the index is
+    already present) errors with MariaDB 1061 (duplicate key name).
+    """
+    result = connection.execute(text("""
+        SELECT COUNT(*) FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+        AND table_name = 'videos'
+        AND index_name = 'idx_video_youtube_id'
+    """))
+    if result.scalar() > 0:
+        print("✅ idx_video_youtube_id already present (skipped)")
+        return
+
     connection.execute(text("""
         ALTER TABLE videos
         ADD INDEX idx_video_youtube_id (youtube_id)
