@@ -47,7 +47,7 @@ lxml==6.1.1  # Security: CVE-2026-41066 XXE local file read fix, GHSA-4jhm-jv67-
 # Background Tasks
 celery==5.6.3
 redis==8.1.0
-flower==2.0.1
+flower==2.1.0
 
 # Security
 werkzeug==3.1.8  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
