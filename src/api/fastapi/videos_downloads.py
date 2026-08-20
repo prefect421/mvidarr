@@ -547,10 +547,40 @@ async def queue_video_download(
                 download_id=download.id,
             )
 
+            # #383: revert on a falsy/{"success": False} dispatch result
+            # too, not just a raised exception -- DownloadServiceAdapter.
+            # add_music_video_download() wraps its whole body in
+            # try/except and returns {"success": False, "error": ...} on
+            # failure rather than propagating; the except block below
+            # only ever catches something *raised*. Without this check,
+            # a graceful dispatch failure left the video stuck at
+            # DOWNLOADING with a "queued" Download row forever. Mirrors
+            # bulk_download_videos()'s #379.6 fix and the identical fix
+            # in queue_download_video() below.
+            if not (result and result.get("success")):
+                dispatch_error_message = (
+                    result.get("error", "Unknown dispatch error")
+                    if result
+                    else "Unknown dispatch error"
+                )
+                logger.error(
+                    f"Dispatch failed for video {video_id}: {dispatch_error_message}"
+                )
+                video.status = original_status
+                download.status = "failed"
+                download.error_message = dispatch_error_message
+                session.commit()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to start download: {dispatch_error_message}",
+                )
+
             logger.info(
                 f"Submitted download to unified service for video {video_id}: {result}"
             )
 
+        except HTTPException:
+            raise
         except Exception as download_error:
             logger.error(
                 f"Failed to submit download to unified service for video {video_id}: {download_error}"
@@ -561,6 +591,14 @@ async def queue_video_download(
             # retried FAILED video to WANTED would silently enroll it in the
             # auto-download queue.
             video.status = original_status
+            # Match the falsy-result branch above: mark the Download row
+            # failed here too, not just the video's status. Left as
+            # "queued" before this fix, a Download row from a raised
+            # (not merely falsy) dispatch failure would still show up as
+            # a phantom in-progress entry in the Download Queue widget
+            # for up to 2 hours (see metube.py's get_download_queue()).
+            download.status = "failed"
+            download.error_message = str(download_error)
             session.commit()
             raise HTTPException(
                 status_code=500,
@@ -798,6 +836,36 @@ async def queue_download_video(
                 download_id=download.id,
             )
 
+            # #383: revert on a falsy/{"success": False} dispatch result
+            # too, not just a raised exception -- DownloadServiceAdapter.
+            # add_music_video_download() wraps its whole body in
+            # try/except and returns {"success": False, "error": ...} on
+            # failure rather than propagating; the except block below
+            # only ever catches something *raised*. Without this check,
+            # a graceful dispatch failure left the video stuck at
+            # DOWNLOADING with a "queued" Download row forever, and this
+            # endpoint reported success anyway. Mirrors
+            # bulk_download_videos()'s #379.6 fix and the identical fix
+            # in queue_video_download() above.
+            if not (result and result.get("success")):
+                dispatch_error_message = (
+                    result.get("error", "Unknown dispatch error")
+                    if result
+                    else "Unknown dispatch error"
+                )
+                logger.error(
+                    f"Dispatch failed for video {video_id}: {dispatch_error_message}"
+                )
+                video.status = original_status
+                download.status = "failed"
+                download.error_message = dispatch_error_message
+                session.commit()
+                return {
+                    "success": False,
+                    "error": f"Failed to start download: {dispatch_error_message}",
+                    "video_id": video_id,
+                }
+
             logger.info(
                 f"Successfully submitted download {download.id} for video {video_id} to unified service: {result}"
             )
@@ -820,6 +888,11 @@ async def queue_download_video(
             # retried FAILED video to WANTED would silently enroll it in the
             # auto-download queue.
             video.status = original_status
+            # Match the falsy-result branch above: mark the Download row
+            # failed here too (see queue_video_download()'s identical
+            # comment above for why).
+            download.status = "failed"
+            download.error_message = str(download_error)
             session.commit()
             return {
                 "success": False,
