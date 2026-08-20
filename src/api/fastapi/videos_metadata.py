@@ -11,7 +11,7 @@ These endpoints handle enriching video metadata from external sources:
 Extracted from videos.py as part of the API modularization effort.
 Uses Pydantic models from videos_models.py for request/response validation.
 
-Authentication: All endpoints require session-based authentication via get_current_user dependency.
+Authentication: All endpoints require session-based authentication via the require_authentication dependency.
 """
 
 from datetime import datetime, timedelta
@@ -21,7 +21,7 @@ from fastapi import Path as FastAPIPath
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
-from src.api.fastapi.auth_dependencies import get_current_user
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.videos_models import BulkRefreshMetadataRequest
 from src.database.connection import get_db_session
 from src.database.models import Video
@@ -37,6 +37,7 @@ logger = get_logger("mvidarr.api.fastapi.videos_metadata")
 @router.post("/bulk/refresh-metadata")
 async def bulk_refresh_metadata(
     request: BulkRefreshMetadataRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Bulk refresh metadata for videos from various sources"""
@@ -142,7 +143,9 @@ async def bulk_refresh_metadata(
 
 @router.post("/bulk/enhanced-refresh-metadata")
 async def bulk_enhanced_refresh_metadata(
-    request: dict = Body(...), session: Session = Depends(get_db_session)
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Bulk enhanced metadata refresh for multiple videos"""
     try:
@@ -226,7 +229,9 @@ async def bulk_enhanced_refresh_metadata(
 
 @router.post("/enhanced-refresh-all-metadata")
 async def enhanced_refresh_all_metadata(
-    request: dict = Body(default={}), session: Session = Depends(get_db_session)
+    request: dict = Body(default={}),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """
     Enhanced metadata refresh for all videos or specific video IDs using Celery background job.
@@ -322,6 +327,7 @@ async def enhanced_refresh_all_metadata(
 async def enhanced_refresh_metadata(
     video_id: int = FastAPIPath(..., ge=1),
     request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Enhanced metadata refresh for a single video from multiple sources including thumbnails"""
@@ -504,6 +510,7 @@ def _extract_year_from_video(video: Video) -> dict:
 async def extract_video_year(
     video_id: int = FastAPIPath(..., ge=1),
     force: bool = Body(False, embed=True),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """
@@ -598,6 +605,7 @@ async def bulk_extract_years(
     video_ids: list[int] = Body(None, embed=True),
     force: bool = Body(False, embed=True),
     all_videos: bool = Body(False, embed=True),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """

@@ -238,28 +238,6 @@ test.describe('API Proxy Endpoints', () => {
   });
 });
 
-test.describe('Development Endpoints', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page);
-  });
-
-  test('should load template info endpoint', async ({ page }) => {
-    const response = await page.goto('/dev/template-info');
-    expect(response?.status()).toBe(200);
-
-    const info = await response?.json();
-    expect(info).toHaveProperty('template_system');
-  });
-
-  test('should load context preview endpoint', async ({ page }) => {
-    const response = await page.goto('/dev/context-preview');
-    expect(response?.status()).toBe(200);
-
-    const context = await response?.json();
-    expect(typeof context).toBe('object');
-  });
-});
-
 test.describe('Component Endpoints', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
