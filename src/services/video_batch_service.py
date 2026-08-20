@@ -117,6 +117,41 @@ def claim_video_for_redownload(video_id: int) -> bool:
             return result.rowcount == 1
     except Exception as e:
         logger.error(f"Failed to claim video {video_id} for redownload: {e}")
+        # Live-reported (2026-08-20): this call intermittently blocks for
+        # the full innodb_lock_wait_timeout and fails with error 1205,
+        # recurring in bursts across multiple unrelated videos. Direct
+        # live investigation (manual reproduction, polling
+        # information_schema.innodb_trx between failures) could never
+        # catch the blocking transaction in the act -- by the time a
+        # failure was noticed, the lock had already cleared. Capture
+        # what else was active on the DB at the moment of THIS failure,
+        # so the next occurrence leaves hard evidence instead of
+        # requiring another live chase. Best-effort and diagnostic-only
+        # -- must never raise past this function or change its return
+        # value, and must not assume a MariaDB backend (information_
+        # schema.innodb_trx doesn't exist on SQLite, used in tests).
+        if "1205" in str(e) or "Lock wait timeout" in str(e):
+            try:
+                from sqlalchemy import text
+
+                with engine.connect() as diag_conn:
+                    trx_rows = diag_conn.execute(
+                        text(
+                            "SELECT trx_id, trx_state, trx_started, "
+                            "trx_mysql_thread_id, trx_query "
+                            "FROM information_schema.innodb_trx"
+                        )
+                    ).fetchall()
+                    logger.error(
+                        f"Lock-wait-timeout diagnostics for video {video_id}: "
+                        f"{len(trx_rows)} active InnoDB transaction(s) at "
+                        f"failure time: {trx_rows}"
+                    )
+            except Exception as diag_error:
+                logger.error(
+                    f"Could not gather lock-wait-timeout diagnostics for "
+                    f"video {video_id}: {diag_error}"
+                )
         return False
 
 
