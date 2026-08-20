@@ -158,6 +158,49 @@ async def test_connection(
         )
 
 
+def _dedupe_recent_db_downloads(
+    queue_items: List[Dict[str, Any]],
+    recent_downloads: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Merge recently-created Download rows into an in-memory download
+    queue without duplicating an entry already represented there.
+
+    A given download can appear in queue_items two ways: keyed by its
+    Download.id (a "db_download_id" field) or -- for a video flipped to
+    DOWNLOADING with no live Download row tracked in memory -- keyed by
+    its Video.id (a "video_id" field; see unified_download_service.
+    get_download_queue()). That first source never sets
+    "db_download_id", so a dedup check against only that field is a
+    permanent no-op: any download normally represented by both sources
+    (the common case -- claiming a video sets it DOWNLOADING *and*
+    creates a matching Download row) gets appended a second time.
+    Live-reported 2026-08-20: every manual download showed up twice in
+    the Download Queue widget once downloads started actually
+    completing quickly instead of self-deadlocking for ~50s (#401).
+
+    Dedupe by both db_download_id and video_id so either source
+    matching is enough to skip the duplicate.
+    """
+    existing_db_ids = {
+        item["db_download_id"] for item in queue_items if item.get("db_download_id")
+    }
+    existing_video_ids = {
+        item["video_id"] for item in queue_items if item.get("video_id") is not None
+    }
+
+    merged = list(queue_items)
+    for entry in recent_downloads:
+        if entry.get("db_download_id") in existing_db_ids:
+            continue
+        if (
+            entry.get("video_id") is not None
+            and entry["video_id"] in existing_video_ids
+        ):
+            continue
+        merged.append(entry)
+    return merged
+
+
 @router.get("/queue", response_model=QueueResponse)
 async def get_download_queue(
     current_user: dict = Depends(require_authentication),
@@ -172,13 +215,6 @@ async def get_download_queue(
         # Get queue from ytdlp service (in-memory downloads)
         legacy_result = ytdlp_service.get_queue()
         queue_items = legacy_result.get("queue", [])
-
-        # Track database download IDs already in the in-memory queue to avoid duplicates
-        existing_db_ids = set()
-        for item in queue_items:
-            db_download_id = item.get("db_download_id")
-            if db_download_id:
-                existing_db_ids.add(db_download_id)
 
         # Also check for recent downloads that might be processing but not in memory
         try:
@@ -201,26 +237,29 @@ async def get_download_queue(
                 .all()
             )
 
-            # Only add downloads that aren't already in the in-memory queue
-            for download, artist_name in recent_downloads:
-                if download.id not in existing_db_ids:
-                    queue_entry = {
-                        "id": f"db_{download.id}",
-                        "title": download.title,
-                        "artist": artist_name,
-                        "url": download.original_url,
-                        "status": download.status,
-                        "progress": download.progress or 0,
-                        "quality": download.quality or "best",
-                        "created_at": (
-                            download.created_at.isoformat()
-                            if download.created_at
-                            else None
-                        ),
-                        "task_type": "database",
-                        "db_download_id": download.id,
-                    }
-                    queue_items.append(queue_entry)
+            recent_entries = [
+                {
+                    "id": f"db_{download.id}",
+                    "title": download.title,
+                    "artist": artist_name,
+                    "url": download.original_url,
+                    "status": download.status,
+                    "progress": download.progress or 0,
+                    "quality": download.quality or "best",
+                    "created_at": (
+                        download.created_at.isoformat() if download.created_at else None
+                    ),
+                    "task_type": "database",
+                    "db_download_id": download.id,
+                    "video_id": download.video_id,
+                }
+                for download, artist_name in recent_downloads
+            ]
+
+            # Merge without duplicating a download already represented
+            # in the in-memory queue -- see _dedupe_recent_db_downloads()
+            # for why this can't be a plain db_download_id-only check.
+            queue_items = _dedupe_recent_db_downloads(queue_items, recent_entries)
 
         except Exception as db_error:
             logger.warning(f"Failed to get recent database downloads: {db_error}")
