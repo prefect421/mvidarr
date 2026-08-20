@@ -427,30 +427,25 @@ async def queue_video_download(
                     status_code=400, detail="Could not resolve video URL for download"
                 )
 
-        # Create download entry
-        download = Download(
-            artist_id=video.artist_id,
-            video_id=video_id,
-            title=video.title,
-            original_url=(
-                video.url
-                or video.youtube_url
-                or f"https://youtube.com/watch?v={video.youtube_id}"
-                if hasattr(video, "youtube_id") and video.youtube_id
-                else "Unknown URL"
-            ),
-            status="queued",
-            priority=priority,
-            created_at=datetime.utcnow(),
-        )
-
-        session.add(download)
-
         # Claim the video for (re)download now that the URL has been
-        # resolved and the Download row is staged. Claiming any earlier
-        # (e.g. before URL resolution) risks permanently stranding the
-        # video in DOWNLOADING if resolution then fails, since the claim
-        # commits its own independent transaction immediately (#377).
+        # resolved. Claiming any earlier (e.g. before URL resolution)
+        # risks permanently stranding the video in DOWNLOADING if
+        # resolution then fails, since the claim commits its own
+        # independent transaction immediately (#377).
+        #
+        # Claim BEFORE staging the Download row below, not after (fixed
+        # live-reported self-deadlock, 2026-08-20): downloads.video_id
+        # has a real, enforced FK to videos.id, so staging (and
+        # flushing) the Download row on this request's own `session`
+        # connection takes an InnoDB lock on the video's row that isn't
+        # released until this same request's later session.commit().
+        # That claim call deliberately opens a *separate*
+        # connection to UPDATE that exact row (see its docstring) -- with
+        # the Download row staged first, that second connection queued
+        # behind its own request's uncommitted lock and could only fail,
+        # every time, once MariaDB's innodb_lock_wait_timeout expired.
+        # Matches bulk_download_videos()'s already-correct claim-then-
+        # stage order (#377).
         original_status = video.status
 
         from src.services.video_batch_service import claim_video_for_redownload
@@ -475,11 +470,11 @@ async def queue_video_download(
                     "video_id": video_id,
                     "download_id": None,
                 }
-            # Not a genuine race loss -- discard the staged (uncommitted)
-            # Download row explicitly, rather than relying on it being
-            # implicitly rolled back when the session closes, and report
-            # a real, retriable error so the failure is visible instead
-            # of silent.
+            # Not a genuine race loss -- clear this session's transaction
+            # (nothing is staged on it yet at this point; the Download
+            # row is only created after a successful claim, below) and
+            # report a real, retriable error so the failure is visible
+            # instead of silent.
             session.rollback()
             return {
                 "success": False,
@@ -490,6 +485,27 @@ async def queue_video_download(
 
         # Submit download to unified service via ytdlp_service adapter
         try:
+            # Create the download record. Staged only now, after the
+            # claim above already succeeded and committed on its own
+            # connection -- staging it earlier self-deadlocked this same
+            # request (see the comment above the claim call).
+            download = Download(
+                artist_id=video.artist_id,
+                video_id=video_id,
+                title=video.title,
+                original_url=(
+                    video.url
+                    or video.youtube_url
+                    or f"https://youtube.com/watch?v={video.youtube_id}"
+                    if hasattr(video, "youtube_id") and video.youtube_id
+                    else "Unknown URL"
+                ),
+                status="queued",
+                priority=priority,
+                created_at=datetime.utcnow(),
+            )
+            session.add(download)
+
             # Persist the staged Download row now that the claim has
             # succeeded. This commit lives inside this try block (not
             # before it) so that if it raises -- lock timeout, transient
@@ -686,27 +702,25 @@ async def queue_download_video(
         download_subtitles = settings.get_bool("download_subtitles", False)
         subtitle_languages = settings.get("subtitle_languages", "en,en-US")
 
-        # Create download record in database for Celery to process
-        download = Download(
-            artist_id=video.artist_id,
-            video_id=video_id,
-            title=video.title,
-            original_url=youtube_url,
-            status="queued",
-            quality="best",
-            priority=1,
-            created_at=datetime.utcnow(),
-        )
-
-        session.add(download)
-        session.flush()  # Get the download ID
-
         # Claim the video for (re)download now that the YouTube URL has
-        # been confirmed and the Download row is staged. Claiming any
-        # earlier (e.g. before the URL-availability check) risks
-        # permanently stranding the video in DOWNLOADING if that check
-        # then fails, since the claim commits its own independent
-        # transaction immediately (#377).
+        # been confirmed. Claiming any earlier (e.g. before the
+        # URL-availability check) risks permanently stranding the video
+        # in DOWNLOADING if that check then fails, since the claim
+        # commits its own independent transaction immediately (#377).
+        #
+        # Claim BEFORE staging the Download row below, not after (fixed
+        # live-reported self-deadlock, 2026-08-20): downloads.video_id
+        # has a real, enforced FK to videos.id, so staging (and
+        # flushing) the Download row on this request's own `session`
+        # connection takes an InnoDB lock on the video's row that isn't
+        # released until this same request's later session.commit().
+        # That claim call deliberately opens a *separate*
+        # connection to UPDATE that exact row (see its docstring) -- with
+        # the Download row staged first, that second connection queued
+        # behind its own request's uncommitted lock and could only fail,
+        # every time, once MariaDB's innodb_lock_wait_timeout expired.
+        # Matches bulk_download_videos()'s already-correct claim-then-
+        # stage order above (#377).
         original_status = video.status
 
         from src.services.video_batch_service import claim_video_for_redownload
@@ -726,10 +740,12 @@ async def queue_download_video(
                     "video_id": video_id,
                     "status": "already_downloading",
                 }
-            # Not a genuine race loss -- discard the staged (uncommitted)
-            # Download row explicitly and report a real, retriable error
-            # instead of a misleading "already downloading" message with
-            # no trace of the failure anywhere.
+            # Not a genuine race loss -- clear this session's transaction
+            # (nothing is staged on it yet at this point; the Download
+            # row is only created after a successful claim, below) and
+            # report a real, retriable error instead of a misleading
+            # "already downloading" message with no trace of the failure
+            # anywhere.
             session.rollback()
             return {
                 "success": False,
@@ -740,6 +756,24 @@ async def queue_download_video(
 
         # Submit download to unified service via ytdlp_service adapter
         try:
+            # Create the download record for Celery to process. Staged
+            # only now, after the claim above already succeeded and
+            # committed on its own connection -- staging it earlier
+            # self-deadlocked this same request (see the comment above
+            # the claim call).
+            download = Download(
+                artist_id=video.artist_id,
+                video_id=video_id,
+                title=video.title,
+                original_url=youtube_url,
+                status="queued",
+                quality="best",
+                priority=1,
+                created_at=datetime.utcnow(),
+            )
+            session.add(download)
+            session.flush()  # Get the download ID
+
             # Persist the staged Download row now that the claim has
             # succeeded. This commit lives inside this try block (not
             # before it) so that if it raises -- lock timeout, transient
