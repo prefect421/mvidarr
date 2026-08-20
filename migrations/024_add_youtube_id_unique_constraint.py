@@ -84,12 +84,19 @@ def downgrade(connection):
     SQLAlchemy-generated name (upgrade() was already fixed to handle
     this asymmetry -- #377 Finding 6 -- but downgrade() was not).
     """
+    # #385: seq_in_index = 1 + ORDER BY make this deterministic. Without
+    # them, a composite unique index containing youtube_id as a
+    # non-first column (none exists today, but nothing prevents one
+    # being added later) could be nondeterministically selected instead
+    # of the intended single-column index.
     result = connection.execute(text("""
         SELECT index_name FROM information_schema.statistics
         WHERE table_schema = DATABASE()
         AND table_name = 'videos'
         AND column_name = 'youtube_id'
         AND non_unique = 0
+        AND seq_in_index = 1
+        ORDER BY index_name
         LIMIT 1
     """))
     row = result.fetchone()
