@@ -8,9 +8,10 @@ import logging
 from datetime import datetime
 from typing import Dict
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.template_system import template_system
 from src.services.personal_analytics import (
     export_collection_csv,
@@ -28,7 +29,9 @@ router = APIRouter(prefix="/api/analytics", tags=["Personal Analytics"])
 
 
 @router.get("/summary")
-async def get_summary() -> Dict:
+async def get_summary(
+    current_user: dict = Depends(require_authentication),
+) -> Dict:
     """
     Get comprehensive analytics summary.
 
@@ -43,7 +46,9 @@ async def get_summary() -> Dict:
 
 
 @router.get("/collection")
-async def get_collection_stats() -> Dict:
+async def get_collection_stats(
+    current_user: dict = Depends(require_authentication),
+) -> Dict:
     """
     Get collection statistics.
 
@@ -65,7 +70,9 @@ async def get_collection_stats() -> Dict:
 
 
 @router.get("/top-artists")
-async def get_top_artists_list(limit: int = 10) -> Dict:
+async def get_top_artists_list(
+    limit: int = 10, current_user: dict = Depends(require_authentication)
+) -> Dict:
     """
     Get top artists by video count.
 
@@ -91,7 +98,9 @@ async def get_top_artists_list(limit: int = 10) -> Dict:
 
 
 @router.get("/top-genres")
-async def get_top_genres_list(limit: int = 10) -> Dict:
+async def get_top_genres_list(
+    limit: int = 10, current_user: dict = Depends(require_authentication)
+) -> Dict:
     """
     Get top genres by video count.
 
@@ -117,7 +126,9 @@ async def get_top_genres_list(limit: int = 10) -> Dict:
 
 
 @router.get("/health")
-async def get_health() -> Dict:
+async def get_health(
+    current_user: dict = Depends(require_authentication),
+) -> Dict:
     """
     Get collection health assessment.
 
@@ -139,7 +150,11 @@ async def get_health() -> Dict:
 
 
 @router.get("/recent")
-async def get_recent(days: int = 30, limit: int = 10) -> Dict:
+async def get_recent(
+    days: int = 30,
+    limit: int = 10,
+    current_user: dict = Depends(require_authentication),
+) -> Dict:
     """
     Get recently added videos.
 
@@ -168,7 +183,9 @@ async def get_recent(days: int = 30, limit: int = 10) -> Dict:
 
 
 @router.get("/export/csv")
-async def export_csv():
+async def export_csv(
+    current_user: dict = Depends(require_authentication),
+):
     """
     Export collection as CSV file.
 
@@ -195,7 +212,9 @@ page_router = APIRouter(tags=["Analytics Pages"])
 
 
 @page_router.get("/analytics", response_class=HTMLResponse)
-async def analytics_page(request: Request):
+async def analytics_page(
+    request: Request, current_user: dict = Depends(require_authentication)
+):
     """Render the personal analytics page."""
     context = {"page_title": "Collection Analytics"}
     return await template_system.render_response(
