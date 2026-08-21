@@ -563,8 +563,15 @@ async def oauth_callback(
 
 
 @router.get("/credentials")
-async def get_credentials():
-    """Get current stored username for simple auth"""
+async def get_credentials(current_user: dict = Depends(require_admin)):
+    """Get current stored username for simple auth (requires ADMIN role).
+
+    Leaked the instance-wide login username to any unauthenticated caller
+    before this fix. Only ever called from the admin-only credentials-
+    change form on settings.html (frontend/static/main.js's
+    loadCurrentCredentials()), matching its POST sibling below -- never
+    from the login page.
+    """
     try:
         from src.services.simple_auth_service import SimpleAuthService
 
@@ -693,8 +700,9 @@ async def auth_health():
 
 
 @legacy_router.get("/credentials")
-async def get_credentials_legacy():
-    """Get current stored username for simple auth (legacy endpoint)"""
+async def get_credentials_legacy(current_user: dict = Depends(require_admin)):
+    """Get current stored username for simple auth (legacy endpoint,
+    requires ADMIN role -- see get_credentials() above)."""
     try:
         from src.services.simple_auth_service import SimpleAuthService
 
