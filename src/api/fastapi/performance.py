@@ -9,9 +9,10 @@ from datetime import datetime
 from typing import List, Optional
 
 import psutil
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.services.media_cache_manager import MediaCacheManager
 from src.services.performance_monitor import get_performance_monitor
 from src.utils.logger import get_logger
@@ -165,7 +166,9 @@ async def get_cache_metrics() -> CacheMetrics:
 
 # API Endpoints
 @router.get("/", response_model=PerformanceOverview)
-async def get_performance_overview():
+async def get_performance_overview(
+    current_user: dict = Depends(require_admin),
+):
     """Get complete performance overview"""
     try:
         start_time = time.time()
@@ -224,20 +227,25 @@ async def get_performance_overview():
 
 
 @router.get("/system", response_model=SystemMetrics)
-async def get_system_performance():
+async def get_system_performance(
+    current_user: dict = Depends(require_admin),
+):
     """Get system resource metrics"""
     return await get_system_metrics()
 
 
 @router.get("/cache", response_model=CacheMetrics)
-async def get_cache_performance():
+async def get_cache_performance(
+    current_user: dict = Depends(require_authentication),
+):
     """Get cache performance metrics"""
     return await get_cache_metrics()
 
 
 @router.get("/endpoints", response_model=List[EndpointPerformance])
 async def get_endpoint_performance(
-    limit: int = Query(20, ge=1, le=100, description="Maximum endpoints to return")
+    limit: int = Query(20, ge=1, le=100, description="Maximum endpoints to return"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get performance metrics for individual endpoints"""
     try:
@@ -268,7 +276,8 @@ async def get_endpoint_performance(
 
 @router.get("/trends")
 async def get_performance_trends(
-    hours: int = Query(24, ge=1, le=168, description="Hours of trend data")
+    hours: int = Query(24, ge=1, le=168, description="Hours of trend data"),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get performance trends over time"""
     try:
@@ -296,7 +305,9 @@ async def get_performance_trends(
 
 
 @router.post("/cache/clear")
-async def clear_performance_cache():
+async def clear_performance_cache(
+    current_user: dict = Depends(require_admin),
+):
     """Clear performance and response caches"""
     try:
         cache_manager = MediaCacheManager()
@@ -328,7 +339,9 @@ async def clear_performance_cache():
 
 
 @router.get("/health")
-async def performance_health_check():
+async def performance_health_check(
+    current_user: dict = Depends(require_admin),
+):
     """Quick performance health check"""
     start_time = time.time()
 
