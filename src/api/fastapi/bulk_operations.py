@@ -13,12 +13,14 @@ from fastapi import (
     APIRouter,
     BackgroundTasks,
     Body,
+    Depends,
     HTTPException,
     WebSocket,
     WebSocketDisconnect,
 )
 from pydantic import BaseModel, Field, validator
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.jobs.bulk_media_tasks import (
     BulkMediaProcessor,
     BulkOperationStatus,
@@ -197,7 +199,9 @@ async def websocket_progress_updates(websocket: WebSocket, operation_id: str):
 # Bulk Operations Endpoints
 @router.post("/metadata/enrich", response_model=OperationResponse)
 async def enrich_metadata_bulk(
-    request: BulkMetadataEnrichmentRequest, background_tasks: BackgroundTasks
+    request: BulkMetadataEnrichmentRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """
     Enrich metadata for large collections of media files
@@ -265,7 +269,9 @@ async def enrich_metadata_bulk(
 
 @router.post("/collections/import", response_model=OperationResponse)
 async def import_collection(
-    request: CollectionImportRequest, background_tasks: BackgroundTasks
+    request: CollectionImportRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """
     Import large media collections from directories
@@ -334,7 +340,9 @@ async def import_collection(
 
 @router.post("/collections/cleanup", response_model=OperationResponse)
 async def cleanup_collection(
-    request: CollectionCleanupRequest, background_tasks: BackgroundTasks
+    request: CollectionCleanupRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """
     Perform cleanup operations on media collections
@@ -393,7 +401,9 @@ async def cleanup_collection(
 
 # Status and Management Endpoints
 @router.get("/operations/{operation_id}/status", response_model=ProgressResponse)
-async def get_operation_status(operation_id: str):
+async def get_operation_status(
+    operation_id: str, current_user: dict = Depends(require_authentication)
+):
     """Get current status of a bulk operation"""
     try:
         processor = active_processors.get(operation_id)
@@ -432,7 +442,9 @@ async def get_operation_status(operation_id: str):
 
 
 @router.post("/operations/{operation_id}/cancel", response_model=OperationResponse)
-async def cancel_operation(operation_id: str):
+async def cancel_operation(
+    operation_id: str, current_user: dict = Depends(require_admin)
+):
     """Cancel a running bulk operation"""
     try:
         processor = active_processors.get(operation_id)
@@ -463,7 +475,9 @@ async def cancel_operation(operation_id: str):
 
 
 @router.get("/operations/active", response_model=List[Dict[str, Any]])
-async def get_active_operations():
+async def get_active_operations(
+    current_user: dict = Depends(require_authentication),
+):
     """Get list of all active bulk operations"""
     try:
         active_ops = []
@@ -489,6 +503,7 @@ async def create_collection(
     config: Optional[CollectionProcessingConfigRequest] = Body(
         None, description="Processing configuration"
     ),
+    current_user: dict = Depends(require_admin),
 ):
     """Create a new media collection"""
     try:
@@ -534,7 +549,9 @@ async def create_collection(
 
 
 @router.get("/collections/{collection_id}/statistics", response_model=Dict[str, Any])
-async def get_collection_statistics(collection_id: str):
+async def get_collection_statistics(
+    collection_id: str, current_user: dict = Depends(require_authentication)
+):
     """Get comprehensive statistics for a collection"""
     try:
         manager = active_managers.get(collection_id)
@@ -554,7 +571,9 @@ async def get_collection_statistics(collection_id: str):
 
 
 @router.get("/system/statistics", response_model=Dict[str, Any])
-async def get_system_statistics():
+async def get_system_statistics(
+    current_user: dict = Depends(require_authentication),
+):
     """Get overall system statistics for bulk operations"""
     try:
         total_active_operations = sum(
@@ -584,7 +603,9 @@ async def get_system_statistics():
 
 
 @router.delete("/operations/{operation_id}/cleanup")
-async def cleanup_operation(operation_id: str):
+async def cleanup_operation(
+    operation_id: str, current_user: dict = Depends(require_admin)
+):
     """Clean up completed operation resources"""
     try:
         # Remove from active processors
