@@ -336,6 +336,16 @@ async def bulk_download_videos(
         )
 
         result = {
+            # Live-reported 2026-08-21: this response never included a
+            # "success" key, unlike every sibling endpoint in this file.
+            # The frontend's bulkDownloadSelected() (artist_detail.html)
+            # branches on `if (data.success)` -- with that key always
+            # undefined (falsy), it *always* showed "Error: undefined",
+            # even when the batch genuinely queued videos successfully.
+            # True here means "the batch ran to completion without a
+            # fatal server error" -- per-video outcomes are already
+            # reported via queued_count/skipped_count/failed_count.
+            "success": True,
             "message": "Bulk download completed",
             "queued_count": queued_count,
             "skipped_count": skipped_count,
