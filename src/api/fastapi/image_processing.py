@@ -6,9 +6,10 @@ REST API for concurrent image processing operations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.jobs.image_processing_tasks import (
     ThumbnailSpec,
     submit_bulk_thumbnail_generation,
@@ -96,7 +97,9 @@ class ImageProcessingStatsResponse(BaseModel):
 # Endpoints
 @router.post("/thumbnails/generate", response_model=Dict[str, str])
 async def generate_thumbnails(
-    request: ThumbnailGenerationRequest, background_tasks: BackgroundTasks
+    request: ThumbnailGenerationRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """
     Generate thumbnails for multiple images concurrently
@@ -172,7 +175,9 @@ async def generate_thumbnails(
 
 @router.post("/images/optimize", response_model=Dict[str, str])
 async def optimize_images(
-    request: ImageOptimizationRequest, background_tasks: BackgroundTasks
+    request: ImageOptimizationRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """
     Optimize multiple images concurrently
@@ -214,7 +219,9 @@ async def optimize_images(
 
 @router.post("/images/analyze", response_model=Dict[str, str])
 async def analyze_images(
-    request: ImageAnalysisRequest, background_tasks: BackgroundTasks
+    request: ImageAnalysisRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """
     Analyze multiple images concurrently
@@ -252,7 +259,9 @@ async def analyze_images(
 
 
 @router.get("/stats", response_model=ImageProcessingStatsResponse)
-async def get_processing_stats():
+async def get_processing_stats(
+    current_user: dict = Depends(require_authentication),
+):
     """
     Get image processing performance statistics
 
@@ -270,7 +279,9 @@ async def get_processing_stats():
 
 
 @router.get("/presets", response_model=Dict[str, Dict])
-async def get_thumbnail_presets():
+async def get_thumbnail_presets(
+    current_user: dict = Depends(require_authentication),
+):
     """
     Get available thumbnail presets
 
@@ -304,6 +315,7 @@ async def generate_preset_thumbnails(
     presets: List[str] = Body(
         ["small", "medium", "large"], description="Preset names to generate"
     ),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Generate thumbnails using predefined presets
@@ -359,7 +371,8 @@ async def generate_preset_thumbnails(
 
 @router.delete("/cache/thumbnails")
 async def clear_thumbnail_cache(
-    output_dir: str = Query(..., description="Thumbnail output directory")
+    output_dir: str = Query(..., description="Thumbnail output directory"),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Clear thumbnail cache
@@ -382,7 +395,8 @@ async def clear_thumbnail_cache(
 
 @router.get("/cache/stats")
 async def get_cache_stats(
-    output_dir: str = Query(..., description="Thumbnail output directory")
+    output_dir: str = Query(..., description="Thumbnail output directory"),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     Get thumbnail cache statistics
