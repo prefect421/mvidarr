@@ -8,9 +8,10 @@ background jobs with real-time progress tracking via WebSocket.
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.jobs.ffmpeg_processing_tasks import (
     submit_bulk_metadata_task,
     submit_metadata_extraction_task,
@@ -136,6 +137,7 @@ class TaskCancellationResponse(BaseModel):
 async def extract_video_metadata(
     request: VideoMetadataExtractionRequest,
     user_id: Optional[str] = Query(None, description="User ID for tracking"),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Extract technical metadata from video file using FFprobe
@@ -190,6 +192,7 @@ async def extract_video_metadata(
 async def convert_video_format(
     request: VideoConversionRequest,
     user_id: Optional[str] = Query(None, description="User ID for tracking"),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Convert video file to different format using FFmpeg
@@ -256,6 +259,7 @@ async def convert_video_format(
 async def bulk_extract_metadata(
     request: BulkMetadataRequest,
     user_id: Optional[str] = Query(None, description="User ID for tracking"),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Extract metadata from multiple video files concurrently
@@ -324,6 +328,7 @@ async def bulk_extract_metadata(
 async def validate_video_file(
     request: VideoValidationRequest,
     user_id: Optional[str] = Query(None, description="User ID for tracking"),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Validate video file integrity and playability
@@ -372,7 +377,9 @@ async def validate_video_file(
     summary="Cancel media processing task",
     description="Cancel an active FFmpeg processing operation",
 )
-async def cancel_media_processing(task_id: str):
+async def cancel_media_processing(
+    task_id: str, current_user: dict = Depends(require_admin)
+):
     """
     Cancel an active FFmpeg processing operation
 
@@ -413,7 +420,9 @@ async def cancel_media_processing(task_id: str):
     summary="Get active media processing operations",
     description="Get list of currently active FFmpeg processing operations",
 )
-async def get_active_processing():
+async def get_active_processing(
+    current_user: dict = Depends(require_authentication),
+):
     """
     Get list of currently active FFmpeg processing operations
 
@@ -480,7 +489,9 @@ async def get_active_processing():
     summary="Get available conversion options",
     description="Get common FFmpeg format conversion options and presets",
 )
-async def get_conversion_options():
+async def get_conversion_options(
+    current_user: dict = Depends(require_authentication),
+):
     """
     Get available FFmpeg conversion options and presets
 
