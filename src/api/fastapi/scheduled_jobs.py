@@ -17,10 +17,11 @@ Endpoints:
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.database.connection import get_db
 from src.database.models import Artist, ScheduledJob
 from src.services.scheduler_service_v2 import scheduler_v2
@@ -80,6 +81,7 @@ async def get_all_scheduled_jobs(
     status: Optional[str] = Query(None, description="Filter by status"),
     job_type: Optional[str] = Query(None, description="Filter by job type"),
     artist_id: Optional[int] = Query(None, description="Filter by artist ID"),
+    current_user: dict = Depends(require_authentication),
 ) -> Dict[str, Any]:
     """
     Get all scheduled jobs with filtering and pagination
@@ -118,7 +120,9 @@ async def get_all_scheduled_jobs(
 
 
 @router.get("/scheduled/{job_id}")
-async def get_scheduled_job(job_id: int) -> Dict[str, Any]:
+async def get_scheduled_job(
+    job_id: int, current_user: dict = Depends(require_authentication)
+) -> Dict[str, Any]:
     """
     Get specific scheduled job by database ID
 
@@ -158,7 +162,9 @@ async def get_scheduled_job(job_id: int) -> Dict[str, Any]:
 
 
 @router.post("/scheduled/{job_id}/retry")
-async def retry_scheduled_job(job_id: int) -> Dict[str, Any]:
+async def retry_scheduled_job(
+    job_id: int, current_user: dict = Depends(require_admin)
+) -> Dict[str, Any]:
     """
     Retry a failed scheduled job
 
@@ -205,7 +211,9 @@ async def retry_scheduled_job(job_id: int) -> Dict[str, Any]:
 
 
 @router.post("/scheduled/{job_id}/cancel")
-async def cancel_scheduled_job(job_id: int) -> Dict[str, Any]:
+async def cancel_scheduled_job(
+    job_id: int, current_user: dict = Depends(require_admin)
+) -> Dict[str, Any]:
     """
     Cancel a pending or running scheduled job
 
@@ -254,6 +262,7 @@ async def get_job_history(
     job_type: Optional[str] = Query(None, description="Filter by job type"),
     status: Optional[str] = Query(None, description="Filter by status"),
     artist_id: Optional[int] = Query(None, description="Filter by artist ID"),
+    current_user: dict = Depends(require_authentication),
 ) -> Dict[str, Any]:
     """
     Get job history for specified time period
@@ -301,7 +310,8 @@ async def get_job_history(
 
 @router.get("/statistics", response_model=JobStatisticsResponse)
 async def get_job_statistics(
-    hours: int = Query(24, ge=1, le=720, description="Hours to calculate stats for")
+    hours: int = Query(24, ge=1, le=720, description="Hours to calculate stats for"),
+    current_user: dict = Depends(require_authentication),
 ) -> Dict[str, Any]:
     """
     Get job statistics for specified time period
@@ -381,7 +391,8 @@ async def get_job_statistics(
 
 @router.delete("/history/cleanup")
 async def cleanup_old_jobs(
-    days: int = Query(30, ge=1, le=365, description="Delete jobs older than N days")
+    days: int = Query(30, ge=1, le=365, description="Delete jobs older than N days"),
+    current_user: dict = Depends(require_admin),
 ) -> Dict[str, Any]:
     """
     Clean up old job history
