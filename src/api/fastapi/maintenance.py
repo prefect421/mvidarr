@@ -7,9 +7,10 @@ Provides simple cleanup and optimization tools for home self-hosters.
 import logging
 from typing import Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.api.fastapi.template_system import template_system
 from src.services.maintenance_tasks import (
     cleanup_old_job_history,
@@ -26,7 +27,9 @@ router = APIRouter(prefix="/api/maintenance", tags=["Maintenance"])
 
 
 @router.get("/summary")
-async def get_summary() -> Dict:
+async def get_summary(
+    current_user: dict = Depends(require_authentication),
+) -> Dict:
     """
     Get summary of what all maintenance tasks would find (dry run).
 
@@ -42,7 +45,10 @@ async def get_summary() -> Dict:
 
 @router.post("/logs/cleanup")
 async def cleanup_logs(
-    days_to_keep: int = 30, dry_run: bool = False, log_directory: Optional[str] = None
+    days_to_keep: int = 30,
+    dry_run: bool = False,
+    log_directory: Optional[str] = None,
+    current_user: dict = Depends(require_admin),
 ) -> Dict:
     """
     Clean up old log files.
@@ -76,7 +82,9 @@ async def cleanup_logs(
 
 
 @router.post("/database/optimize")
-async def optimize_db() -> Dict:
+async def optimize_db(
+    current_user: dict = Depends(require_admin),
+) -> Dict:
     """
     Optimize all database tables.
 
@@ -101,7 +109,9 @@ async def optimize_db() -> Dict:
 
 @router.post("/thumbnails/cleanup")
 async def cleanup_thumbnails(
-    dry_run: bool = False, thumbnails_path: Optional[str] = None
+    dry_run: bool = False,
+    thumbnails_path: Optional[str] = None,
+    current_user: dict = Depends(require_admin),
 ) -> Dict:
     """
     Clean up orphaned thumbnail files.
@@ -134,7 +144,9 @@ async def cleanup_thumbnails(
 
 
 @router.post("/temp-files/cleanup")
-async def cleanup_temp(dry_run: bool = False) -> Dict:
+async def cleanup_temp(
+    dry_run: bool = False, current_user: dict = Depends(require_admin)
+) -> Dict:
     """
     Clean up temporary files and cache.
 
@@ -161,7 +173,11 @@ async def cleanup_temp(dry_run: bool = False) -> Dict:
 
 
 @router.post("/jobs/cleanup")
-async def cleanup_jobs(days_to_keep: int = 30, dry_run: bool = False) -> Dict:
+async def cleanup_jobs(
+    days_to_keep: int = 30,
+    dry_run: bool = False,
+    current_user: dict = Depends(require_admin),
+) -> Dict:
     """
     Clean up old job history from Redis.
 
@@ -193,7 +209,9 @@ page_router = APIRouter(tags=["Maintenance Pages"])
 
 
 @page_router.get("/maintenance", response_class=HTMLResponse)
-async def maintenance_page(request: Request):
+async def maintenance_page(
+    request: Request, current_user: dict = Depends(require_authentication)
+):
     """Render the maintenance tools page."""
     context = {"page_title": "Maintenance Tools"}
     return await template_system.render_response("maintenance.html", request, context)
