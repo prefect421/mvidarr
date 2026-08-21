@@ -8,10 +8,18 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.middleware.auto_scaling_middleware import get_scaling_status
 from src.services.analytics_service import AlertRule, get_analytics_service
 from src.utils.logger import get_logger
@@ -220,7 +228,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
 # REST API endpoints
 @router.get("/summary", response_model=DashboardSummaryResponse)
-async def get_dashboard_summary():
+async def get_dashboard_summary(
+    current_user: dict = Depends(require_admin),
+):
     """Get dashboard summary statistics"""
     try:
         analytics_service = await get_analytics_service()
@@ -244,6 +254,7 @@ async def get_dashboard_summary():
 async def get_metric_history(
     metric_name: str,
     time_window_hours: int = Query(1, ge=1, le=24, description="Time window in hours"),
+    current_user: dict = Depends(require_admin),
 ):
     """Get metric history for dashboard charts"""
     try:
@@ -276,7 +287,9 @@ async def get_metric_history(
 
 
 @router.get("/metrics/available")
-async def get_available_metrics():
+async def get_available_metrics(
+    current_user: dict = Depends(require_authentication),
+):
     """Get list of available metrics for dashboard"""
     return {
         "system_metrics": [
@@ -300,7 +313,9 @@ async def get_available_metrics():
 
 
 @router.get("/alerts/active")
-async def get_active_alerts():
+async def get_active_alerts(
+    current_user: dict = Depends(require_authentication),
+):
     """Get all active alerts"""
     try:
         analytics_service = await get_analytics_service()
@@ -323,7 +338,10 @@ async def get_active_alerts():
 
 
 @router.post("/alerts/rules")
-async def create_alert_rule(rule_request: AlertRuleRequest):
+async def create_alert_rule(
+    rule_request: AlertRuleRequest,
+    current_user: dict = Depends(require_admin),
+):
     """Create new alert rule"""
     try:
         analytics_service = await get_analytics_service()
@@ -352,7 +370,9 @@ async def create_alert_rule(rule_request: AlertRuleRequest):
 
 
 @router.get("/config", response_model=DashboardConfigResponse)
-async def get_dashboard_config():
+async def get_dashboard_config(
+    current_user: dict = Depends(require_authentication),
+):
     """Get dashboard configuration"""
     return DashboardConfigResponse(
         refresh_interval_seconds=5,
@@ -372,7 +392,9 @@ async def get_dashboard_config():
 
 
 @router.get("/status")
-async def get_dashboard_status():
+async def get_dashboard_status(
+    current_user: dict = Depends(require_authentication),
+):
     """Get dashboard service status"""
     try:
         analytics_service = await get_analytics_service()
@@ -399,7 +421,9 @@ async def get_dashboard_status():
 
 
 @router.get("/demo")
-async def get_dashboard_demo():
+async def get_dashboard_demo(
+    current_user: dict = Depends(require_authentication),
+):
     """Demo dashboard page (basic HTML)"""
     html_content = """
     <!DOCTYPE html>
