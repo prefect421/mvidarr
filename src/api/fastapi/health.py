@@ -15,6 +15,7 @@ import psutil
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.database.connection import get_db_session
 from src.utils.async_subprocess import get_git_branch, get_git_version
 from src.utils.logger import get_logger
@@ -94,7 +95,10 @@ async def health_check(session=Depends(get_db_session)):
 
 
 @health_router.get("/status", response_model=DetailedHealthResponse)
-async def get_health_status(session=Depends(get_db_session)):
+async def get_health_status(
+    session=Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
+):
     """Get overall system health status"""
     try:
         status = {
@@ -129,7 +133,10 @@ async def get_health_status(session=Depends(get_db_session)):
 
 
 @health_router.get("/database", response_model=DatabaseHealthResponse)
-async def check_database(session=Depends(get_db_session)):
+async def check_database(
+    session=Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
+):
     """Check database connectivity and health"""
     try:
         from sqlalchemy import text
@@ -157,7 +164,7 @@ async def check_database(session=Depends(get_db_session)):
 
 
 @health_router.get("/imvdb", response_model=ServiceHealthResponse)
-async def check_imvdb():
+async def check_imvdb(current_user: dict = Depends(require_authentication)):
     """Check IMVDB API connectivity with async HTTP client"""
     try:
         from src.services.imvdb_service import imvdb_service
@@ -185,7 +192,7 @@ async def check_imvdb():
 
 
 @health_router.get("/metube", response_model=ServiceHealthResponse)
-async def check_metube():
+async def check_metube(current_user: dict = Depends(require_authentication)):
     """Check yt-dlp Web UI connectivity with async HTTP client"""
     try:
         from src.services.ytdlp_service import ytdlp_service
@@ -213,7 +220,7 @@ async def check_metube():
 
 
 @health_router.get("/version", response_model=VersionInfoResponse)
-async def get_version_info():
+async def get_version_info(current_user: dict = Depends(require_authentication)):
     """Get version information with async git commands (non-blocking)"""
     try:
         # Get version from src/__init__.py
@@ -268,7 +275,7 @@ async def get_version_info():
 
 
 @health_router.get("/performance", response_model=Dict[str, Any])
-async def get_performance_stats():
+async def get_performance_stats(current_user: dict = Depends(require_authentication)):
     """Get subprocess performance statistics for monitoring"""
     try:
         from src.utils.async_subprocess import async_subprocess_manager
@@ -287,7 +294,7 @@ async def get_performance_stats():
 
 
 @health_router.get("/system", response_model=SystemMetricsResponse)
-async def get_system_metrics():
+async def get_system_metrics(current_user: dict = Depends(require_admin)):
     """Get system resource metrics for self-hosted monitoring"""
     try:
         # CPU usage
@@ -327,7 +334,10 @@ async def get_system_metrics():
 
 
 @health_router.get("/production", response_model=ProductionHealthResponse)
-async def get_production_health(session=Depends(get_db_session)):
+async def get_production_health(
+    session=Depends(get_db_session),
+    current_user: dict = Depends(require_admin),
+):
     """Comprehensive health check for self-hosted production monitoring"""
     try:
         overall_status = "healthy"
@@ -560,7 +570,10 @@ class V1ComponentsHealthResponse(BaseModel):
 
 
 @health_router.get("/v1-components", response_model=V1ComponentsHealthResponse)
-async def get_v1_components_health(session=Depends(get_db_session)):
+async def get_v1_components_health(
+    session=Depends(get_db_session),
+    current_user: dict = Depends(require_admin),
+):
     """
     Monitor v1.0.0 infrastructure components
     - Installation Wizard state
@@ -770,7 +783,10 @@ class MonitoringDashboardResponse(BaseModel):
 
 
 @health_router.get("/background-jobs", response_model=BackgroundJobHealthResponse)
-async def get_background_jobs_health(session=Depends(get_db_session)):
+async def get_background_jobs_health(
+    session=Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
+):
     """Monitor background job system status"""
     try:
         from src.database.job_models import BackgroundJobModel
@@ -818,7 +834,10 @@ async def get_background_jobs_health(session=Depends(get_db_session)):
 
 
 @health_router.get("/dashboard", response_model=MonitoringDashboardResponse)
-async def get_monitoring_dashboard(session=Depends(get_db_session)):
+async def get_monitoring_dashboard(
+    session=Depends(get_db_session),
+    current_user: dict = Depends(require_admin),
+):
     """
     Comprehensive monitoring dashboard for MVidarr v1.0.0
     Aggregates all health checks, metrics, and status information in a single view
