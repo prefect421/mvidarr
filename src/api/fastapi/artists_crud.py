@@ -982,6 +982,7 @@ async def get_search_suggestions(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get search suggestions for artist names"""
     try:
