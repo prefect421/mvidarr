@@ -740,6 +740,7 @@ async def get_artist_navigation(
     sort: str = Query("name", description="Sort field"),
     order: str = Query("asc", description="Sort order"),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get artist navigation info (prev/next artists)"""
     try:
