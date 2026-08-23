@@ -10,10 +10,11 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import psutil
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.database.async_connection import get_async_db_manager
 from src.middleware.auto_scaling_middleware import get_scaling_status
 from src.services.media_cache_manager import MediaCacheManager
@@ -248,7 +249,9 @@ async def get_cache_health() -> Dict[str, Any]:
 
 # API Endpoints
 @router.get("/health", response_model=HealthCheckResponse)
-async def comprehensive_health_check():
+async def comprehensive_health_check(
+    current_user: dict = Depends(require_admin),
+):
     """Comprehensive health check for production monitoring"""
     start_time = time.time()
 
@@ -335,7 +338,9 @@ async def comprehensive_health_check():
 
 
 @router.get("/status", response_model=SystemStatusResponse)
-async def get_system_status():
+async def get_system_status(
+    current_user: dict = Depends(require_admin),
+):
     """Get overall system status overview"""
     try:
         # Get auto-scaling status
@@ -384,7 +389,9 @@ async def get_system_status():
 
 
 @router.get("/metrics", response_model=MetricsResponse)
-async def get_detailed_metrics():
+async def get_detailed_metrics(
+    current_user: dict = Depends(require_admin),
+):
     """Get detailed system and application metrics"""
     try:
         timestamp = datetime.utcnow()
@@ -463,6 +470,7 @@ async def get_detailed_metrics():
 async def get_active_alerts(
     severity: Optional[str] = Query(None, description="Filter by severity level"),
     limit: int = Query(50, ge=1, le=200, description="Maximum alerts to return"),
+    current_user: dict = Depends(require_admin),
 ):
     """Get active system alerts"""
     try:
@@ -535,7 +543,9 @@ async def get_active_alerts(
 
 
 @router.get("/readiness")
-async def readiness_probe():
+async def readiness_probe(
+    current_user: dict = Depends(require_authentication),
+):
     """Kubernetes-style readiness probe"""
     try:
         # Quick checks for readiness
@@ -559,7 +569,9 @@ async def readiness_probe():
 
 
 @router.get("/liveness")
-async def liveness_probe():
+async def liveness_probe(
+    current_user: dict = Depends(require_authentication),
+):
     """Kubernetes-style liveness probe"""
     try:
         # Basic liveness check - application is running
