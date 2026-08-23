@@ -22,6 +22,7 @@ from fastapi import (
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session, joinedload
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.playlists_auth import UserInfo, get_current_user_from_session
 from src.api.fastapi.playlists_models import (
     DynamicPlaylistPreviewRequest,
@@ -48,6 +49,7 @@ logger = get_logger("mvidarr.api.fastapi.playlists_features")
 async def preview_dynamic_playlist(
     preview_data: DynamicPlaylistPreviewRequest = Body(...),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Preview videos matching dynamic playlist filter criteria"""
     try:
@@ -217,6 +219,7 @@ async def create_dynamic_playlist(
 async def refresh_dynamic_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Manually refresh dynamic playlist"""
     try:
@@ -367,6 +370,7 @@ async def update_dynamic_playlist_filters(
 async def get_playlist_thumbnail(
     playlist_id: int = FastAPIPath(..., ge=1),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get playlist thumbnail (or generate from first video)"""
     try:
@@ -414,6 +418,7 @@ async def upload_playlist_thumbnail_url(
     playlist_id: int = FastAPIPath(..., ge=1),
     thumbnail_url: str = Body(..., embed=True),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Upload thumbnail from URL"""
     try:
@@ -458,6 +463,7 @@ async def upload_playlist_thumbnail_file(
     playlist_id: int = FastAPIPath(..., ge=1),
     file: UploadFile = File(...),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Upload thumbnail file"""
     try:
