@@ -130,7 +130,9 @@ async def analyze_video_quality(
 
 
 @router.get("/upgradeable")
-async def find_upgradeable_videos() -> UpgradeableVideosResponse:
+async def find_upgradeable_videos(
+    current_user: dict = Depends(require_authentication),
+) -> UpgradeableVideosResponse:
     """Find videos that could benefit from quality upgrades"""
     try:
         # Import here to avoid circular imports
@@ -208,7 +210,9 @@ async def bulk_upgrade_videos(
 
 
 @router.get("/preferences")
-async def get_quality_preferences():
+async def get_quality_preferences(
+    current_user: dict = Depends(require_authentication),
+):
     """Get quality preferences for user or system defaults"""
     try:
         # Import here to avoid circular imports
@@ -225,7 +229,9 @@ async def get_quality_preferences():
 
 
 @router.get("/statistics")
-async def get_quality_statistics():
+async def get_quality_statistics(
+    current_user: dict = Depends(require_authentication),
+):
     """Get system-wide video quality statistics"""
     try:
         # Import here to avoid circular imports
