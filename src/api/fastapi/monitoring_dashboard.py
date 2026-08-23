@@ -6,7 +6,7 @@ Real-time monitoring dashboard with WebSocket support and interactive analytics
 import asyncio
 import json
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import (
     APIRouter,
@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from src.api.fastapi.auth_dependencies import require_admin, require_authentication
+from src.database.models import UserRole
 from src.middleware.auto_scaling_middleware import get_scaling_status
 from src.services.analytics_service import AlertRule, get_analytics_service
 from src.utils.logger import get_logger
@@ -171,10 +172,62 @@ class DashboardWebSocketManager:
 websocket_manager = DashboardWebSocketManager()
 
 
+async def _get_websocket_admin_user(websocket: WebSocket) -> Optional[Dict[str, Any]]:
+    """Resolve the authenticated admin user for a WebSocket connection.
+
+    Mirrors auth_dependencies.get_current_user_session() +
+    require_admin(), which can't be reused directly here:
+    get_current_user_session() is typed to Request, and FastAPI's
+    WebSocket routes inject a WebSocket-typed scope, not Request, so a
+    Depends() chain built on that type won't resolve in a websocket
+    route. WebSocket, like Request, inherits .cookies from Starlette's
+    HTTPConnection, so the same session_token lookup and
+    SessionStore.validate_session() call work unchanged -- this
+    duplicates the two functions' logic rather than their exact
+    signatures.
+
+    Returns the user dict only if the session is valid AND admin;
+    None otherwise (unauthenticated, invalid session, or non-admin
+    role all collapse to the same "reject" outcome for this endpoint).
+    """
+    try:
+        session_token = websocket.cookies.get("session_token")
+        if not session_token:
+            return None
+
+        from src.services.session_store import SessionStore
+
+        user_data = SessionStore.validate_session(session_token)
+        if (
+            user_data
+            and user_data.get("authenticated")
+            and user_data.get("role") == UserRole.ADMIN.value
+        ):
+            return user_data
+        return None
+    except Exception as e:
+        logger.error(f"Error resolving WebSocket admin session: {e}")
+        return None
+
+
 # WebSocket endpoint for real-time updates
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time dashboard updates"""
+    """WebSocket endpoint for real-time dashboard updates (admin only).
+
+    Admin-gated (#392 Phase 2 follow-up -- found by background security
+    review): this connection receives the same periodic dashboard
+    broadcast as GET /summary and can request arbitrary metric history
+    via a "request_metric_history" message -- the exact data
+    require_admin protects on those REST siblings. Rejecting before
+    accept() (code 1008, Policy Violation) means an unauthorized
+    connection never joins active_connections, never receives the
+    broadcast, and never gets a chance to send a message.
+    """
+    if not await _get_websocket_admin_user(websocket):
+        await websocket.close(code=1008)
+        return
+
     await websocket_manager.connect(websocket)
 
     try:
