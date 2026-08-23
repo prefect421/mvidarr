@@ -6,6 +6,7 @@ Provides genre-related endpoints for video and artist genre management
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video
 from src.utils.logger import get_logger
@@ -97,6 +98,7 @@ async def get_all_genres(
     limit: int = Query(100, ge=1, le=500),
     include_counts: bool = Query(True),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get all genres used in the system"""
     try:
@@ -199,7 +201,9 @@ async def get_all_genres(
 
 
 @router.get("/simple")
-async def simple_genres():
+async def simple_genres(
+    current_user: dict = Depends(require_authentication),
+):
     """Simple static endpoint to test if genres router works at all"""
     return {
         "genres": [{"genre": "rock", "count": 10}, {"genre": "pop", "count": 5}],
@@ -210,7 +214,9 @@ async def simple_genres():
 
 @router.get("/popular")
 async def get_popular_genres(
-    limit: int = Query(20, ge=1, le=100), session: Session = Depends(get_db_session)
+    limit: int = Query(20, ge=1, le=100),
+    session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get most popular genres by usage count"""
     try:
