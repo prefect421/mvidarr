@@ -443,6 +443,7 @@ async def get_theme(
 async def delete_theme(
     theme_id: int = FastAPIPath(..., description="Theme ID to delete"),
     db: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     Delete a custom theme
@@ -480,7 +481,10 @@ async def delete_theme(
 
 
 @router.get("/export/all")
-async def export_all_themes(db: Session = Depends(get_db_session)):
+async def export_all_themes(
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
+):
     """
     Export all custom themes as JSON
 
