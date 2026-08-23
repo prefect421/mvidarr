@@ -824,7 +824,9 @@ async def get_mobile_app_interface(
 
 
 @mobile_router.get("/manifest.json")
-async def get_mobile_app_manifest():
+async def get_mobile_app_manifest(
+    current_user: dict = Depends(require_authentication),
+):
     """Get Progressive Web App manifest"""
     manifest = {
         "name": "MVidarr Mobile",
