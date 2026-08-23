@@ -129,6 +129,7 @@ async def _get_artist_thumbnail_impl(
 async def get_artist_thumbnail(
     artist_id: int = FastAPIPath(..., ge=1),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Serve artist thumbnail image"""
     return await _get_artist_thumbnail_impl(artist_id, None, session)
@@ -189,6 +190,7 @@ async def get_artist_thumbnail_with_size(
     artist_id: int = FastAPIPath(..., ge=1),
     size: str = FastAPIPath(..., pattern="^(small|medium|large)$"),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Serve artist thumbnail image with size as path parameter"""
     return await _get_artist_thumbnail_impl(artist_id, size, session)
