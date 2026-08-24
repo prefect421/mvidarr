@@ -7,6 +7,15 @@ shared instance-wide Spotify OAuth link use require_admin (mirroring
 auth.py's POST /credentials, hardened after a real dev-testing finding
 that any authenticated non-admin session could change instance-wide
 credentials); read-only routes use require_authentication.
+
+spotify_callback is deliberately excluded from EXPECTED_TIER below: #391
+found that Depends(require_admin) there bypassed the route's own
+friendly redirect-based OAuth-error UX (Depends() failures raise before
+the route body's try/except can see them). It still enforces the exact
+same authenticated+ADMIN check -- just replicated inline via
+Depends(get_optional_user) instead, so a failure can produce the same
+RedirectResponse as every other failure mode in that function. See
+test_spotify_callback_redirect_on_auth_failure.py for its real coverage.
 """
 
 import ast
@@ -37,7 +46,6 @@ EXPECTED_TIER = {
     "get_spotify_status": "auth",
     "test_spotify_integration": "admin",
     "authorize_spotify": "admin",
-    "spotify_callback": "admin",
     "disconnect_spotify": "admin",
     "import_playlist": "auth",
     "import_all_playlists": "auth",

@@ -8,7 +8,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from src.api.fastapi.auth_dependencies import require_admin, require_authentication
+from src.api.fastapi.auth_dependencies import (
+    get_optional_user,
+    require_admin,
+    require_authentication,
+)
+from src.database.models import UserRole
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.api.spotify")
@@ -589,12 +594,35 @@ async def spotify_callback(
     request: Request,
     code: Optional[str] = Query(None, description="Authorization code from Spotify"),
     error: Optional[str] = Query(None, description="Error from Spotify OAuth"),
-    current_user: dict = Depends(require_admin),
+    current_user: Optional[dict] = Depends(get_optional_user),
 ):
     """Handle Spotify OAuth callback"""
-    try:
-        from fastapi.responses import RedirectResponse
+    from fastapi.responses import RedirectResponse
 
+    # #391: require_admin, as a Depends(), would otherwise raise during
+    # FastAPI's dependency-resolution phase -- BEFORE this function body
+    # (and its own try/except below) ever runs -- bypassing every one of
+    # this callback's friendly redirect-based error responses in favor
+    # of a raw JSON 401/403. That's a real regression right as the
+    # browser lands back on this app fresh off Spotify's own redirect
+    # (e.g. the admin's session expiring while they were on Spotify's
+    # consent screen). get_optional_user never raises -- it returns None
+    # instead -- so the exact same authenticated+ADMIN check
+    # require_admin performs is replicated here, inline, where a failure
+    # can produce the same RedirectResponse as any other failure mode in
+    # this OAuth flow instead of a bare exception.
+    if (
+        not current_user
+        or not current_user.get("authenticated")
+        or current_user.get("role") != UserRole.ADMIN.value
+    ):
+        logger.warning("Spotify callback rejected: admin session required or expired")
+        return RedirectResponse(
+            url="/settings?spotify_error=Admin session required or expired. Please log in as an admin and try again.",
+            status_code=302,
+        )
+
+    try:
         if error:
             logger.error(f"Spotify OAuth error: {error}")
             return RedirectResponse(
