@@ -72,6 +72,38 @@ async def resolve_video_url(
     return await asyncio.to_thread(_resolve_video_url_sync, video, session, timeout)
 
 
+def _stored_video_url(video: Video, missing_value: Any = None) -> Any:
+    """Return a video's already-stored URL, without any live resolution.
+
+    #387: the 5 call sites this replaces all computed this inline as:
+
+        video.url
+        or video.youtube_url
+        or f"https://youtube.com/watch?v={video.youtube_id}"
+        if hasattr(video, "youtube_id") and video.youtube_id
+        else None
+
+    Python's conditional expression binds looser than `or`, so that
+    parsed as `(url or youtube_url or f"...") if youtube_id else None`
+    -- the youtube_id check gated the ENTIRE or-chain, not just the
+    f-string fallback. A video with `url` set but no `youtube_id`
+    therefore evaluated to None, discarding a perfectly usable stored
+    URL (harmless in practice only because every caller's next step,
+    resolve_video_url(), independently re-checks video.url first).
+    Correctly parenthesized here: the youtube_id ternary only governs
+    the final fallback branch.
+    """
+    return (
+        video.url
+        or video.youtube_url
+        or (
+            f"https://youtube.com/watch?v={video.youtube_id}"
+            if hasattr(video, "youtube_id") and video.youtube_id
+            else missing_value
+        )
+    )
+
+
 # ========================================================================================
 # DOWNLOAD OPERATIONS
 # ========================================================================================
@@ -133,13 +165,7 @@ async def bulk_download_videos(
                     continue
 
                 # Validate and resolve video URL
-                video_url = (
-                    video.url
-                    or video.youtube_url
-                    or f"https://youtube.com/watch?v={video.youtube_id}"
-                    if hasattr(video, "youtube_id") and video.youtube_id
-                    else None
-                )
+                video_url = _stored_video_url(video)
 
                 if not video_url:
                     if url_resolution_time_used >= BULK_URL_RESOLUTION_BUDGET_SECONDS:
@@ -503,13 +529,7 @@ async def queue_video_download(
                 artist_id=video.artist_id,
                 video_id=video_id,
                 title=video.title,
-                original_url=(
-                    video.url
-                    or video.youtube_url
-                    or f"https://youtube.com/watch?v={video.youtube_id}"
-                    if hasattr(video, "youtube_id") and video.youtube_id
-                    else "Unknown URL"
-                ),
+                original_url=_stored_video_url(video, missing_value="Unknown URL"),
                 status="queued",
                 priority=priority,
                 created_at=datetime.utcnow(),
@@ -534,13 +554,7 @@ async def queue_video_download(
             subtitle_languages = settings.get("subtitle_languages", "en,en-US")
 
             # Get video URL
-            video_url = (
-                video.url
-                or video.youtube_url
-                or f"https://youtube.com/watch?v={video.youtube_id}"
-                if hasattr(video, "youtube_id") and video.youtube_id
-                else None
-            )
+            video_url = _stored_video_url(video)
 
             if not video_url:
                 raise ValueError("No valid URL found for video")
@@ -982,13 +996,7 @@ async def bulk_download_wanted_videos(
                     continue
 
                 # Check if video has a valid URL before creating download record
-                video_url = (
-                    video.url
-                    or video.youtube_url
-                    or f"https://youtube.com/watch?v={video.youtube_id}"
-                    if hasattr(video, "youtube_id") and video.youtube_id
-                    else None
-                )
+                video_url = _stored_video_url(video)
 
                 # Skip videos without URLs - don't search YouTube in bulk operations as it's too slow
                 if not video_url:
@@ -1014,13 +1022,7 @@ async def bulk_download_wanted_videos(
                     artist_id=video.artist_id,
                     video_id=video.id,
                     title=video.title,
-                    original_url=(
-                        video.url
-                        or video.youtube_url
-                        or f"https://youtube.com/watch?v={video.youtube_id}"
-                        if hasattr(video, "youtube_id") and video.youtube_id
-                        else "Unknown URL"
-                    ),
+                    original_url=_stored_video_url(video, missing_value="Unknown URL"),
                     status="queued",
                     quality="best",  # Default quality for wanted videos
                     priority=1,  # Default priority for wanted videos
