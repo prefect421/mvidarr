@@ -78,6 +78,23 @@ class ApplyThemeRequest(BaseModel):
 # Hardcoded theme functions removed - all themes now stored in database
 
 
+def _require_user_id(current_user: dict) -> int:
+    """Extract the authenticated user's id strictly -- no fail-open
+    default. Flagged by background security review (HIGH, Authorization
+    / Fail-Open Default User ID): every route below used to extract this
+    via `current_user.get("user_id", 6)`, which would have silently
+    attributed the action to a fixed, unrelated user id (6) if the field
+    were ever absent, instead of failing closed. Since delete_theme and
+    export_all_themes gate real deletion/export access on this exact
+    value (#392 IDOR fix), a fail-open default here would undermine that
+    fix outright.
+    """
+    user_id = current_user.get("user_id")
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user_id
+
+
 # ========================================================================================
 # THEME MANAGEMENT ENDPOINTS
 # ========================================================================================
@@ -90,7 +107,7 @@ async def get_themes(
 ):
     """Get all available themes (built-in and custom)"""
     try:
-        user_id = current_user.get("user_id", 6)
+        user_id = _require_user_id(current_user)
         logger.info(f"Loading themes for user {user_id}")
 
         # Get custom themes from database
@@ -230,7 +247,7 @@ async def apply_theme(
     """Apply a theme"""
     try:
         theme_identifier = request.theme_name
-        user_id = current_user.get("user_id", 6)
+        user_id = _require_user_id(current_user)
 
         logger.info(f"Applying theme '{theme_identifier}' for user {user_id}")
 
@@ -345,7 +362,7 @@ async def create_theme(
 ):
     """Create a new custom theme"""
     try:
-        user_id = current_user.get("user_id", 6)
+        user_id = _require_user_id(current_user)
 
         # Check if theme name already exists
         existing = (
@@ -401,7 +418,7 @@ async def get_theme(
 ):
     """Get a specific theme by ID"""
     try:
-        user_id = current_user.get("user_id", 6)
+        user_id = _require_user_id(current_user)
 
         theme = (
             session.query(CustomTheme)
@@ -452,7 +469,7 @@ async def delete_theme(
     the theme's own creator.
     """
     try:
-        user_id = current_user.get("user_id", 6)
+        user_id = _require_user_id(current_user)
         theme = db.query(CustomTheme).filter(CustomTheme.id == theme_id).first()
 
         if not theme:
@@ -508,7 +525,7 @@ async def export_all_themes(
     instance.
     """
     try:
-        user_id = current_user.get("user_id", 6)
+        user_id = _require_user_id(current_user)
         # Exclude built-in themes, and scope to the caller's own themes
         # plus public ones -- matches get_themes()'s existing visibility
         # filter. Without this, any authenticated user could export
