@@ -448,9 +448,11 @@ async def delete_theme(
     """
     Delete a custom theme
 
-    Only custom themes can be deleted, not built-in themes.
+    Only custom themes can be deleted, not built-in themes, and only by
+    the theme's own creator.
     """
     try:
+        user_id = current_user.get("user_id", 6)
         theme = db.query(CustomTheme).filter(CustomTheme.id == theme_id).first()
 
         if not theme:
@@ -459,6 +461,19 @@ async def delete_theme(
         # Prevent deletion of built-in themes
         if theme.is_built_in:
             raise HTTPException(status_code=403, detail="Cannot delete built-in themes")
+
+        # Only the creator can delete their theme. A private theme
+        # belonging to someone else 404s (matches get_theme()'s own
+        # not-found-for-invisible-theme behavior, so this doesn't confirm
+        # a private theme id even exists); a public one 403s, since its
+        # existence is already visible via GET /api/themes.
+        if theme.created_by != user_id:
+            if theme.is_public:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You don't have permission to delete this theme",
+                )
+            raise HTTPException(status_code=404, detail="Theme not found")
 
         # Delete the theme
         db.delete(theme)
@@ -488,12 +503,27 @@ async def export_all_themes(
     """
     Export all custom themes as JSON
 
-    Returns a JSON file containing all custom (non-built-in) themes
-    that can be imported into another instance.
+    Returns a JSON file containing the caller's own custom (non-built-in)
+    themes plus any public ones, that can be imported into another
+    instance.
     """
     try:
-        # Get all custom themes (exclude built-in)
-        themes = db.query(CustomTheme).filter(CustomTheme.is_built_in == False).all()
+        user_id = current_user.get("user_id", 6)
+        # Exclude built-in themes, and scope to the caller's own themes
+        # plus public ones -- matches get_themes()'s existing visibility
+        # filter. Without this, any authenticated user could export
+        # every other user's private theme data.
+        themes = (
+            db.query(CustomTheme)
+            .filter(
+                CustomTheme.is_built_in == False,
+                or_(
+                    CustomTheme.created_by == user_id,
+                    CustomTheme.is_public == True,
+                ),
+            )
+            .all()
+        )
 
         # Build export data structure (even if empty)
         export_data = {
