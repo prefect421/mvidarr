@@ -72,8 +72,24 @@
                 const url = (input instanceof Request) ? input.url : String(input);
                 return originalFetch.apply(this, arguments).then(function(response) {
                     if (response.status === 401 && !redirecting) {
-                        // Don't redirect for auth-check or login endpoints
-                        if (!url.includes('/auth/') && !url.includes('/simple-auth/')) {
+                        // #390: resolve to an absolute URL first (works
+                        // whether `url` is relative, e.g. "/api/auth/user",
+                        // or already absolute -- Request.url always is) so
+                        // pathname-based matching below is reliable either
+                        // way.
+                        let pathname;
+                        try {
+                            pathname = new URL(url, window.location.origin).pathname;
+                        } catch (e) {
+                            pathname = url;
+                        }
+                        // Don't redirect for the app's own login/auth-flow
+                        // endpoints -- startsWith, not a substring match:
+                        // the old `url.includes('/auth/')` also matched
+                        // any path merely CONTAINING "/auth/" as a
+                        // segment, like /api/lastfm/auth/url, silently
+                        // swallowing its 401s instead of prompting login.
+                        if (!pathname.startsWith('/auth/') && !pathname.startsWith('/simple-auth/')) {
                             redirecting = true;
                             console.warn('Session expired - redirecting to login');
                             window.location.href = '/auth/login';
