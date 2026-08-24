@@ -73,6 +73,30 @@ async def require_admin_access(
     return current_user
 
 
+async def require_admin_only_access(
+    current_user: UserInfo = Depends(get_current_user),
+) -> UserInfo:
+    """Stricter than require_admin_access -- ADMIN only, no MANAGER.
+
+    #324: require_admin_access's can_access_admin() check (ADMIN +
+    MANAGER) let a MANAGER session call PUT /users/{user_id}/role to set
+    its own role to ADMIN -- self-promotion past the ADMIN-only gate
+    enforced everywhere else (auth_dependencies.require_admin, and the
+    can_admin flag both OAuth and password-login sessions derive via
+    auth.py's role_permissions()). Role changes are an admin-level
+    action, not the general user management UserRole's own docstring
+    grants MANAGER ("Can manage content and users (except admins)").
+    Used only for the role-change endpoint -- every other admin.py route
+    stays on require_admin_access deliberately; re-tiering those is a
+    separate, larger decision #324 doesn't ask for.
+    """
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
+    return current_user
+
+
 # ====================================
 # Pydantic Models for Request/Response
 # ====================================
@@ -657,7 +681,7 @@ async def get_user_details(
 async def update_user_role(
     user_id: int,
     role_data: UserRoleUpdateRequest,
-    current_user: UserInfo = Depends(require_admin_access),
+    current_user: UserInfo = Depends(require_admin_only_access),
 ):
     """Update user role (admin only)"""
     try:
