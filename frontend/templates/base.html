@@ -1247,6 +1247,21 @@
                 font-size: 1rem;
             }
         }
+
+        /* #389: admin-gated controls (Spotify/Last.fm connect/disconnect/
+           test buttons, System Health link) are marked with
+           admin-only-control across templates. A body class -- rather than
+           setting each element's inline style directly -- means this rule
+           wins regardless of DOM order against page-specific JS that also
+           toggles these same elements' visibility (e.g. lastfm.html's
+           checkLastFmStatus() flips #connectBtn/#disconnectBtn between
+           display:none and visible based on connection state; !important
+           here ensures a non-admin session stays hidden no matter which
+           runs last). See checkUserAuthentication() below for where the
+           class gets applied. */
+        body.non-admin-user .admin-only-control {
+            display: none !important;
+        }
     </style>
 
     {% block head %}{% endblock %}
@@ -1632,8 +1647,21 @@
                         if (headerUserSection) headerUserSection.style.display = 'flex';
                         if (headerUsername) headerUsername.textContent = data.user.username;
                         if (headerUserRole) headerUserRole.textContent = data.user.role;
-                    } else if (headerUserSection) {
-                        headerUserSection.style.display = 'none';
+                        // #389: hide admin-gated controls (Spotify/Last.fm
+                        // connect/disconnect/test buttons, System Health
+                        // link) for non-admin users, instead of letting
+                        // them click through to a 403. can_admin comes
+                        // from role_permissions() (src/api/fastapi/auth.py)
+                        // and is deliberately ADMIN-only, matching
+                        // auth_dependencies.require_admin's real backend
+                        // check exactly.
+                        document.body.classList.toggle('non-admin-user', !data.user.can_admin);
+                    } else {
+                        if (headerUserSection) headerUserSection.style.display = 'none';
+                        // No confirmed session -- fail closed and hide
+                        // admin-only controls too, matching an anonymous/
+                        // non-admin visitor rather than assuming admin.
+                        document.body.classList.add('non-admin-user');
                     }
                 })
                 .catch(error => {
@@ -1642,6 +1670,7 @@
                     if (headerUserSection) {
                         headerUserSection.style.display = 'none';
                     }
+                    document.body.classList.add('non-admin-user');
                 });
         }
         

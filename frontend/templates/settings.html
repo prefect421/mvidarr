@@ -625,8 +625,8 @@ input:checked + .slider:before {
                 <input type="text" id="spotify_redirect_uri" name="spotify_redirect_uri" placeholder="http://localhost:5000/api/spotify/callback">
             </div>
             <div class="integration-actions">
-                <button onclick="testSpotifyIntegration()" class="btn btn-info">Test Connection</button>
-                <button onclick="authorizeSpotify()" class="btn btn-success">Authorize</button>
+                <button onclick="testSpotifyIntegration()" class="btn btn-info admin-only-control">Test Connection</button>
+                <button onclick="authorizeSpotify()" class="btn btn-success admin-only-control">Authorize</button>
                 <button onclick="importSpotifyPlaylists()" class="btn btn-secondary">Import Playlists</button>
                 <a href="/spotify" class="btn btn-primary">🎵 Spotify Manager</a>
             </div>
@@ -655,8 +655,8 @@ input:checked + .slider:before {
                 <div class="help-text">Enter your username manually or use the "Authorize" button for OAuth authentication</div>
             </div>
             <div class="integration-actions">
-                <button onclick="testLastfmIntegration()" class="btn btn-info">Test Connection</button>
-                <button onclick="authorizeLastfm()" class="btn btn-success">Authorize</button>
+                <button onclick="testLastfmIntegration()" class="btn btn-info admin-only-control">Test Connection</button>
+                <button onclick="authorizeLastfm()" class="btn btn-success admin-only-control">Authorize</button>
                 <button onclick="syncLastfmHistory()" class="btn btn-secondary">Sync Listening History</button>
                 <a href="/lastfm" class="btn btn-primary">🎵 Last.fm Manager</a>
             </div>
@@ -1622,8 +1622,9 @@ input:checked + .slider:before {
             <p class="section-description">Monitor system health, perform maintenance tasks, and view collection analytics</p>
             <div class="system-tools-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
 
-                <!-- System Health Tool -->
-                <div class="tool-card" style="background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1.5rem;">
+                <!-- System Health Tool (admin-only: /system-health and all
+                     of its backing API routes require require_admin) -->
+                <div class="tool-card admin-only-control" style="background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1.5rem;">
                     <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
                         <iconify-icon icon="tabler:heartbeat" style="font-size: 2rem; color: var(--text-accent, #00d4ff);"></iconify-icon>
                         <h3 style="margin: 0; font-size: 1.1rem;">System Health</h3>
