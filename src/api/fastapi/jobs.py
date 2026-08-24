@@ -4,9 +4,12 @@ Background jobs are now handled by Celery + Redis system.
 This module provides compatibility endpoints and redirects to the new system.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
 
+from src.api.fastapi.wizard import require_wizard_incomplete_or_authenticated
+from src.database.connection import get_db_session
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.fastapi.jobs")
@@ -63,12 +66,23 @@ async def create_job():
 
 
 @router.get("/{job_id}")
-async def get_job(job_id: str):
+async def get_job(
+    job_id: str,
+    session: Session = Depends(get_db_session),
+    _auth_or_wizard=Depends(require_wizard_incomplete_or_authenticated),
+):
     """
-    Get status of a Celery job (wizard-compatible, no auth required)
+    Get status of a Celery job (wizard-compatible pre-setup, authenticated
+    post-setup)
 
-    This endpoint queries Celery directly and is compatible with the wizard
-    which uses its own middleware for access control.
+    This endpoint queries Celery directly. It's genuinely dual-purpose:
+    wizard.js polls it pre-setup (no session exists yet), and
+    settings.html's "Settings > System" import feature polls the exact
+    same endpoint post-setup for jobs started via /api/wizard/import/start
+    -- the same split #405 fixed for that endpoint. Gated with the shared
+    require_wizard_incomplete_or_authenticated dependency: passes through
+    while the wizard is still incomplete, requires a real authenticated
+    session once it's completed.
     """
     # Handle expired/invalid job IDs
     if not job_id or job_id == "undefined":
