@@ -32,7 +32,7 @@ frontend_router = APIRouter(
 
 
 @frontend_router.get("/", response_class=HTMLResponse, name="frontend_index")
-async def index(request: Request):
+async def index(request: Request, user=Depends(require_authentication)):
     """Dashboard/Index page"""
     try:
         return await template_routes.index(request)
@@ -44,13 +44,13 @@ async def index(request: Request):
 @frontend_router.get(
     "/dashboard", response_class=HTMLResponse, name="frontend_dashboard"
 )
-async def dashboard(request: Request):
+async def dashboard(request: Request, user=Depends(require_authentication)):
     """Dashboard page (redirect to index)"""
     return RedirectResponse(url="/", status_code=302)
 
 
 @frontend_router.get("/videos", response_class=HTMLResponse, name="frontend_videos")
-async def videos(request: Request):
+async def videos(request: Request, user=Depends(require_authentication)):
     """Videos management page"""
     try:
         return await template_routes.videos(request)
@@ -62,7 +62,9 @@ async def videos(request: Request):
 @frontend_router.get(
     "/videos/{video_id}", response_class=HTMLResponse, name="frontend_video_detail"
 )
-async def video_detail(request: Request, video_id: int):
+async def video_detail(
+    request: Request, video_id: int, user=Depends(require_authentication)
+):
     """Video detail page (plural URL)"""
     try:
         context = {"video_id": video_id, "page_title": "Video Details"}
@@ -79,7 +81,9 @@ async def video_detail(request: Request, video_id: int):
     response_class=HTMLResponse,
     name="frontend_video_detail_singular",
 )
-async def video_detail_singular(request: Request, video_id: int):
+async def video_detail_singular(
+    request: Request, video_id: int, user=Depends(require_authentication)
+):
     """Video detail page (singular URL)"""
     try:
         context = {"video_id": video_id, "page_title": "Video Details"}
@@ -92,7 +96,7 @@ async def video_detail_singular(request: Request, video_id: int):
 
 
 @frontend_router.get("/artists", response_class=HTMLResponse, name="frontend_artists")
-async def artists(request: Request):
+async def artists(request: Request, user=Depends(require_authentication)):
     """Artists management page"""
     try:
         return await template_routes.artists(request)
@@ -104,7 +108,11 @@ async def artists(request: Request):
 @frontend_router.get(
     "/artist/{artist_id}", response_class=HTMLResponse, name="frontend_artist_detail"
 )
-async def artist_detail(request: Request, artist_id: int = Path(..., ge=1)):
+async def artist_detail(
+    request: Request,
+    artist_id: int = Path(..., ge=1),
+    user=Depends(require_authentication),
+):
     """Artist detail page"""
     try:
         return await template_routes.artist_detail(request, artist_id)
@@ -116,7 +124,7 @@ async def artist_detail(request: Request, artist_id: int = Path(..., ge=1)):
 @frontend_router.get(
     "/playlists", response_class=HTMLResponse, name="frontend_playlists"
 )
-async def playlists(request: Request):
+async def playlists(request: Request, user=Depends(require_authentication)):
     """Playlists management page"""
     try:
         return await template_routes.playlists(request)
@@ -130,7 +138,11 @@ async def playlists(request: Request):
     response_class=HTMLResponse,
     name="frontend_playlist_detail",
 )
-async def playlist_detail(request: Request, playlist_id: int = Path(..., ge=1)):
+async def playlist_detail(
+    request: Request,
+    playlist_id: int = Path(..., ge=1),
+    user=Depends(require_authentication),
+):
     """Playlist detail page"""
     try:
         context = {"playlist_id": playlist_id, "page_title": "Playlist Details"}
@@ -145,7 +157,11 @@ async def playlist_detail(request: Request, playlist_id: int = Path(..., ge=1)):
 
 
 @frontend_router.get("/discover", response_class=HTMLResponse, name="frontend_discover")
-async def discover(request: Request, q: Optional[str] = Query(None)):
+async def discover(
+    request: Request,
+    q: Optional[str] = Query(None),
+    user=Depends(require_authentication),
+):
     """Universal search/discover page"""
     try:
         context = {"page_title": "Discover Music Videos", "search_query": q or ""}
@@ -156,7 +172,11 @@ async def discover(request: Request, q: Optional[str] = Query(None)):
 
 
 @frontend_router.get("/mvtv", response_class=HTMLResponse, name="frontend_mvtv")
-async def mvtv(request: Request, playlist: Optional[int] = Query(None)):
+async def mvtv(
+    request: Request,
+    playlist: Optional[int] = Query(None),
+    user=Depends(require_authentication),
+):
     """MvTV continuous video player page"""
     try:
         context = {
@@ -170,7 +190,7 @@ async def mvtv(request: Request, playlist: Optional[int] = Query(None)):
 
 
 @frontend_router.get("/jobs", response_class=HTMLResponse, name="frontend_jobs")
-async def jobs(request: Request):
+async def jobs(request: Request, user=Depends(require_authentication)):
     """Background Jobs Dashboard"""
     try:
         context = {"page_title": "Background Jobs"}
@@ -458,7 +478,9 @@ async def admin_user_details(
     response_class=HTMLResponse,
     name="component_add_video_modal",
 )
-async def add_video_modal_component(request: Request):
+async def add_video_modal_component(
+    request: Request, user=Depends(require_authentication)
+):
     """Add video modal component"""
     try:
         context = {"modal_only": True, "component_name": "add_video_modal"}
@@ -475,7 +497,9 @@ async def add_video_modal_component(request: Request):
     response_class=HTMLResponse,
     name="component_job_dashboard_modal",
 )
-async def job_dashboard_modal_component(request: Request):
+async def job_dashboard_modal_component(
+    request: Request, user=Depends(require_authentication)
+):
     """Job dashboard modal component"""
     try:
         context = {"modal_only": True, "component_name": "job_dashboard_modal"}
@@ -518,7 +542,9 @@ async def frontend_search(
 
 
 @frontend_router.get("/api/navigation", name="frontend_navigation")
-async def frontend_navigation(request: Request):
+async def frontend_navigation(
+    request: Request, current_user: dict = Depends(require_api_authentication)
+):
     """Get navigation structure for frontend"""
     try:
         navigation = {
