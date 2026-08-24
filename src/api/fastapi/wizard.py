@@ -11,11 +11,22 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication
+from src.api.fastapi.auth_dependencies import (
+    get_current_user_session,
+    require_authentication,
+)
 from src.database.connection import get_db_session
 from src.database.models import WizardState, WizardStatus, WizardStep
 from src.services.imvdb_service import imvdb_service
@@ -33,6 +44,65 @@ router = APIRouter(
         422: {"description": "Validation error"},
     },
 )
+
+
+# ========================================================================================
+# POST-COMPLETION ACCESS CONTROL (#405)
+# ========================================================================================
+#
+# The wizard is only genuinely "public by design" -- no auth required --
+# while it's still running, pre-setup, before any admin account exists.
+# Only create_admin_user() originally enforced that; validate_directory,
+# test_api, start_video_import, upload_videos, and
+# start_custom_directory_import stayed callable by anyone, indefinitely,
+# after setup completed.
+#
+# Two different fixes are needed, not one uniform gate: validate_directory
+# and test_api have no legitimate caller once setup is done, so they're
+# simply closed off. start_video_import, upload_videos, and
+# start_custom_directory_import are ALSO used by settings.html's
+# "Settings > System" video import feature -- a normal, ongoing,
+# post-setup feature that happens to share this router's Celery task
+# logic. Closing all five off outright would have 403'd that Settings
+# feature on every real deployment (the wizard is COMPLETED by then).
+
+
+async def require_wizard_incomplete(
+    session: Session = Depends(get_db_session),
+) -> None:
+    """For endpoints with no legitimate caller once setup is done
+    (validate_directory, test_api). Matches create_admin_user's existing
+    WizardStatus.COMPLETED check.
+    """
+    wizard_state = session.query(WizardState).first()
+    if wizard_state and wizard_state.status == WizardStatus.COMPLETED:
+        raise HTTPException(
+            status_code=403,
+            detail="This wizard endpoint is no longer available: setup has already completed",
+        )
+
+
+async def require_wizard_incomplete_or_authenticated(
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> Optional[Dict[str, Any]]:
+    """For start_video_import (/import/start), which is genuinely
+    dual-purpose: called by wizard.js pre-setup (no session exists yet)
+    AND by settings.html's Settings > System import feature post-setup
+    (an already-authenticated caller). Passes through untouched while
+    the wizard is still incomplete; once it's completed, falls back to
+    requiring a real authenticated session, exactly like every other
+    post-setup API route in this app.
+    """
+    wizard_state = session.query(WizardState).first()
+    if not wizard_state or wizard_state.status != WizardStatus.COMPLETED:
+        return None
+
+    user = await get_current_user_session(request)
+    if not user or not user.get("authenticated"):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user
+
 
 # ========================================================================================
 # PYDANTIC MODELS FOR REQUEST/RESPONSE VALIDATION
@@ -528,6 +598,7 @@ async def skip_wizard(
 async def validate_directory(
     request: DirectoryValidationRequest,
     session: Session = Depends(get_db_session),
+    _wizard_gate: None = Depends(require_wizard_incomplete),
 ):
     """
     Validate a directory path for use as music videos directory.
@@ -604,6 +675,7 @@ async def validate_directory(
 async def test_api(
     request: APITestRequest,
     session: Session = Depends(get_db_session),
+    _wizard_gate: None = Depends(require_wizard_incomplete),
 ):
     """
     Test API keys/credentials before saving.
@@ -684,6 +756,9 @@ async def test_api(
 async def start_video_import(
     request: ImportStartRequest,
     session: Session = Depends(get_db_session),
+    _auth_or_wizard: Optional[Dict[str, Any]] = Depends(
+        require_wizard_incomplete_or_authenticated
+    ),
 ):
     """
     Start video import as part of wizard using Celery.
@@ -775,6 +850,7 @@ async def start_video_import(
 async def start_custom_directory_import(
     request: ImportStartRequest,
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     Start custom directory import (Settings > System feature).
@@ -870,6 +946,7 @@ class UploadResponse(BaseModel):
 async def upload_videos(
     files: List[UploadFile] = File(...),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """
     Upload video files from user's PC to a temporary directory on the server.
