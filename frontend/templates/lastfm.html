@@ -498,10 +498,10 @@
             <div id="lastfmStatus" class="status-indicator">
                 <span id="statusText">Checking...</span>
             </div>
-            <button id="connectBtn" onclick="connectToLastFm()" class="btn btn-primary" style="display: none;">
+            <button id="connectBtn" onclick="connectToLastFm()" class="btn btn-primary admin-only-control" style="display: none;">
                 Connect to Last.fm
             </button>
-            <button id="disconnectBtn" onclick="disconnectFromLastFm()" class="btn btn-danger" style="display: none;">
+            <button id="disconnectBtn" onclick="disconnectFromLastFm()" class="btn btn-danger admin-only-control" style="display: none;">
                 Disconnect
             </button>
         </div>
@@ -511,7 +511,7 @@
     <div id="authSection" class="auth-section" style="display: none;">
         <h3>Connect to Last.fm</h3>
         <p>To access your listening history and import your favorite artists, you need to connect your Last.fm account.</p>
-        <button onclick="authenticateWithLastFm()" class="btn btn-primary">
+        <button onclick="authenticateWithLastFm()" class="btn btn-primary admin-only-control">
             Authenticate with Last.fm
         </button>
     </div>
