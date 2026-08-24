@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.logging_middleware import setup_logging_middleware
 from src.api.fastapi.wizard_middleware import setup_wizard_middleware
 
@@ -725,7 +726,9 @@ async def health_check():
 
 
 @app.get("/api/discover")
-async def discover_search(q: str = Query(...)):
+async def discover_search(
+    q: str = Query(...), current_user: dict = Depends(require_authentication)
+):
     """Universal search endpoint for videos, artists, and external sources (IMVDb, YouTube)"""
     try:
         from sqlalchemy.orm import Session
@@ -1163,7 +1166,9 @@ async def retry_download(download_id: str):
 
 
 @app.delete("/api/metube/download/{download_id}")
-async def delete_download(download_id: int):
+async def delete_download(
+    download_id: int, current_user: dict = Depends(require_authentication)
+):
     """Delete a queued download"""
     try:
         from sqlalchemy.orm import Session
@@ -1278,7 +1283,9 @@ async def search_imvdb_videos(q: str = Query(...)):
 
 
 @app.post("/api/metube/process-queue")
-async def process_queued_downloads():
+async def process_queued_downloads(
+    current_user: dict = Depends(require_authentication),
+):
     """Process all queued downloads by submitting them to the job queue"""
     try:
         from sqlalchemy.orm import Session

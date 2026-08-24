@@ -9,12 +9,11 @@ import json
 from datetime import datetime
 from typing import Any, Dict, Optional, Set
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.jobs.redis_manager import redis_manager
-
-# Authentication dependency removed for now - WebSocket auth handled separately
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.websocket.jobs")
@@ -305,42 +304,99 @@ async def get_websocket_manager():
     return websocket_manager
 
 
+async def _get_websocket_authenticated_user(
+    websocket: WebSocket,
+) -> Optional[Dict[str, Any]]:
+    """Resolve the authenticated user for a WebSocket connection.
+
+    Mirrors auth_dependencies.get_current_user_session() +
+    require_authentication(), which can't be reused directly here:
+    get_current_user_session() is typed to Request, and FastAPI's
+    WebSocket routes inject a WebSocket-typed scope, not Request, so a
+    Depends() chain built on that type won't resolve in a websocket
+    route (same constraint documented in monitoring_dashboard.py's own
+    _get_websocket_admin_user, which this mirrors). WebSocket, like
+    Request, inherits .cookies from Starlette's HTTPConnection, so the
+    same session_token lookup and SessionStore.validate_session() call
+    work unchanged.
+
+    Any authenticated role passes (unlike monitoring_dashboard.py's
+    admin-only gate) -- job/download progress is regular library
+    content, not host-system metrics.
+    """
+    try:
+        session_token = websocket.cookies.get("session_token")
+        if not session_token:
+            return None
+        from src.services.session_store import SessionStore
+
+        user_data = SessionStore.validate_session(session_token)
+        if user_data and user_data.get("authenticated"):
+            return user_data
+        return None
+    except Exception as e:
+        logger.error(f"Error resolving WebSocket session: {e}")
+        return None
+
+
+async def websocket_job_progress(websocket: WebSocket):
+    """WebSocket endpoint for real-time job progress updates.
+
+    Previously accepted every connection unauthenticated ("Authentication
+    simplified for now") -- once connected, the server's Redis subscriber
+    broadcasts real-time progress for every Celery job in the system to
+    every connected client with no further gating, so this was a
+    complete, unauthenticated exposure of live download/job activity.
+    Found via a systematic re-audit of #392's actual current status.
+    """
+    user = await _get_websocket_authenticated_user(websocket)
+    if not user:
+        await websocket.close(code=1008)
+        return
+
+    user_id = user.get("user_id")
+
+    try:
+        await websocket_manager.connect_user(websocket, user_id)
+
+        # Start Redis subscriber if not already running (fallback)
+        # Note: This should normally be started during app startup now
+        if not websocket_manager.subscription_task:
+            logger.info(
+                "🔄 Starting Redis subscriber as fallback (should have started at app startup)"
+            )
+            await websocket_manager.start_redis_subscriber()
+
+        while True:
+            # Listen for client messages
+            try:
+                data = await websocket.receive_json()
+                await handle_websocket_message(websocket, data, user_id)
+            except WebSocketDisconnect:
+                break
+
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        await websocket_manager.disconnect_user(websocket)
+
+
+async def websocket_test_page(
+    current_user: dict = Depends(require_authentication),
+):
+    """Test page for WebSocket job progress"""
+    return get_websocket_test_page()
+
+
 def setup_websocket_routes(app: FastAPI):
     """Setup WebSocket routes for job progress"""
-
-    @app.websocket("/ws/jobs")
-    async def websocket_job_progress(websocket: WebSocket):
-        """WebSocket endpoint for real-time job progress updates"""
-        user_id = None  # Authentication simplified for now
-
-        try:
-            await websocket_manager.connect_user(websocket, user_id)
-
-            # Start Redis subscriber if not already running (fallback)
-            # Note: This should normally be started during app startup now
-            if not websocket_manager.subscription_task:
-                logger.info(
-                    "🔄 Starting Redis subscriber as fallback (should have started at app startup)"
-                )
-                await websocket_manager.start_redis_subscriber()
-
-            while True:
-                # Listen for client messages
-                try:
-                    data = await websocket.receive_json()
-                    await handle_websocket_message(websocket, data, user_id)
-                except WebSocketDisconnect:
-                    break
-
-        except Exception as e:
-            logger.error(f"WebSocket error: {e}")
-        finally:
-            await websocket_manager.disconnect_user(websocket)
-
-    @app.get("/ws/jobs/test", response_class=HTMLResponse)
-    async def websocket_test_page():
-        """Test page for WebSocket job progress"""
-        return get_websocket_test_page()
+    app.add_api_websocket_route("/ws/jobs", websocket_job_progress)
+    app.add_api_route(
+        "/ws/jobs/test",
+        websocket_test_page,
+        methods=["GET"],
+        response_class=HTMLResponse,
+    )
 
 
 async def handle_websocket_message(
