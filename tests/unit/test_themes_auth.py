@@ -78,6 +78,10 @@ class TestThemesBehavioralAuth:
         client.app.dependency_overrides[require_authentication] = lambda: {
             "authenticated": True,
             "role": "user",
+            # user_id is required since #392's fail-open-default fix
+            # (_require_user_id): a session dict missing it now 401s
+            # instead of silently defaulting to a fixed fallback user.
+            "user_id": 1,
         }
         response = client.get("/api/themes/export/all")
         assert response.status_code != 401
