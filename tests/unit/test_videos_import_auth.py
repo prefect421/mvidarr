@@ -2,12 +2,14 @@
 
 import ast
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.videos_import import router as videos_import_router
+from src.database.connection import get_db_session
 
 SOURCE_PATH = (
     Path(__file__).parent.parent.parent / "src" / "api" / "fastapi" / "videos_import.py"
@@ -44,12 +46,28 @@ class TestVideosImportBehavioralAuth:
         assert response.status_code == 401
 
     def test_import_from_youtube_succeeds_for_authenticated_session(self):
+        # #393: hermetic (get_db_session overridden too, passes in
+        # isolation) and asserts real pass-through into the route's own
+        # business logic, not just "not 401". A youtube_id is included
+        # in the payload -- without one, the route 400s before ever
+        # calling session.query(), which would make the assertion below
+        # fail for an unrelated reason.
         app = FastAPI()
         app.include_router(videos_import_router)
         app.dependency_overrides[require_authentication] = lambda: {
             "authenticated": True,
             "role": "user",
         }
+        # get_db_session is a generator dependency (yields a session);
+        # this override is a plain callable, so FastAPI injects whatever
+        # it *returns* directly rather than unwrapping a generator --
+        # must return the session itself, not an iterator wrapping it.
+        mock_session = MagicMock()
+        app.dependency_overrides[get_db_session] = lambda: mock_session
         client = TestClient(app)
-        response = client.post("/import-from-youtube", json={"url": "x"})
+        response = client.post(
+            "/import-from-youtube",
+            json={"youtube_id": "abc123", "url": "https://youtube.com/watch?v=abc123"},
+        )
         assert response.status_code != 401
+        mock_session.query.assert_called()
