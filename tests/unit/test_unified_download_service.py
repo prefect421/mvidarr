@@ -162,6 +162,152 @@ class TestFindDownloadedFile:
         )
 
 
+class TestFallbackClientDownload:
+    """#452: no PO token provider is deployed, so YouTube's SABR-only
+    rollout strips every real video/audio format from the web/mweb/tv
+    clients on PO-token-gated videos ("Requested format is not
+    available" / "Only images are available"), even with valid
+    cookies. Stopgap: after the normal 3-attempt anti-detection ladder
+    is exhausted, try once more forcing yt-dlp's android client, which
+    historically doesn't require PO-token verification or JS
+    signature/nsig challenge solving -- trading resolution for a
+    completed download instead of an outright failure.
+    """
+
+    def test_tries_android_fallback_after_all_attempts_fail(self):
+        strategy = _make_strategy()
+        failing = DownloadResult(
+            success=False, error_message="Requested format is not available"
+        )
+        fallback_success = DownloadResult(
+            success=True, file_path="/tmp/video.mp4", file_size=123
+        )
+
+        with patch.object(
+            strategy,
+            "_attempt_download",
+            side_effect=[failing, failing, failing, fallback_success],
+        ) as mock_attempt:
+            result = strategy.download(_make_context())
+
+        assert result.success is True
+        assert result.file_path == "/tmp/video.mp4"
+        # 3 normal attempts + 1 fallback attempt
+        assert mock_attempt.call_count == 4
+        last_call_kwargs = mock_attempt.call_args
+        assert last_call_kwargs.kwargs.get("force_player_client") == "android"
+
+    def test_does_not_try_fallback_when_first_attempt_succeeds(self):
+        strategy = _make_strategy()
+        success = DownloadResult(success=True, file_path="/tmp/video.mp4")
+
+        with patch.object(
+            strategy, "_attempt_download", return_value=success
+        ) as mock_attempt, patch.object(
+            strategy, "_probe_video_height", return_value=1080
+        ):
+            result = strategy.download(_make_context())
+
+        assert result.success is True
+        assert mock_attempt.call_count == 1
+
+    def test_returns_final_failure_when_fallback_also_fails(self):
+        strategy = _make_strategy()
+        failing = DownloadResult(
+            success=False, error_message="Requested format is not available"
+        )
+        fallback_failing = DownloadResult(
+            success=False, error_message="fallback also failed: no formats"
+        )
+
+        with patch.object(
+            strategy,
+            "_attempt_download",
+            side_effect=[failing, failing, failing, fallback_failing],
+        ):
+            result = strategy.download(_make_context())
+
+        assert result.success is False
+        assert "fallback also failed" in result.error_message
+
+    def test_fallback_exception_does_not_crash_download(self):
+        strategy = _make_strategy()
+        failing = DownloadResult(
+            success=False, error_message="Requested format is not available"
+        )
+
+        def _side_effect(*args, **kwargs):
+            if kwargs.get("force_player_client"):
+                raise RuntimeError("fallback subprocess exploded")
+            return failing
+
+        with patch.object(strategy, "_attempt_download", side_effect=_side_effect):
+            result = strategy.download(_make_context())
+
+        assert result.success is False
+        assert "Requested format is not available" in result.error_message
+
+
+class TestAttemptDownloadForcePlayerClient:
+    """Covers _attempt_download's force_player_client override used by the
+    #452 fallback: it must skip the anti-detection manager's normal
+    (PO-token/JS-dependent) client selection entirely, using only a
+    minimal, explicit client + cookies."""
+
+    def test_builds_minimal_command_bypassing_anti_detection_args(self, tmp_path):
+        strategy = _make_strategy()
+        strategy.anti_detection.get_anti_detection_args = MagicMock(
+            side_effect=AssertionError(
+                "force_player_client must bypass anti_detection.get_anti_detection_args"
+            )
+        )
+        context = _make_context(output_path=str(tmp_path))
+
+        mock_process = MagicMock()
+        mock_process.stdout.readline.side_effect = [""]
+        mock_process.returncode = 1
+        mock_process.wait.return_value = None
+
+        with patch(
+            "src.services.unified_download_service.subprocess.Popen",
+            return_value=mock_process,
+        ) as mock_popen:
+            strategy._attempt_download(
+                context, AntiDetectionLevel.MODERATE, force_player_client="android"
+            )
+
+        cmd = mock_popen.call_args[0][0]
+        assert "--extractor-args" in cmd
+        idx = cmd.index("--extractor-args")
+        assert cmd[idx + 1] == "youtube:player_client=android"
+        strategy.anti_detection.get_anti_detection_args.assert_not_called()
+
+    def test_includes_cookies_when_present(self, tmp_path):
+        strategy = _make_strategy()
+        cookie_file = tmp_path / "cookies.txt"
+        cookie_file.write_text("# Netscape HTTP Cookie File\n")
+        context = _make_context(
+            output_path=str(tmp_path), cookies_path=str(cookie_file)
+        )
+
+        mock_process = MagicMock()
+        mock_process.stdout.readline.side_effect = [""]
+        mock_process.returncode = 1
+        mock_process.wait.return_value = None
+
+        with patch(
+            "src.services.unified_download_service.subprocess.Popen",
+            return_value=mock_process,
+        ) as mock_popen:
+            strategy._attempt_download(
+                context, AntiDetectionLevel.MODERATE, force_player_client="android"
+            )
+
+        cmd = mock_popen.call_args[0][0]
+        assert "--cookies" in cmd
+        assert str(cookie_file) in cmd
+
+
 class TestIsDeadYoutubeError:
     def _check(self, message):
         service = UnifiedDownloadService.__new__(UnifiedDownloadService)
