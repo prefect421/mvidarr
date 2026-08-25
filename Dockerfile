@@ -21,11 +21,34 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js from official binaries (required for yt-dlp JavaScript runtime)
-RUN curl -fsSL https://nodejs.org/dist/v20.18.1/node-v20.18.1-linux-x64.tar.xz -o /tmp/node.tar.xz \
+# Install Node.js from official binaries. Node >=22 is REQUIRED (not just
+# recommended): yt-dlp's own JS challenge solver (NodeJsRuntime) hardcodes
+# MIN_SUPPORTED_VERSION = (22, 0, 0) and refuses older runtimes outright,
+# and the bgutil-ytdlp-pot-provider server below (package.json "engines")
+# requires the same floor -- confirmed live on 2026-08-25 that v20.18.1
+# is rejected by both ("node (unavailable)" / ERR_REQUIRE_ESM crash),
+# while v22.23.2 (LTS "Jod") resolves full-quality formats end-to-end.
+RUN curl -fsSL https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-x64.tar.xz -o /tmp/node.tar.xz \
     && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
     && rm /tmp/node.tar.xz \
     && node --version && npm --version
+
+# Build the bgutil-ytdlp-pot-provider PO token server (#452): generates the
+# Proof-of-Origin tokens yt-dlp needs to bypass YouTube's SABR/bot-detection
+# gating on age-restricted and otherwise-protected videos. The Python
+# client plugin (bgutil-ytdlp-pot-provider) is already installed via
+# requirements.txt -- it was the client half only; this is its companion
+# HTTP server. Run by supervisord below, reachable at the plugin's default
+# http://127.0.0.1:4416 with zero yt-dlp invocation changes needed. Pinned
+# to the same 1.3.2 release as the installed Python plugin.
+RUN mkdir -p /app/vendor/bgutil-ytdlp-pot-provider \
+    && curl -fsSL https://github.com/Brainicism/bgutil-ytdlp-pot-provider/archive/refs/tags/1.3.2.tar.gz -o /tmp/pot-provider.tar.gz \
+    && tar -xzf /tmp/pot-provider.tar.gz -C /app/vendor/bgutil-ytdlp-pot-provider --strip-components=1 \
+    && rm /tmp/pot-provider.tar.gz \
+    && cd /app/vendor/bgutil-ytdlp-pot-provider/server \
+    && npm ci --no-audit --no-fund \
+    && npx tsc \
+    && npm prune --omit=dev
 
 # Set working directory
 WORKDIR /app
