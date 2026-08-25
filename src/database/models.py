@@ -896,6 +896,18 @@ class Playlist(Base):
                 self.total_duration = None
             return
 
+        # The real app's session factory (DatabaseManager.
+        # create_session_factory()) configures autoflush=False. Every
+        # caller that adds new PlaylistEntry rows and then immediately
+        # calls update_stats() in the same uncommitted transaction --
+        # e.g. dynamic-playlist creation -- would otherwise have this
+        # count query run against the database's pre-transaction state,
+        # missing those still-pending inserts and reporting 0 even
+        # though they get committed correctly moments later. Flushing
+        # here makes the count accurate regardless of caller flush
+        # discipline or session autoflush configuration.
+        session.flush()
+
         # Query database directly for accurate count (fixes issue #177)
         entry_count = (
             session.query(func.count(PlaylistEntry.id))
