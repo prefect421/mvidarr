@@ -282,7 +282,12 @@ class TestAttemptDownloadForcePlayerClient:
         assert cmd[idx + 1] == "youtube:player_client=android"
         strategy.anti_detection.get_anti_detection_args.assert_not_called()
 
-    def test_includes_cookies_when_present(self, tmp_path):
+    def test_omits_cookies_even_when_present(self, tmp_path):
+        # yt-dlp 2026.08.19 actively refuses to use the android client at
+        # all when cookies are supplied ("Skipping client "android" since
+        # it does not support cookies" -- confirmed live on mvidarr-dev),
+        # so the fallback must never pass --cookies regardless of whether
+        # context.cookies_path is set.
         strategy = _make_strategy()
         cookie_file = tmp_path / "cookies.txt"
         cookie_file.write_text("# Netscape HTTP Cookie File\n")
@@ -304,8 +309,8 @@ class TestAttemptDownloadForcePlayerClient:
             )
 
         cmd = mock_popen.call_args[0][0]
-        assert "--cookies" in cmd
-        assert str(cookie_file) in cmd
+        assert "--cookies" not in cmd
+        assert str(cookie_file) not in cmd
 
 
 class TestIsDeadYoutubeError:
