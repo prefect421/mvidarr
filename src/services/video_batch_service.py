@@ -175,6 +175,15 @@ def get_ytdlp_path() -> str:
     return "/usr/local/bin/yt-dlp"
 
 
+def _is_imvdb_placeholder(url: str) -> bool:
+    """True for the IMVDb metadata-page pattern video_discovery_service.py
+    stores as a non-downloadable fallback (https://imvdb.com/video/<id>)
+    when it has no linked YouTube source for a video -- not a blanket
+    match on the imvdb.com domain, which also hosts other, unrelated
+    page types."""
+    return "imvdb.com/video/" in url
+
+
 def resolve_video_url(video, session, timeout: int = 30) -> Optional[str]:
     """
     Helper function to resolve video URL using yt-dlp search
@@ -188,7 +197,11 @@ def resolve_video_url(video, session, timeout: int = 30) -> Optional[str]:
     Returns:
         str: Resolved URL or None
     """
-    if video.url:
+    # #452 follow-up (live-reported): an IMVDb placeholder page URL isn't
+    # downloadable -- treat it as no stored URL at all so this falls
+    # through to youtube_url, then the live YouTube search below,
+    # instead of returning something yt-dlp will always reject.
+    if video.url and not _is_imvdb_placeholder(video.url):
         return video.url
 
     # Also check youtube_url field as fallback (but ensure it's complete)
