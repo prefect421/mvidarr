@@ -480,8 +480,13 @@ class YouTubeDownloadStrategy(DownloadStrategy):
             cmd.extend(
                 ["--extractor-args", f"youtube:player_client={force_player_client}"]
             )
-            if context.cookies_path and os.path.exists(context.cookies_path):
-                cmd.extend(["--cookies", context.cookies_path])
+            # Deliberately no --cookies here: yt-dlp 2026.08.19 skips the
+            # android client entirely ("Skipping client "android" since
+            # it does not support cookies") when cookies are supplied --
+            # confirmed live on mvidarr-dev. android is only useful for
+            # non-age-restricted PO-token/SABR-gated videos; age-
+            # restricted videos still need the real PO-token provider
+            # (#452), not this fallback.
         else:
             # Anti-detection arguments
             cmd.extend(self.anti_detection.get_anti_detection_args(level, context))
