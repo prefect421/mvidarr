@@ -222,14 +222,21 @@ async def get_download_queue(
 
             from ...database.models import Artist, Download
 
-            # Get recent downloads that are still in queue/downloading status
+            # Get recent downloads that are still in queue/downloading/
+            # pending status. "pending" included defensively (#444): it's
+            # the Download model's own default status, and any download
+            # genuinely left there for any reason -- not just the retry
+            # bug this queue-item-vanishing report was root-caused to --
+            # would otherwise be invisible here (and in get_download_
+            # history()'s completed/failed/cancelled filter) with no
+            # indication anything was ever attempted.
             recent_cutoff = datetime.utcnow() - timedelta(hours=2)  # Last 2 hours
 
             recent_downloads = (
                 session.query(Download, Artist.name)
                 .join(Artist, Download.artist_id == Artist.id)
                 .filter(
-                    Download.status.in_(["queued", "downloading"]),
+                    Download.status.in_(["queued", "downloading", "pending"]),
                     Download.created_at >= recent_cutoff,
                 )
                 .order_by(Download.created_at.desc())

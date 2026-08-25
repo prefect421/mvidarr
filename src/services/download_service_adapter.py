@@ -492,10 +492,43 @@ class DownloadServiceAdapter:
             }
 
     def retry_download(self, download_id: int) -> Dict[str, Any]:
-        """Retry a failed/stopped download (API compatibility method)"""
+        """Retry a failed/stopped download (API compatibility method).
+
+        Live-reported (#444): clicking Retry made the download vanish
+        from both the queue and history widgets, then it silently
+        appeared as downloaded a couple minutes later with no trace of
+        the retry anywhere. Two compounding bugs:
+
+        1. This method never actually re-dispatched anything -- it just
+           set status="pending" and returned success, on the apparent
+           assumption something else would notice and process it. Nothing
+           did: process_queued_downloads() (the only code that queries
+           for "pending" downloads) is only reachable via a manual
+           POST /api/metube/process-queue call, never triggered
+           automatically. The eventual "appeared as downloaded" was an
+           unrelated coincidence (most likely the separate auto-download
+           scheduler independently redownloading the same still-WANTED
+           video through its own normal path), not this retry succeeding.
+        2. Even setting that aside, "pending" isn't a status either the
+           queue view (get_download_queue: queued/downloading) or the
+           history view (get_download_history: completed/failed/
+           cancelled) recognizes -- so a download genuinely left at
+           "pending" for any reason is invisible in both places, exactly
+           matching the reported symptom.
+
+        Fix: actually claim the video and dispatch the download here,
+        mirroring the claim-then-dispatch-then-revert-on-failure pattern
+        already used by videos_downloads.py's queue_video_download() /
+        queue_download_video() / bulk_download_videos(). On success the
+        download settles at "queued" -- a status the queue view already
+        recognizes. On failure it reverts to "failed" with a real error
+        message, exactly where it started, instead of a silent "pending"
+        that only vanishes.
+        """
         try:
             from src.database.connection import get_db
-            from src.database.models import Download, Video
+            from src.database.models import Download, Video, VideoStatus
+            from src.services.video_batch_service import claim_video_for_redownload
 
             with get_db() as session:
                 download = (
@@ -518,14 +551,89 @@ class DownloadServiceAdapter:
                         "error": f"Invalid status: {download.status}",
                     }
 
-                # Reset download status to pending for retry
-                download.status = "pending"
+                if not download.video_id:
+                    return {
+                        "success": False,
+                        "message": "Download has no associated video and cannot be re-dispatched",
+                        "download_id": download_id,
+                        "error": "Missing video_id",
+                    }
+
+                video = (
+                    session.query(Video).filter(Video.id == download.video_id).first()
+                )
+                if not video:
+                    return {
+                        "success": False,
+                        "message": "Associated video not found",
+                        "download_id": download_id,
+                        "error": "Video not found",
+                    }
+
+                original_status = video.status
+
+                if not claim_video_for_redownload(download.video_id):
+                    return {
+                        "success": False,
+                        "message": "Video is currently downloading and cannot be retried right now",
+                        "download_id": download_id,
+                        "error": "Failed to claim video for retry",
+                    }
+
+                # claim_video_for_redownload() commits DOWNLOADING via its
+                # own, separate engine connection (deliberately, so it's
+                # immune to whatever state this session already holds --
+                # see its docstring). This session's own `video` object
+                # was loaded before that claim and has no idea the row
+                # changed underneath it, so SQLAlchemy's dirty-checking
+                # would otherwise compare a later `video.status =
+                # original_status` revert against its own stale, cached
+                # belief (still whatever it loaded originally) and see no
+                # real change -- silently skipping the UPDATE and leaving
+                # the video stuck at DOWNLOADING forever on a dispatch
+                # failure. Refreshing here makes this session's copy
+                # agree with the real DB value first.
+                session.refresh(video, attribute_names=["status"])
+
+                download.status = "queued"
                 download.progress = 0
                 download.error_message = None
                 download.updated_at = datetime.utcnow()
                 session.commit()
 
-                logger.info(f"Download {download_id} queued for retry")
+                try:
+                    result = self.add_music_video_download(
+                        artist=video.artist.name if video.artist else "Unknown Artist",
+                        title=video.title,
+                        url=download.original_url,
+                        quality=download.quality or "best",
+                        video_id=download.video_id,
+                        download_id=download.id,
+                    )
+                except Exception as dispatch_error:
+                    result = {"success": False, "error": str(dispatch_error)}
+
+                if not (result and result.get("success")):
+                    dispatch_error_message = (
+                        result.get("error", "Unknown dispatch error")
+                        if result
+                        else "Unknown dispatch error"
+                    )
+                    logger.error(
+                        f"Retry dispatch failed for download {download_id}: {dispatch_error_message}"
+                    )
+                    video.status = original_status
+                    download.status = "failed"
+                    download.error_message = dispatch_error_message
+                    session.commit()
+                    return {
+                        "success": False,
+                        "message": f"Failed to retry download: {dispatch_error_message}",
+                        "download_id": download_id,
+                        "error": dispatch_error_message,
+                    }
+
+                logger.info(f"Download {download_id} re-dispatched for retry")
 
                 return {
                     "success": True,
