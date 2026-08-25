@@ -92,9 +92,19 @@ def _stored_video_url(video: Video, missing_value: Any = None) -> Any:
     resolve_video_url(), independently re-checks video.url first).
     Correctly parenthesized here: the youtube_id ternary only governs
     the final fallback branch.
+
+    Live-reported (#452 follow-up): video_discovery_service.py's
+    _search_imvdb_for_artist() stores an IMVDb metadata *page* URL
+    (https://imvdb.com/video/<id>) in video.url as an explicit
+    "placeholder" fallback when IMVDb has no linked YouTube source --
+    not a URL yt-dlp can ever download. Treated as valid here, it
+    reached yt-dlp and failed with a confusing "No strategy available
+    for URL" instead of the clear "No valid URL found for video" every
+    call site already raises when there's genuinely nothing to try.
     """
+    url = video.url if video.url and not _is_imvdb_placeholder(video.url) else None
     return (
-        video.url
+        url
         or video.youtube_url
         or (
             f"https://youtube.com/watch?v={video.youtube_id}"
@@ -102,6 +112,14 @@ def _stored_video_url(video: Video, missing_value: Any = None) -> Any:
             else missing_value
         )
     )
+
+
+def _is_imvdb_placeholder(url: str) -> bool:
+    """True for the specific IMVDb metadata-page pattern
+    video_discovery_service.py stores as a non-downloadable fallback
+    (https://imvdb.com/video/<id>) -- not a blanket match on the
+    imvdb.com domain, which also hosts other, unrelated page types."""
+    return "imvdb.com/video/" in url
 
 
 # ========================================================================================

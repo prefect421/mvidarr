@@ -76,3 +76,53 @@ class TestStoredVideoUrl:
     def test_empty_string_youtube_id_does_not_construct_a_watch_url(self):
         video = _video(youtube_id="")
         assert _stored_video_url(video) is None
+
+
+class TestImvdbPlaceholderUrlIsNotDownloadable:
+    """Live-reported: a download attempt failed with the confusing
+    "No strategy available for URL: https://imvdb.com/video/268780274253"
+    (a yt-dlp-strategy-shaped error, not an actionable one). Root cause:
+    video_discovery_service.py's _search_imvdb_for_artist() stores an
+    IMVDb *metadata page* URL in video.url as an explicit fallback
+    ("placeholder URL", per its own comment) when IMVDb has no linked
+    YouTube source -- but nothing downstream distinguished that
+    placeholder from a genuinely downloadable URL, so it was dispatched
+    to yt-dlp anyway and failed with no matching download strategy.
+
+    Fix: _stored_video_url() no longer treats an imvdb.com/video/ page
+    as a valid URL -- it falls through to youtube_url/youtube_id, and
+    if neither exists either, to the caller's existing "No valid URL
+    found for video" ValueError guard (already in place at every call
+    site) instead of ever reaching yt-dlp.
+    """
+
+    def test_imvdb_placeholder_alone_yields_the_missing_value(self):
+        video = _video(url="https://imvdb.com/video/268780274253")
+        assert _stored_video_url(video) is None
+
+    def test_imvdb_placeholder_falls_through_to_youtube_url(self):
+        video = _video(
+            url="https://imvdb.com/video/268780274253",
+            youtube_url="https://youtube.com/watch?v=abc123",
+        )
+        assert _stored_video_url(video) == "https://youtube.com/watch?v=abc123"
+
+    def test_imvdb_placeholder_falls_through_to_constructed_watch_url(self):
+        video = _video(url="https://imvdb.com/video/268780274253", youtube_id="abc123")
+        assert _stored_video_url(video) == "https://youtube.com/watch?v=abc123"
+
+    def test_imvdb_placeholder_uses_given_missing_value(self):
+        video = _video(url="https://imvdb.com/video/268780274253")
+        assert (
+            _stored_video_url(video, missing_value="No valid URL found for video")
+            == "No valid URL found for video"
+        )
+
+    def test_a_real_imvdb_looking_domain_that_is_not_the_placeholder_path_still_wins(
+        self,
+    ):
+        # Only the specific /video/ metadata-page pattern is a
+        # known-non-downloadable placeholder -- don't over-match and
+        # discard a URL that merely mentions imvdb.com incidentally.
+        video = _video(url="https://imvdb.com/n/some-artist")
+        assert _stored_video_url(video) == "https://imvdb.com/n/some-artist"
