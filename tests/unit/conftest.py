@@ -24,7 +24,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import src.database.connection as connection
-from src.database.models import Artist, Video
+from src.database.models import Artist, Download, Video
 
 # Test modules that want a real (unpatched) get_db() backed by a real DB.
 _REAL_DB_MODULES = {
@@ -34,6 +34,8 @@ _REAL_DB_MODULES = {
     "test_import_duplicate_video_race.py",
     "test_discovery_dedup_global_youtube_id.py",
     "test_discovery_savepoint_preserves_earlier_inserts.py",
+    "test_retry_download_redispatches.py",
+    "test_download_queue_includes_pending.py",
 }
 
 
@@ -47,7 +49,7 @@ def _wire_real_sqlite_db(request, monkeypatch):
     os.close(db_fd)
     engine = create_engine(f"sqlite:///{db_path}")
     connection.Base.metadata.create_all(
-        engine, tables=[Artist.__table__, Video.__table__]
+        engine, tables=[Artist.__table__, Video.__table__, Download.__table__]
     )
     # expire_on_commit=False: the wanted_video fixture in
     # test_claim_video_for_download.py reads `artist.id` in its teardown
