@@ -64,7 +64,9 @@ class TestQueueDownloadVideoClaimsBeforeStagingDownloadRow:
 
     def test_claims_the_video_before_adding_the_download_row(self):
         source = _function_source(self.FUNCTION_NAME)
-        claim_pos = source.index("claim_video_for_redownload(video_id)")
+        claim_pos = source.index(
+            "asyncio.to_thread(claim_video_for_redownload, video_id)"
+        )
         add_pos = source.index("session.add(download)")
         assert claim_pos < add_pos, (
             "session.add(download) must not run before "
@@ -87,7 +89,9 @@ class TestQueueVideoDownloadClaimsBeforeStagingDownloadRow:
 
     def test_claims_the_video_before_adding_the_download_row(self):
         source = _function_source(self.FUNCTION_NAME)
-        claim_pos = source.index("claim_video_for_redownload(video_id)")
+        claim_pos = source.index(
+            "asyncio.to_thread(claim_video_for_redownload, video_id)"
+        )
         add_pos = source.index("session.add(download)")
         assert claim_pos < add_pos, (
             "session.add(download) must not run before "

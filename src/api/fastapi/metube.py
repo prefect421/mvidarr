@@ -3,6 +3,7 @@ FastAPI MeTube/yt-dlp Integration Router
 Migrated from Flask src/api/metube.py - yt-dlp CLI API endpoints for video downloading
 """
 
+import asyncio
 import logging
 import os
 import time
@@ -452,10 +453,17 @@ async def retry_download(
             f"Retrying {kind} {actual_id} for user {current_user.get('username')}"
         )
 
+        # #457: both of these are fully synchronous and can block on an
+        # InnoDB row lock inside claim_video_for_redownload() -- run on
+        # a worker thread, not the shared event loop, so a lock wait
+        # here degrades to a slow request instead of freezing the
+        # entire application (every route, including unrelated ones).
         if kind == "video":
-            result = ytdlp_service.retry_video_download(actual_id)
+            result = await asyncio.to_thread(
+                ytdlp_service.retry_video_download, actual_id
+            )
         else:
-            result = ytdlp_service.retry_download(actual_id)
+            result = await asyncio.to_thread(ytdlp_service.retry_download, actual_id)
 
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result)

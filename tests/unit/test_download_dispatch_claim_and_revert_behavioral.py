@@ -33,6 +33,7 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from src.api.fastapi.videos_downloads import (
     bulk_download_videos,
@@ -46,7 +47,20 @@ from src.database.models import Artist, Download, Video, VideoStatus
 
 @pytest.fixture
 def session_factory():
-    engine = create_engine("sqlite:///:memory:")
+    # #457: claim_video_for_redownload()/claim_video_for_download() now
+    # run via asyncio.to_thread() -- a real, different OS thread. Plain
+    # `sqlite:///:memory:` uses SQLAlchemy's SingletonThreadPool, which
+    # hands a *different*, empty in-memory database to any thread other
+    # than the one that created the engine. StaticPool forces every
+    # connection (any thread) to share the single underlying DBAPI
+    # connection, and check_same_thread=False lifts SQLite's own same-
+    # thread guard (safe here: this fixture's usage is never truly
+    # concurrent, just cross-thread).
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(
         engine, tables=[Artist.__table__, Video.__table__, Download.__table__]
     )

@@ -25,6 +25,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from src.api.fastapi.videos_downloads import bulk_download_videos
 from src.api.fastapi.videos_models import BulkDownloadRequest
@@ -71,7 +72,16 @@ class TestBulkDownloadVideosResponseHasSuccessKey:
 
 @pytest.fixture
 def session_factory():
-    engine = create_engine("sqlite:///:memory:")
+    # #457: claim_video_for_redownload() now runs via asyncio.to_thread()
+    # -- a real, different OS thread. StaticPool + check_same_thread=False
+    # keeps the in-memory SQLite database visible across that thread hop
+    # (see test_download_dispatch_claim_and_revert_behavioral.py for the
+    # full explanation).
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(
         engine, tables=[Artist.__table__, Video.__table__, Download.__table__]
     )

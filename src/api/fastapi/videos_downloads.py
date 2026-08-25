@@ -224,7 +224,11 @@ async def bulk_download_videos(
                 # DOWNLOADED too (#377).
                 original_status = video.status
 
-                if not claim_video_for_redownload(video_id):
+                # #457: synchronous, can block on an InnoDB row lock --
+                # run on a worker thread, not the shared event loop, so
+                # a lock wait degrades to a slow request instead of
+                # freezing the entire application.
+                if not await asyncio.to_thread(claim_video_for_redownload, video_id):
                     skipped_count += 1
                     continue
                 claimed = True
@@ -504,7 +508,11 @@ async def queue_video_download(
 
         from src.services.video_batch_service import claim_video_for_redownload
 
-        if not claim_video_for_redownload(video_id):
+        # #457: synchronous, can block on an InnoDB row lock -- run on a
+        # worker thread, not the shared event loop, so a lock wait
+        # degrades to a slow request instead of freezing the entire
+        # application.
+        if not await asyncio.to_thread(claim_video_for_redownload, video_id):
             # claim_video_for_redownload() returns False both when the
             # video genuinely lost a race to a concurrent claim AND when
             # the claim attempt itself errored (live-observed: a
@@ -805,7 +813,11 @@ async def queue_download_video(
 
         from src.services.video_batch_service import claim_video_for_redownload
 
-        if not claim_video_for_redownload(video_id):
+        # #457: synchronous, can block on an InnoDB row lock -- run on a
+        # worker thread, not the shared event loop, so a lock wait
+        # degrades to a slow request instead of freezing the entire
+        # application.
+        if not await asyncio.to_thread(claim_video_for_redownload, video_id):
             # See queue_video_download()'s identical comment above:
             # claim_video_for_redownload() returning False doesn't by
             # itself distinguish a genuine race loss from an unrelated
@@ -1031,7 +1043,11 @@ async def bulk_download_wanted_videos(
                 # select the same WANTED video; only one of them may win.
                 # A failed claim means another process already has it --
                 # a normal, healthy skip, not an error.
-                if not claim_video_for_download(video.id):
+                # #457: synchronous, can block on an InnoDB row lock --
+                # run on a worker thread, not the shared event loop, so
+                # a lock wait degrades to a slow request instead of
+                # freezing the entire application.
+                if not await asyncio.to_thread(claim_video_for_download, video.id):
                     skipped_count += 1
                     continue
 
