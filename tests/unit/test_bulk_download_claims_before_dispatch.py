@@ -31,13 +31,17 @@ class TestBulkDownloadClaimsBeforeDispatch:
 
     def test_claim_happens_before_the_dispatch_call(self):
         body = self._function_body("bulk_download_wanted_videos")
-        claim_index = body.index("claim_video_for_download(")
+        # Anchor on the actual call site (asyncio.to_thread(...), #457),
+        # not a later comment that also mentions this function by name.
+        claim_index = body.index("asyncio.to_thread(claim_video_for_download")
         dispatch_index = body.index("ytdlp_service.add_music_video_download(")
         assert claim_index < dispatch_index
 
     def test_a_failed_claim_increments_skipped_not_errors(self):
         body = self._function_body("bulk_download_wanted_videos")
-        claim_index = body.index("claim_video_for_download(")
+        # Anchor on the actual call site (asyncio.to_thread(...), #457),
+        # not a later comment that also mentions this function by name.
+        claim_index = body.index("asyncio.to_thread(claim_video_for_download")
         # The nearest "if not <claim result>:" branch after the claim call
         # should touch skipped_count, not errors.append, within a small
         # window (the immediate handling of a failed claim).

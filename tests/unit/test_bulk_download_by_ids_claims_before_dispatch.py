@@ -36,11 +36,14 @@ def _function_source(function_name: str) -> str:
 class TestBulkDownloadByIdsClaimsBeforeDispatch:
     def test_calls_claim_video_for_redownload(self):
         source = _function_source("bulk_download_videos")
-        assert "claim_video_for_redownload(" in source
+        assert "claim_video_for_redownload" in source
 
     def test_claim_is_called_before_dispatch(self):
         source = _function_source("bulk_download_videos")
-        claim_pos = source.index("claim_video_for_redownload(")
+        # Anchor on the actual call site (asyncio.to_thread(...)), not
+        # the earlier local `from ... import claim_video_for_redownload`
+        # statement, which also contains this substring.
+        claim_pos = source.index("asyncio.to_thread(claim_video_for_redownload")
         dispatch_pos = source.index("ytdlp_service.add_music_video_download(")
         assert claim_pos < dispatch_pos
 
@@ -54,7 +57,10 @@ class TestBulkDownloadByIdsClaimsBeforeDispatch:
         text, and before the Download row is constructed."""
         source = _function_source("bulk_download_videos")
         url_resolution_pos = source.index("resolved_url = await resolve_video_url(")
-        claim_pos = source.index("claim_video_for_redownload(")
+        # Anchor on the actual call site (asyncio.to_thread(...)), not
+        # the earlier local `from ... import claim_video_for_redownload`
+        # statement, which also contains this substring.
+        claim_pos = source.index("asyncio.to_thread(claim_video_for_redownload")
         download_row_pos = source.index("download = Download(")
         assert url_resolution_pos < claim_pos < download_row_pos
 
@@ -63,7 +69,10 @@ class TestBulkDownloadByIdsClaimsBeforeDispatch:
         # The claim-failure branch must `continue` rather than falling
         # through to dispatch -- assert the claim call is immediately
         # followed (within a small window) by a continue statement.
-        claim_pos = source.index("claim_video_for_redownload(")
+        # Anchor on the actual call site (asyncio.to_thread(...)), not
+        # the earlier local `from ... import claim_video_for_redownload`
+        # statement, which also contains this substring.
+        claim_pos = source.index("asyncio.to_thread(claim_video_for_redownload")
         window = source[claim_pos : claim_pos + 200]
         assert "continue" in window
 
@@ -97,7 +106,10 @@ class TestBulkDownloadRevertPath:
         of a hardcoded WANTED."""
         source = _function_source("bulk_download_videos")
         original_status_pos = source.index("original_status = video.status")
-        claim_pos = source.index("claim_video_for_redownload(")
+        # Anchor on the actual call site (asyncio.to_thread(...)), not
+        # the earlier local `from ... import claim_video_for_redownload`
+        # statement, which also contains this substring.
+        claim_pos = source.index("asyncio.to_thread(claim_video_for_redownload")
         assert original_status_pos < claim_pos
 
     def test_terminal_commit_moved_inside_loop_right_after_flush(self):
@@ -150,6 +162,8 @@ class TestBulkDownloadRevertPath:
         fails before ever attempting its own claim."""
         source = _function_source("bulk_download_videos")
         for_pos = source.index("for video in videos:")
-        claim_success_pos = source.index("claim_video_for_redownload(video_id):")
+        claim_success_pos = source.index(
+            "await asyncio.to_thread(claim_video_for_redownload, video_id):"
+        )
         between = source[for_pos:claim_success_pos]
         assert "claimed = False" in between
