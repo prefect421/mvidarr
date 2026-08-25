@@ -28,7 +28,11 @@ RUN apt-get update && apt-get install -y \
 # requires the same floor -- confirmed live on 2026-08-25 that v20.18.1
 # is rejected by both ("node (unavailable)" / ERR_REQUIRE_ESM crash),
 # while v22.23.2 (LTS "Jod") resolves full-quality formats end-to-end.
+# SHA256 verified against https://nodejs.org/dist/v22.23.2/SHASUMS256.txt --
+# when bumping this version, fetch the new SHASUMS256.txt and update the
+# hash below; a mismatch fails the build rather than installing silently.
 RUN curl -fsSL https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-x64.tar.xz -o /tmp/node.tar.xz \
+    && echo "d60acfe00a2932254bb0ad20e01b0d74397a0875595de719654b214f4b03f307  /tmp/node.tar.xz" | sha256sum -c - \
     && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
     && rm /tmp/node.tar.xz \
     && node --version && npm --version
@@ -40,9 +44,13 @@ RUN curl -fsSL https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-x64.tar.xz -
 # requirements.txt -- it was the client half only; this is its companion
 # HTTP server. Run by supervisord below, reachable at the plugin's default
 # http://127.0.0.1:4416 with zero yt-dlp invocation changes needed. Pinned
-# to the same 1.3.2 release as the installed Python plugin.
+# to the same 1.3.2 release as the installed Python plugin. SHA256 pinned
+# below (GitHub's tag archive is otherwise a mutable ref, not an immutable
+# release asset) -- recompute with `curl -fsSL <url> | sha256sum` when
+# bumping the version; a mismatch fails the build.
 RUN mkdir -p /app/vendor/bgutil-ytdlp-pot-provider \
     && curl -fsSL https://github.com/Brainicism/bgutil-ytdlp-pot-provider/archive/refs/tags/1.3.2.tar.gz -o /tmp/pot-provider.tar.gz \
+    && echo "3545ac7ffc0869498755cb3b4760a72fa2f176689d0890a6f5b898d163012ba2  /tmp/pot-provider.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/pot-provider.tar.gz -C /app/vendor/bgutil-ytdlp-pot-provider --strip-components=1 \
     && rm /tmp/pot-provider.tar.gz \
     && cd /app/vendor/bgutil-ytdlp-pot-provider/server \
