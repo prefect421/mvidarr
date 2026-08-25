@@ -29,7 +29,9 @@ copy can no longer propagate back to the database-backed master.
 """
 
 import base64
+import os
 import tempfile
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -108,6 +110,80 @@ class TestGetWorkingCookiesPath:
                 working_path = adapter._get_working_cookies_path()
 
             assert working_path is None
+
+
+class TestWorkingCookiesPathIsUniquePerCall:
+    """Follow-up fix: the original #443 fix used a single FIXED path
+    (f"{cookies_path}.working") shared across every dispatch. Live on
+    mvidarr-dev this was poisoned by a stale, differently-owned leftover
+    file (created once as root via an out-of-band diagnostic script,
+    while the real app process runs as an unprivileged user) --
+    every subsequent real download hit PermissionError writing to it,
+    which the broad except silently swallowed, falling back to the
+    master path and reproducing the exact cookie-corruption bug #443
+    was meant to fix. A fixed shared path is also a race: two concurrent
+    downloads would stomp on each other's copy. The fix: a unique
+    per-call temp file, so no leftover file -- however it got there --
+    can ever block a later call again."""
+
+    def test_two_calls_produce_two_independent_paths(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cookies_path = str(Path(tmpdir) / "youtube_cookies.txt")
+            adapter = _adapter(cookies_path)
+
+            with patch(
+                "src.services.settings_service.SettingsService.get",
+                return_value=base64.b64encode(b"cookie content").decode("utf-8"),
+            ):
+                first = adapter._get_working_cookies_path()
+                second = adapter._get_working_cookies_path()
+
+            assert first != second
+            assert Path(first).exists()
+            assert Path(second).exists()
+
+    def test_a_stale_unwritable_leftover_at_the_old_fixed_path_does_not_block_a_fresh_copy(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cookies_path = str(Path(tmpdir) / "youtube_cookies.txt")
+            # Simulate the exact live failure: a leftover file at the old
+            # fixed ".working" suffix that this process cannot write to.
+            stale_path = f"{cookies_path}.working"
+            Path(stale_path).write_bytes(b"stale, unwritable leftover")
+            os.chmod(stale_path, 0o444)
+            adapter = _adapter(cookies_path)
+
+            try:
+                with patch(
+                    "src.services.settings_service.SettingsService.get",
+                    return_value=base64.b64encode(b"fresh db content").decode("utf-8"),
+                ):
+                    working_path = adapter._get_working_cookies_path()
+
+                assert working_path is not None
+                assert working_path != cookies_path
+                assert working_path != stale_path
+                assert Path(working_path).read_bytes() == b"fresh db content"
+            finally:
+                os.chmod(stale_path, 0o644)
+
+    def test_stale_working_copies_older_than_the_cleanup_window_are_removed(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cookies_path = str(Path(tmpdir) / "youtube_cookies.txt")
+            old_leftover = Path(f"{cookies_path}.ancient123.working")
+            old_leftover.write_bytes(b"orphaned from a crashed process")
+            old_time = time.time() - 7200  # 2 hours ago
+            os.utime(old_leftover, (old_time, old_time))
+            adapter = _adapter(cookies_path)
+
+            with patch(
+                "src.services.settings_service.SettingsService.get",
+                return_value=base64.b64encode(b"fresh content").decode("utf-8"),
+            ):
+                adapter._get_working_cookies_path()
+
+            assert not old_leftover.exists()
 
 
 class TestAddMusicVideoDownloadUsesTheWorkingCopy:

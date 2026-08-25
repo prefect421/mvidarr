@@ -4,6 +4,8 @@ Provides seamless integration with existing MVidarr code while using the new uni
 """
 
 import os
+import tempfile
+import time
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -109,6 +111,20 @@ class DownloadServiceAdapter:
         genuinely valid. Passing yt-dlp a disposable copy instead means
         whatever it does to that copy never propagates back to the
         database-backed master.
+
+        Follow-up fix: the first version of this method used a single
+        FIXED path (f"{cookies_path}.working") shared across every
+        dispatch. Live on mvidarr-dev this was poisoned by a stale,
+        differently-owned leftover file (created once, out-of-band, by
+        a diagnostic script run as a different user than the real app
+        process) -- every subsequent real download hit PermissionError
+        writing to it, silently fell back to the master path, and
+        reproduced the exact corruption bug this method exists to
+        prevent. A fixed shared path is also a race between concurrent
+        downloads. Each call now gets its own unique temp file, so no
+        leftover file -- however it got there -- can ever block a later
+        call again. Stale copies past the cleanup window (crashed
+        processes, killed downloads) are opportunistically removed.
         """
         try:
             from src.services.settings_service import SettingsService
@@ -124,16 +140,50 @@ class DownloadServiceAdapter:
             import base64
 
             cookie_content = base64.b64decode(cookie_content_b64)
-            working_path = f"{self.cookies_path}.working"
-            cookie_dir = os.path.dirname(working_path)
-            if cookie_dir and not os.path.exists(cookie_dir):
+            cookie_dir = os.path.dirname(self.cookies_path) or "."
+            if not os.path.exists(cookie_dir):
                 os.makedirs(cookie_dir, exist_ok=True)
-            with open(working_path, "wb") as f:
-                f.write(cookie_content)
+
+            self._cleanup_stale_working_copies(cookie_dir)
+
+            base_name = os.path.basename(self.cookies_path)
+            fd, working_path = tempfile.mkstemp(
+                prefix=f"{base_name}.", suffix=".working", dir=cookie_dir
+            )
+            try:
+                with os.fdopen(fd, "wb") as f:
+                    f.write(cookie_content)
+            except Exception:
+                os.unlink(working_path)
+                raise
             return working_path
         except Exception as e:
             logger.error(f"Failed to prepare working cookie copy: {e}")
             return self.cookies_path if os.path.exists(self.cookies_path) else None
+
+    def _cleanup_stale_working_copies(
+        self, cookie_dir: str, max_age_seconds: int = 3600
+    ) -> None:
+        """Best-effort cleanup of leftover per-attempt working copies from
+        previous dispatches (crashed processes, killed downloads, etc.)
+        so they don't accumulate unboundedly. Never touches anything
+        younger than max_age_seconds, so a copy actively in use by a
+        concurrent in-flight download is never removed out from under
+        it."""
+        try:
+            base_name = os.path.basename(self.cookies_path)
+            now = time.time()
+            for name in os.listdir(cookie_dir):
+                if not (name.startswith(f"{base_name}.") and name.endswith(".working")):
+                    continue
+                full_path = os.path.join(cookie_dir, name)
+                try:
+                    if now - os.path.getmtime(full_path) > max_age_seconds:
+                        os.unlink(full_path)
+                except OSError:
+                    pass
+        except OSError:
+            pass
 
     def add_music_video_download(
         self,
