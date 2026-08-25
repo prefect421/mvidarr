@@ -67,6 +67,14 @@ COPY requirements.txt requirements-fastapi.txt ./
 # Install Python dependencies (both Flask/core and FastAPI)
 RUN pip install --no-cache-dir --timeout 120 -r requirements.txt -r requirements-fastapi.txt
 
+# py-spy (#457): a live process got fully unresponsive with no stack
+# trace to diagnose why -- this lets a running container's process be
+# sampled in place (`py-spy dump --pid <pid>`) without killing it.
+# Needs SYS_PTRACE (see docker-compose.dev.yml's cap_add) to attach to
+# another process in the same container. Small, inert unless invoked --
+# left in unconditionally rather than split into a dev-only image.
+RUN pip install --no-cache-dir py-spy
+
 # Copy application code
 COPY . .
 
