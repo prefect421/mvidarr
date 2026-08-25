@@ -399,6 +399,34 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                     current_level = AntiDetectionLevel.AGGRESSIVE
                     time.sleep(2**attempt)
 
+        # Normal anti-detection ladder exhausted. #452: mvidarr's yt-dlp
+        # setup currently has no working PO-token provider, which
+        # strips every real video/audio format from the web/mweb/tv
+        # clients on PO-token-gated videos ("Requested format is not
+        # available" / "Only images are available"), even with valid
+        # cookies. Last resort: force yt-dlp's android client, which
+        # historically doesn't require PO-token verification or JS
+        # signature/nsig challenge solving -- trading resolution for a
+        # completed download instead of an outright failure.
+        try:
+            fallback_result = self._attempt_download(
+                context, current_level, force_player_client="android"
+            )
+        except Exception as e:
+            logger.error(f"Fallback download attempt exception: {e}")
+            fallback_result = None
+
+        if fallback_result and fallback_result.success:
+            logger.warning(
+                f"{context.title}: primary clients failed (see #452 -- no "
+                "PO token provider deployed); succeeded via fallback "
+                "android client, likely at reduced quality"
+            )
+            fallback_result.duration = time.time() - start_time
+            return fallback_result
+        if fallback_result and fallback_result.error_message:
+            last_error = fallback_result.error_message
+
         detail = last_error or "unknown error"
         return DownloadResult(
             success=False,
@@ -415,9 +443,21 @@ class YouTubeDownloadStrategy(DownloadStrategy):
             pass
 
     def _attempt_download(
-        self, context: DownloadContext, level: AntiDetectionLevel
+        self,
+        context: DownloadContext,
+        level: AntiDetectionLevel,
+        force_player_client: Optional[str] = None,
     ) -> DownloadResult:
-        """Attempt single download with specified anti-detection level"""
+        """Attempt single download with specified anti-detection level.
+
+        force_player_client (#452 fallback): when set, skips the normal
+        anti-detection client selection entirely -- which requires a
+        working PO-token provider / JS signature challenge solver,
+        neither of which is currently deployed -- in favor of a
+        minimal command using only the named client (e.g. "android")
+        plus cookies. See YouTubeDownloadStrategy.download()'s
+        last-resort fallback call.
+        """
 
         # Build command with anti-detection arguments
         cmd = [self.ytdlp_manager.current_executable]
@@ -436,13 +476,23 @@ class YouTubeDownloadStrategy(DownloadStrategy):
         # Metadata options
         cmd.extend(["--write-info-json", "--embed-metadata", "--add-metadata"])
 
-        # Anti-detection arguments
-        cmd.extend(self.anti_detection.get_anti_detection_args(level, context))
+        if force_player_client:
+            cmd.extend(
+                ["--extractor-args", f"youtube:player_client={force_player_client}"]
+            )
+            if context.cookies_path and os.path.exists(context.cookies_path):
+                cmd.extend(["--cookies", context.cookies_path])
+        else:
+            # Anti-detection arguments
+            cmd.extend(self.anti_detection.get_anti_detection_args(level, context))
 
         # URL
         cmd.append(context.url)
 
-        logger.info(f"Executing download: {context.title} with {level} anti-detection")
+        logger.info(
+            f"Executing download: {context.title} with "
+            f"{f'forced client={force_player_client}' if force_player_client else level}"
+        )
 
         try:
             process = subprocess.Popen(
