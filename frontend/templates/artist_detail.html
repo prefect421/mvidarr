@@ -5330,7 +5330,7 @@ function renderVideosTab(videos) {
             <input type="checkbox" class="video-select" onchange="toggleVideoSelection(${video.id})" onclick="event.stopPropagation()">
             <div class="selection-indicator"></div>
             <div class="video-thumbnail">
-                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" data-fallback-src="/static/placeholder-video.png">
+                <img src="/api/videos/${video.id}/thumbnail" alt="${video.title}" onerror="handleVideoThumbnailError(this)">
                 <div class="video-status status-${video.status ? video.status.toLowerCase() : 'unknown'}">${video.status || 'Unknown'}</div>
             </div>
             <div class="video-info">
@@ -7659,6 +7659,18 @@ function handleThumbnailError(img) {
     img.src = '/static/placeholder-artist.png';
 }
 
+function handleVideoThumbnailError(img) {
+    // Live-reported: videos whose thumbnail proxy request fails for any
+    // reason (hotlink protection, tracking-protection blocking a CDN
+    // domain, transient network error, etc.) previously had no fallback
+    // at all -- just a permanently broken image. Guard against an
+    // infinite loop if the placeholder itself ever 404s.
+    if (img.src.endsWith('/static/placeholder-video.png')) {
+        return;
+    }
+    img.src = '/static/placeholder-video.png';
+}
+
 function hideVideoSelectionModal() {
     document.getElementById('videoSelectionModal').style.display = 'none';
 }
@@ -8080,7 +8092,7 @@ function loadVideoPreview() {
     const previewHtml = selectedVideoData.map(video => `
         <div class="video-preview-item">
             <div class="preview-thumbnail">
-                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" data-fallback-src="/static/placeholder-video.png">
+                <img src="/api/videos/${video.id}/thumbnail" alt="${video.title}" onerror="handleVideoThumbnailError(this)">
             </div>
             <div class="preview-metadata">
                 <h4>${video.title}</h4>
