@@ -236,9 +236,12 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
   - ✅ Numerous live-testing bug fixes: 2FA audit logging, OAuth callback error handling, Videos-page pagination dropping active filters, webhook URL credential logging, header username display, Edit Webhook modal scroll
   - ✅ Fix (#329): closed a duplicate-concurrent-download-dispatch race — `bulk_download_wanted_videos()` (FastAPI) and `download_all_wanted_videos_internal()` (Celery) could both dispatch the same WANTED video, with the loser silently overwriting the winner's result (including a real successful download getting overwritten back to FAILED) and firing a false download-failed webhook. Fixed via a new atomic `claim_video_for_download()` helper (row-locked `UPDATE ... WHERE status='WANTED'`) plus a defensive already-DOWNLOADED guard (which had shipped as dead code due to an enum-vs-string `.value` comparison bug, caught and fixed in final review) that also suppresses the false webhook
   - See GitHub milestone "v1.0.0" for the complete issue list
-- **v0.12.19** (2026-08-13): Recently Found Videos View
-  - ✅ Feature: "Recently Found" one-click view on Videos page (#316) — shows all videos sorted by date_added desc, regardless of status, via a new button + shareable deep-link URL (`?sort_by=date_added&sort_order=desc&status=`)
-  - ✅ Re-scoped from an "upcoming release calendar" after confirming no integrated data source (IMVDb, MusicBrainz, YouTube, Spotify, Last.fm) exposes reliable future release dates
+  - Note: the "Recently Found" videos view (#316, merged 2026-08-13) rolled into this release directly — it was never tagged as its own version. Re-scoped from an "upcoming release calendar" concept after confirming no integrated data source (IMVDb, MusicBrainz, YouTube, Spotify, Last.fm) exposes reliable future release dates.
+- **v0.12.19** (2026-07-16): YouTube Max-Quality Downloads & Dead-URL Recovery
+  - Core fix contributed by **@Ktell123** in [#282](https://github.com/prefect421/mvidarr/pull/282)
+  - ✅ Fixed `enable_aggressive_anti_detection` truthy-string bug forcing AGGRESSIVE anti-detection and capping quality at ~360p
+  - ✅ Player client priority, resolution-first format sort, automatic MODERATE retry on low-res escalated downloads
+  - ✅ Dead YouTube URL recovery: searches for an official alternate upload and retries once
 - **v0.12.18** (2026-07-05): Dependency Sweep (Dependabot PRs #269-274)
   - ✅ Dependency: fastapi 0.138.1 → 0.139.0, Pillow 12.2.0 → 12.3.0, opencv-python-headless >=4.13.0.92 → >=5.0.0.93
   - ✅ Dependency: click 8.1.7 → 8.4.2, tqdm 4.66.3 → 4.68.3
