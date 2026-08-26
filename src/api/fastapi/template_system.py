@@ -313,7 +313,21 @@ class AsyncTemplateSystem:
             "user_role": None,
             "session": {},
             "auth_enabled": True,  # Default to enabled
+            "default_password_active": False,
         }
+
+        try:
+            # Warn a logged-in admin who never changed the bootstrap
+            # credential. Cheap (one settings read + bcrypt compare) so
+            # it's fine to compute unconditionally; visibility itself is
+            # gated on is_authenticated in the template.
+            from src.services.simple_auth_service import SimpleAuthService
+
+            auth_context["default_password_active"] = (
+                SimpleAuthService.is_default_password()
+            )
+        except Exception as e:
+            logger.warning(f"Default password check error: {e}")
 
         try:
             # Check if authentication middleware is enabled

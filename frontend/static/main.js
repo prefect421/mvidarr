@@ -48,7 +48,10 @@ async function apiRequest(url, options = {}) {
         const data = await response.json();
         
         if (!response.ok) {
-            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+            // FastAPI's HTTPException returns {"detail": "..."}; some
+            // legacy endpoints return {"error": "..."} instead. Check
+            // both before falling back to the generic status message.
+            throw new Error(data.detail || data.error || `HTTP error! status: ${response.status}`);
         }
         
         return data;
@@ -723,8 +726,8 @@ async function updateCredentials() {
         return;
     }
     
-    if (password.length < 6) {
-        showError('Password must be at least 6 characters long');
+    if (password.length < 8) {
+        showError('Password must be at least 8 characters long');
         return;
     }
     
