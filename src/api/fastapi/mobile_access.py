@@ -824,16 +824,26 @@ async def get_mobile_app_interface(
 
 
 @mobile_router.get("/manifest.json")
-async def get_mobile_app_manifest():
+async def get_mobile_app_manifest(
+    current_user: dict = Depends(require_authentication),
+):
     """Get Progressive Web App manifest.
 
-    Deliberately public (#464): a PWA manifest is conventionally fetched
-    by the browser/installer *before* any user session exists -- that's
-    the whole point of a web app manifest (enables "Add to Home Screen"
-    / installability prompts). Requiring auth here breaks that: a
-    browser can't present an install prompt for a resource it can't
-    fetch without already being logged in. Contains no sensitive data,
-    just the app's own static name/icons/theme.
+    Requires authentication (#392 Phase 2 follow-up, be3957fe): the
+    only page that links to this manifest is get_mobile_app_interface's
+    own HTML (<link rel="manifest" href="/mobile/manifest.json">), and
+    that page (GET /mobile/app) is itself already
+    require_authentication-gated. Browsers include same-origin cookies
+    for <link rel="manifest"> fetches, so gating the manifest itself
+    doesn't break anything for an already-logged-in user, and there's
+    no other, unauthenticated consumer of this specific route.
+
+    #464 previously "fixed" this back to public, mischaracterizing this
+    deliberate decision as an accidental regression -- it wasn't; it
+    was a later, considered decision that #464 simply didn't find (only
+    one of the two relevant test files was checked at the time). Every
+    other route in this file already requires authentication; this one
+    matches.
     """
     manifest = {
         "name": "MVidarr Mobile",
