@@ -30,11 +30,20 @@ imvdb_discovery_service.py, enhanced_artist_discovery_service.py, and
 the rest of this file's own untested surface -- strategy dispatch,
 _find_downloaded_file(), the real subprocess-invoking download path) is
 tracked in a follow-up comment on #317 rather than attempted here.
+
+Second pass (same #317, later slice): the 5 strategy-specific arg
+builders (_get_strategy_args, _get_tv_client_args,
+_get_android_client_args, _get_web_cookies_args,
+_get_web_fallback_args) and _extract_error_message -- all pure, no I/O
+beyond delegating to the already-tested _get_cookie_args() above.
+_extract_error_message specifically feeds every failed-download error
+message a user actually sees, directly relevant given #443/#452's
+cookie/PO-token investigations earlier this session.
 """
 
 from unittest.mock import patch
 
-from src.services.youtube_download_engine import YouTubeDownloadEngine
+from src.services.youtube_download_engine import DownloadStrategy, YouTubeDownloadEngine
 
 
 def _engine():
@@ -125,3 +134,148 @@ class TestSanitizeFilename:
         engine = _engine()
         result = engine._sanitize_filename("x" * 500)
         assert len(result) == 200
+
+
+class TestGetStrategyArgs:
+    def test_tv_client_strategy_dispatches_to_tv_client_args(self):
+        engine = _engine()
+        with patch("os.path.exists", return_value=False):
+            dispatched = engine._get_strategy_args(DownloadStrategy.TV_CLIENT)
+            direct = engine._get_tv_client_args()
+        assert dispatched == direct
+
+    def test_web_client_cookies_strategy_dispatches_to_web_cookies_args(self):
+        engine = _engine()
+        with patch("os.path.exists", return_value=False):
+            dispatched = engine._get_strategy_args(DownloadStrategy.WEB_CLIENT_COOKIES)
+            direct = engine._get_web_cookies_args()
+        assert dispatched == direct
+
+    def test_web_client_fallback_strategy_dispatches_to_web_fallback_args(self):
+        engine = _engine()
+        with patch("os.path.exists", return_value=False):
+            dispatched = engine._get_strategy_args(DownloadStrategy.WEB_CLIENT_FALLBACK)
+            direct = engine._get_web_fallback_args()
+        assert dispatched == direct
+
+    def test_android_client_has_no_dedicated_enum_value_and_is_unreachable_via_dispatch(
+        self,
+    ):
+        # DownloadStrategy only defines TV_CLIENT/WEB_CLIENT_COOKIES/
+        # WEB_CLIENT_FALLBACK -- _get_android_client_args() exists and
+        # is fully implemented (see TestGetAndroidClientArgs below) but
+        # _get_strategy_args()'s if/elif chain has no branch that can
+        # ever reach it. Not necessarily a bug (Android may be legacy
+        # or reserved for a future strategy), but worth pinning down:
+        # dead code that looks reachable from the public
+        # DownloadStrategy enum is easy to assume is in use when it
+        # isn't.
+        assert not hasattr(DownloadStrategy, "ANDROID_CLIENT")
+
+
+class TestGetTvClientArgs:
+    def test_uses_the_tv_client_with_web_fallback(self):
+        engine = _engine()
+        with patch("os.path.exists", return_value=False):
+            args = engine._get_tv_client_args()
+        idx = args.index("--extractor-args")
+        assert args[idx + 1] == "youtube:player_client=tv,web"
+
+    def test_includes_cookie_args_for_age_restricted_videos(self):
+        # TV client still needs cookies -- age-restriction isn't
+        # client-specific.
+        engine = _engine()
+        with patch("os.path.exists", return_value=True):
+            args = engine._get_tv_client_args()
+        assert "--cookies" in args
+
+
+class TestGetAndroidClientArgs:
+    def test_uses_the_android_client_with_a_matching_user_agent(self):
+        engine = _engine()
+        args = engine._get_android_client_args()
+        idx = args.index("--extractor-args")
+        assert args[idx + 1] == "youtube:player_client=android"
+        assert "--add-header" in args
+
+    def test_never_includes_cookie_args(self):
+        # Unlike every other strategy, android intentionally never
+        # calls _get_cookie_args() at all -- confirmed live this
+        # session (#452): yt-dlp actively refuses the android client
+        # when cookies are supplied ("Skipping client "android" since
+        # it does not support cookies").
+        engine = _engine()
+        with patch("os.path.exists", return_value=True):
+            args = engine._get_android_client_args()
+        assert "--cookies" not in args
+
+
+class TestGetWebCookiesArgs:
+    def test_uses_the_web_client(self):
+        engine = _engine()
+        with patch("os.path.exists", return_value=False):
+            args = engine._get_web_cookies_args()
+        idx = args.index("--extractor-args")
+        assert args[idx + 1] == "youtube:player_client=web"
+
+    def test_includes_cookie_args_when_available(self):
+        engine = _engine()
+        with patch("os.path.exists", return_value=True):
+            args = engine._get_web_cookies_args()
+        assert "--cookies" in args
+
+
+class TestGetWebFallbackArgs:
+    def test_uses_the_broadest_client_list_as_a_last_resort(self):
+        engine = _engine()
+        with patch("os.path.exists", return_value=False):
+            args = engine._get_web_fallback_args()
+        idx = args.index("--extractor-args")
+        assert args[idx + 1] == "youtube:player_client=web,tv,android"
+
+    def test_uses_longer_timeouts_and_more_retries_than_the_other_strategies(self):
+        # Last-resort strategy -- more patient than TV/web-cookies.
+        engine = _engine()
+        with patch("os.path.exists", return_value=False):
+            fallback_args = engine._get_web_fallback_args()
+            tv_args = engine._get_tv_client_args()
+        fallback_timeout = int(
+            fallback_args[fallback_args.index("--socket-timeout") + 1]
+        )
+        tv_timeout = int(tv_args[tv_args.index("--socket-timeout") + 1])
+        assert fallback_timeout > tv_timeout
+
+
+class TestExtractErrorMessage:
+    """Feeds every failed-download error message a user actually sees
+    -- directly relevant to this session's #443/#452 cookie/PO-token
+    investigations, where the exact wording of yt-dlp's failure output
+    was the whole diagnostic trail."""
+
+    def test_prefers_the_last_error_line_when_multiple_are_present(self):
+        engine = _engine()
+        output = "some setup output\nERROR: first problem\nmore output\nERROR: real final problem"
+        assert engine._extract_error_message(output) == "real final problem"
+
+    def test_falls_back_to_the_last_warning_when_no_error_line_exists(self):
+        engine = _engine()
+        output = "WARNING: cookies stale\nWARNING: signature solving failed"
+        assert (
+            engine._extract_error_message(output)
+            == "No explicit error, warnings: signature solving failed"
+        )
+
+    def test_falls_back_to_recent_output_when_no_error_or_warning_exists(self):
+        engine = _engine()
+        output = "line one\nline two\nline three"
+        result = engine._extract_error_message(output)
+        assert "line one" in result
+        assert "line two" in result
+        assert "line three" in result
+
+    def test_empty_output_reports_no_output_captured(self):
+        engine = _engine()
+        assert (
+            engine._extract_error_message("")
+            == "Unknown error occurred - no output captured"
+        )
