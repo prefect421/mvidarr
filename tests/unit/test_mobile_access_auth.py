@@ -2,11 +2,17 @@
 unauthenticated -- most handlers are inert stubs (hardcoded sample data),
 but POST /register-device is real: it calls
 network_share.set_device_access_level(...), genuinely granting network
-streaming access to the caller's IP. All non-stub AND stub routes get
+streaming access to the caller's IP. All routes in this file get
 require_authentication uniformly (cheap now, prevents a repeat of this bug
 class if a stub gets filled in later without anyone re-checking auth) --
-EXCEPT GET /manifest.json, deliberately left public (PWA manifest,
-no sensitive data, commonly fetched without credentials by browsers).
+including GET /manifest.json (added later, #392 Phase 2 follow-up,
+be3957fe): see test_mobile_access_manifest_auth.py for the reasoning
+and the more thorough reflection-based coverage of that route
+specifically. A same-session PR (#464/#465) briefly, incorrectly
+"fixed" the manifest back to public, mischaracterizing that deliberate
+decision as an accidental regression -- reverted once the conflicting
+test file (this session simply hadn't found it yet) surfaced the real
+history.
 """
 
 import ast
@@ -45,6 +51,7 @@ EXPECTED_AUTHENTICATED_ROUTES = [
     "get_mobile_playlist_videos",
     "get_mobile_app_interface",
     "register_mobile_device",
+    "get_mobile_app_manifest",
 ]
 
 
@@ -68,10 +75,6 @@ class TestMobileAccessAllRoutesAuthenticated:
                 "Depends(require_authentication)" in source
             ), f"{function_name} should use Depends(require_authentication), got:\n{source}"
 
-    def test_manifest_route_deliberately_left_unauthenticated(self):
-        source = _function_source("get_mobile_app_manifest")
-        assert "Depends(require_authentication)" not in source
-
 
 class TestMobileAccessBehavioralAuth:
     def test_register_device_401s_without_session(self):
@@ -80,13 +83,6 @@ class TestMobileAccessBehavioralAuth:
         client = TestClient(app)
         response = client.post("/mobile/register-device", json={"device_name": "x"})
         assert response.status_code == 401
-
-    def test_manifest_succeeds_without_session(self):
-        app = FastAPI()
-        app.include_router(mobile_router)
-        client = TestClient(app)
-        response = client.get("/mobile/manifest.json")
-        assert response.status_code != 401
 
     def test_register_device_succeeds_for_authenticated_session(self):
         app = FastAPI()
