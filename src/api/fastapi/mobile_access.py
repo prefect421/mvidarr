@@ -824,10 +824,17 @@ async def get_mobile_app_interface(
 
 
 @mobile_router.get("/manifest.json")
-async def get_mobile_app_manifest(
-    current_user: dict = Depends(require_authentication),
-):
-    """Get Progressive Web App manifest"""
+async def get_mobile_app_manifest():
+    """Get Progressive Web App manifest.
+
+    Deliberately public (#464): a PWA manifest is conventionally fetched
+    by the browser/installer *before* any user session exists -- that's
+    the whole point of a web app manifest (enables "Add to Home Screen"
+    / installability prompts). Requiring auth here breaks that: a
+    browser can't present an install prompt for a resource it can't
+    fetch without already being logged in. Contains no sensitive data,
+    just the app's own static name/icons/theme.
+    """
     manifest = {
         "name": "MVidarr Mobile",
         "short_name": "MVidarr",
