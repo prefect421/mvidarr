@@ -126,7 +126,6 @@ class JavaScriptModernizer:
             "/auth/login": "/api/auth/login",
             "/auth/logout": "/api/auth/logout",
             "/auth/2fa/setup": "/api/auth/2fa/setup",
-            "/auth/2fa/verify": "/api/auth/2fa/verify",
             # Video operations
             "/videos/add": "/api/videos",
             "/videos/update": "/api/videos",

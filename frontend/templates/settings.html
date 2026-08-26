@@ -198,6 +198,13 @@ input:checked + .slider:before {
                         <span>Blacklist</span>
                     </button>
                 </li>
+                <li>
+                    <button class="settings-tab-btn" onclick="window.location.href='/webhooks'"
+                            aria-label="Go to the Webhooks and Notifications page">
+                        <iconify-icon icon="tabler:bell" class="tab-icon" aria-hidden="true"></iconify-icon>
+                        <span>Webhooks &amp; Notifications</span>
+                    </button>
+                </li>
             </ul>
 
             <!-- Advanced Mode Toggle -->
@@ -299,7 +306,93 @@ input:checked + .slider:before {
             </div>
             <div class="form-group">
                 <button onclick="updateCredentials()" class="btn btn-primary">🔑 Update Credentials</button>
-                <button onclick="resetCredentials()" class="btn btn-secondary">🔄 Reset to Default</button>
+            </div>
+        </div>
+
+        <div class="settings-section" id="twoFactorSection">
+            <h2>🛡️ Two-Factor Authentication</h2>
+            <div class="form-help">
+                <small>Add an extra verification step to your login using an authenticator app.</small>
+            </div>
+            <div class="form-group">
+                <small id="securityTwoFactorStatus">Loading status…</small>
+            </div>
+            <div class="form-group">
+                <!-- /auth/2fa/setup renders the real HTML setup page
+                     (frontend_router.py's two_fa_setup_page -> auth/2fa_setup.html).
+                     Do not point this at /2fa/setup: that path collides with an
+                     unfinished JSON-stub route of the same name under the /2fa
+                     API router (two_factor_auth.py's setup_page), which always
+                     returns raw JSON regardless of its response_class annotation. -->
+                <a id="twoFactorEnableLink" href="/auth/2fa/setup" class="btn btn-primary" style="display: none;">🔐 Enable Two-Factor Authentication</a>
+            </div>
+        </div>
+
+        <div class="settings-section" id="oauthProvidersSection">
+            <h2>🔗 OAuth Login Providers</h2>
+            <div class="form-help">
+                <small>Let users sign in via Authentik, Google, or GitHub instead of (or in addition to) a password. Leave a provider's fields blank to keep it disabled. Client secret fields are never pre-filled for security — leave one blank on save to keep the previously-saved value.</small>
+            </div>
+
+            <h3>Authentik</h3>
+            <div class="form-group">
+                <label for="oauth_authentik_base_url">Base URL:</label>
+                <input type="text" id="oauth_authentik_base_url" name="oauth_authentik_base_url" placeholder="https://auth.example.com">
+            </div>
+            <div class="form-group">
+                <label for="oauth_authentik_client_id">Client ID:</label>
+                <input type="text" id="oauth_authentik_client_id" name="oauth_authentik_client_id">
+            </div>
+            <div class="form-group">
+                <label for="oauth_authentik_client_secret">Client Secret:</label>
+                <input type="password" id="oauth_authentik_client_secret" name="oauth_authentik_client_secret" placeholder="Leave blank to keep the existing secret" autocomplete="new-password">
+                <small id="oauth_authentik_client_secret_status"></small>
+            </div>
+            <div class="form-group">
+                <label for="oauth_authentik_redirect_uri">Redirect URI:</label>
+                <input type="text" id="oauth_authentik_redirect_uri" name="oauth_authentik_redirect_uri" class="oauth-redirect-uri-input" data-provider="authentik">
+                <small>Typically <code class="oauth-redirect-uri-hint" data-provider="authentik">{origin}/api/auth/oauth/authentik/callback</code> — register this exact URL with the provider.</small>
+            </div>
+
+            <h3>Google</h3>
+            <div class="form-group">
+                <label for="oauth_google_client_id">Client ID:</label>
+                <input type="text" id="oauth_google_client_id" name="oauth_google_client_id">
+            </div>
+            <div class="form-group">
+                <label for="oauth_google_client_secret">Client Secret:</label>
+                <input type="password" id="oauth_google_client_secret" name="oauth_google_client_secret" placeholder="Leave blank to keep the existing secret" autocomplete="new-password">
+                <small id="oauth_google_client_secret_status"></small>
+            </div>
+            <div class="form-group">
+                <label for="oauth_google_redirect_uri">Redirect URI:</label>
+                <input type="text" id="oauth_google_redirect_uri" name="oauth_google_redirect_uri" class="oauth-redirect-uri-input" data-provider="google">
+                <small>Typically <code class="oauth-redirect-uri-hint" data-provider="google">{origin}/api/auth/oauth/google/callback</code> — register this exact URL with the provider.</small>
+            </div>
+
+            <h3>GitHub</h3>
+            <div class="form-group">
+                <label for="oauth_github_client_id">Client ID:</label>
+                <input type="text" id="oauth_github_client_id" name="oauth_github_client_id">
+            </div>
+            <div class="form-group">
+                <label for="oauth_github_client_secret">Client Secret:</label>
+                <input type="password" id="oauth_github_client_secret" name="oauth_github_client_secret" placeholder="Leave blank to keep the existing secret" autocomplete="new-password">
+                <small id="oauth_github_client_secret_status"></small>
+            </div>
+            <div class="form-group">
+                <label for="oauth_github_redirect_uri">Redirect URI:</label>
+                <input type="text" id="oauth_github_redirect_uri" name="oauth_github_redirect_uri" class="oauth-redirect-uri-input" data-provider="github">
+                <small>Typically <code class="oauth-redirect-uri-hint" data-provider="github">{origin}/api/auth/oauth/github/callback</code> — register this exact URL with the provider.</small>
+            </div>
+        </div>
+
+        <div class="settings-section" id="oauthAllowlistSection">
+            <h2>✅ OAuth New Account Signup Allowlist</h2>
+            <div class="form-group">
+                <label for="oauth_allowed_emails">New Account Signup Allowlist:</label>
+                <input type="text" id="oauth_allowed_emails" name="oauth_allowed_emails" placeholder="you@example.com, @yourcompany.com">
+                <small>Comma separated. Each entry is either an exact email address, or <code>@domain.com</code> to allow anyone at that domain. This only gates <strong>new</strong> accounts — anyone who already has a MVidarr account can still sign in via OAuth regardless of this list. Leave empty to block all new OAuth signups (existing accounts are unaffected).</small>
             </div>
         </div>
 
@@ -532,8 +625,8 @@ input:checked + .slider:before {
                 <input type="text" id="spotify_redirect_uri" name="spotify_redirect_uri" placeholder="http://localhost:5000/api/spotify/callback">
             </div>
             <div class="integration-actions">
-                <button onclick="testSpotifyIntegration()" class="btn btn-info">Test Connection</button>
-                <button onclick="authorizeSpotify()" class="btn btn-success">Authorize</button>
+                <button onclick="testSpotifyIntegration()" class="btn btn-info admin-only-control">Test Connection</button>
+                <button onclick="authorizeSpotify()" class="btn btn-success admin-only-control">Authorize</button>
                 <button onclick="importSpotifyPlaylists()" class="btn btn-secondary">Import Playlists</button>
                 <a href="/spotify" class="btn btn-primary">🎵 Spotify Manager</a>
             </div>
@@ -562,8 +655,8 @@ input:checked + .slider:before {
                 <div class="help-text">Enter your username manually or use the "Authorize" button for OAuth authentication</div>
             </div>
             <div class="integration-actions">
-                <button onclick="testLastfmIntegration()" class="btn btn-info">Test Connection</button>
-                <button onclick="authorizeLastfm()" class="btn btn-success">Authorize</button>
+                <button onclick="testLastfmIntegration()" class="btn btn-info admin-only-control">Test Connection</button>
+                <button onclick="authorizeLastfm()" class="btn btn-success admin-only-control">Authorize</button>
                 <button onclick="syncLastfmHistory()" class="btn btn-secondary">Sync Listening History</button>
                 <a href="/lastfm" class="btn btn-primary">🎵 Last.fm Manager</a>
             </div>
@@ -1529,8 +1622,9 @@ input:checked + .slider:before {
             <p class="section-description">Monitor system health, perform maintenance tasks, and view collection analytics</p>
             <div class="system-tools-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
 
-                <!-- System Health Tool -->
-                <div class="tool-card" style="background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1.5rem;">
+                <!-- System Health Tool (admin-only: /system-health and all
+                     of its backing API routes require require_admin) -->
+                <div class="tool-card admin-only-control" style="background: var(--bg-tertiary, #333); border: 1px solid var(--border-secondary, #444); border-radius: 8px; padding: 1.5rem;">
                     <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
                         <iconify-icon icon="tabler:heartbeat" style="font-size: 2rem; color: var(--text-accent, #00d4ff);"></iconify-icon>
                         <h3 style="margin: 0; font-size: 1.1rem;">System Health</h3>
@@ -2617,15 +2711,35 @@ document.addEventListener('DOMContentLoaded', function() {
 // Handle hash changes
 window.addEventListener('hashchange', initializeTab);
 
+// OAuth client secrets are never pre-filled into their input — a blank
+// secret field on save means "leave unchanged" (see settings.py's
+// OAUTH_SECRET_KEYS), so displaying the real value back to the browser
+// would be both a needless exposure and misleading (editing it without
+// clearing it first would look like a no-op but actually replaces it).
+const OAUTH_SECRET_SETTING_KEYS = [
+    'oauth_authentik_client_secret',
+    'oauth_google_client_secret',
+    'oauth_github_client_secret',
+];
+
 function loadSettings() {
     // Load regular settings
     fetch('/api/settings/')
         .then(response => response.json())
         .then(data => {
             const settings = data.settings;
-            
+
             // Populate form fields
             Object.keys(settings).forEach(key => {
+                if (OAUTH_SECRET_SETTING_KEYS.includes(key)) {
+                    const statusEl = document.getElementById(`${key}_status`);
+                    if (statusEl) {
+                        statusEl.textContent = settings[key].value
+                            ? '✓ Configured (leave blank to keep it)'
+                            : 'Not configured';
+                    }
+                    return;
+                }
                 const element = document.getElementById(key);
                 if (element) {
                     // Handle different input types correctly
@@ -2638,7 +2752,23 @@ function loadSettings() {
                     }
                 }
             });
-            
+
+            // Default OAuth redirect URI fields to this instance's real
+            // callback URL when nothing's been saved yet — the value is
+            // always {origin}/api/auth/oauth/{provider}/callback, so
+            // there's no reason to make admins type it themselves.
+            document.querySelectorAll('.oauth-redirect-uri-input').forEach((input) => {
+                const provider = input.dataset.provider;
+                const defaultUri = `${window.location.origin}/api/auth/oauth/${provider}/callback`;
+                if (!input.value) {
+                    input.value = defaultUri;
+                }
+            });
+            document.querySelectorAll('.oauth-redirect-uri-hint').forEach((hint) => {
+                const provider = hint.dataset.provider;
+                hint.textContent = `${window.location.origin}/api/auth/oauth/${provider}/callback`;
+            });
+
             // After settings are loaded, update the user credentials section visibility
             updateUserCredentialsSection();
 

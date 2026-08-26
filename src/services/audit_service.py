@@ -22,6 +22,7 @@ class AuditEventType:
     # Authentication Events
     LOGIN_SUCCESS = "login_success"
     LOGIN_FAILED = "login_failed"
+    TWO_FACTOR_REQUIRED = "two_factor_required"
     LOGOUT = "logout"
     SESSION_EXPIRED = "session_expired"
     SESSION_REVOKED = "session_revoked"

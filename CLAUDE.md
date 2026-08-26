@@ -214,55 +214,31 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v0.12.24 - Released
+### Current Phase: v1.0.0 - Released
 
-#### Versioning Policy (Updated 2026-08-09)
-- **Current Version**: 0.12.24 (Released 2026-08-09)
-- **Next Version**: 0.12.25 (Planning)
+#### Versioning Policy (Updated 2026-08-17)
+- **Current Version**: 1.0.0 (Released 2026-08-17)
+- **Next Version**: 1.0.1 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
-  - **0.x.y**: Pre-production development (current phase)
-  - **1.0.0**: First production-ready release (future)
+  - **0.x.y**: Pre-production development (past phase)
+  - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
-- **v0.12.24** (2026-08-09): Security Sweep (aiohttp CVE fix, MKV warning fix, thumbnail hardening)
-  - ✅ Security: aiohttp 3.14.1 → 3.14.3 — CVE-2026-69244/GHSA-cq5v-8q36-5273 (HIGH, OOB heap read in C HTTP response parser error path), CVE-2026-69243/GHSA-mfx4-hv73-q22v (MEDIUM, WS upgrade request smuggling), CVE-2026-59881/GHSA-mq44-7p77-q5h7 (MEDIUM, WS client decompresses frames without negotiated permessage-deflate)
-  - ✅ Fix #307: removed a premature 3-second false-positive "format not supported" warning on MKV/AVI playback (`frontend/templates/videos.html`) that raced against real-time transcoding and destroyed the live video element; the existing 30-second `loadTimeout` already handles genuine load failures
-  - ✅ Fix #306 (partial/defensive, root cause not fully reproduced): `scan_missing_thumbnails()` in `src/api/fastapi/artists_thumbnails.py` no longer treats a failed filesystem check (`OSError`) as proof a thumbnail was deleted — only a clean, confirmed-missing file now clears `thumbnail_path`/`thumbnail_url`, and the checked path is logged; flagged for reopening if the symptom recurs
-  - ✅ Verified via rebuilt local Docker (`--no-cache`): full pytest suite passed (58 passed, 1 skipped), health endpoint healthy on v0.12.24; prod (192.168.1.68:5050) independently confirmed healthy on v0.12.24
-  - ✅ Closed/superseded Dependabot PR #308
-  - ✅ Security scan: Dependabot alerts #23–#28 and code-scanning alerts #79–#81 all confirmed `state: fixed` after a manually-triggered fresh Security Scan run (not just pushed — verified via GitHub API)
-  - ✅ Docs: README.md trimmed to last 5 releases (LATEST + 4 previous); full version history moved into `CHANGELOG.md` (brought current from its prior stopping point at v0.12.3 through v0.12.24)
-  - 🐛 Still open (out of scope, not fixed): prod's `/api/health/version` still reports `git_commit`/`git_branch` as `"unknown"` (same GHCR-image-path issue noted since v0.12.22)
-- **v0.12.23** (2026-08-02): Dependency Sweep (pytest, tqdm, sphinx, sphinx-rtd-theme, redis, psutil)
-  - ✅ Dependency: pytest 9.0.3 → 9.1.1 (dev), tqdm 4.68.3 → 4.70.0
-  - ✅ Dependency: sphinx 7.2.6 → 9.1.0, sphinx-rtd-theme 1.3.0 → 3.1.0 (dev-only) — rtd-theme 1.3.0 pins `sphinx<8`, so it had to move too; verified via `pip install --dry-run` full resolve, no conflicts
-  - ✅ Dependency: redis 8.0.1 → 8.1.0
-  - ✅ Dependency: psutil 5.9.6 → 7.2.2 (2 major versions) — deferred in v0.12.22 pending its own pass; this round checked the 6.0.0/7.0.0 changelogs against every psutil API this codebase calls (boot_time, cpu_count, cpu_percent, disk_io_counters, disk_usage, getloadavg, net_connections, net_if_addrs, net_io_counters, pids, Process, virtual_memory) — no overlap with documented breaking changes, so included this round
-  - ✅ Verified via rebuilt local Docker: image builds clean, migrations succeeded against live MariaDB, FastAPI/Celery worker/beat all started, health endpoint healthy, full pytest suite passed (58 passed, 1 skipped); prod (192.168.1.68:5050) rebuilt and confirmed on v0.12.23
-  - ✅ Closed/superseded Dependabot PRs #299 #301 #302 #303 #304
-  - ✅ Security scan: 0 open GitHub issues, 0 Dependabot alerts, 0 code-scanning alerts, pip-audit clean on all 3 requirements files (this was a routine dependency sweep — no CVEs were involved)
-  - ℹ️ Host testing note: this dev machine lacks `python3-dev`/mysqlclient build headers and no sudo was available to install them, so pre-merge verification ran inside the rebuilt Docker image instead of bare `python src/app.py` — full pytest suite was copied into the running container and executed there since `tests/` is intentionally excluded from the production image via `.dockerignore`
-  - 🐛 Still open (out of scope, not fixed): prod's `/api/health/version` still reports `git_commit`/`git_branch` as `"unknown"` (same GHCR-image-path issue noted in v0.12.22)
-- **v0.12.22** (2026-07-25): Dependency Sweep (celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby)
-  - ✅ Dependency: celery 5.3.4 → 5.6.3, redis 5.0.1 → 8.0.1 (3 major versions) — verified live in mvidarr-dev Docker: celery worker/beat ping OK, redis_manager job-progress/cache round-trip OK; PR #297's original CI timeout traced to an apt-mirror stall (not a celery regression), rerun passed clean
-  - ✅ Dependency: sentry-sdk 2.63.0 → 2.66.1, imagehash 4.3.1 → 4.3.2 (dev-only)
-  - ✅ CI: actions/setup-python v6 → v7, actions/labeler v6 → v7, ruby/setup-ruby 1.319.0 → 1.321.0
-  - ⏸️ psutil 5.9.6 → 7.2.2 intentionally deferred — 2 major versions, not part of the verified batch this round
-  - ✅ Verified via rebuilt local Docker: migrations succeeded against live MariaDB, celery ping OK, health endpoint reports correct version; prod (192.168.1.68:5050) rebuilt and confirmed on v0.12.22
-  - 🐛 Found (out of scope, not fixed): `redis_manager.health_check()` calls `self.redis_client.ping()` without `ensure_connection()` first, so it throws `NoneType` if called before any other Redis op establishes the lazy connection — worth a follow-up issue
-  - 🐛 Found (out of scope, not fixed): prod's `/api/health/version` reports `git_commit`/`git_branch` as `"unknown"` even though `version.json` has them set correctly — same class of issue as the v0.12.5 "Docker git_branch always unknown" fix, but recurring for the published GHCR image path specifically
-  - ✅ Closed/superseded Dependabot PRs #292 #293 #294 #295 #296 #297 #298 #299
-  - ✅ Security scan: 0 open GitHub issues, 0 Dependabot alerts, 0 code-scanning alerts, pip-audit clean on all 3 requirements files
-- **v0.12.21** (2026-07-19): Dependabot Sweep (lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby)
-  - ✅ Security: lxml 6.1.0 → 6.1.1 (GHSA-4jhm-jv67-739f xlink:href URL bypass fix, bundles libxslt CVE-2025-7424/CVE-2025-11731 fixes)
-  - ✅ Security: aiomysql >=0.2.0 → >=0.3.2 (GHSA-r397-ff8c-wv2g local_infile load bypass fix)
-  - ✅ Dependency: pymysql 1.1.1 → 1.2.0 (requirements.txt + requirements-fastapi.txt; TLS required-by-default behavior change verified against live MariaDB)
-  - ✅ Dependency: marshmallow 3.26.2 → 4.3.0 (zero usages in src/, zero-risk), flake8 6.1.0 → 7.3.0 (dev-only)
-  - ✅ CI: ruby/setup-ruby 1.316.0 → 1.319.0
-  - ✅ Verified via rebuilt local Docker: migrations succeeded against live MariaDB, full pytest suite passed (58 passed, 1 skipped)
-  - ✅ Closed/superseded Dependabot PRs #285 #286 #287 #288 #289 #290
-  - ✅ Security scan: 0 open GitHub issues, 0 Dependabot alerts, 0 code-scanning alerts, pip-audit clean on all 3 requirements files
+- **v1.0.0** (2026-08-17): First Production-Ready Release
+  - ✅ Gated on (per the v1.0.0 GitHub milestone): RBAC actually enforced, a working/modern login page (OAuth reachable, no dead placeholder), and auth-path test coverage — all closed
+  - ✅ OAuth login (Authentik, Google, GitHub) with a signup allowlist, admin-only new-account policy, and a fixed privilege-escalation bug in Authentik group-role mapping
+  - ✅ Real RBAC enforcement (was previously decorative — every session hardcoded admin)
+  - ✅ Login page redesign: paired rotating background/logo art, real OAuth provider buttons, scrollable card, fixed logo panel width
+  - ✅ Two-Factor Authentication (TOTP + backup codes), password reset flow
+  - ✅ Native Discord and Apprise notification providers, wired to real download/artist activity (not just a manual test endpoint)
+  - ✅ "Recently Found" videos view, live artist thumbnail sourcing (Spotify/Last.fm before Wikipedia)
+  - ✅ Numerous live-testing bug fixes: 2FA audit logging, OAuth callback error handling, Videos-page pagination dropping active filters, webhook URL credential logging, header username display, Edit Webhook modal scroll
+  - ✅ Fix (#329): closed a duplicate-concurrent-download-dispatch race — `bulk_download_wanted_videos()` (FastAPI) and `download_all_wanted_videos_internal()` (Celery) could both dispatch the same WANTED video, with the loser silently overwriting the winner's result (including a real successful download getting overwritten back to FAILED) and firing a false download-failed webhook. Fixed via a new atomic `claim_video_for_download()` helper (row-locked `UPDATE ... WHERE status='WANTED'`) plus a defensive already-DOWNLOADED guard (which had shipped as dead code due to an enum-vs-string `.value` comparison bug, caught and fixed in final review) that also suppresses the false webhook
+  - See GitHub milestone "v1.0.0" for the complete issue list
+- **v0.12.19** (2026-08-13): Recently Found Videos View
+  - ✅ Feature: "Recently Found" one-click view on Videos page (#316) — shows all videos sorted by date_added desc, regardless of status, via a new button + shareable deep-link URL (`?sort_by=date_added&sort_order=desc&status=`)
+  - ✅ Re-scoped from an "upcoming release calendar" after confirming no integrated data source (IMVDb, MusicBrainz, YouTube, Spotify, Last.fm) exposes reliable future release dates
 - **v0.12.18** (2026-07-05): Dependency Sweep (Dependabot PRs #269-274)
   - ✅ Dependency: fastapi 0.138.1 → 0.139.0, Pillow 12.2.0 → 12.3.0, opencv-python-headless >=4.13.0.92 → >=5.0.0.93
   - ✅ Dependency: click 8.1.7 → 8.4.2, tqdm 4.66.3 → 4.68.3
@@ -514,9 +490,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v0.12.24 (Security Sweep — aiohttp CVE fix, MKV warning fix, thumbnail hardening)
+- **Current Version**: v1.0.0 (First Production-Ready Release)
 - **Development Focus**: Stability, security
-- **Next Version**: v0.12.25
+- **Next Version**: v1.0.1
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -613,8 +589,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.24 (2026-08-09)
-- **Next Release**: Version 0.12.25 (Planning)
+- **Current Release**: Version 0.12.8 (2026-05-07)
+- **Next Release**: Version 0.12.9 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment

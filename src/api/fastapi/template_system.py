@@ -5,16 +5,18 @@ Comprehensive template migration from Flask to FastAPI with async support
 
 import asyncio
 import json
+import random
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Union
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from src.database.models import UserRole
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
@@ -90,7 +92,6 @@ class AsyncTemplateSystem:
                 "auth.logout": "/auth/logout",
                 "auth.simple_login": "/auth/simple-login",
                 "auth.2fa_setup": "/auth/2fa/setup",
-                "auth.2fa_verify": "/auth/2fa/verify",
                 # API routes
                 "api.videos": "/api/videos",
                 "api.artists": "/api/artists",
@@ -187,7 +188,6 @@ class AsyncTemplateSystem:
             "/auth/login": "auth/login.html",
             "/auth/simple-login": "auth/simple_login.html",
             "/auth/2fa/setup": "auth/2fa_setup.html",
-            "/auth/2fa/verify": "auth/2fa_verify.html",
         }
 
     def add_context_processor(self, processor: Callable):
@@ -319,7 +319,7 @@ class AsyncTemplateSystem:
             # Check if authentication middleware is enabled
             from src.services.settings_service import settings
 
-            auth_enabled = settings.get("require_authentication", True)
+            auth_enabled = settings.get_bool("require_authentication", True)
             auth_context["auth_enabled"] = auth_enabled
 
             # If authentication is disabled, provide a mock user context
@@ -380,7 +380,9 @@ class AsyncTemplateSystem:
                 "app_name": settings.get("app_name", "MVidarr"),
                 "app_version": settings.get("app_version", "1.0.0"),
                 "theme": settings.get("default_theme", "dark"),
-                "require_authentication": settings.get("require_authentication", True),
+                "require_authentication": settings.get_bool(
+                    "require_authentication", True
+                ),
                 "enable_2fa": settings.get("enable_2fa", False),
                 "max_upload_size": settings.get("max_upload_size_mb", 100),
             }
@@ -680,6 +682,16 @@ class FastAPITemplateRoutes:
             "lastfm.html", request, context
         )
 
+    async def webhooks(self, request: Request) -> HTMLResponse:
+        """Webhook/notification management page (Discord, Apprise, generic)"""
+        context = {
+            "page_title": "Webhooks & Notifications",
+            "page_description": "Manage outbound webhooks, Discord, and Apprise notifications",
+        }
+        return await self.template_system.render_response(
+            "webhooks.html", request, context
+        )
+
     async def lidarr(self, request: Request) -> HTMLResponse:
         """Lidarr Manager page"""
         context = {
@@ -693,10 +705,17 @@ class FastAPITemplateRoutes:
     # Authentication pages
     async def login(self, request: Request) -> HTMLResponse:
         """Login page"""
+        from src.services.oauth_service import oauth_service
+
         context = {
             "page_title": "Login",
             "page_description": "Sign in to MVidarr",
             "hide_navigation": True,
+            "oauth_providers": oauth_service.get_available_providers(),
+            # Paired background-photo/logo-image rotation (#351): N shared
+            # between frontend/static/music/BG/bg{N}.jpg and
+            # frontend/static/music/Logo/{N}.png so the two always match.
+            "bg_index": random.randint(1, 8),
         }
         return await self.template_system.render_response(
             "auth/login.html", request, context
@@ -722,17 +741,6 @@ class FastAPITemplateRoutes:
         }
         return await self.template_system.render_response(
             "auth/2fa_setup.html", request, context
-        )
-
-    async def two_fa_verify(self, request: Request) -> HTMLResponse:
-        """Two-factor authentication verification"""
-        context = {
-            "page_title": "2FA Verification",
-            "page_description": "Verify your two-factor authentication code",
-            "hide_navigation": True,
-        }
-        return await self.template_system.render_response(
-            "auth/2fa_verify.html", request, context
         )
 
     # Admin pages
@@ -802,22 +810,81 @@ def render_template_response(template_name: str):
 
 
 # Authentication dependency for protected templates
+async def _current_template_user(request: Request):
+    """Resolve the authenticated user for this request by validating its
+    session_token cookie directly via SessionStore, exactly like
+    auth_dependencies.get_optional_user does for API routes.
+
+    This does NOT rely on request.state.user/.session_user — an app-wide
+    middleware used to populate those, but only for paths outside its own
+    public_paths allowlist, and /settings, /admin, /dashboard, and every
+    other page this file protects were ALL listed as public there, so it
+    never touched request.state for them regardless of whether a valid
+    session cookie was present. An earlier version of this function
+    checked request.state.user (and later request.state.session_user
+    too) and, for these specific routes, found neither — REAL logged-in
+    users were bounced to /auth/login exactly like anonymous ones (found
+    via direct testing immediately after that fix shipped, ahead of
+    v1.0.0, 2026-08-11). That middleware has since been deleted entirely
+    (#323) — it turned out to be a no-op for every request, not just
+    these ones, so this function's independence from it was doubly
+    correct.
+
+    Delegating to get_optional_user reuses the same, already-hardened
+    session-validation logic every /api/* route depends on, instead of
+    maintaining a second, independently-buggy copy of it here.
+    """
+    from src.api.fastapi.auth_dependencies import get_optional_user
+
+    return await get_optional_user(request)
+
+
+def _template_user_role(user) -> str:
+    """Extract a role string from SessionStore.validate_session's dict
+    shape (the only shape _current_template_user can now return). Always
+    uppercase — UserRole enum values (ADMIN, USER, MANAGER, READONLY)
+    are stored/compared uppercase throughout this codebase's session-
+    based auth; an earlier version of require_admin compared against the
+    literal lowercase "admin", which would have 403'd even a genuine
+    ADMIN session.
+    """
+    if isinstance(user, dict):
+        role = user.get("role", "")
+    else:
+        role = getattr(user, "role", "")
+    return str(role).upper()
+
+
 async def require_authentication(request: Request):
-    """Require authentication for template access"""
-    if not hasattr(request.state, "user") or request.state.user is None:
-        if settings.get("require_authentication", True):
-            # Redirect to login page
-            from fastapi.responses import RedirectResponse
+    """Require authentication for template access.
 
-            return RedirectResponse(url="/auth/login", status_code=302)
+    Raises (rather than returns) the redirect: a value *returned* from a
+    FastAPI `Depends()` callable is just an ordinary parameter passed to
+    the route handler — it is never used as the actual HTTP response
+    unless the handler explicitly checks and returns it. None of this
+    file's callers do, so a previous version of this function that
+    `return`ed a RedirectResponse here was silently ignored by every
+    route using it (found during manual testing ahead of v1.0.0: /settings
+    and 8 other pages rendered normally for fully anonymous requests).
+    Raising an HTTPException halts the request unconditionally, matching
+    the pattern require_admin below already used (by relying on the same
+    accidental side effect, not deliberately).
+    """
+    user = await _current_template_user(request)
+    if user is None:
+        if settings.get_bool("require_authentication", True):
+            raise HTTPException(
+                status_code=status.HTTP_302_FOUND,
+                headers={"Location": "/auth/login"},
+            )
 
-    return request.state.user
+    return user
 
 
 async def require_admin(request: Request):
     """Require admin role for template access"""
     user = await require_authentication(request)
-    if user and getattr(user, "role", "user") != "admin":
+    if user and _template_user_role(user) != UserRole.ADMIN.value:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 

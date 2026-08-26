@@ -505,42 +505,48 @@ function proceedDownloadWantedVideos() {
         if (data.success) {
             if (data.success_count > 0) {
                 showSuccess(`Successfully queued ${data.success_count} wanted videos for download!`);
-                
-                // Show detailed results if there were failures
-                if (data.failed_count > 0) {
-                    // Categorize failures for better user feedback
-                    const failures = data.results.filter(r => !r.success);
-                    const failureTypes = {};
-                    
-                    failures.forEach(failure => {
-                        const error = failure.error || 'Unknown error';
-                        if (error.includes('malformed')) {
-                            failureTypes['Malformed titles'] = (failureTypes['Malformed titles'] || 0) + 1;
-                        } else if (error.includes('age-restricted')) {
-                            failureTypes['Age-restricted content'] = (failureTypes['Age-restricted content'] || 0) + 1;
-                        } else if (error.includes('No URL available')) {
-                            failureTypes['No URLs found'] = (failureTypes['No URLs found'] || 0) + 1;
-                        } else {
-                            failureTypes['Other errors'] = (failureTypes['Other errors'] || 0) + 1;
-                        }
-                    });
-                    
-                    // Build detailed error message
-                    let errorDetails = `${data.failed_count} videos could not be downloaded:\n`;
-                    for (const [type, count] of Object.entries(failureTypes)) {
-                        errorDetails += `• ${type}: ${count}\n`;
-                    }
-                    errorDetails += '\nTip: Check video titles for cleanup, or manually search for age-restricted content.';
-                    
-                    setTimeout(() => {
-                        showError(errorDetails);
-                        console.log('Failed downloads details:', failures);
-                    }, 2000);
-                }
-            } else {
+            } else if (data.failed_count === 0) {
+                // Only show this as a success toast when there were no
+                // failures either -- an all-failed batch (success_count
+                // === 0, failed_count > 0) must not get a false "success"
+                // notification; the error toast below is its only signal.
                 showSuccess(data.message || 'No wanted videos found to download');
             }
-            
+
+            // Show detailed results if there were failures, regardless of
+            // whether any videos also succeeded -- otherwise a batch where
+            // every video fails (success_count === 0) never explains why.
+            if (data.failed_count > 0) {
+                // Categorize failures for better user feedback
+                const failures = data.results.filter(r => !r.success);
+                const failureTypes = {};
+
+                failures.forEach(failure => {
+                    const error = failure.error || 'Unknown error';
+                    if (error.includes('malformed')) {
+                        failureTypes['Malformed titles'] = (failureTypes['Malformed titles'] || 0) + 1;
+                    } else if (error.includes('age-restricted')) {
+                        failureTypes['Age-restricted content'] = (failureTypes['Age-restricted content'] || 0) + 1;
+                    } else if (error.includes('No URL available')) {
+                        failureTypes['No URLs found'] = (failureTypes['No URLs found'] || 0) + 1;
+                    } else {
+                        failureTypes['Other errors'] = (failureTypes['Other errors'] || 0) + 1;
+                    }
+                });
+
+                // Build detailed error message
+                let errorDetails = `${data.failed_count} videos could not be downloaded:\n`;
+                for (const [type, count] of Object.entries(failureTypes)) {
+                    errorDetails += `• ${type}: ${count}\n`;
+                }
+                errorDetails += '\nTip: Check video titles for cleanup, or manually search for age-restricted content.';
+
+                setTimeout(() => {
+                    showError(errorDetails);
+                    console.log('Failed downloads details:', failures);
+                }, 2000);
+            }
+
             // Refresh dashboard data
             loadDownloadQueue();
             loadDownloadHistory();

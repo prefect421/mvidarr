@@ -36,8 +36,8 @@ from src.api.fastapi.auth_dependencies import (
 )
 from src.database.connection import get_db_session
 from src.database.models import Artist
+from src.services.artist_thumbnail_search_service import search_artist_thumbnails
 from src.services.thumbnail_service import ThumbnailService, thumbnail_service
-from src.services.wikipedia_service import wikipedia_service
 from src.services.youtube_search_service import youtube_search_service
 
 # Router configuration
@@ -55,48 +55,13 @@ logger = logging.getLogger("mvidarr.api.fastapi.artists_thumbnails")
 # ========================================================================================
 # HELPER FUNCTIONS
 # ========================================================================================
-
-
-def _is_placeholder_url(url: str) -> bool:
-    """Check if URL is a known placeholder image"""
-    if not url:
-        return True
-
-    url_lower = url.lower()
-
-    # Known placeholder patterns
-    placeholder_patterns = [
-        # Last.fm placeholder images
-        "2a96cbd8b46e442fc41c2b86b821562f.png",
-        "lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f",
-        # Generic placeholders
-        "placeholder",
-        "default",
-        "generic",
-        "no-image",
-        "blank",
-        "missing",
-        "unavailable",
-        "coming-soon",
-        "avatar-default",
-        "profile-default",
-        "default_artist",
-        "artist_placeholder",
-        "music_placeholder",
-        "album_default",
-        "cover_default",
-        # Common placeholder files
-        "grey.gif",
-        "transparent.png",
-        "1x1.png",
-        "spacer.gif",
-        "default.jpg",
-        "default.png",
-        "placeholder.jpg",
-        "placeholder.png",
-    ]
-
-    return any(pattern in url_lower for pattern in placeholder_patterns)
+#
+# Placeholder-URL detection used to be duplicated here (this module),
+# in ThumbnailService, and a third time as an inline closure a few
+# hundred lines below — three divergent copies, one of them missing
+# patterns the other two had. Consolidated to
+# thumbnail_service.is_placeholder_url() (#320); nothing in this file
+# defines its own copy anymore.
 
 
 async def _get_artist_thumbnail_impl(
@@ -164,6 +129,7 @@ async def _get_artist_thumbnail_impl(
 async def get_artist_thumbnail(
     artist_id: int = FastAPIPath(..., ge=1),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Serve artist thumbnail image"""
     return await _get_artist_thumbnail_impl(artist_id, None, session)
@@ -224,6 +190,7 @@ async def get_artist_thumbnail_with_size(
     artist_id: int = FastAPIPath(..., ge=1),
     size: str = FastAPIPath(..., pattern="^(small|medium|large)$"),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Serve artist thumbnail image with size as path parameter"""
     return await _get_artist_thumbnail_impl(artist_id, size, session)
@@ -432,7 +399,13 @@ async def search_artist_thumbnail(
     current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
-    """Search for artist thumbnail from various sources"""
+    """Search for artist thumbnail from various sources.
+
+    Delegates to artist_thumbnail_search_service.search_artist_thumbnails
+    (#320) — the single shared cascade also used by bulk_thumbnail_scan,
+    replacing what used to be ~180 lines of inline, duplicated source
+    logic here.
+    """
     try:
         artist = session.query(Artist).filter(Artist.id == artist_id).first()
 
@@ -441,156 +414,9 @@ async def search_artist_thumbnail(
 
         search_query = search_request.query or artist.name
 
-        # Search for thumbnails based on source
-        thumbnail_results = []
-
-        if search_request.source in ["auto", "wikipedia"]:
-            try:
-                logger.info(f"Searching Wikipedia for thumbnails: {search_query}")
-
-                # Try multiple search variations for better Wikipedia matches
-                search_terms = [search_query]
-
-                # Add common variations for known problematic cases
-                if search_query.upper() == "REM":
-                    search_terms.extend(["R.E.M.", "R.E.M. band", "REM band"])
-                elif "." not in search_query and len(search_query.split()) == 1:
-                    # For single-word artists, try adding "band" or "musician"
-                    search_terms.extend(
-                        [f"{search_query} band", f"{search_query} musician"]
-                    )
-
-                wikipedia_url = None
-                for term in search_terms:
-                    logger.debug(f"Trying Wikipedia search term: {term}")
-                    wikipedia_url = wikipedia_service.search_artist_thumbnail(term)
-                    if wikipedia_url:
-                        logger.info(
-                            f"Wikipedia search successful with term '{term}': {wikipedia_url}"
-                        )
-                        break
-
-                if wikipedia_url:
-                    thumbnail_results.append(
-                        {
-                            "source": "wikipedia",
-                            "url": wikipedia_url,
-                            "title": f"{search_query} - Wikipedia",
-                            "description": f"Wikipedia thumbnail for {search_query}",
-                        }
-                    )
-                else:
-                    logger.info(
-                        f"No Wikipedia thumbnail found for any variation of: {search_query}"
-                    )
-            except Exception as e:
-                logger.warning(f"Wikipedia thumbnail search failed: {e}")
-
-        if search_request.source in ["auto", "youtube"]:
-            try:
-                logger.info(f"Searching YouTube for thumbnails: {search_query}")
-                youtube_url = youtube_search_service.search_artist_channel_thumbnail(
-                    search_query
-                )
-                logger.info(f"YouTube search result: {youtube_url}")
-                if youtube_url:
-                    thumbnail_results.append(
-                        {
-                            "source": "youtube",
-                            "url": youtube_url,
-                            "title": f"{search_query} - YouTube Channel",
-                            "channel": search_query,
-                        }
-                    )
-            except Exception as e:
-                logger.warning(f"YouTube thumbnail search failed: {e}")
-
-        # Check for existing metadata images (Spotify, Last.fm, etc.)
-        if search_request.source in ["auto", "spotify", "lastfm", "metadata"]:
-            try:
-                logger.info(f"Checking existing metadata images for: {search_query}")
-                if artist.imvdb_metadata:
-                    metadata = artist.imvdb_metadata
-                    images = metadata.get("images", [])
-
-                    # Helper function to check if image is a placeholder
-                    def is_placeholder_image(url):
-                        if not url:
-                            return True
-                        placeholder_patterns = [
-                            "2a96cbd8b46e442fc41c2b86b821562f.png",
-                            "4128a6eb29f94943c9d206c08e625904",
-                            "c6f59c1e5e7240a4c0d427abd71f3dbb",
-                            "placeholder",
-                            "default",
-                            "generic",
-                            "no-image",
-                        ]
-                        return any(
-                            pattern in url.lower() for pattern in placeholder_patterns
-                        )
-
-                    # Process Last.fm/metadata images
-                    valid_images = []
-                    for img in images:
-                        img_url = None
-                        img_size = "unknown"
-
-                        # Handle different image formats
-                        if isinstance(img, dict):
-                            img_url = img.get("#text") or img.get("url")
-                            img_size = img.get("size", "unknown")
-                        elif isinstance(img, str):
-                            img_url = img
-
-                        # Skip placeholder images
-                        if img_url and not is_placeholder_image(img_url):
-                            valid_images.append(
-                                {
-                                    "url": img_url,
-                                    "size": img_size,
-                                    "source": (
-                                        "lastfm" if "lastfm" in img_url else "metadata"
-                                    ),
-                                }
-                            )
-
-                    # Add valid images to results (prefer larger sizes)
-                    size_priority = {
-                        "mega": 5,
-                        "extralarge": 4,
-                        "large": 3,
-                        "medium": 2,
-                        "small": 1,
-                        "": 0,
-                        "unknown": 0,
-                    }
-                    valid_images.sort(
-                        key=lambda x: size_priority.get(x["size"], 0), reverse=True
-                    )
-
-                    for img in valid_images[:3]:  # Limit to top 3 images
-                        thumbnail_results.append(
-                            {
-                                "source": img["source"],
-                                "url": img["url"],
-                                "title": f"{search_query} - {img['source'].title()} Image ({img['size']})",
-                                "size": img["size"],
-                            }
-                        )
-
-                    if valid_images:
-                        logger.info(
-                            f"Found {len(valid_images)} valid metadata images for {search_query}"
-                        )
-                    else:
-                        logger.debug(
-                            f"No valid (non-placeholder) metadata images found for {search_query}"
-                        )
-                else:
-                    logger.debug(f"No metadata available for {search_query}")
-            except Exception as e:
-                logger.warning(f"Metadata image retrieval failed: {e}")
+        thumbnail_results = search_artist_thumbnails(
+            search_query, artist=artist, source_filter=search_request.source
+        )
 
         # Log summary for debugging
         if thumbnail_results:
@@ -719,76 +545,30 @@ async def scan_missing_thumbnails(
                     f"Searching thumbnails for artist: {artist_name} (ID: {artist_id})"
                 )
 
-                thumbnail_url = None
+                # Same shared cascade as the other two thumbnail-search
+                # endpoints (#320) — Spotify, Last.fm, cached metadata,
+                # Wikipedia, YouTube, in that priority order.
+                # stop_at_first_result=True matches this loop's original
+                # "try in order until one works" semantics.
+                #
+                # The previous first source here was an unauthenticated
+                # Google Images HTML-scrape (fragile, against Google's
+                # ToS, and already abandoned by the frontend's own
+                # search UI — see artist_detail.html's searchThumbnail
+                # Google branch, which returns an empty result on
+                # purpose "since this is just for development"). Not
+                # carried forward; Spotify is both more reliable and a
+                # real, sanctioned API.
+                results = search_artist_thumbnails(
+                    artist_name, stop_at_first_result=True
+                )
+                thumbnail_url = results[0]["url"] if results else None
+                if thumbnail_url:
+                    logger.info(
+                        f"Found {results[0]['source']} thumbnail for {artist_name}: {thumbnail_url}"
+                    )
 
-                # Try multiple sources for thumbnails
-                # 1. Try Google Images first (most variety)
-                try:
-                    import re
-                    from urllib.parse import quote
-
-                    image_query = f"{artist_name} musician artist photo"
-                    encoded_query = quote(image_query)
-                    search_url = f"https://www.google.com/search?q={encoded_query}&tbm=isch&safe=off"
-
-                    headers = {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                    }
-
-                    import requests
-
-                    response = requests.get(search_url, headers=headers, timeout=10)
-                    if response.status_code == 200:
-                        # Extract image URLs from the page
-                        image_pattern = r'"(https?://[^"]*\.(?:jpg|jpeg|png))"'
-                        matches = re.findall(image_pattern, response.text)
-
-                        # Filter results - skip Google's own domains and tiny images
-                        for match in matches[:10]:
-                            if (
-                                "gstatic.com" not in match
-                                and "google.com" not in match
-                                and not _is_placeholder_url(match)
-                            ):
-                                thumbnail_url = match
-                                logger.info(
-                                    f"Found Google Images thumbnail for {artist_name}: {thumbnail_url}"
-                                )
-                                break
-                except Exception as e:
-                    logger.debug(f"Google Images search failed for {artist_name}: {e}")
-
-                # 2. Try Wikipedia if Google didn't work
-                if not thumbnail_url:
-                    try:
-                        wikipedia_url = wikipedia_service.search_artist_thumbnail(
-                            artist_name
-                        )
-                        if wikipedia_url and not _is_placeholder_url(wikipedia_url):
-                            thumbnail_url = wikipedia_url
-                            logger.info(
-                                f"Found Wikipedia thumbnail for {artist_name}: {wikipedia_url}"
-                            )
-                    except Exception as e:
-                        logger.debug(f"Wikipedia search failed for {artist_name}: {e}")
-
-                # 3. Try YouTube channel thumbnail if others didn't work
-                if not thumbnail_url:
-                    try:
-                        from src.services.youtube_search_service import (
-                            search_artist_channel_thumbnail,
-                        )
-
-                        youtube_url = search_artist_channel_thumbnail(artist_name)
-                        if youtube_url and not _is_placeholder_url(youtube_url):
-                            thumbnail_url = youtube_url
-                            logger.info(
-                                f"Found YouTube thumbnail for {artist_name}: {youtube_url}"
-                            )
-                    except Exception as e:
-                        logger.debug(f"YouTube search failed for {artist_name}: {e}")
-
-                # 3. If we found a thumbnail, download and set it
+                # If we found a thumbnail, download and set it
                 if thumbnail_url:
                     try:
                         from src.services.thumbnail_service import ThumbnailService

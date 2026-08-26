@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -15,6 +16,10 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Callable, Dict, List, Optional
 
+from src.services.webhook_service import (
+    trigger_video_download_failed,
+    trigger_video_downloaded,
+)
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.unified_download")
@@ -114,29 +119,50 @@ class YtDlpManager:
         return datetime.now() - self.last_version_check > self.version_check_interval
 
     def update_if_needed(self) -> bool:
-        """Update yt-dlp if necessary"""
+        """Update yt-dlp if necessary.
+
+        The update mechanism must match how this specific executable
+        was actually installed:
+        - self.current_executable == the pipx-managed path -> pipx
+          upgrade (the previous guard here,
+          `"/root/.local/bin/yt-dlp" in self.executable_paths`, was a
+          bug: it tested whether a hardcoded string literal is in a
+          hardcoded list containing that same literal, which is always
+          True regardless of which executable _find_best_executable()
+          actually found).
+        - anything else (this deployment's actual case -- yt-dlp is
+          pip-installed per requirements.txt, never pipx) -> pip
+          install --upgrade, via `sys.executable -m pip` for
+          environment-correctness rather than assuming a bare `pip` is
+          on PATH.
+        Each branch is tried in isolation: if the tool for the wrong
+        installation method is missing (the original bug's trigger --
+        pipx was never installed here), that must not raise past this
+        function and abort the download attempt that called it.
+        """
         if not self.needs_update():
             return True
 
         try:
-            # Try to update via pipx first (preferred)
-            if "/root/.local/bin/yt-dlp" in self.executable_paths:
+            if self.current_executable == "/root/.local/bin/yt-dlp":
                 result = subprocess.run(
                     ["pipx", "upgrade", "yt-dlp"], capture_output=True, timeout=300
                 )
-                if result.returncode == 0:
+                success = result.returncode == 0
+                if success:
                     self.last_version_check = datetime.now()
                     logger.info("yt-dlp updated successfully via pipx")
-                    return True
+                return success
 
-            # Fallback to self-update
             result = subprocess.run(
-                [self.current_executable, "-U"], capture_output=True, timeout=300
+                [sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"],
+                capture_output=True,
+                timeout=300,
             )
             success = result.returncode == 0
             if success:
                 self.last_version_check = datetime.now()
-                logger.info("yt-dlp updated successfully")
+                logger.info("yt-dlp updated successfully via pip")
 
             return success
 
@@ -234,8 +260,35 @@ class AntiDetectionManager:
         self.current_ua_index = (self.current_ua_index + 1) % len(self.USER_AGENTS)
         return ua
 
-    def handle_detection_error(self, error: str) -> AntiDetectionLevel:
-        """Determine escalated anti-detection level based on error"""
+    # Escalation ladder for the generic (unrecognized-error) path below.
+    _ESCALATION_ORDER = [
+        AntiDetectionLevel.MINIMAL,
+        AntiDetectionLevel.MODERATE,
+        AntiDetectionLevel.AGGRESSIVE,
+        AntiDetectionLevel.STEALTH,
+    ]
+
+    def handle_detection_error(
+        self,
+        error: str,
+        current_level: AntiDetectionLevel = AntiDetectionLevel.MODERATE,
+    ) -> AntiDetectionLevel:
+        """Determine escalated anti-detection level based on error and
+        the level the failed attempt actually used.
+
+        Specifically-diagnosed error signatures jump straight to the
+        countermeasure level known to address them. Anything else --
+        including "403: Forbidden", one of yt-dlp/YouTube's most common
+        failure signatures -- used to unconditionally return MODERATE
+        regardless of current_level, which meant a 403 at the retry
+        loop's starting level (MODERATE) never actually escalated on
+        any of its 3 attempts: three functionally-identical attempts
+        against a block MODERATE had already failed to avoid, since
+        AGGRESSIVE+ is what adds the explicit player_client=web,mweb,tv
+        fallback (see get_anti_detection_args() above). Progressively
+        stepping up the ladder instead means repeated failures keep
+        making forward progress.
+        """
         self.detection_count += 1
         self.last_detection = datetime.now()
 
@@ -246,7 +299,14 @@ class AntiDetectionManager:
         elif "429" in error or "rate" in error.lower():
             return AntiDetectionLevel.AGGRESSIVE
         else:
-            return AntiDetectionLevel.MODERATE
+            try:
+                current_index = self._ESCALATION_ORDER.index(current_level)
+            except ValueError:
+                current_index = self._ESCALATION_ORDER.index(
+                    AntiDetectionLevel.MODERATE
+                )
+            next_index = min(current_index + 1, len(self._ESCALATION_ORDER) - 1)
+            return self._ESCALATION_ORDER[next_index]
 
 
 class DownloadStrategy(ABC):
@@ -325,7 +385,7 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                 # Escalate anti-detection on failure
                 if attempt < max_attempts - 1:
                     current_level = self.anti_detection.handle_detection_error(
-                        result.error_message
+                        result.error_message, current_level
                     )
                     logger.info(
                         f"Download attempt {attempt + 1} failed, escalating to {current_level}"
@@ -338,6 +398,34 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                 if attempt < max_attempts - 1:
                     current_level = AntiDetectionLevel.AGGRESSIVE
                     time.sleep(2**attempt)
+
+        # Normal anti-detection ladder exhausted. #452: mvidarr's yt-dlp
+        # setup currently has no working PO-token provider, which
+        # strips every real video/audio format from the web/mweb/tv
+        # clients on PO-token-gated videos ("Requested format is not
+        # available" / "Only images are available"), even with valid
+        # cookies. Last resort: force yt-dlp's android client, which
+        # historically doesn't require PO-token verification or JS
+        # signature/nsig challenge solving -- trading resolution for a
+        # completed download instead of an outright failure.
+        try:
+            fallback_result = self._attempt_download(
+                context, current_level, force_player_client="android"
+            )
+        except Exception as e:
+            logger.error(f"Fallback download attempt exception: {e}")
+            fallback_result = None
+
+        if fallback_result and fallback_result.success:
+            logger.warning(
+                f"{context.title}: primary clients failed (see #452 -- no "
+                "PO token provider deployed); succeeded via fallback "
+                "android client, likely at reduced quality"
+            )
+            fallback_result.duration = time.time() - start_time
+            return fallback_result
+        if fallback_result and fallback_result.error_message:
+            last_error = fallback_result.error_message
 
         detail = last_error or "unknown error"
         return DownloadResult(
@@ -355,9 +443,21 @@ class YouTubeDownloadStrategy(DownloadStrategy):
             pass
 
     def _attempt_download(
-        self, context: DownloadContext, level: AntiDetectionLevel
+        self,
+        context: DownloadContext,
+        level: AntiDetectionLevel,
+        force_player_client: Optional[str] = None,
     ) -> DownloadResult:
-        """Attempt single download with specified anti-detection level"""
+        """Attempt single download with specified anti-detection level.
+
+        force_player_client (#452 fallback): when set, skips the normal
+        anti-detection client selection entirely -- which requires a
+        working PO-token provider / JS signature challenge solver,
+        neither of which is currently deployed -- in favor of a
+        minimal command using only the named client (e.g. "android")
+        plus cookies. See YouTubeDownloadStrategy.download()'s
+        last-resort fallback call.
+        """
 
         # Build command with anti-detection arguments
         cmd = [self.ytdlp_manager.current_executable]
@@ -376,13 +476,28 @@ class YouTubeDownloadStrategy(DownloadStrategy):
         # Metadata options
         cmd.extend(["--write-info-json", "--embed-metadata", "--add-metadata"])
 
-        # Anti-detection arguments
-        cmd.extend(self.anti_detection.get_anti_detection_args(level, context))
+        if force_player_client:
+            cmd.extend(
+                ["--extractor-args", f"youtube:player_client={force_player_client}"]
+            )
+            # Deliberately no --cookies here: yt-dlp 2026.08.19 skips the
+            # android client entirely ("Skipping client "android" since
+            # it does not support cookies") when cookies are supplied --
+            # confirmed live on mvidarr-dev. android is only useful for
+            # non-age-restricted PO-token/SABR-gated videos; age-
+            # restricted videos still need the real PO-token provider
+            # (#452), not this fallback.
+        else:
+            # Anti-detection arguments
+            cmd.extend(self.anti_detection.get_anti_detection_args(level, context))
 
         # URL
         cmd.append(context.url)
 
-        logger.info(f"Executing download: {context.title} with {level} anti-detection")
+        logger.info(
+            f"Executing download: {context.title} with "
+            f"{f'forced client={force_player_client}' if force_player_client else level}"
+        )
 
         try:
             process = subprocess.Popen(
@@ -628,9 +743,36 @@ class UnifiedDownloadService:
                 logger.info(
                     f"Download {download_id} completed successfully: {result.file_path}"
                 )
+                # #370: notify webhook subscribers (Discord/Apprise/generic)
+                # now that the DB reflects the video as downloaded -- never
+                # fire before the DB update, or a notification could arrive
+                # for a video the DB doesn't yet show as downloaded.
+                trigger_video_downloaded(
+                    {
+                        "id": context.video_id,
+                        "title": context.title,
+                        "artist_name": context.artist,
+                    }
+                )
             else:
-                self._update_database_failure(context.video_id, result.error_message)
+                wrote_failure = self._update_database_failure(
+                    context.video_id, result.error_message
+                )
                 logger.error(f"Download {download_id} failed: {result.error_message}")
+                # #329: only notify subscribers if the failure was actually
+                # written -- the already-DOWNLOADED guard in
+                # _update_database_failure() suppresses stale duplicate-
+                # dispatch failures, and firing this webhook anyway would
+                # falsely report a DOWNLOADED video as failed.
+                if wrote_failure:
+                    trigger_video_download_failed(
+                        {
+                            "id": context.video_id,
+                            "title": context.title,
+                            "artist_name": context.artist,
+                        },
+                        result.error_message,
+                    )
 
             # Execute callbacks
             for callback in self.download_callbacks.get(download_id, []):
@@ -641,7 +783,18 @@ class UnifiedDownloadService:
 
         except Exception as e:
             logger.error(f"Download {download_id} exception: {e}")
-            self._update_database_failure(context.video_id, str(e))
+            wrote_failure = self._update_database_failure(context.video_id, str(e))
+            # #329: same gating as the normal-failure path above -- don't
+            # notify subscribers for a no-op failure write.
+            if wrote_failure:
+                trigger_video_download_failed(
+                    {
+                        "id": context.video_id,
+                        "title": context.title,
+                        "artist_name": context.artist,
+                    },
+                    str(e),
+                )
 
         finally:
             # Cleanup
@@ -909,8 +1062,17 @@ class UnifiedDownloadService:
         except Exception as e:
             logger.error(f"Database success update failed: {e}", exc_info=True)
 
-    def _update_database_failure(self, video_id: int, error_message: str):
-        """Update database on failed download"""
+    def _update_database_failure(self, video_id: int, error_message: str) -> bool:
+        """Update database on failed download.
+
+        Returns True if a failure was actually written (video status
+        flipped to FAILED / Download row recorded), False if this call
+        was a no-op -- either the video wasn't found, or the #329
+        already-DOWNLOADED guard below suppressed it. Callers (see
+        _execute_download()) must gate trigger_video_download_failed()
+        on this return value: firing that webhook for a no-op write
+        would falsely notify that a DOWNLOADED video failed.
+        """
         try:
             from src.database.connection import get_db
             from src.database.models import Download, Video, VideoStatus
@@ -919,6 +1081,21 @@ class UnifiedDownloadService:
                 # Update video status
                 video = session.query(Video).filter(Video.id == video_id).first()
                 if video:
+                    # #329: a video already confirmed DOWNLOADED must never
+                    # be downgraded by a failure -- this is exactly the
+                    # scenario claim_video_for_download() (video_batch_service.py)
+                    # closes the *source* of, but this check is an
+                    # independent safety net: it protects correctness even
+                    # if some other, not-yet-identified path ever manages
+                    # to dispatch a duplicate download for an
+                    # already-succeeded video.
+                    if video.status == VideoStatus.DOWNLOADED:
+                        logger.warning(
+                            f"Ignoring stale failure for video {video_id} "
+                            f"(already DOWNLOADED): {error_message}"
+                        )
+                        return False
+
                     video.status = VideoStatus.FAILED.value
 
                     # Create or update Download record with error message
@@ -958,8 +1135,11 @@ class UnifiedDownloadService:
                         )
 
                     session.commit()
+                    return True
+                return False
         except Exception as e:
             logger.error(f"Database failure update failed: {e}", exc_info=True)
+            return False
 
     def get_active_downloads(self) -> Dict[int, str]:
         """Get currently active downloads"""

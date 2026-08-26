@@ -40,6 +40,10 @@
                     <iconify-icon icon="tabler:database-refresh" aria-hidden="true"></iconify-icon>
                     Enhanced Metadata
                 </button>
+                <button onclick="showRecentlyFound()" class="btn btn-secondary btn-sm" title="Show recently found videos, newest first" aria-label="Show recently found videos, newest first">
+                    <iconify-icon icon="tabler:clock" aria-hidden="true"></iconify-icon>
+                    Recently Found
+                </button>
             </div>
             
             <!-- Selection Controls -->
@@ -211,6 +215,7 @@
             
             <div class="filter-actions" role="toolbar" aria-label="Filter actions">
                 <button onclick="clearAllVideoFilters()" class="btn btn-secondary" aria-label="Clear all active filters">Clear All</button>
+                <button onclick="showRecentlyFound()" class="btn btn-secondary" aria-label="Show recently found videos, newest first">Recently Found</button>
                 <button onclick="saveVideoSearchPreset()" class="btn btn-secondary" aria-label="Save current search as preset">Save Preset</button>
                 <button onclick="exportVideoSearchResults()" class="btn btn-info" aria-label="Export search results to file">Export Results</button>
             </div>
@@ -526,9 +531,18 @@ function debounceVideoFilters() {
 }
 
 // Video filtering functions - previously missing
-function applyVideoFilters() {
+function applyVideoFilters(page = 1, resetPage = true) {
     console.log('Applying video filters...');
-    
+
+    // Marks that a filtered/search view is active, so the pagination
+    // controls below route back through here (with limit/offset) instead
+    // of falling through to loadVideos() -- which fetches /api/videos
+    // with its own hardcoded sort/no filters and would otherwise silently
+    // discard every filter here on Next/Prev/goToPage/page-size-change
+    // (#357).
+    searchActive = true;
+    currentPage = resetPage ? 1 : page;
+
     // Get all filter values
     const filters = {
         q: document.getElementById('videoSearchInput').value,  // Add the main search query
@@ -548,17 +562,22 @@ function applyVideoFilters() {
         sort_by: document.getElementById('videoSortBy').value,
         sort_order: document.getElementById('videoSortOrder').value
     };
-    
+
     // Build query parameters
     const params = new URLSearchParams();
-    
+
     // Add non-empty filters
     for (const [key, value] of Object.entries(filters)) {
         if (value && value.trim() !== '') {
             params.append(key, value);
         }
     }
-    
+
+    // Pagination -- without these, every page past the first silently
+    // dropped back to the unfiltered default (#357).
+    params.append('limit', pageSize);
+    params.append('offset', (currentPage - 1) * pageSize);
+
     // Make API call to search/filter videos
     // Add cache busting to ensure fresh data
     params.append('_t', Date.now());
@@ -672,6 +691,19 @@ function clearAllVideoFilters() {
     searchActive = false;
     loadVideos();
     updateVideoFilterCount();
+}
+
+function showRecentlyFound() {
+    // One-click "what's new" view (#316). Re-scoped from an "upcoming
+    // release calendar" -- no integrated data source (IMVDb,
+    // MusicBrainz, YouTube, Spotify, Last.fm) exposes a reliable future
+    // release-date signal, so this surfaces what MVidarr has already
+    // discovered instead, sorted by date_added, newest first.
+    document.getElementById('videoStatusFilter').value = '';
+    document.getElementById('videoSortBy').value = 'date_added';
+    document.getElementById('videoSortOrder').value = 'desc';
+    history.pushState({}, '', '/videos?sort_by=date_added&sort_order=desc&status=');
+    applyVideoFilters();
 }
 
 function updateVideoFilterCount() {
@@ -4318,7 +4350,15 @@ window.addEventListener('click', function(event) {
 
 function nextPage() {
     if (currentPage < totalPages) {
-        loadVideos(currentPage + 1, pageSize);
+        // A filtered/search view (#357) must page through
+        // applyVideoFilters(), not loadVideos() -- the latter ignores
+        // every active filter and re-fetches an unfiltered, title-sorted
+        // page instead.
+        if (searchActive) {
+            applyVideoFilters(currentPage + 1, false);
+        } else {
+            loadVideos(currentPage + 1, pageSize);
+        }
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -4326,7 +4366,11 @@ function nextPage() {
 
 function previousPage() {
     if (currentPage > 1) {
-        loadVideos(currentPage - 1, pageSize);
+        if (searchActive) {
+            applyVideoFilters(currentPage - 1, false);
+        } else {
+            loadVideos(currentPage - 1, pageSize);
+        }
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -4335,7 +4379,11 @@ function previousPage() {
 function goToPage(page) {
     const pageNum = parseInt(page);
     if (pageNum >= 1 && pageNum <= totalPages && pageNum !== currentPage) {
-        loadVideos(pageNum, pageSize);
+        if (searchActive) {
+            applyVideoFilters(pageNum, false);
+        } else {
+            loadVideos(pageNum, pageSize);
+        }
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -4350,7 +4398,11 @@ function changePageSize(newSize) {
     if (size !== pageSize) {
         pageSize = size;
         // Reset to page 1 when changing page size
-        loadVideos(1, pageSize, true);
+        if (searchActive) {
+            applyVideoFilters(1, true);
+        } else {
+            loadVideos(1, pageSize, true);
+        }
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -4637,7 +4689,24 @@ function refreshVideoList() {
 // Initialize videos when page loads
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Videos page loaded, initializing...');
-    loadVideos();
+
+    // Deep-link support for the "Recently Found" view (#316) and any
+    // future URL that carries these three params. loadVideos() below
+    // ignores the filter dropdowns entirely (it fetches /api/videos
+    // with its own hardcoded sort/order), so a deep link must route
+    // through applyVideoFilters() instead, which does read them.
+    const deepLinkParams = new URLSearchParams(window.location.search);
+    const deepLinkSortBy = deepLinkParams.get('sort_by');
+    const deepLinkSortOrder = deepLinkParams.get('sort_order');
+
+    if (deepLinkSortBy && deepLinkSortOrder) {
+        document.getElementById('videoStatusFilter').value = deepLinkParams.get('status') || '';
+        document.getElementById('videoSortBy').value = deepLinkSortBy;
+        document.getElementById('videoSortOrder').value = deepLinkSortOrder;
+        applyVideoFilters();
+    } else {
+        loadVideos();
+    }
 });
 
 // Event delegation for video actions

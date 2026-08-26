@@ -8,8 +8,11 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
-from src.api.fastapi.auth_dependencies import require_authentication
+from src.api.fastapi.auth_dependencies import require_admin
+from src.database.connection import get_db_session
+from src.database.models import UserRole
 from src.services.audit_service import (
     AuditEventType,
     AuditService,
@@ -51,6 +54,50 @@ class CredentialsRequest(BaseModel):
 
 
 # ====================================
+# Role / permission helpers
+# ====================================
+
+
+def role_permissions(role_value: Optional[str]) -> dict:
+    """
+    Derive the API's coarse permission flags from a session's real role.
+
+    Fails closed: an unknown/missing role is treated as READONLY.
+
+    can_admin is deliberately ADMIN-only — stricter than
+    User.can_access_admin() (ADMIN + MANAGER) — because the branch's actual
+    admin gate (auth_dependencies.require_admin) is ADMIN-only. Advertising
+    can_admin to a MANAGER would surface UI the backend then 403s.
+
+    can_modify / can_delete mirror User.can_modify_content() /
+    User.can_delete_content() so the login responses agree with the
+    model-derived permissions returned by the OAuth callback.
+    """
+    role = role_value if role_value in {r.value for r in UserRole} else None
+    if role is None:
+        role = UserRole.READONLY.value
+
+    return {
+        "role": role,
+        "can_admin": role == UserRole.ADMIN.value,
+        "can_modify": role
+        in (UserRole.ADMIN.value, UserRole.MANAGER.value, UserRole.USER.value),
+        "can_delete": role in (UserRole.ADMIN.value, UserRole.MANAGER.value),
+    }
+
+
+def _session_role(session_token: str) -> Optional[str]:
+    """Read the real role off a freshly created session, if resolvable."""
+    try:
+        data = SessionStore.validate_session(session_token)
+        if data:
+            return data.get("role")
+    except Exception as e:  # pragma: no cover - defensive
+        logger.warning(f"Could not resolve session role: {e}")
+    return None
+
+
+# ====================================
 # Authentication Endpoints
 # ====================================
 
@@ -59,6 +106,7 @@ class CredentialsRequest(BaseModel):
 async def simple_login(
     login_data: LoginRequest,
     request: Request,
+    session: Session = Depends(get_db_session),
 ):
     """Simple login endpoint using SimpleAuthService"""
     try:
@@ -76,6 +124,36 @@ async def simple_login(
 
         success, message = SimpleAuthService.authenticate(username, password)
         if success:
+            from src.database.models import User
+
+            user = session.query(User).filter(User.username == username).first()
+            if user and user.two_factor_enabled:
+                from fastapi.responses import JSONResponse
+
+                from src.services.two_factor_service import TwoFactorService
+
+                ticket = TwoFactorService.create_pending_ticket(user.id)
+                AuditService.log_event(
+                    AuditEventType.TWO_FACTOR_REQUIRED,
+                    "Password verified; two-factor authentication required to complete login",
+                    user_id=user.id,
+                    username=user.username,
+                )
+                return JSONResponse(
+                    status_code=202,
+                    content={
+                        "success": False,
+                        "requires_2fa": True,
+                        "ticket": ticket,
+                        "message": "Two-factor authentication required",
+                    },
+                )
+            elif user is None:
+                logger.warning(
+                    f"SimpleAuthService authenticated '{username}' but no matching "
+                    "User row exists — 2FA check skipped"
+                )
+
             # Create real session via SessionStore
             ip_address = request.client.host if request.client else "unknown"
             session_token = SessionStore.create_session(username, ip_address)
@@ -83,17 +161,16 @@ async def simple_login(
             # Create response with session cookie
             from fastapi.responses import JSONResponse
 
+            permissions = role_permissions(_session_role(session_token))
+
             response_data = {
                 "success": True,
                 "message": "Login successful",
                 "user": {
-                    "id": 1,
+                    "id": user.id if user else 1,
                     "username": username,
                     "email": f"{username}@mvidarr.local",
-                    "role": "ADMIN",
-                    "can_admin": True,
-                    "can_modify": True,
-                    "can_delete": True,
+                    **permissions,
                 },
                 "session": {"token": session_token},
                 "redirect_url": "/dashboard",
@@ -130,6 +207,7 @@ async def simple_login(
 async def login(
     login_data: LoginRequest,
     request: Request,
+    session: Session = Depends(get_db_session),
 ):
     """User login endpoint using SimpleAuthService"""
     try:
@@ -152,6 +230,36 @@ async def login(
         success, message = SimpleAuthService.authenticate(username, password)
 
         if success:
+            from src.database.models import User
+
+            user = session.query(User).filter(User.username == username).first()
+            if user and user.two_factor_enabled:
+                from fastapi.responses import JSONResponse
+
+                from src.services.two_factor_service import TwoFactorService
+
+                ticket = TwoFactorService.create_pending_ticket(user.id)
+                AuditService.log_event(
+                    AuditEventType.TWO_FACTOR_REQUIRED,
+                    "Password verified; two-factor authentication required to complete login",
+                    user_id=user.id,
+                    username=user.username,
+                )
+                return JSONResponse(
+                    status_code=202,
+                    content={
+                        "success": False,
+                        "requires_2fa": True,
+                        "ticket": ticket,
+                        "message": "Two-factor authentication required",
+                    },
+                )
+            elif user is None:
+                logger.warning(
+                    f"SimpleAuthService authenticated '{username}' but no matching "
+                    "User row exists — 2FA check skipped"
+                )
+
             # Create real session
             session_token = SessionStore.create_session(username, ip_address)
 
@@ -167,17 +275,16 @@ async def login(
 
             from fastapi.responses import JSONResponse
 
+            permissions = role_permissions(_session_role(session_token))
+
             response_data = {
                 "success": True,
                 "message": "Login successful",
                 "user": {
-                    "id": 1,
+                    "id": user.id if user else 1,
                     "username": username,
                     "email": f"{username}@mvidarr.local",
-                    "role": "ADMIN",
-                    "can_admin": True,
-                    "can_modify": True,
-                    "can_delete": True,
+                    **permissions,
                 },
                 "session": {"token": session_token},
             }
@@ -261,36 +368,9 @@ async def check_auth(request: Request):
                         "id": user_data.get("user_id", 1),
                         "username": username,
                         "email": f"{username}@mvidarr.local",
-                        "role": "ADMIN",
-                        "can_admin": True,
-                        "can_modify": True,
-                        "can_delete": True,
+                        **role_permissions(user_data.get("role")),
                     },
                 }
-
-        # Check Flask session fallback
-        try:
-            from flask import has_request_context
-            from flask import session as flask_session
-
-            if has_request_context() and flask_session.get("authenticated"):
-                username = flask_session.get("username", "admin")
-                role = flask_session.get("role", "admin")
-                can_admin = role.lower() == "admin"
-                return {
-                    "authenticated": True,
-                    "user": {
-                        "id": 1,
-                        "username": username,
-                        "email": f"{username}@mvidarr.local",
-                        "role": role.upper(),
-                        "can_admin": can_admin,
-                        "can_modify": True,
-                        "can_delete": can_admin,
-                    },
-                }
-        except (ImportError, RuntimeError):
-            pass
 
         return {"authenticated": False}
 
@@ -317,6 +397,8 @@ async def get_session_info(request: Request):
                 detail="Session invalid or expired",
             )
 
+        permissions = role_permissions(user_data.get("role"))
+
         return {
             "session": {
                 "token_preview": session_token[:16] + "...",
@@ -325,12 +407,12 @@ async def get_session_info(request: Request):
             "user": {
                 "id": user_data.get("user_id", 1),
                 "username": user_data.get("username", "admin"),
-                "role": user_data.get("role", "admin"),
+                "role": permissions["role"],
             },
             "permissions": {
-                "can_admin": user_data.get("can_admin", True),
-                "can_modify": user_data.get("can_modify", True),
-                "can_delete": user_data.get("can_delete", True),
+                "can_admin": permissions["can_admin"],
+                "can_modify": permissions["can_modify"],
+                "can_delete": permissions["can_delete"],
             },
         }
 
@@ -350,7 +432,7 @@ async def get_session_info(request: Request):
 
 
 @router.get("/oauth/{provider}/login")
-async def oauth_login(provider: str):
+async def oauth_login(provider: str, request: Request):
     """Initiate OAuth login flow"""
     try:
         success, auth_url, state = oauth_service.initiate_oauth_flow(provider)
@@ -363,7 +445,19 @@ async def oauth_login(provider: str):
                 success=True,
             )
 
-            return {"auth_url": auth_url, "state": state}
+            from fastapi.responses import JSONResponse
+
+            response = JSONResponse(content={"auth_url": auth_url, "state": state})
+            is_https = request.headers.get("x-forwarded-proto") == "https"
+            response.set_cookie(
+                key="oauth_state",
+                value=state,
+                max_age=600,  # 10 minutes — matches the old dict's expiry window
+                httponly=True,
+                secure=is_https,
+                samesite="lax",
+            )
+            return response
         else:
             log_oauth_login_failed(provider, auth_url)
             raise HTTPException(
@@ -390,22 +484,45 @@ async def oauth_callback(
     error: Optional[str] = None,
 ):
     """Handle OAuth callback"""
+    # This endpoint is only ever reached via a real, top-level browser
+    # navigation — the OAuth provider's own server-side redirect after
+    # the user authorizes (or denies) access, not a fetch()/XHR call
+    # from MVidarr's frontend JS. Every failure path below redirects to
+    # the login page with a readable reason instead of returning a raw
+    # JSON error body, which previously left the user staring at a JSON
+    # blob (#353 — same root cause as #347's success-path fix).
+    from fastapi.responses import RedirectResponse
+
+    def _oauth_error_redirect(reason: str) -> RedirectResponse:
+        from urllib.parse import quote
+
+        return RedirectResponse(
+            url=f"/auth/login?oauth_error={quote(reason)}",
+            status_code=status.HTTP_302_FOUND,
+        )
+
     try:
         if error:
             log_oauth_login_failed(provider, f"OAuth provider error: {error}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"OAuth error: {error}"
-            )
+            return _oauth_error_redirect(f"OAuth error: {error}")
 
         if not code or not state:
             log_oauth_login_failed(provider, "Missing authorization code or state")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing authorization code or state",
+            return _oauth_error_redirect("Missing authorization code or state")
+
+        cookie_state = request.cookies.get("oauth_state")
+        if not cookie_state or cookie_state != state:
+            log_oauth_login_failed(
+                provider, "State parameter mismatch - possible CSRF attack"
+            )
+            return _oauth_error_redirect(
+                "Invalid state parameter - possible CSRF attack"
             )
 
+        ip_address = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("User-Agent")
         success, message, user, session_obj = oauth_service.handle_oauth_callback(
-            provider, code, state
+            provider, code, state, ip_address=ip_address, user_agent=user_agent
         )
 
         if success and user and session_obj:
@@ -415,23 +532,7 @@ async def oauth_callback(
 
             log_oauth_login_success(user, provider)
 
-            from fastapi.responses import JSONResponse
-
-            response_data = {
-                "success": True,
-                "message": "OAuth login successful",
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "role": user.role.value,
-                    "can_admin": user.can_access_admin(),
-                    "can_modify": user.can_modify_content(),
-                    "can_delete": user.can_delete_content(),
-                },
-            }
-
-            response = JSONResponse(content=response_data)
+            response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
             is_https = request.headers.get("x-forwarded-proto") == "https"
             response.set_cookie(
                 key="session_token",
@@ -441,22 +542,19 @@ async def oauth_callback(
                 secure=is_https,
                 samesite="lax",
             )
+            response.delete_cookie("oauth_state")
             return response
         else:
             log_oauth_login_failed(provider, message)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail=message
-            )
+            return _oauth_error_redirect(message)
 
-    except HTTPException:
-        raise
     except Exception as e:
+        # Deliberately generic — unlike the branches above, `e` is not
+        # a message this codebase generated, so its text must not leak
+        # into a redirect URL the user's browser will show.
         logger.error(f"OAuth callback error: {e}")
         log_oauth_login_failed(provider, str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="OAuth authentication failed",
-        )
+        return _oauth_error_redirect("OAuth authentication failed")
 
 
 # ====================================
@@ -465,8 +563,15 @@ async def oauth_callback(
 
 
 @router.get("/credentials")
-async def get_credentials():
-    """Get current stored username for simple auth"""
+async def get_credentials(current_user: dict = Depends(require_admin)):
+    """Get current stored username for simple auth (requires ADMIN role).
+
+    Leaked the instance-wide login username to any unauthenticated caller
+    before this fix. Only ever called from the admin-only credentials-
+    change form on settings.html (frontend/static/main.js's
+    loadCurrentCredentials()), matching its POST sibling below -- never
+    from the login page.
+    """
     try:
         from src.services.simple_auth_service import SimpleAuthService
 
@@ -484,9 +589,16 @@ async def get_credentials():
 @router.post("/credentials")
 async def update_credentials(
     credentials: CredentialsRequest,
-    current_user: dict = Depends(require_authentication),
+    current_user: dict = Depends(require_admin),
 ):
-    """Update username and password for simple auth (requires authentication)"""
+    """Update username and password for simple auth (requires ADMIN role).
+
+    This changes the credential SimpleAuthService authenticates every
+    browser login against — not just the caller's own account — so it must
+    be gated on role, not merely on being logged in (found during dev
+    testing ahead of v1.0.0: any authenticated USER/MANAGER/READONLY
+    session could previously change the instance-wide login credentials).
+    """
     try:
         from src.services.simple_auth_service import SimpleAuthService
 
@@ -531,10 +643,7 @@ async def get_current_user_info(request: Request):
                         "id": user_data.get("user_id", 1),
                         "username": username,
                         "email": f"{username}@mvidarr.local",
-                        "role": "ADMIN",
-                        "can_admin": True,
-                        "can_modify": True,
-                        "can_delete": True,
+                        **role_permissions(user_data.get("role")),
                     },
                 }
 
@@ -591,8 +700,9 @@ async def auth_health():
 
 
 @legacy_router.get("/credentials")
-async def get_credentials_legacy():
-    """Get current stored username for simple auth (legacy endpoint)"""
+async def get_credentials_legacy(current_user: dict = Depends(require_admin)):
+    """Get current stored username for simple auth (legacy endpoint,
+    requires ADMIN role -- see get_credentials() above)."""
     try:
         from src.services.simple_auth_service import SimpleAuthService
 

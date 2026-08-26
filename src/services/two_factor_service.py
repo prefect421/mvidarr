@@ -7,7 +7,7 @@ import base64
 import io
 import json
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import pyotp
@@ -19,6 +19,16 @@ from src.services.audit_service import AuditService
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.two_factor")
+
+# Short-lived, single-use tickets proving a password check just succeeded
+# for a given user, exchanged for a session once the second factor is
+# confirmed via verify_two_factor_login. See the 2026-08-10 security
+# revision to Task 9 for why verify-login can't just trust a bare
+# username — there's no rate-limiting on 2FA code guesses in this
+# codebase, so binding to a fresh password check is what actually limits
+# guessing attempts.
+_pending_2fa_tickets: Dict[str, Dict[str, Any]] = {}
+_PENDING_2FA_TICKET_EXPIRY_MINUTES = 5
 
 
 class TwoFactorService:
@@ -150,6 +160,7 @@ class TwoFactorService:
                     # Log failed verification attempt
                     AuditService.log_security_event(
                         "2fa_verification_failed",
+                        "2FA setup verification failed — invalid TOTP token",
                         user=user,
                         additional_data={
                             "setup_confirmation": True,
@@ -165,11 +176,12 @@ class TwoFactorService:
 
                 # Log successful 2FA setup
                 AuditService.log_user_action(
-                    "2fa_enabled",
+                    "enabled",
+                    "2fa",
                     user=user,
-                    admin_user_id=admin_user_id,
                     additional_data={
-                        "setup_timestamp": datetime.now(timezone.utc).isoformat()
+                        "admin_user_id": admin_user_id,
+                        "setup_timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
 
@@ -195,13 +207,21 @@ class TwoFactorService:
                 if not user.two_factor_enabled:
                     return False, "Two-factor authentication is not enabled"
 
-                # Verify password (unless admin is disabling)
+                # Verify password (unless admin is disabling). Checked
+                # against SimpleAuthService — the live credential store the
+                # user actually logs in with — not User.password_hash,
+                # which is a separate, independently-writable column that
+                # can silently drift out of sync with it (#334).
                 if admin_user_id is None:
-                    from werkzeug.security import check_password_hash
+                    from src.services.simple_auth_service import SimpleAuthService
 
-                    if not check_password_hash(user.password_hash, password):
+                    auth_success, _ = SimpleAuthService.authenticate(
+                        user.username, password
+                    )
+                    if not auth_success:
                         AuditService.log_security_event(
                             "2fa_disable_failed",
+                            "2FA disable attempt failed — incorrect password",
                             user=user,
                             additional_data={"reason": "incorrect_password"},
                         )
@@ -216,10 +236,11 @@ class TwoFactorService:
 
                 # Log 2FA disable
                 AuditService.log_user_action(
-                    "2fa_disabled",
+                    "disabled",
+                    "2fa",
                     user=user,
-                    admin_user_id=admin_user_id,
                     additional_data={
+                        "admin_user_id": admin_user_id,
                         "disabled_by_admin": admin_user_id is not None,
                         "disable_timestamp": datetime.now(timezone.utc).isoformat(),
                     },
@@ -232,6 +253,39 @@ class TwoFactorService:
         except Exception as e:
             logger.error(f"Error disabling 2FA for user {user_id}: {e}")
             return False, f"Disable failed: {e}"
+
+    @staticmethod
+    def create_pending_ticket(user_id: int) -> str:
+        """
+        Issue a short-lived, single-use ticket proving a password check
+        just succeeded for this user, to be exchanged for a session via
+        verify_two_factor_login once the second factor is confirmed.
+        """
+        ticket = secrets.token_urlsafe(32)
+        _pending_2fa_tickets[ticket] = {
+            "user_id": user_id,
+            "expires_at": datetime.utcnow()
+            + timedelta(minutes=_PENDING_2FA_TICKET_EXPIRY_MINUTES),
+        }
+        return ticket
+
+    @staticmethod
+    def consume_pending_ticket(ticket: str) -> Optional[int]:
+        """
+        Validate and immediately invalidate a pending-2FA ticket — single
+        use regardless of what happens next, even a failed verification
+        attempt consumes it (see module-level comment on
+        _pending_2fa_tickets for why).
+
+        Returns the associated user_id if the ticket was valid and
+        unexpired, None otherwise.
+        """
+        data = _pending_2fa_tickets.pop(ticket, None)
+        if not data:
+            return None
+        if data["expires_at"] < datetime.utcnow():
+            return None
+        return data["user_id"]
 
     @staticmethod
     def verify_two_factor_login(user_id: int, token: str) -> Tuple[bool, str]:
@@ -262,6 +316,7 @@ class TwoFactorService:
                             # Log backup code usage
                             AuditService.log_security_event(
                                 "2fa_backup_code_used",
+                                "2FA login accepted a backup recovery code",
                                 user=user,
                                 additional_data={"remaining_codes": len(backup_codes)},
                             )
@@ -272,11 +327,16 @@ class TwoFactorService:
 
                 # Verify TOTP token
                 if TwoFactorService.verify_totp_token(user.two_factor_secret, token):
-                    AuditService.log_security_event("2fa_login_success", user=user)
+                    AuditService.log_security_event(
+                        "2fa_login_success",
+                        "2FA login verification succeeded",
+                        user=user,
+                    )
                     return True, "Two-factor authentication successful"
                 else:
                     AuditService.log_security_event(
                         "2fa_login_failed",
+                        "2FA login verification failed — invalid TOTP token",
                         user=user,
                         additional_data={"provided_token": token},
                     )
@@ -315,10 +375,11 @@ class TwoFactorService:
 
                 # Log backup code regeneration
                 AuditService.log_user_action(
-                    "2fa_backup_codes_regenerated",
+                    "backup_codes_regenerated",
+                    "2fa",
                     user=user,
-                    admin_user_id=admin_user_id,
                     additional_data={
+                        "admin_user_id": admin_user_id,
                         "regenerated_by_admin": admin_user_id is not None,
                         "regenerate_timestamp": datetime.now(timezone.utc).isoformat(),
                     },

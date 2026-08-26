@@ -7,9 +7,11 @@ Provides health monitoring endpoints for home self-hosters.
 import logging
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from src.api.fastapi.auth_dependencies import require_admin
+from src.api.fastapi.template_system import require_admin as require_admin_page
 from src.api.fastapi.template_system import template_system
 from src.services.health_monitoring import (
     get_celery_status,
@@ -28,7 +30,7 @@ router = APIRouter(prefix="/api/system-health", tags=["System Health"])
 
 
 @router.get("/")
-async def get_health_summary() -> Dict:
+async def get_health_summary(current_user: dict = Depends(require_admin)) -> Dict:
     """
     Get overall system health summary.
 
@@ -42,26 +44,22 @@ async def get_health_summary() -> Dict:
 
 
 @router.get("/disk")
-async def get_disk_health(paths: Optional[str] = None) -> Dict:
+async def get_disk_health(current_user: dict = Depends(require_admin)) -> Dict:
     """
-    Get disk usage for specified paths.
-
-    Args:
-        paths: Comma-separated list of paths to check (optional)
+    Get disk usage for MVidarr's own fixed data paths.
 
     Returns:
         Disk usage information for each path
     """
     try:
-        path_list = paths.split(",") if paths else None
-        return {"disk_usage": get_disk_usage(path_list)}
+        return {"disk_usage": get_disk_usage()}
     except Exception as e:
         logger.error(f"Error getting disk health: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/memory")
-async def get_memory_health() -> Dict:
+async def get_memory_health(current_user: dict = Depends(require_admin)) -> Dict:
     """Get current memory usage."""
     try:
         return {"memory": get_memory_usage()}
@@ -71,7 +69,7 @@ async def get_memory_health() -> Dict:
 
 
 @router.get("/cpu")
-async def get_cpu_health() -> Dict:
+async def get_cpu_health(current_user: dict = Depends(require_admin)) -> Dict:
     """Get current CPU usage."""
     try:
         return {"cpu": get_cpu_usage(interval=0.1)}
@@ -81,7 +79,7 @@ async def get_cpu_health() -> Dict:
 
 
 @router.get("/database")
-async def get_db_health() -> Dict:
+async def get_db_health(current_user: dict = Depends(require_admin)) -> Dict:
     """Check database connection status."""
     try:
         return {"database": get_database_status()}
@@ -91,7 +89,7 @@ async def get_db_health() -> Dict:
 
 
 @router.get("/celery")
-async def get_celery_health() -> Dict:
+async def get_celery_health(current_user: dict = Depends(require_admin)) -> Dict:
     """Check Celery worker status."""
     try:
         return {"celery": get_celery_status()}
@@ -101,7 +99,7 @@ async def get_celery_health() -> Dict:
 
 
 @router.get("/redis")
-async def get_redis_health() -> Dict:
+async def get_redis_health(current_user: dict = Depends(require_admin)) -> Dict:
     """Check Redis connection status."""
     try:
         return {"redis": get_redis_status()}
@@ -111,7 +109,11 @@ async def get_redis_health() -> Dict:
 
 
 @router.get("/logs")
-async def get_logs(lines: int = 100, log_file: Optional[str] = None) -> Dict:
+async def get_logs(
+    lines: int = 100,
+    log_file: Optional[str] = None,
+    current_user: dict = Depends(require_admin),
+) -> Dict:
     """
     Get recent log entries.
 
@@ -143,7 +145,9 @@ page_router = APIRouter(tags=["System Health Pages"])
 
 
 @page_router.get("/system-health", response_class=HTMLResponse)
-async def system_health_page(request: Request):
+async def system_health_page(
+    request: Request, current_user: dict = Depends(require_admin_page)
+):
     """Render the system health dashboard page."""
     context = {"page_title": "System Health"}
     return await template_system.render_response("system_health.html", request, context)

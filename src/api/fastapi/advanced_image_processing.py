@@ -6,9 +6,10 @@ REST API endpoints for advanced image operations and quality enhancement
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Body, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_admin, require_authentication
 from src.jobs.advanced_image_tasks import (
     ImageFormat,
     analyze_large_image_collection,
@@ -114,7 +115,9 @@ class QualityEnhancementResponse(BaseModel):
 # Endpoints
 @router.post("/analyze/bulk", response_model=AdvancedAnalysisResponse)
 async def bulk_image_analysis(
-    request: BulkAnalysisRequest, background_tasks: BackgroundTasks
+    request: BulkAnalysisRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """
     Perform bulk analysis of large image collections
@@ -170,7 +173,9 @@ async def bulk_image_analysis(
 
 @router.post("/convert/formats", response_model=FormatConversionResponse)
 async def convert_image_formats(
-    request: FormatConversionRequest, background_tasks: BackgroundTasks
+    request: FormatConversionRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """
     Convert images to different formats concurrently
@@ -253,7 +258,9 @@ async def convert_image_formats(
 
 @router.post("/enhance/quality", response_model=QualityEnhancementResponse)
 async def enhance_image_quality(
-    request: QualityEnhancementRequest, background_tasks: BackgroundTasks
+    request: QualityEnhancementRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_admin),
 ):
     """
     Enhance image quality with automated improvements
@@ -340,7 +347,9 @@ async def enhance_image_quality(
 
 
 @router.get("/formats/supported")
-async def get_supported_formats():
+async def get_supported_formats(
+    current_user: dict = Depends(require_authentication),
+):
     """
     Get list of supported image formats for conversion
 
@@ -383,7 +392,9 @@ async def get_supported_formats():
 
 
 @router.get("/enhancement/options")
-async def get_enhancement_options():
+async def get_enhancement_options(
+    current_user: dict = Depends(require_authentication),
+):
     """
     Get available image enhancement options and their descriptions
 
@@ -434,6 +445,7 @@ async def analyze_image_quality_only(
     include_histograms: bool = Body(
         False, description="Include histogram data in response"
     ),
+    current_user: dict = Depends(require_admin),
 ):
     """
     Analyze image quality without enhancement

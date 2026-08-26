@@ -5330,7 +5330,7 @@ function renderVideosTab(videos) {
             <input type="checkbox" class="video-select" onchange="toggleVideoSelection(${video.id})" onclick="event.stopPropagation()">
             <div class="selection-indicator"></div>
             <div class="video-thumbnail">
-                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" data-fallback-src="/static/placeholder-video.png">
+                <img src="/api/videos/${video.id}/thumbnail" alt="${video.title}" onerror="handleVideoThumbnailError(this)">
                 <div class="video-status status-${video.status ? video.status.toLowerCase() : 'unknown'}">${video.status || 'Unknown'}</div>
             </div>
             <div class="video-info">
@@ -6607,12 +6607,32 @@ function bulkDownloadSelected() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccess(data.message);
+            // Build a message from the actual counts rather than the
+            // generic "Bulk download completed" -- a live-reported bug
+            // (2026-08-21) showed videos really were queued and
+            // downloaded while the button still reported an error,
+            // because this response never included a "success" key at
+            // all until now. Distinguishing queued/skipped/failed here
+            // also makes a re-click on already-queued videos (e.g. a
+            // double-click) read as informational, not a false error.
+            const parts = [];
+            if (data.queued_count > 0) parts.push(`${data.queued_count} queued`);
+            if (data.skipped_count > 0) parts.push(`${data.skipped_count} already downloaded or in progress`);
+            if (data.failed_count > 0) parts.push(`${data.failed_count} failed`);
+            const summary = parts.length ? parts.join(', ') : 'nothing to queue';
+
+            if (data.queued_count > 0) {
+                showSuccess(`Download started: ${summary}`);
+            } else if (data.failed_count > 0) {
+                showError(`Download failed: ${summary}`);
+            } else {
+                showInfo(`No new downloads: ${summary}`);
+            }
             // Clear selection and refresh
             deselectAllVideos();
             loadArtistDetails();
         } else {
-            showError('Error: ' + data.error);
+            showError('Error: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
@@ -7639,6 +7659,18 @@ function handleThumbnailError(img) {
     img.src = '/static/placeholder-artist.png';
 }
 
+function handleVideoThumbnailError(img) {
+    // Live-reported: videos whose thumbnail proxy request fails for any
+    // reason (hotlink protection, tracking-protection blocking a CDN
+    // domain, transient network error, etc.) previously had no fallback
+    // at all -- just a permanently broken image. Guard against an
+    // infinite loop if the placeholder itself ever 404s.
+    if (img.src.endsWith('/static/placeholder-video.png')) {
+        return;
+    }
+    img.src = '/static/placeholder-video.png';
+}
+
 function hideVideoSelectionModal() {
     document.getElementById('videoSelectionModal').style.display = 'none';
 }
@@ -8060,7 +8092,7 @@ function loadVideoPreview() {
     const previewHtml = selectedVideoData.map(video => `
         <div class="video-preview-item">
             <div class="preview-thumbnail">
-                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" data-fallback-src="/static/placeholder-video.png">
+                <img src="/api/videos/${video.id}/thumbnail" alt="${video.title}" onerror="handleVideoThumbnailError(this)">
             </div>
             <div class="preview-metadata">
                 <h4>${video.title}</h4>
@@ -10920,31 +10952,13 @@ async function addVideosToPlaylist() {
     }
 }
 
-function bulkDownloadSelected() {
-    if (selectedVideos.size === 0) {
-        showError('Please select videos to download');
-        return;
-    }
-    
-    const videoIds = Array.from(selectedVideos);
-    // Implement bulk download logic here
-    showInfo(`Starting download for ${videoIds.length} selected videos...`);
-}
-
-
-
-function bulkDeleteSelected() {
-    if (selectedVideos.size === 0) {
-        showError('Please select videos to delete');
-        return;
-    }
-    
-    if (confirm(`Are you sure you want to delete ${selectedVideos.size} selected videos?`)) {
-        const videoIds = Array.from(selectedVideos);
-        // Implement bulk delete logic here
-        showInfo(`Deleting ${videoIds.length} selected videos...`);
-    }
-}
+// bulkDownloadSelected() and bulkDeleteSelected() are defined earlier
+// in this file (they actually call the /api/videos/bulk/download and
+// /api/videos/bulk/delete endpoints). Dead-stub duplicates of both
+// used to live here, silently shadowing the real implementations
+// (JS function declarations with the same name in the same scope: the
+// LAST one defined wins) -- removed as the fix for the "Download
+// Selected does nothing" bug report.
 
 function updateSelectionUI() {
     const count = selectedVideos.size;

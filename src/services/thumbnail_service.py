@@ -79,7 +79,7 @@ class ThumbnailService:
 
         logger.debug(f"Thumbnails directory ensured: {self.thumbnails_dir}")
 
-    def _is_placeholder_url(self, url: str) -> bool:
+    def is_placeholder_url(self, url: str) -> bool:
         """Check if URL is a known placeholder image"""
         if not url:
             return True
@@ -352,7 +352,7 @@ class ThumbnailService:
             ThumbnailValidationError: If image validation fails
         """
         # Additional safety check - don't download known placeholders
-        if self._is_placeholder_url(url):
+        if self.is_placeholder_url(url):
             msg = f"URL is a known placeholder image: {url}"
             logger.info(
                 f"Refusing to download placeholder thumbnail for {artist_name}: {url}"

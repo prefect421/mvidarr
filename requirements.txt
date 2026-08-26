@@ -2,9 +2,9 @@
 
 # Core Framework - FastAPI primary, Flask for backwards compatibility
 fastapi==0.139.0
-starlette>=1.3.1  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
+starlette>=1.6.0  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 typing-inspection>=0.4.2
-uvicorn[standard]==0.24.0
+uvicorn[standard]==0.52.3
 python-multipart==0.0.32  # Security: CVE-2026-53539 quadratic CPU DoS fix, CVE-2026-53538 parameter smuggling fix, CVE-2026-53537 Content-Disposition smuggling fix, CVE-2026-45152 negative Content-Length fix
 jinja2==3.1.6
 
@@ -23,6 +23,7 @@ requests==2.34.2  # Security: CVE-2026-25645 predictable temp file creation fix
 urllib3==2.7.0  # Security: CVE-2026-44431 sensitive-header forwarding fix, CVE-2026-44432 decompression-bomb fix
 httpx==0.28.1
 aiohttp==3.14.3  # Security: CVE-2026-69244 OOB heap read in C parser error path, CVE-2026-69243 WS upgrade request smuggling, CVE-2026-59881 WS decompression without negotiated permessage-deflate fixes; also carries CVE-2026-22815/34513-34520/34525, CVE-2026-34993, CVE-2026-47265 fixes
+apprise==1.12.0  # Notification fan-out for Discord/Slack/Telegram/ntfy/email/etc. (#315)
 
 # Image Processing
 Pillow==12.3.0  # Security: CVE-2026-25990 PSD fix, CVE-2026-40192 FITS GZIP decompression bomb fix
@@ -46,15 +47,15 @@ lxml==6.1.1  # Security: CVE-2026-41066 XXE local file read fix, GHSA-4jhm-jv67-
 # Background Tasks
 celery==5.6.3
 redis==8.1.0
-flower==2.0.1
+flower==2.1.0
 
 # Security
 werkzeug==3.1.8  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
 bcrypt==5.0.0
-cryptography>=48.0.1
+cryptography>=50.0.0
 PyJWT==2.13.0  # Security: CVE-2026-32597 crit header validation fix, PYSEC-2026-175/176/177/178/179 JWKS/HMAC/DoS fixes
 passlib==1.7.4
-pyotp==2.9.0
+pyotp==2.10.0
 qrcode==7.4.2
 defusedxml==0.7.1
 
@@ -65,10 +66,10 @@ tqdm==4.70.0
 psutil==7.2.2
 schedule==1.2.0
 netifaces==0.11.0
-zeroconf==0.149.16
+zeroconf==0.150.0
 
 # Monitoring and Logging
-prometheus-client==0.19.0
+prometheus-client==0.26.0
 structlog==23.2.0
 sentry-sdk==2.66.1
 
@@ -76,7 +77,7 @@ sentry-sdk==2.66.1
 # uvicorn already included in fastapi dependencies above
 
 # Additional utilities
-yarl>=1.24.2
+yarl>=1.24.5
 aiofiles==25.1.0
 python-slugify==8.0.4
 bleach==6.4.0  # Security: Dependabot #20 formaction URI scheme bypass fix, #19 Unicode URI sanitization fix

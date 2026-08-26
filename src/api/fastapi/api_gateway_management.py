@@ -6,9 +6,10 @@ RESTful API for managing API Gateway services, routes, and configurations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from src.api.fastapi.auth_dependencies import require_admin
 from src.services.api_gateway import (
     RouteRule,
     RoutingStrategy,
@@ -130,7 +131,10 @@ class VersionInfoResponse(BaseModel):
 
 # Service Management Endpoints
 @router.post("/services", response_model=Dict[str, Any])
-async def register_service(service_request: ServiceRegistrationRequest):
+async def register_service(
+    service_request: ServiceRegistrationRequest,
+    current_user: dict = Depends(require_admin),
+):
     """Register a new service with the gateway"""
     try:
         gateway = await get_api_gateway()
@@ -165,7 +169,7 @@ async def register_service(service_request: ServiceRegistrationRequest):
 
 
 @router.get("/services", response_model=Dict[str, Any])
-async def list_services():
+async def list_services(current_user: dict = Depends(require_admin)):
     """List all registered services"""
     try:
         gateway = await get_api_gateway()
@@ -214,7 +218,9 @@ async def list_services():
 
 
 @router.delete("/services/{service_id}")
-async def deregister_service(service_id: str):
+async def deregister_service(
+    service_id: str, current_user: dict = Depends(require_admin)
+):
     """Deregister a service from the gateway"""
     try:
         gateway = await get_api_gateway()
@@ -240,7 +246,9 @@ async def deregister_service(service_id: str):
 
 
 @router.get("/services/{service_id}/health")
-async def check_service_health(service_id: str):
+async def check_service_health(
+    service_id: str, current_user: dict = Depends(require_admin)
+):
     """Check health of a specific service"""
     try:
         gateway = await get_api_gateway()
@@ -272,7 +280,10 @@ async def check_service_health(service_id: str):
 
 # Route Management Endpoints
 @router.post("/routes", response_model=Dict[str, Any])
-async def create_route_rule(route_request: RouteRuleRequest):
+async def create_route_rule(
+    route_request: RouteRuleRequest,
+    current_user: dict = Depends(require_admin),
+):
     """Create a new routing rule"""
     try:
         gateway = await get_api_gateway()
@@ -320,7 +331,7 @@ async def create_route_rule(route_request: RouteRuleRequest):
 
 
 @router.get("/routes", response_model=Dict[str, Any])
-async def list_routes():
+async def list_routes(current_user: dict = Depends(require_admin)):
     """List all routing rules"""
     try:
         gateway = await get_api_gateway()
@@ -349,7 +360,7 @@ async def list_routes():
 
 
 @router.delete("/routes/{rule_id}")
-async def delete_route_rule(rule_id: str):
+async def delete_route_rule(rule_id: str, current_user: dict = Depends(require_admin)):
     """Delete a routing rule"""
     try:
         gateway = await get_api_gateway()
@@ -380,7 +391,7 @@ async def delete_route_rule(rule_id: str):
 
 # Gateway Statistics and Monitoring
 @router.get("/stats", response_model=GatewayStatsResponse)
-async def get_gateway_statistics():
+async def get_gateway_statistics(current_user: dict = Depends(require_admin)):
     """Get comprehensive gateway statistics"""
     try:
         gateway = await get_api_gateway()
@@ -416,7 +427,7 @@ async def get_gateway_statistics():
 
 
 @router.get("/health")
-async def gateway_health_check():
+async def gateway_health_check(current_user: dict = Depends(require_admin)):
     """Gateway health check endpoint"""
     try:
         gateway = await get_api_gateway()
@@ -458,7 +469,7 @@ async def gateway_health_check():
 
 # API Versioning Endpoints
 @router.get("/versions", response_model=Dict[str, Any])
-async def list_api_versions():
+async def list_api_versions(current_user: dict = Depends(require_admin)):
     """List all API versions"""
     try:
         versioning_service = await get_api_versioning_service()
@@ -481,7 +492,7 @@ async def list_api_versions():
 
 
 @router.get("/versions/{version}/info", response_model=VersionInfoResponse)
-async def get_version_info(version: str):
+async def get_version_info(version: str, current_user: dict = Depends(require_admin)):
     """Get detailed information about an API version"""
     try:
         versioning_service = await get_api_versioning_service()
@@ -502,7 +513,9 @@ async def get_version_info(version: str):
 
 
 @router.get("/versions/{version}/migration", response_model=Dict[str, Any])
-async def get_migration_recommendations(version: str):
+async def get_migration_recommendations(
+    version: str, current_user: dict = Depends(require_admin)
+):
     """Get migration recommendations for an API version"""
     try:
         versioning_service = await get_api_versioning_service()
@@ -527,6 +540,7 @@ async def get_migration_recommendations(version: str):
 async def test_route_matching(
     path: str = Query(description="Test path"),
     method: str = Query(default="GET", description="HTTP method"),
+    current_user: dict = Depends(require_admin),
 ):
     """Test route matching for a given path and method"""
     try:

@@ -646,19 +646,30 @@ class VideoDiscoveryService:
         try:
             # Check if video already exists by URL, YouTube URL, or YouTube ID
             from sqlalchemy import or_
+            from sqlalchemy.exc import IntegrityError
 
             youtube_id = video_data.get("youtube_id")
             url = video_data.get("url")
             youtube_url = video_data.get("youtube_url")
 
             # Build deduplication filters
-            filters = [Video.artist_id == artist_id]
-
-            # Check by YouTube ID first (most reliable)
+            # NOTE (#377): youtube_id is now a DB-level globally-unique
+            # column (added earlier in this branch), so its dedup check
+            # must also be global -- NOT scoped to Video.artist_id. The
+            # same YouTube video can legitimately surface under two
+            # different artists' discovery runs (e.g. a collaboration
+            # officially uploaded to one artist's channel). Scoping this
+            # check per-artist would miss that video under the "wrong"
+            # artist_id, fall through to the insert below, and raise
+            # IntegrityError against the unique constraint. Matches the
+            # existing global-lookup-by-youtube_id precedent in
+            # youtube_playlist_service.py (~line 376). Per-artist scoping
+            # is only meaningful for the URL-based fallback below, since
+            # url/youtube_url are not globally unique columns.
             if youtube_id:
-                filters.append(Video.youtube_id == youtube_id)
-            # Then check by URL or youtube_url
+                filters = [Video.youtube_id == youtube_id]
             elif url or youtube_url:
+                filters = [Video.artist_id == artist_id]
                 url_filters = []
                 if url:
                     url_filters.append(Video.url == url)
@@ -667,6 +678,8 @@ class VideoDiscoveryService:
                     url_filters.append(Video.url == youtube_url)
                     url_filters.append(Video.youtube_url == youtube_url)
                 filters.append(or_(*url_filters))
+            else:
+                filters = [Video.artist_id == artist_id]
 
             existing = session.query(Video).filter(*filters).first()
 
@@ -784,8 +797,31 @@ class VideoDiscoveryService:
                 },
             )
 
-            session.add(video)
-            session.flush()  # Ensure video ID is available
+            try:
+                with session.begin_nested():
+                    session.add(video)
+                    session.flush()  # Ensure video ID is available
+            except IntegrityError:
+                # Defensive backstop (#377) for the TOCTOU race the
+                # check-first dedup above can't fully close: a
+                # concurrent insert (another discovery run, an import,
+                # etc.) may have committed a video with this youtube_id
+                # between the `existing` query above and this flush.
+                # session.begin_nested() (a SQL SAVEPOINT) scopes the
+                # rollback to just this failed insert -- the context
+                # manager already rolled back to the savepoint by the
+                # time this except block runs. #379: a plain
+                # session.rollback() here (the #377 original fix) rolled
+                # back the WHOLE session, discarding every video flushed
+                # earlier in this same discover_videos_for_artist() call
+                # (which only commits once, after its whole loop) even
+                # though only this one insert actually failed.
+                logger.info(
+                    f"Concurrent insert already stored a video with "
+                    f"youtube_id={youtube_id!r} (or a matching URL) -- "
+                    f"treating as already-exists and skipping"
+                )
+                return
             logger.debug(f"Stored new video: {video.title}")
 
             # TODO: Download thumbnail - requires artist name, but artist may be detached

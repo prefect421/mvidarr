@@ -72,8 +72,24 @@
                 const url = (input instanceof Request) ? input.url : String(input);
                 return originalFetch.apply(this, arguments).then(function(response) {
                     if (response.status === 401 && !redirecting) {
-                        // Don't redirect for auth-check or login endpoints
-                        if (!url.includes('/auth/') && !url.includes('/simple-auth/')) {
+                        // #390: resolve to an absolute URL first (works
+                        // whether `url` is relative, e.g. "/api/auth/user",
+                        // or already absolute -- Request.url always is) so
+                        // pathname-based matching below is reliable either
+                        // way.
+                        let pathname;
+                        try {
+                            pathname = new URL(url, window.location.origin).pathname;
+                        } catch (e) {
+                            pathname = url;
+                        }
+                        // Don't redirect for the app's own login/auth-flow
+                        // endpoints -- startsWith, not a substring match:
+                        // the old `url.includes('/auth/')` also matched
+                        // any path merely CONTAINING "/auth/" as a
+                        // segment, like /api/lastfm/auth/url, silently
+                        // swallowing its 401s instead of prompting login.
+                        if (!pathname.startsWith('/auth/') && !pathname.startsWith('/simple-auth/')) {
                             redirecting = true;
                             console.warn('Session expired - redirecting to login');
                             window.location.href = '/auth/login';
@@ -1247,6 +1263,21 @@
                 font-size: 1rem;
             }
         }
+
+        /* #389: admin-gated controls (Spotify/Last.fm connect/disconnect/
+           test buttons, System Health link) are marked with
+           admin-only-control across templates. A body class -- rather than
+           setting each element's inline style directly -- means this rule
+           wins regardless of DOM order against page-specific JS that also
+           toggles these same elements' visibility (e.g. lastfm.html's
+           checkLastFmStatus() flips #connectBtn/#disconnectBtn between
+           display:none and visible based on connection state; !important
+           here ensures a non-admin session stays hidden no matter which
+           runs last). See checkUserAuthentication() below for where the
+           class gets applied. */
+        body.non-admin-user .admin-only-control {
+            display: none !important;
+        }
     </style>
 
     {% block head %}{% endblock %}
@@ -1612,46 +1643,50 @@
         }
         
         // User Authentication and Menu Management
+        //
+        // Previously fetched a nonexistent '/auth/check' route and looked
+        // for #userMenu/#username -- neither exists in the current header
+        // markup (only #headerUsername/#headerUserRole/#headerUserSection
+        // do, from an earlier header refactor this function never caught
+        // up with), and this function was never even called anywhere. The
+        // real, working endpoint is GET /api/auth/user
+        // (src/api/fastapi/auth.py's get_current_user_info).
         function checkUserAuthentication() {
-            fetch('/auth/check')
+            fetch('/api/auth/user')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.authenticated && data.user) {
-                        // Show user menu
-                        const userMenu = document.getElementById('userMenu');
-                        const username = document.getElementById('username');
-                        
-                        if (userMenu && username) {
-                            userMenu.style.display = 'block';
-                            username.textContent = data.user.username;
-                        }
-                        
-                        // User management menu item removed
+                    const headerUserSection = document.getElementById('headerUserSection');
+                    const headerUsername = document.getElementById('headerUsername');
+                    const headerUserRole = document.getElementById('headerUserRole');
+
+                    if (data.success && data.user) {
+                        if (headerUserSection) headerUserSection.style.display = 'flex';
+                        if (headerUsername) headerUsername.textContent = data.user.username;
+                        if (headerUserRole) headerUserRole.textContent = data.user.role;
+                        // #389: hide admin-gated controls (Spotify/Last.fm
+                        // connect/disconnect/test buttons, System Health
+                        // link) for non-admin users, instead of letting
+                        // them click through to a 403. can_admin comes
+                        // from role_permissions() (src/api/fastapi/auth.py)
+                        // and is deliberately ADMIN-only, matching
+                        // auth_dependencies.require_admin's real backend
+                        // check exactly.
+                        document.body.classList.toggle('non-admin-user', !data.user.can_admin);
                     } else {
-                        // Hide user menu if not authenticated
-                        const userMenu = document.getElementById('userMenu');
-                        const userMgmtSidebarItem = document.getElementById('userManagementSidebarItem');
-                        
-                        if (userMenu) {
-                            userMenu.style.display = 'none';
-                        }
-                        if (userMgmtSidebarItem) {
-                            userMgmtSidebarItem.style.display = 'none';
-                        }
+                        if (headerUserSection) headerUserSection.style.display = 'none';
+                        // No confirmed session -- fail closed and hide
+                        // admin-only controls too, matching an anonymous/
+                        // non-admin visitor rather than assuming admin.
+                        document.body.classList.add('non-admin-user');
                     }
                 })
                 .catch(error => {
                     console.error('Error checking authentication:', error);
-                    // Hide user menu on error
-                    const userMenu = document.getElementById('userMenu');
-                    const userMgmtSidebarItem = document.getElementById('userManagementSidebarItem');
-                    
-                    if (userMenu) {
-                        userMenu.style.display = 'none';
+                    const headerUserSection = document.getElementById('headerUserSection');
+                    if (headerUserSection) {
+                        headerUserSection.style.display = 'none';
                     }
-                    if (userMgmtSidebarItem) {
-                        userMgmtSidebarItem.style.display = 'none';
-                    }
+                    document.body.classList.add('non-admin-user');
                 });
         }
         
@@ -2313,7 +2348,12 @@
             
             // Header user menu is now a direct link to settings page
             // No dropdown functionality needed - link goes directly to /settings
-            
+
+            // Populate the header username/role from the real session
+            // (was never called anywhere -- see checkUserAuthentication()'s
+            // comment above)
+            checkUserAuthentication();
+
             // Show/hide header user section based on authentication
             updateHeaderUserSection();
             

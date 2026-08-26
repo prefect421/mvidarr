@@ -491,6 +491,64 @@ http GET localhost:5000/api/artists
 - ReDoc: http://localhost:5000/api/docs/redoc
 - OpenAPI Spec: http://localhost:5000/api/docs/openapi.json
 
+### 5. Admin CLI Scripts
+
+MVidarr includes CLI utility scripts for administrative maintenance operations. These scripts are designed for admin and developer use — no email infrastructure is required.
+
+#### Password Reset Script
+
+**Usage:**
+```bash
+# List all usernames (helpful if you forgot the username)
+python scripts/reset_password.py --list
+
+# Reset a user's password
+python scripts/reset_password.py username NewSecurePassw0rd!
+```
+
+**Docker Usage:**
+```bash
+# List usernames in a running container
+docker exec mvidarr python scripts/reset_password.py --list
+
+# Reset password in a running container
+docker exec mvidarr python scripts/reset_password.py admin NewSecurePassw0rd!
+```
+
+**Features:**
+- Direct database password reset (no email delivery)
+- Password strength validation (enforces minimum requirements)
+- User-friendly error messages for unknown usernames or weak passwords
+- Lightweight alternative to password recovery emails
+
+#### Video Index Script
+
+**Usage:**
+```bash
+# Scan for new videos without indexing
+python scripts/index_videos.py --scan
+
+# Index all videos with metadata
+python scripts/index_videos.py --index-all
+
+# Index specific file with preview
+python scripts/index_videos.py --preview /app/data/musicvideos/Artist/Video.mp4
+
+# View statistics
+python scripts/index_videos.py --stats
+```
+
+**Docker Usage:**
+```bash
+# Index all videos in running container
+docker exec mvidarr python scripts/index_videos.py --index-all
+
+# View statistics from container
+docker exec mvidarr python scripts/index_videos.py --stats
+```
+
+See `docs/INITIAL_VIDEO_LOAD_GUIDE.md` for comprehensive video indexing documentation.
+
 ## Advanced Development Setup
 
 ### 1. IDE Configuration

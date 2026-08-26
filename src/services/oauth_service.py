@@ -3,14 +3,13 @@ OAuth authentication service for MVidarr
 Supports multiple OAuth providers including Authentik, Google, GitHub, etc.
 """
 
+import re
 import secrets
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlencode
 
 import requests
-from flask import request
-from flask import session as flask_session
 
 from src.database.connection import get_db
 from src.database.models import User, UserRole, UserSession
@@ -133,23 +132,25 @@ class AuthentikProvider(OAuthProvider):
     def map_groups_to_role(self, groups: list, roles: list = None) -> UserRole:
         """Map Authentik groups/roles to MVidarr user role"""
         # Default role mapping - can be configured
-        admin_groups = ["mvidarr_admin", "admins", "administrators"]
-        manager_groups = ["mvidarr_manager", "managers", "moderators"]
-        user_groups = ["mvidarr_user", "users"]
+        admin_groups = {"mvidarr_admin", "admins", "administrators"}
+        manager_groups = {"mvidarr_manager", "managers", "moderators"}
+        user_groups = {"mvidarr_user", "users"}
 
-        # Check all groups and roles
-        all_memberships = groups + (roles or [])
+        # Exact match only (case-insensitive) — NOT substring. A prior
+        # version used `admin_group in membership_lower`, so any group
+        # merely CONTAINING "admin"/"manager"/"user" granted that role:
+        # confirmed live, Authentik's own built-in "authentik Admins"
+        # group (for administering Authentik itself, unrelated to
+        # MVidarr) silently promoted a member to MVidarr ADMIN, since
+        # "admins" in "authentik admins" is True.
+        all_memberships = {m.lower() for m in groups + (roles or [])}
 
-        for membership in all_memberships:
-            membership_lower = membership.lower()
-            if any(admin_group in membership_lower for admin_group in admin_groups):
-                return UserRole.ADMIN
-            elif any(
-                manager_group in membership_lower for manager_group in manager_groups
-            ):
-                return UserRole.MANAGER
-            elif any(user_group in membership_lower for user_group in user_groups):
-                return UserRole.USER
+        if all_memberships & admin_groups:
+            return UserRole.ADMIN
+        elif all_memberships & manager_groups:
+            return UserRole.MANAGER
+        elif all_memberships & user_groups:
+            return UserRole.USER
 
         # Default to readonly if no matching groups
         return UserRole.READONLY
@@ -268,6 +269,19 @@ class OAuthService:
         self.providers = {}
         self._load_providers()
 
+    def reload_settings(self):
+        """Force reload of OAuth provider configuration from settings.
+
+        self.providers is only populated once, at process start
+        (__init__ -> _load_providers). Without this, an admin saving new
+        oauth_* settings via the UI would have no effect until the app
+        was restarted. Mirrors SpotifyService.reload_settings()'s role
+        in the same bulk-settings-update flow (#336).
+        """
+        self.providers = {}
+        self._load_providers()
+        logger.info("OAuth provider settings reloaded from database")
+
     def _load_providers(self):
         """Load OAuth providers from configuration"""
         try:
@@ -310,12 +324,39 @@ class OAuthService:
         except Exception as e:
             logger.error(f"Error loading OAuth providers: {e}")
 
+    def _ensure_providers_loaded(self):
+        """Retry loading if no providers are currently configured.
+
+        OAuthService is a module-level singleton constructed at Python
+        import time — before fastapi_app.py finishes initializing the
+        database connection. A load attempted during that window
+        silently fails (SettingsService.get() returns "" for every
+        oauth_* key) and, without this, self.providers would stay
+        permanently empty for the rest of the process's life — no
+        automatic retry, no error surfaced anywhere a user would see it.
+        Confirmed via fastapi_error.log during a real incident
+        (2026-08-12): "Database not initialized" immediately followed by
+        "Setting 'oauth_authentik_base_url' not found" for settings that
+        were, in fact, already saved.
+
+        Retrying here whenever providers is empty is cheap
+        (SettingsService caches its own DB reads after the first
+        successful query) and self-heals the very next time this is
+        called after the database is actually ready — e.g. the next
+        login page render — with no need for an admin to re-save
+        settings or restart again.
+        """
+        if not self.providers:
+            self._load_providers()
+
     def get_provider(self, provider_name: str) -> Optional[OAuthProvider]:
         """Get OAuth provider by name"""
+        self._ensure_providers_loaded()
         return self.providers.get(provider_name)
 
     def get_available_providers(self) -> Dict[str, str]:
         """Get list of available OAuth providers"""
+        self._ensure_providers_loaded()
         return {name: provider.name for name, provider in self.providers.items()}
 
     def initiate_oauth_flow(
@@ -338,10 +379,6 @@ class OAuthService:
             # Generate state for CSRF protection
             state = secrets.token_urlsafe(32)
 
-            # Store state in session
-            flask_session["oauth_state"] = state
-            flask_session["oauth_provider"] = provider_name
-
             # Generate authorization URL
             auth_url = provider.get_authorization_url(state)
 
@@ -353,7 +390,12 @@ class OAuthService:
             return False, "Failed to initiate OAuth flow", None
 
     def handle_oauth_callback(
-        self, provider_name: str, code: str, state: str
+        self,
+        provider_name: str,
+        code: str,
+        state: str,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> Tuple[bool, str, Optional[User], Optional[UserSession]]:
         """
         Handle OAuth callback and authenticate user
@@ -362,26 +404,15 @@ class OAuthService:
             provider_name: Name of OAuth provider
             code: Authorization code from provider
             state: State parameter for CSRF protection
+            ip_address: Client IP address for the new session (from the
+                real FastAPI Request; this service has no Flask request
+                context to read it from itself)
+            user_agent: Client User-Agent header for the new session
 
         Returns:
             Tuple of (success, message, user, session)
         """
         try:
-            # Verify state for CSRF protection
-            session_state = flask_session.get("oauth_state")
-            session_provider = flask_session.get("oauth_provider")
-
-            if not session_state or session_state != state:
-                return (
-                    False,
-                    "Invalid state parameter - possible CSRF attack",
-                    None,
-                    None,
-                )
-
-            if session_provider != provider_name:
-                return False, "Provider mismatch", None, None
-
             # Get provider
             provider = self.get_provider(provider_name)
             if not provider:
@@ -404,14 +435,10 @@ class OAuthService:
 
             # Find or create user
             user, session_obj = self._find_or_create_oauth_user(
-                provider_name, user_info
+                provider_name, user_info, ip_address=ip_address, user_agent=user_agent
             )
 
             if user and session_obj:
-                # Clear OAuth session data
-                flask_session.pop("oauth_state", None)
-                flask_session.pop("oauth_provider", None)
-
                 logger.info(
                     f"OAuth authentication successful for user: {user.username}"
                 )
@@ -423,8 +450,55 @@ class OAuthService:
             logger.error(f"Error handling OAuth callback: {e}")
             return False, "OAuth authentication failed", None, None
 
+    @staticmethod
+    def _is_email_allowed_for_oauth_signup(email: Optional[str]) -> bool:
+        """
+        Check whether a brand-new OAuth account is allowed to be
+        auto-created for this email, per the oauth_allowed_emails
+        setting. Only gates NEW account creation — see the call site in
+        _find_or_create_oauth_user for why existing users always bypass
+        this check.
+
+        Entries in the setting are comma- or newline-separated, each
+        either:
+        - an exact email address ("friend@example.com"), or
+        - a domain wildcard ("@example.com" — matches any address at
+          that domain; must match the domain exactly, not as a
+          substring, so "@mycompany.com" does not also match
+          "@notmycompany.com")
+
+        An unset/empty setting denies ALL new signups (fail closed) —
+        the self-hosted-appropriate default until an admin explicitly
+        opts specific people in.
+        """
+        if not email:
+            return False
+
+        from src.services.settings_service import SettingsService
+
+        raw = SettingsService.get("oauth_allowed_emails", "")
+        if not raw or not raw.strip():
+            return False
+
+        email_lower = email.strip().lower()
+        for entry in re.split(r"[,\n]", raw):
+            entry = entry.strip().lower()
+            if not entry:
+                continue
+            if entry.startswith("@"):
+                if email_lower.endswith(entry):
+                    return True
+            elif email_lower == entry:
+                return True
+
+        return False
+
     def _find_or_create_oauth_user(
-        self, provider_name: str, user_info: Dict[str, Any]
+        self,
+        provider_name: str,
+        user_info: Dict[str, Any],
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> Tuple[Optional[User], Optional[UserSession]]:
         """
         Find existing user or create new user from OAuth info
@@ -432,6 +506,8 @@ class OAuthService:
         Args:
             provider_name: Name of OAuth provider
             user_info: User information from OAuth provider
+            ip_address: Client IP address for the new session
+            user_agent: Client User-Agent header for the new session
 
         Returns:
             Tuple of (user, session)
@@ -455,8 +531,34 @@ class OAuthService:
                 if not user and username:
                     user = session.query(User).filter_by(username=username).first()
 
-                # Create new user if not found
+                # Create new user if not found. Gated on an allowlist —
+                # without this, ANY account that can complete a
+                # configured provider's consent screen gets a brand-new
+                # MVidarr account auto-created with zero approval step
+                # (confirmed live, 2026-08-12: two unintended
+                # self-registrations during OAuth testing). This check
+                # only applies to genuinely NEW accounts — an OAuth
+                # login matching an EXISTING user (found by email/
+                # username just above) is always allowed, since that
+                # account was already created intentionally.
                 if not user:
+                    if not self._is_email_allowed_for_oauth_signup(email):
+                        logger.warning(
+                            f"OAuth signup denied for unauthorized email: "
+                            f"{email} (provider: {provider_name})"
+                        )
+                        from src.services.audit_service import AuditService
+
+                        AuditService.log_security_event(
+                            "oauth_signup_denied",
+                            "OAuth signup denied — email not on the allowlist",
+                            additional_data={
+                                "provider": provider_name,
+                                "email": email,
+                            },
+                        )
+                        return None, None
+
                     # Generate username if not provided
                     if not username:
                         username = (
@@ -470,16 +572,19 @@ class OAuthService:
                         username = f"{base_username}_{counter}"
                         counter += 1
 
-                    # Determine user role based on provider
-                    user_role = UserRole.USER
-                    if provider_name == "authentik" and isinstance(
-                        self.providers[provider_name], AuthentikProvider
-                    ):
-                        groups = user_info.get("groups", [])
-                        roles = user_info.get("roles", [])
-                        user_role = self.providers[provider_name].map_groups_to_role(
-                            groups, roles
-                        )
+                    # Admin-only OAuth access policy (explicit product
+                    # decision, 2026-08-12): granular roles (USER/
+                    # MANAGER/READONLY) aren't well-defined enough yet
+                    # in this app to safely auto-assign via OAuth —
+                    # deferred, tiered self-service access to a later
+                    # version. Anyone trusted enough to pass the
+                    # oauth_allowed_emails allowlist above is trusted
+                    # enough to be a full admin for now.
+                    #
+                    # AuthentikProvider.map_groups_to_role still exists
+                    # for when that later version revisits granular
+                    # access, but is intentionally not called here.
+                    user_role = UserRole.ADMIN
 
                     # Create user
                     user = User(
@@ -524,34 +629,50 @@ class OAuthService:
                         }
                     )
 
-                    # Update role for Authentik users based on current groups
-                    if provider_name == "authentik" and isinstance(
-                        self.providers[provider_name], AuthentikProvider
-                    ):
-                        groups = user_info.get("groups", [])
-                        roles = user_info.get("roles", [])
-                        new_role = self.providers[provider_name].map_groups_to_role(
-                            groups, roles
-                        )
-                        if new_role != user.role:
-                            logger.info(
-                                f"Updated user role for {user.username}: {user.role.value} -> {new_role.value}"
-                            )
-                            user.role = new_role
+                    # Deliberately NOT syncing role from Authentik
+                    # groups here anymore. This exact mechanism — an
+                    # existing user's role silently overwritten based
+                    # on current group membership on every login — was
+                    # the live mechanism behind the privilege-escalation
+                    # incident fixed in #349 (even with the substring-
+                    # match bug fixed, an *exact*-match generic group
+                    # name would still have caused the same class of
+                    # surprise). Role changes for existing accounts are
+                    # an /admin/users decision now, not something that
+                    # happens implicitly on next login.
 
                 # Update last login
                 user.last_login = datetime.utcnow()
-                user.last_login_ip = request.environ.get(
-                    "HTTP_X_FORWARDED_FOR", request.remote_addr
-                )
+                user.last_login_ip = ip_address
 
                 # Create session
                 user_session = UserSession(
                     user_id=user.id,
-                    ip_address=user.last_login_ip,
-                    user_agent=request.headers.get("User-Agent"),
+                    ip_address=ip_address,
+                    user_agent=user_agent,
                 )
                 session.add(user_session)
+
+                # Every caller of this method reads plain attributes off
+                # the returned User after this `with get_db()` block has
+                # closed the session (handle_oauth_callback's own log
+                # line, then auth.py's response-building code). By
+                # default SQLAlchemy expires every loaded attribute on
+                # commit (expire_on_commit=True) so it can re-fetch fresh
+                # values on next access — but there IS no session left to
+                # fetch from by the time those callers run, so that first
+                # access raises "Instance <User> is not bound to a
+                # Session" instead of just working. This is the standard
+                # fix for returning an ORM object out of the session that
+                # loaded it: disable the post-commit expiry on this one
+                # session (scoped to this call, not the shared
+                # sessionmaker) so the already-loaded values stay valid.
+                # Touching a curated list of attributes here instead
+                # isn't enough: get_db()'s own context manager runs a
+                # SECOND, implicit commit right as this function returns
+                # (see DatabaseManager.get_session()), re-expiring
+                # everything a second time with nothing left to reload it.
+                session.expire_on_commit = False
                 session.commit()
 
                 return user, user_session
@@ -562,16 +683,14 @@ class OAuthService:
 
     def is_oauth_enabled(self) -> bool:
         """Check if any OAuth providers are configured"""
+        self._ensure_providers_loaded()
         return len(self.providers) > 0
 
-    def get_oauth_login_urls(self) -> Dict[str, str]:
-        """Get OAuth login URLs for all configured providers"""
-        urls = {}
-        for provider_name in self.providers:
-            success, auth_url, state = self.initiate_oauth_flow(provider_name)
-            if success:
-                urls[provider_name] = auth_url
-        return urls
+    # get_oauth_login_urls() was removed: it discarded the CSRF state that
+    # initiate_oauth_flow() returns, so any URL it produced could never pass
+    # the callback's oauth_state cookie check. Callers must use
+    # initiate_oauth_flow() directly and set the state cookie (see
+    # /api/auth/oauth/{provider}/login).
 
 
 # Global OAuth service instance

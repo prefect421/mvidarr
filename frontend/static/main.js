@@ -691,7 +691,7 @@ function updateUserCredentialsSection() {
 // Load current credentials for display
 async function loadCurrentCredentials() {
     try {
-        const response = await apiRequest('/auth/credentials');
+        const response = await apiRequest('/api/auth/credentials');
         const usernameField = document.getElementById('auth_username');
         if (usernameField && response.username) {
             usernameField.value = response.username;
@@ -736,7 +736,7 @@ async function updateCredentials() {
     try {
         showLoading('Updating credentials...');
         
-        await apiRequest('/auth/credentials', {
+        await apiRequest('/api/auth/credentials', {
             method: 'POST',
             body: JSON.stringify({
                 username: username,
@@ -752,31 +752,6 @@ async function updateCredentials() {
         
     } catch (error) {
         showError('Failed to update credentials: ' + error.message);
-    }
-}
-
-// Reset credentials to default
-async function resetCredentials() {
-    if (!confirm('Are you sure you want to reset credentials to default values?')) {
-        return;
-    }
-    
-    try {
-        showLoading('Resetting credentials...');
-        
-        await apiRequest('/auth/credentials/reset', {
-            method: 'POST'
-        });
-        
-        showSuccess('Credentials reset to default (admin/mvidarr)');
-        loadCurrentCredentials();
-        
-        // Clear password fields
-        document.getElementById('auth_password').value = '';
-        document.getElementById('auth_password_confirm').value = '';
-        
-    } catch (error) {
-        showError('Failed to reset credentials: ' + error.message);
     }
 }
 
@@ -796,8 +771,38 @@ document.addEventListener('DOMContentLoaded', function() {
             updateUserManagementSection(); // Initial check
             updateUserCredentialsSection(); // Initial check for credentials section
         }
+        loadTwoFactorStatus();
     }
 });
+
+// Load and display the current user's 2FA status on the Settings page.
+// The only pre-existing entry point to /2fa/setup was in an unreachable
+// template (dashboard.html, which nothing ever routes to) — this wires a
+// real, reachable one into Settings instead (#334 investigation).
+async function loadTwoFactorStatus() {
+    // Distinct ID from the pre-existing (dead, unreachable) 'twoFactorStatus'
+    // element referenced elsewhere in settings.html's dead
+    // adminUserManagement-adjacent code — see #334 investigation.
+    const statusEl = document.getElementById('securityTwoFactorStatus');
+    const enableLink = document.getElementById('twoFactorEnableLink');
+    if (!statusEl) return;
+
+    try {
+        const response = await apiRequest('/2fa/api/status');
+        let message = 'Two-factor authentication is not enabled for your account.';
+        if (response.enabled) {
+            message = '✅ Two-factor authentication is enabled.';
+            if (typeof response.backup_codes_remaining === 'number') {
+                message += ` ${response.backup_codes_remaining} backup code(s) remaining.`;
+            }
+        }
+        statusEl.textContent = message;
+        if (enableLink) enableLink.style.display = response.enabled ? 'none' : 'inline-block';
+    } catch (error) {
+        console.log('Could not load 2FA status:', error);
+        statusEl.textContent = 'Could not load two-factor authentication status.';
+    }
+}
 
 // Metadata Services Functions
 

@@ -59,6 +59,7 @@ async def get_video_thumbnail(
     video_id: int = FastAPIPath(..., ge=1),
     size: Optional[str] = Query(None, pattern="^(small|medium|large)$"),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get video thumbnail"""
     try:

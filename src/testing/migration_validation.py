@@ -115,7 +115,6 @@ class MigrationValidator:
             ("login", "/auth/login", "Login page with authentication form"),
             ("simple_login", "/auth/simple-login", "Simple login page"),
             ("2fa_setup", "/auth/2fa/setup", "2FA setup page"),
-            ("2fa_verify", "/auth/2fa/verify", "2FA verification page"),
         ]
 
         for name, endpoint, description in auth_pages:
@@ -652,7 +651,6 @@ class MigrationComplianceChecker:
             "auth/login.html",
             "auth/simple_login.html",
             "auth/2fa_setup.html",
-            "auth/2fa_verify.html",
             "admin/dashboard.html",
             "admin/users.html",
             "admin/create_user.html",

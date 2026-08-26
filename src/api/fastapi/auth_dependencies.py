@@ -9,6 +9,8 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 
+from src.database.models import UserRole
+
 logger = logging.getLogger("mvidarr.fastapi.auth_deps")
 
 # Optional bearer token security (for API tokens if needed)
@@ -23,38 +25,13 @@ class AuthenticationError(Exception):
 
 async def get_current_user_session(request: Request) -> Optional[Dict[str, Any]]:
     """
-    Get current authenticated user from session.
-
-    Checks:
-    1. Flask session (for Flask-served routes)
-    2. session_token cookie validated against SessionStore
+    Get current authenticated user from their session_token cookie,
+    validated against SessionStore.
 
     Returns:
         User data if authenticated, None otherwise
     """
     try:
-        # Check Flask session if available (Flask-served routes)
-        try:
-            from flask import has_request_context
-            from flask import session as flask_session
-
-            if has_request_context() and flask_session.get("authenticated"):
-                username = flask_session.get("username")
-                if username:
-                    return {
-                        "username": username,
-                        "authenticated": True,
-                        "user_id": 1,
-                        "role": "admin",
-                        "is_admin": True,
-                        "can_admin": True,
-                        "can_modify": True,
-                        "can_delete": True,
-                    }
-        except (ImportError, RuntimeError):
-            pass
-
-        # Validate session token against SessionStore
         session_token = request.cookies.get("session_token")
         if session_token:
             from src.services.session_store import SessionStore
@@ -123,7 +100,7 @@ async def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
         )
 
-    if not current_user.get("is_admin", False):
+    if current_user.get("role") != UserRole.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
         )

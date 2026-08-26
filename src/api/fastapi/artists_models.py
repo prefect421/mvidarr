@@ -234,7 +234,13 @@ class MergeArtistsRequest(BaseModel):
 class ThumbnailSearchRequest(BaseModel):
     """Request model for searching artist thumbnails"""
 
-    source: str = Field("auto", pattern="^(auto|wikipedia|youtube|imvdb)$")
+    # "imvdb" was previously an allowed value with no matching handler
+    # branch — always silently returned zero results. Replaced with the
+    # sources the search cascade actually implements (#320):
+    # artist_thumbnail_search_service.search_artist_thumbnails.
+    source: str = Field(
+        "auto", pattern="^(auto|spotify|lastfm|metadata|wikipedia|youtube)$"
+    )
     query: Optional[str] = None
 
 

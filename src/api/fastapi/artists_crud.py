@@ -40,6 +40,7 @@ from src.api.fastapi.auth_dependencies import (
 )
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video
+from src.services.webhook_service import trigger_artist_added
 from src.utils.logger import get_logger
 
 
@@ -533,6 +534,11 @@ async def create_artist(
         session.refresh(artist)
 
         logger.info(f"Created new artist: {artist.name} (ID: {artist.id})")
+        # #370: notify webhook subscribers (Discord/Apprise/generic) now
+        # that the artist is committed -- never fire before commit(), or a
+        # notification could arrive for an artist a concurrent failure
+        # still rolled back.
+        trigger_artist_added({"id": artist.id, "name": artist.name})
 
         return ArtistResponse(
             id=artist.id,
@@ -976,6 +982,7 @@ async def get_search_suggestions(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50),
     session: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_authentication),
 ):
     """Get search suggestions for artist names"""
     try:

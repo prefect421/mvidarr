@@ -19,7 +19,6 @@ from src.api.fastapi.auth_dependencies import (
 from src.database.connection import get_db_session
 from src.database.models import User
 from src.services.audit_service import AuditService
-from src.services.auth_service import AuthService
 from src.services.two_factor_service import TwoFactorService
 
 logger = logging.getLogger("mvidarr.fastapi.two_factor")
@@ -71,8 +70,8 @@ class DisableTwoFactorRequest(BaseModel):
 class LoginVerificationRequest(BaseModel):
     """Login verification request model"""
 
-    token: str = Field(..., min_length=6, max_length=6)
-    backup_code: Optional[str] = None
+    ticket: str = Field(..., min_length=1)
+    token: str = Field(..., min_length=6, max_length=8)
 
 
 # ========================================================================================
@@ -101,7 +100,7 @@ async def setup_page(
             return JSONResponse(
                 content={
                     "message": "Two-factor authentication is already enabled for your account.",
-                    "redirect": "/profile",
+                    "redirect": "/settings#twoFactorSection",
                 },
                 status_code=200,
             )
@@ -220,18 +219,14 @@ async def disable_two_factor(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Verify password
-        username = current_user.get("username", "admin")
-        auth_success, _, _, _, _ = AuthService.authenticate_user(
-            username, disable_request.password, "127.0.0.1", "FastAPI-2FA-Disable"
-        )
-
-        if not auth_success:
-            raise HTTPException(status_code=400, detail="Invalid password")
-
-        # Disable 2FA
+        # Disable 2FA. Password is verified inside disable_two_factor
+        # against SimpleAuthService — the live credential store — not
+        # here: a prior version of this endpoint duplicated that check
+        # against the wrong store (User.password_hash, #334) AND passed
+        # disable_request.token instead of .password to the service call
+        # below, so disabling 2FA never actually worked via this endpoint.
         success, message = TwoFactorService.disable_two_factor(
-            user.id, disable_request.token
+            user.id, disable_request.password
         )
 
         if success:
@@ -302,13 +297,18 @@ async def get_two_factor_status(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Get status from service
-        status_data = TwoFactorService.get_user_two_factor_status(user.id)
+        # Get status from service. Note: get_two_factor_status's return
+        # dict has no "last_used" or "setup_date" keys — this codebase
+        # doesn't track either yet, so these always fall through to the
+        # response model's None defaults. Not a regression: they never
+        # had real values before this fix either, since the service call
+        # itself always raised (see git history for the prior bug).
+        status_data = TwoFactorService.get_two_factor_status(user.id)
 
         return TwoFactorStatusResponse(
             enabled=status_data.get("enabled", False),
             last_used=status_data.get("last_used"),
-            backup_codes_remaining=status_data.get("backup_codes_remaining", 0),
+            backup_codes_remaining=status_data.get("backup_codes_count", 0),
             setup_date=status_data.get("setup_date"),
         )
 
@@ -345,13 +345,59 @@ async def verify_page(request: Request):
 @router.post("/api/verify-login")
 async def verify_login(
     verification_request: LoginVerificationRequest,
+    request: Request,
     session: Session = Depends(get_db_session),
 ):
-    """Verify 2FA token during login process - not yet implemented"""
-    raise HTTPException(
-        status_code=501,
-        detail="Two-factor authentication is not yet implemented",
-    )
+    """Complete login by verifying a 2FA token for a user pending verification"""
+    try:
+        user_id = TwoFactorService.consume_pending_ticket(verification_request.ticket)
+        if user_id is None:
+            raise HTTPException(
+                status_code=401, detail="Invalid or expired verification request"
+            )
+
+        user = session.query(User).filter(User.id == user_id).first()
+        if not user or not user.two_factor_enabled:
+            raise HTTPException(status_code=401, detail="Invalid verification request")
+
+        success, message = TwoFactorService.verify_two_factor_login(
+            user.id, verification_request.token
+        )
+
+        if not success:
+            logger.warning(
+                f"2FA login verification failed for user {user.username}: {message}"
+            )
+            raise HTTPException(status_code=401, detail="Invalid verification code")
+
+        from src.services.session_store import SessionStore
+
+        ip_address = request.client.host if request.client else "unknown"
+        session_token = SessionStore.create_session(user.username, ip_address)
+
+        from fastapi.responses import JSONResponse
+
+        response = JSONResponse(
+            content={"success": True, "message": "Login successful"}
+        )
+        is_https = request.headers.get("x-forwarded-proto") == "https"
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            max_age=86400,
+            httponly=True,
+            secure=is_https,
+            samesite="lax",
+        )
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"2FA login verification error: {e}")
+        raise HTTPException(
+            status_code=500, detail="Verification failed due to internal error"
+        )
 
 
 # ========================================================================================

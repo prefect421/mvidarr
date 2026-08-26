@@ -9,11 +9,16 @@ These endpoints handle video download management:
 - Debug download endpoints
 
 Extracted from videos.py as part of the API modularization effort.
-Uses shared utility functions (resolve_video_url) from the parent module.
+The resolve_video_url() helper below wraps
+src.services.video_batch_service.resolve_video_url() (the real,
+working implementation) rather than defining its own resolution
+logic or importing from the parent module.
 
-Authentication: All endpoints require session-based authentication via get_current_user dependency.
+Authentication: All endpoints require session-based authentication via the require_authentication dependency.
 """
 
+import asyncio
+import time
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -21,44 +26,120 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath
 from sqlalchemy.orm import Session, joinedload
 
-from src.api.fastapi.auth_dependencies import get_current_user
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.videos_models import BulkDownloadRequest
 from src.database.connection import get_db_session
 from src.database.models import Artist, Download, Video, VideoStatus
+from src.services.video_batch_service import (
+    claim_video_for_download,
+)
+from src.services.video_batch_service import (
+    resolve_video_url as _resolve_video_url_sync,
+)
 from src.utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_downloads")
 
 
-async def resolve_video_url(video: Video, session: Session) -> Optional[str]:
+async def resolve_video_url(
+    video: Video, session: Session, timeout: int = 30
+) -> Optional[str]:
     """
-    Helper function to resolve video URL using yt-dlp search
+    Resolve a video's download URL via yt-dlp search, off the event loop.
 
-    This is a placeholder - the actual implementation should be imported
-    from the main videos module or moved to a shared utilities module.
+    #380.1: this used to import a same-named function from
+    src.api.fastapi.videos, which does not define one -- every call
+    raised ImportError. The real, working implementation lives in
+    video_batch_service.resolve_video_url() (checks video.url, falls
+    back to video.youtube_url, then does a live yt-dlp search as a
+    last resort, persisting the result on success). It is synchronous
+    (a blocking subprocess.run call), so it's run via asyncio.to_thread
+    here rather than awaited directly -- awaiting a non-coroutine would
+    raise a TypeError, and calling it bare would block this async
+    handler's event loop for up to `timeout` seconds.
 
     Args:
         video: Video object
         session: Database session
+        timeout: Max seconds to wait for the yt-dlp search subprocess,
+            default 30. Callers resolving many videos in a loop (e.g.
+            bulk_download_videos()) should pass a shorter value.
 
     Returns:
         str: Resolved URL or None
     """
-    # Import from parent module to avoid duplication
-    from src.api.fastapi.videos import resolve_video_url as _resolve_video_url
+    return await asyncio.to_thread(_resolve_video_url_sync, video, session, timeout)
 
-    return await _resolve_video_url(video, session)
+
+def _stored_video_url(video: Video, missing_value: Any = None) -> Any:
+    """Return a video's already-stored URL, without any live resolution.
+
+    #387: the 5 call sites this replaces all computed this inline as:
+
+        video.url
+        or video.youtube_url
+        or f"https://youtube.com/watch?v={video.youtube_id}"
+        if hasattr(video, "youtube_id") and video.youtube_id
+        else None
+
+    Python's conditional expression binds looser than `or`, so that
+    parsed as `(url or youtube_url or f"...") if youtube_id else None`
+    -- the youtube_id check gated the ENTIRE or-chain, not just the
+    f-string fallback. A video with `url` set but no `youtube_id`
+    therefore evaluated to None, discarding a perfectly usable stored
+    URL (harmless in practice only because every caller's next step,
+    resolve_video_url(), independently re-checks video.url first).
+    Correctly parenthesized here: the youtube_id ternary only governs
+    the final fallback branch.
+
+    Live-reported (#452 follow-up): video_discovery_service.py's
+    _search_imvdb_for_artist() stores an IMVDb metadata *page* URL
+    (https://imvdb.com/video/<id>) in video.url as an explicit
+    "placeholder" fallback when IMVDb has no linked YouTube source --
+    not a URL yt-dlp can ever download. Treated as valid here, it
+    reached yt-dlp and failed with a confusing "No strategy available
+    for URL" instead of the clear "No valid URL found for video" every
+    call site already raises when there's genuinely nothing to try.
+    """
+    url = video.url if video.url and not _is_imvdb_placeholder(video.url) else None
+    return (
+        url
+        or video.youtube_url
+        or (
+            f"https://youtube.com/watch?v={video.youtube_id}"
+            if hasattr(video, "youtube_id") and video.youtube_id
+            else missing_value
+        )
+    )
+
+
+def _is_imvdb_placeholder(url: str) -> bool:
+    """True for the specific IMVDb metadata-page pattern
+    video_discovery_service.py stores as a non-downloadable fallback
+    (https://imvdb.com/video/<id>) -- not a blanket match on the
+    imvdb.com domain, which also hosts other, unrelated page types."""
+    return "imvdb.com/video/" in url
 
 
 # ========================================================================================
 # DOWNLOAD OPERATIONS
 # ========================================================================================
 
+# bulk_download_videos() resolves URLs for potentially many videos in a
+# single request, each via a live yt-dlp search subprocess (#379.3). A
+# per-video timeout shorter than resolve_video_url()'s 30s default, plus
+# an overall wall-clock budget for the whole batch, keeps one slow/stuck
+# request from ballooning into a many-minutes-long request.
+BULK_URL_RESOLUTION_TIMEOUT_SECONDS = 10
+BULK_URL_RESOLUTION_BUDGET_SECONDS = 60
+
 
 @router.post("/bulk/download")
 async def bulk_download_videos(
-    request: BulkDownloadRequest = Body(...), session: Session = Depends(get_db_session)
+    request: BulkDownloadRequest = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Bulk download videos"""
     try:
@@ -73,13 +154,17 @@ async def bulk_download_videos(
 
         queued_count = 0
         skipped_count = 0
+        failed_count = 0
         errors = []
+        url_resolution_time_used = 0.0
 
         for video in videos:
+            claimed = False
+            original_status = None
             try:
                 video_id = video.id  # Store ID before any operations
                 # Skip if already downloaded
-                if video.status == "downloaded":
+                if video.status == VideoStatus.DOWNLOADED:
                     skipped_count += 1
                     continue
 
@@ -98,21 +183,55 @@ async def bulk_download_videos(
                     continue
 
                 # Validate and resolve video URL
-                video_url = (
-                    video.url
-                    or video.youtube_url
-                    or f"https://youtube.com/watch?v={video.youtube_id}"
-                    if hasattr(video, "youtube_id") and video.youtube_id
-                    else None
-                )
+                video_url = _stored_video_url(video)
 
                 if not video_url:
-                    # Try to resolve URL
-                    resolved_url = await resolve_video_url(video, session)
+                    if url_resolution_time_used >= BULK_URL_RESOLUTION_BUDGET_SECONDS:
+                        errors.append(
+                            f"Video {video_id}: Skipped URL resolution "
+                            f"(bulk request's {BULK_URL_RESOLUTION_BUDGET_SECONDS}s "
+                            f"resolution time budget exhausted)"
+                        )
+                        continue
+                    resolution_start = time.monotonic()
+                    resolved_url = await resolve_video_url(
+                        video, session, timeout=BULK_URL_RESOLUTION_TIMEOUT_SECONDS
+                    )
+                    url_resolution_time_used += time.monotonic() - resolution_start
                     if not resolved_url:
                         errors.append(f"Video {video_id}: No valid URL found")
                         continue
                     video_url = resolved_url
+
+                from src.services.video_batch_service import (
+                    claim_video_for_redownload,
+                )
+
+                # Refresh before capturing. This does NOT by itself
+                # guarantee a fresh read: with no isolation_level set,
+                # MariaDB/InnoDB defaults to REPEATABLE READ, so a plain
+                # SELECT inside an already-open transaction (true for the
+                # FIRST video here) still returns that transaction's
+                # original snapshot. For videos 2+, it's the PRIOR video's
+                # commit (#377) that actually makes the read fresh. Real
+                # correctness against a concurrent status change comes
+                # from the atomic row-locked UPDATE inside the claim call
+                # below, not from this refresh (#379).
+                session.refresh(video, attribute_names=["status"])
+                # Capture the real pre-claim status so a revert (below)
+                # restores it exactly, rather than assuming WANTED -- the
+                # claim below can succeed from FAILED, MONITORED, or
+                # DOWNLOADED too (#377).
+                original_status = video.status
+
+                # #457: synchronous, can block on an InnoDB row lock --
+                # run on a worker thread, not the shared event loop, so
+                # a lock wait degrades to a slow request instead of
+                # freezing the entire application.
+                if not await asyncio.to_thread(claim_video_for_redownload, video_id):
+                    skipped_count += 1
+                    continue
+                claimed = True
 
                 # Create download entry with all required fields
                 download = Download(
@@ -128,15 +247,41 @@ async def bulk_download_videos(
                 session.add(download)
                 session.flush()  # Get the download ID
 
-                # Update video status to downloading
-                video.status = VideoStatus.DOWNLOADING
-                video.updated_at = datetime.utcnow()
+                # Commit per-video, immediately after the flush above,
+                # instead of once at the very end of the whole loop
+                # (#377). Two reasons:
+                #   1. The claim above already committed
+                #      status=DOWNLOADING durably on its own connection.
+                #      If this session's terminal commit lived at the end
+                #      of the loop instead and *that* commit failed, every
+                #      Download row staged across the entire batch would
+                #      be discarded while every claim in the batch stayed
+                #      durably committed -- stranding the whole batch at
+                #      DOWNLOADING with zero Download rows.
+                #   2. Narrows the lock hold time on this FK-referencing
+                #      flush/commit to a single row, rather than holding
+                #      it open across the whole batch concurrent with
+                #      claims taking exclusive locks on separate
+                #      connections from other requests (deadlock risk).
+                session.commit()
 
-                # Submit job to ytdlp_service
+                # Submit job to ytdlp_service. #379.6: revert on ANY
+                # dispatch failure now -- both a raised exception and a
+                # falsy/{"success": False} result -- not just leave the
+                # video at DOWNLOADING and the Download row at "queued"
+                # forever either way. #377 deliberately left this
+                # unhandled, reasoning the Download row was enough of a
+                # paper trail; on reflection a permanently-stuck
+                # DOWNLOADING/"queued" pair with no explanation is the
+                # same "stuck forever" problem #329 and #377 both exist
+                # to close. Mirrors download_all_wanted_videos_internal()
+                # (video_batch_service.py, #329) as closely as this
+                # function's shape allows.
+                dispatch_error_message = None
+                result = None
                 try:
                     from src.services.download_service_adapter import ytdlp_service
 
-                    # Submit to ytdlp_service with download options
                     result = ytdlp_service.add_music_video_download(
                         artist=video.artist.name if video.artist else "Unknown Artist",
                         title=video.title,
@@ -146,32 +291,113 @@ async def bulk_download_videos(
                         video_id=video_id,
                         download_id=download.id,
                     )
-
-                    logger.info(
-                        f"✅ Submitted bulk download job {result.get('download_id')} for video {video_id}"
-                    )
-
                 except Exception as download_error:
+                    dispatch_error_message = str(download_error)
                     logger.error(
                         f"Failed to submit download task for video {video_id}: {download_error}"
                     )
-                    # Still count as queued since it's in the database
 
-                queued_count += 1
+                if result and result.get("success"):
+                    logger.info(
+                        f"✅ Submitted bulk download job {result.get('id')} for video {video_id}"
+                    )
+                    queued_count += 1
+                else:
+                    if dispatch_error_message is None:
+                        dispatch_error_message = (
+                            result.get("error", "Unknown dispatch error")
+                            if result
+                            else "Unknown dispatch error"
+                        )
+                    # This assignment only emits an UPDATE because the
+                    # earlier session.commit() above expired `video`
+                    # (expire_on_commit=True, the sessionmaker default in
+                    # src/database/connection.py) -- it re-sets a value
+                    # the attribute would otherwise already hold. If that
+                    # default ever changes, this write silently no-ops,
+                    # stranding the video at DOWNLOADING.
+                    video.status = original_status
+                    download.status = "failed"
+                    download.error_message = dispatch_error_message
+                    session.commit()
+                    errors.append(f"Video {video_id}: {dispatch_error_message}")
+                    failed_count += 1
+                    logger.error(
+                        f"Dispatch failed for video {video_id}, reverted to "
+                        f"{original_status}: {dispatch_error_message}"
+                    )
 
             except Exception as e:
                 video_id = getattr(video, "id", "unknown")  # Safe ID retrieval
                 errors.append(f"Video {video_id}: {str(e)}")
                 logger.error(f"Error queuing download for video {video_id}: {e}")
+                # Roll back this request's shared session before moving on
+                # to the next video in the loop. Unlike
+                # download_all_wanted_videos_internal()'s precedent (which
+                # opens a brand-new get_db() session per iteration, so a
+                # failure there can't affect the next video), this endpoint
+                # loops over one FastAPI-injected session shared across the
+                # whole batch. A failed flush/commit above leaves that
+                # shared session in a pending-rollback state; without this
+                # rollback, every subsequent iteration's session.query/add
+                # would raise PendingRollbackError -- the same
+                # whole-batch-lost failure mode Finding 1 closes for
+                # video_discovery_service.py, just reachable here too.
+                try:
+                    session.rollback()
+                except Exception:
+                    pass
+                if claimed and original_status is not None:
+                    # The claim above already committed DOWNLOADING
+                    # durably on its own connection before whatever raised
+                    # here. Revert it using a *fresh* session, not this
+                    # request's own `session` -- it may be in a broken
+                    # transaction state after whatever raised (e.g. a
+                    # flush/commit failure), mirroring
+                    # download_all_wanted_videos_internal()'s
+                    # revert-via-fresh-session pattern (#329/#377). Without
+                    # this, the video is stuck at DOWNLOADING forever:
+                    # invisible to every status == WANTED query, never
+                    # retried by any subsequent run.
+                    try:
+                        from src.database.connection import get_db
 
-        session.commit()
+                        with get_db() as revert_session:
+                            revert_video = (
+                                revert_session.query(Video)
+                                .filter(Video.id == video_id)
+                                .first()
+                            )
+                            if revert_video:
+                                revert_video.status = original_status
+                                revert_session.commit()
+                    except Exception as revert_error:
+                        logger.error(
+                            f"Failed to revert video {video_id} to "
+                            f"{original_status} after bulk download "
+                            f"exception: {revert_error}"
+                        )
 
-        logger.info(f"Bulk queued {queued_count} downloads, skipped {skipped_count}")
+        logger.info(
+            f"Bulk queued {queued_count} downloads, skipped {skipped_count}, "
+            f"failed {failed_count}"
+        )
 
         result = {
+            # Live-reported 2026-08-21: this response never included a
+            # "success" key, unlike every sibling endpoint in this file.
+            # The frontend's bulkDownloadSelected() (artist_detail.html)
+            # branches on `if (data.success)` -- with that key always
+            # undefined (falsy), it *always* showed "Error: undefined",
+            # even when the batch genuinely queued videos successfully.
+            # True here means "the batch ran to completion without a
+            # fatal server error" -- per-video outcomes are already
+            # reported via queued_count/skipped_count/failed_count.
+            "success": True,
             "message": "Bulk download completed",
             "queued_count": queued_count,
             "skipped_count": skipped_count,
+            "failed_count": failed_count,
             "total_requested": len(request.video_ids),
         }
 
@@ -192,6 +418,7 @@ async def bulk_download_videos(
 async def queue_video_download(
     video_id: int = FastAPIPath(..., ge=1),
     request: Dict[str, Any] = Body(default={}),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Queue video download with flexible validation"""
@@ -258,33 +485,93 @@ async def queue_video_download(
                     status_code=400, detail="Could not resolve video URL for download"
                 )
 
-        # Create download entry
-        download = Download(
-            artist_id=video.artist_id,
-            video_id=video_id,
-            title=video.title,
-            original_url=(
-                video.url
-                or video.youtube_url
-                or f"https://youtube.com/watch?v={video.youtube_id}"
-                if hasattr(video, "youtube_id") and video.youtube_id
-                else "Unknown URL"
-            ),
-            status="queued",
-            priority=priority,
-            created_at=datetime.utcnow(),
-        )
+        # Claim the video for (re)download now that the URL has been
+        # resolved. Claiming any earlier (e.g. before URL resolution)
+        # risks permanently stranding the video in DOWNLOADING if
+        # resolution then fails, since the claim commits its own
+        # independent transaction immediately (#377).
+        #
+        # Claim BEFORE staging the Download row below, not after (fixed
+        # live-reported self-deadlock, 2026-08-20): downloads.video_id
+        # has a real, enforced FK to videos.id, so staging (and
+        # flushing) the Download row on this request's own `session`
+        # connection takes an InnoDB lock on the video's row that isn't
+        # released until this same request's later session.commit().
+        # That claim call deliberately opens a *separate*
+        # connection to UPDATE that exact row (see its docstring) -- with
+        # the Download row staged first, that second connection queued
+        # behind its own request's uncommitted lock and could only fail,
+        # every time, once MariaDB's innodb_lock_wait_timeout expired.
+        # Matches bulk_download_videos()'s already-correct claim-then-
+        # stage order (#377).
+        original_status = video.status
 
-        session.add(download)
+        from src.services.video_batch_service import claim_video_for_redownload
 
-        # Update video status
-        video.status = VideoStatus.DOWNLOADING
-        video.updated_at = datetime.utcnow()
-
-        session.commit()
+        # #457: synchronous, can block on an InnoDB row lock -- run on a
+        # worker thread, not the shared event loop, so a lock wait
+        # degrades to a slow request instead of freezing the entire
+        # application.
+        if not await asyncio.to_thread(claim_video_for_redownload, video_id):
+            # claim_video_for_redownload() returns False both when the
+            # video genuinely lost a race to a concurrent claim AND when
+            # the claim attempt itself errored (live-observed: a
+            # transient `Lock wait timeout exceeded` DB error) -- it
+            # can't distinguish the two from its own return value alone.
+            # Re-check the video's actual status to tell them apart:
+            # only a real DOWNLOADING status means "someone else is
+            # already downloading this." Anything else means the claim
+            # failed for an unrelated reason, and telling the caller
+            # "it's already downloading" would be actively misleading --
+            # nothing is actually in progress, and the user is left with
+            # no record of the failed attempt at all.
+            session.refresh(video, attribute_names=["status"])
+            if video.status == VideoStatus.DOWNLOADING:
+                return {
+                    "message": "Video is currently downloading",
+                    "video_id": video_id,
+                    "download_id": None,
+                }
+            # Not a genuine race loss -- clear this session's transaction
+            # (nothing is staged on it yet at this point; the Download
+            # row is only created after a successful claim, below) and
+            # report a real, retriable error so the failure is visible
+            # instead of silent.
+            session.rollback()
+            return {
+                "success": False,
+                "error": "Failed to claim video for download (a database error occurred). Please try again.",
+                "video_id": video_id,
+                "download_id": None,
+            }
 
         # Submit download to unified service via ytdlp_service adapter
         try:
+            # Create the download record. Staged only now, after the
+            # claim above already succeeded and committed on its own
+            # connection -- staging it earlier self-deadlocked this same
+            # request (see the comment above the claim call).
+            download = Download(
+                artist_id=video.artist_id,
+                video_id=video_id,
+                title=video.title,
+                original_url=_stored_video_url(video, missing_value="Unknown URL"),
+                status="queued",
+                priority=priority,
+                created_at=datetime.utcnow(),
+            )
+            session.add(download)
+
+            # Persist the staged Download row now that the claim has
+            # succeeded. This commit lives inside this try block (not
+            # before it) so that if it raises -- lock timeout, transient
+            # DB error, constraint violation -- the except handler below
+            # still reverts video.status back to original_status instead
+            # of leaving the video permanently stranded at DOWNLOADING,
+            # since the claim already committed that write durably on its
+            # own separate connection (#377).
+            session.commit()
+
             from src.services.download_service_adapter import ytdlp_service
             from src.services.settings_service import settings
 
@@ -293,13 +580,7 @@ async def queue_video_download(
             subtitle_languages = settings.get("subtitle_languages", "en,en-US")
 
             # Get video URL
-            video_url = (
-                video.url
-                or video.youtube_url
-                or f"https://youtube.com/watch?v={video.youtube_id}"
-                if hasattr(video, "youtube_id") and video.youtube_id
-                else None
-            )
+            video_url = _stored_video_url(video)
 
             if not video_url:
                 raise ValueError("No valid URL found for video")
@@ -316,16 +597,58 @@ async def queue_video_download(
                 download_id=download.id,
             )
 
+            # #383: revert on a falsy/{"success": False} dispatch result
+            # too, not just a raised exception -- DownloadServiceAdapter.
+            # add_music_video_download() wraps its whole body in
+            # try/except and returns {"success": False, "error": ...} on
+            # failure rather than propagating; the except block below
+            # only ever catches something *raised*. Without this check,
+            # a graceful dispatch failure left the video stuck at
+            # DOWNLOADING with a "queued" Download row forever. Mirrors
+            # bulk_download_videos()'s #379.6 fix and the identical fix
+            # in queue_download_video() below.
+            if not (result and result.get("success")):
+                dispatch_error_message = (
+                    result.get("error", "Unknown dispatch error")
+                    if result
+                    else "Unknown dispatch error"
+                )
+                logger.error(
+                    f"Dispatch failed for video {video_id}: {dispatch_error_message}"
+                )
+                video.status = original_status
+                download.status = "failed"
+                download.error_message = dispatch_error_message
+                session.commit()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to start download: {dispatch_error_message}",
+                )
+
             logger.info(
                 f"Submitted download to unified service for video {video_id}: {result}"
             )
 
+        except HTTPException:
+            raise
         except Exception as download_error:
             logger.error(
                 f"Failed to submit download to unified service for video {video_id}: {download_error}"
             )
-            # Rollback video status if download submission failed
-            video.status = VideoStatus.WANTED
+            # Revert to the video's real pre-claim status, not a hardcoded
+            # WANTED -- claim_video_for_redownload() can claim from FAILED,
+            # MONITORED, or DOWNLOADED too (#377), and blindly reverting a
+            # retried FAILED video to WANTED would silently enroll it in the
+            # auto-download queue.
+            video.status = original_status
+            # Match the falsy-result branch above: mark the Download row
+            # failed here too, not just the video's status. Left as
+            # "queued" before this fix, a Download row from a raised
+            # (not merely falsy) dispatch failure would still show up as
+            # a phantom in-progress entry in the Download Queue widget
+            # for up to 2 hours (see metube.py's get_download_queue()).
+            download.status = "failed"
+            download.error_message = str(download_error)
             session.commit()
             raise HTTPException(
                 status_code=500,
@@ -351,6 +674,7 @@ async def queue_video_download(
 async def queue_video_download_debug(
     video_id: int = FastAPIPath(..., ge=1),
     request: Dict[str, Any] = Body(default={}),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Debug version of video download bypassing validation"""
@@ -402,6 +726,7 @@ async def queue_video_download_debug(
 @router.post("/{video_id}/queue-download")
 async def queue_download_video(
     video_id: int = FastAPIPath(..., ge=1),
+    current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
     """Queue video download via Celery processor"""
@@ -465,29 +790,92 @@ async def queue_download_video(
         download_subtitles = settings.get_bool("download_subtitles", False)
         subtitle_languages = settings.get("subtitle_languages", "en,en-US")
 
-        # Create download record in database for Celery to process
-        download = Download(
-            artist_id=video.artist_id,
-            video_id=video_id,
-            title=video.title,
-            original_url=youtube_url,
-            status="queued",
-            quality="best",
-            priority=1,
-            created_at=datetime.utcnow(),
-        )
+        # Claim the video for (re)download now that the YouTube URL has
+        # been confirmed. Claiming any earlier (e.g. before the
+        # URL-availability check) risks permanently stranding the video
+        # in DOWNLOADING if that check then fails, since the claim
+        # commits its own independent transaction immediately (#377).
+        #
+        # Claim BEFORE staging the Download row below, not after (fixed
+        # live-reported self-deadlock, 2026-08-20): downloads.video_id
+        # has a real, enforced FK to videos.id, so staging (and
+        # flushing) the Download row on this request's own `session`
+        # connection takes an InnoDB lock on the video's row that isn't
+        # released until this same request's later session.commit().
+        # That claim call deliberately opens a *separate*
+        # connection to UPDATE that exact row (see its docstring) -- with
+        # the Download row staged first, that second connection queued
+        # behind its own request's uncommitted lock and could only fail,
+        # every time, once MariaDB's innodb_lock_wait_timeout expired.
+        # Matches bulk_download_videos()'s already-correct claim-then-
+        # stage order above (#377).
+        original_status = video.status
 
-        session.add(download)
-        session.flush()  # Get the download ID
+        from src.services.video_batch_service import claim_video_for_redownload
 
-        # Update video status
-        video.status = VideoStatus.DOWNLOADING
-        video.updated_at = datetime.utcnow()
-
-        session.commit()
+        # #457: synchronous, can block on an InnoDB row lock -- run on a
+        # worker thread, not the shared event loop, so a lock wait
+        # degrades to a slow request instead of freezing the entire
+        # application.
+        if not await asyncio.to_thread(claim_video_for_redownload, video_id):
+            # See queue_video_download()'s identical comment above:
+            # claim_video_for_redownload() returning False doesn't by
+            # itself distinguish a genuine race loss from an unrelated
+            # claim error (live-observed: a transient DB lock-wait
+            # timeout). Re-check the video's real status before deciding
+            # which message is actually true.
+            session.refresh(video, attribute_names=["status"])
+            if video.status == VideoStatus.DOWNLOADING:
+                return {
+                    "success": True,
+                    "message": "Video is currently downloading",
+                    "video_id": video_id,
+                    "status": "already_downloading",
+                }
+            # Not a genuine race loss -- clear this session's transaction
+            # (nothing is staged on it yet at this point; the Download
+            # row is only created after a successful claim, below) and
+            # report a real, retriable error instead of a misleading
+            # "already downloading" message with no trace of the failure
+            # anywhere.
+            session.rollback()
+            return {
+                "success": False,
+                "error": "Failed to claim video for download (a database error occurred). Please try again.",
+                "video_id": video_id,
+                "download_id": None,
+            }
 
         # Submit download to unified service via ytdlp_service adapter
         try:
+            # Create the download record for Celery to process. Staged
+            # only now, after the claim above already succeeded and
+            # committed on its own connection -- staging it earlier
+            # self-deadlocked this same request (see the comment above
+            # the claim call).
+            download = Download(
+                artist_id=video.artist_id,
+                video_id=video_id,
+                title=video.title,
+                original_url=youtube_url,
+                status="queued",
+                quality="best",
+                priority=1,
+                created_at=datetime.utcnow(),
+            )
+            session.add(download)
+            session.flush()  # Get the download ID
+
+            # Persist the staged Download row now that the claim has
+            # succeeded. This commit lives inside this try block (not
+            # before it) so that if it raises -- lock timeout, transient
+            # DB error, constraint violation -- the except handler below
+            # still reverts video.status back to original_status instead
+            # of leaving the video permanently stranded at DOWNLOADING,
+            # since the claim already committed that write durably on its
+            # own separate connection (#377).
+            session.commit()
+
             from src.services.download_service_adapter import ytdlp_service
 
             # Submit to unified download service
@@ -501,6 +889,36 @@ async def queue_download_video(
                 video_id=video_id,
                 download_id=download.id,
             )
+
+            # #383: revert on a falsy/{"success": False} dispatch result
+            # too, not just a raised exception -- DownloadServiceAdapter.
+            # add_music_video_download() wraps its whole body in
+            # try/except and returns {"success": False, "error": ...} on
+            # failure rather than propagating; the except block below
+            # only ever catches something *raised*. Without this check,
+            # a graceful dispatch failure left the video stuck at
+            # DOWNLOADING with a "queued" Download row forever, and this
+            # endpoint reported success anyway. Mirrors
+            # bulk_download_videos()'s #379.6 fix and the identical fix
+            # in queue_video_download() above.
+            if not (result and result.get("success")):
+                dispatch_error_message = (
+                    result.get("error", "Unknown dispatch error")
+                    if result
+                    else "Unknown dispatch error"
+                )
+                logger.error(
+                    f"Dispatch failed for video {video_id}: {dispatch_error_message}"
+                )
+                video.status = original_status
+                download.status = "failed"
+                download.error_message = dispatch_error_message
+                session.commit()
+                return {
+                    "success": False,
+                    "error": f"Failed to start download: {dispatch_error_message}",
+                    "video_id": video_id,
+                }
 
             logger.info(
                 f"Successfully submitted download {download.id} for video {video_id} to unified service: {result}"
@@ -518,8 +936,17 @@ async def queue_download_video(
             logger.error(
                 f"Failed to submit download to unified service for video {video_id}: {download_error}"
             )
-            # Rollback video status
-            video.status = VideoStatus.WANTED
+            # Revert to the video's real pre-claim status, not a hardcoded
+            # WANTED -- claim_video_for_redownload() can claim from FAILED,
+            # MONITORED, or DOWNLOADED too (#377), and blindly reverting a
+            # retried FAILED video to WANTED would silently enroll it in the
+            # auto-download queue.
+            video.status = original_status
+            # Match the falsy-result branch above: mark the Download row
+            # failed here too (see queue_video_download()'s identical
+            # comment above for why).
+            download.status = "failed"
+            download.error_message = str(download_error)
             session.commit()
             return {
                 "success": False,
@@ -535,7 +962,9 @@ async def queue_download_video(
 
 @router.post("/bulk/download-wanted")
 async def bulk_download_wanted_videos(
-    request: dict = Body(...), session: Session = Depends(get_db_session)
+    request: dict = Body(...),
+    current_user: dict = Depends(require_authentication),
+    session: Session = Depends(get_db_session),
 ):
     """Download all videos with 'wanted' status"""
     try:
@@ -597,13 +1026,7 @@ async def bulk_download_wanted_videos(
                     continue
 
                 # Check if video has a valid URL before creating download record
-                video_url = (
-                    video.url
-                    or video.youtube_url
-                    or f"https://youtube.com/watch?v={video.youtube_id}"
-                    if hasattr(video, "youtube_id") and video.youtube_id
-                    else None
-                )
+                video_url = _stored_video_url(video)
 
                 # Skip videos without URLs - don't search YouTube in bulk operations as it's too slow
                 if not video_url:
@@ -614,18 +1037,26 @@ async def bulk_download_wanted_videos(
                     skipped_count += 1
                     continue
 
+                # Atomically claim this video before dispatching (#329) --
+                # download_all_wanted_videos_internal() (the Celery-side
+                # equivalent of this function) can run concurrently and
+                # select the same WANTED video; only one of them may win.
+                # A failed claim means another process already has it --
+                # a normal, healthy skip, not an error.
+                # #457: synchronous, can block on an InnoDB row lock --
+                # run on a worker thread, not the shared event loop, so
+                # a lock wait degrades to a slow request instead of
+                # freezing the entire application.
+                if not await asyncio.to_thread(claim_video_for_download, video.id):
+                    skipped_count += 1
+                    continue
+
                 # Create download entry
                 download = Download(
                     artist_id=video.artist_id,
                     video_id=video.id,
                     title=video.title,
-                    original_url=(
-                        video.url
-                        or video.youtube_url
-                        or f"https://youtube.com/watch?v={video.youtube_id}"
-                        if hasattr(video, "youtube_id") and video.youtube_id
-                        else "Unknown URL"
-                    ),
+                    original_url=_stored_video_url(video, missing_value="Unknown URL"),
                     status="queued",
                     quality="best",  # Default quality for wanted videos
                     priority=1,  # Default priority for wanted videos
@@ -635,9 +1066,16 @@ async def bulk_download_wanted_videos(
                 session.add(download)
                 session.flush()  # Ensure download.id is available
 
-                # Update video status to downloading/queued
-                video.status = VideoStatus.DOWNLOADING
-                video.updated_at = datetime.utcnow()
+                # video.status is already DOWNLOADING, committed by
+                # claim_video_for_download() above. We never reassign
+                # video.status anywhere in this loop after the claim, so
+                # SQLAlchemy's dirty-tracking emits no UPDATE for it at
+                # this function's final session.commit() -- the claim
+                # can't be stomped. (A session.refresh() here would not
+                # even see the post-claim value under MariaDB's default
+                # REPEATABLE READ isolation, since this outer session's
+                # snapshot predates the claim -- confirmed during final
+                # review, not worth the round-trip either way.)
 
                 # Create background job for download processing via ytdlp_service
                 try:

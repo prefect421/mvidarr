@@ -39,10 +39,32 @@ data/cookies/
 
 # Virtual environments
 venv/
+venv_temp/
 pdf_env/
 screenshot_env/
 env/
 ENV/
+
+# Stray/orphaned data directories (live data lives in named Docker volumes,
+# never in bind-mounted paths at repo root — see docker-compose.yml)
+/database/
+/volumes/
+
+# Local-only runtime output (real logs live in data/logs/, see above)
+/logs/
+playwright-report/
+
+# git history-rewrite backups (created locally by filter-branch, never intentional to commit)
+.git-rewrite/
+
+# Old pre-refactor file snapshots — git history already has this, no need to track separately
+/backups/
+
+# Syncthing sync-tool metadata (personal environment, not project content)
+.stfolder/
+
+# Claude Code's own working artifacts (skill plan files), not project docs
+docs/superpowers/
 
 # Development files
 debug_*.py
@@ -249,3 +271,6 @@ docs/archive/*TESTING*.md
 docs/archive/*TEST*.md
 
 docker-compose.dev-test.yml
+
+# SDD/worktree scratch (git-ignored)
+.worktrees/

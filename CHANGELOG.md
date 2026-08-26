@@ -7,231 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.24] - 2026-08-09 - Security Sweep
-
 ### Security
-- **CVE-2026-69244 / GHSA-cq5v-8q36-5273** (HIGH): aiohttp 3.14.1 → 3.14.3 — out-of-bounds heap read in the C HTTP response parser error path
-- **CVE-2026-69243 / GHSA-mfx4-hv73-q22v** (MEDIUM): aiohttp 3.14.1 → 3.14.3 — HTTP request smuggling via WebSocket upgrade
-- **CVE-2026-59881 / GHSA-mq44-7p77-q5h7** (MEDIUM): aiohttp 3.14.1 → 3.14.3 — WebSocket client decompressed frames without a negotiated permessage-deflate extension
+- **Duplicate Video Race (#377)**: Added a DB-level unique constraint on `videos.youtube_id` (migration 024) to close a race where two concurrent imports/discoveries of the same YouTube video could each pass the "does this video already exist" pre-check and create two separate rows, each independently triggering its own download. `videos.imvdb_id` already had this protection; `youtube_id` did not.
 
 ### Fixed
-- **#307**: Removed a premature 3-second false-positive "format not supported" warning on MKV/AVI playback that raced against real-time transcoding and destroyed the live video element; the existing 30-second `loadTimeout` already handles genuine load failures
-- **#306** (partial/defensive): `scan_missing_thumbnails()` no longer treats a failed filesystem check (`OSError`) as proof a thumbnail file was deleted — only a clean, confirmed-missing file now clears `thumbnail_path`/`thumbnail_url` from the database, and the checked path is logged for diagnosability. Root cause not fully reproduced; flagged as a candidate fix.
+- **Video Discovery Dedup**: `_store_discovered_video()`'s dedup check is now global on `youtube_id` instead of scoped per-artist, matching the new global uniqueness constraint. A video legitimately found under two different artists (e.g. a collaboration) is now correctly recognized as already existing instead of raising `IntegrityError` and silently discarding the rest of that artist's discovery run.
+- **Bulk Download Revert Path**: `bulk_download_videos()` now reverts a claimed video back to its real pre-claim status if creating its `Download` row or dispatching it fails, instead of leaving it stranded at `DOWNLOADING` forever. The per-video commit also moved from once at the end of the whole batch to immediately after each video's `Download` row is staged, narrowing a commit failure's blast radius from the whole batch to one video.
+- **IMVDb Import Duplicate Handling**: `import_from_imvdb()`'s `IntegrityError` handler now re-queries by `imvdb_id` *or* `youtube_id` (previously `imvdb_id` only), so importing the IMVDb record for a video already discovered via YouTube returns "already exists" instead of a 500.
 
-## [0.12.23] - 2026-08-02 - Dependency Sweep
-
-### Changed
-- **pytest** 9.0.3 → 9.1.1 (dev), **tqdm** 4.68.3 → 4.70.0
-- **sphinx** 7.2.6 → 9.1.0, **sphinx-rtd-theme** 1.3.0 → 3.1.0 (dev-only; rtd-theme bump required to resolve a `sphinx<8` pin conflict)
-- **redis** 8.0.1 → 8.1.0
-- **psutil** 5.9.6 → 7.2.2 (2 major versions) — deferred in v0.12.22 pending its own verification pass; changelog review found no overlap between the 6.0.0/7.0.0 breaking-change list and any psutil API this codebase calls
-
-## [0.12.22] - 2026-07-25 - Dependency Sweep
-
-### Changed
-- **celery** 5.3.4 → 5.6.3, **redis** 5.0.1 → 8.0.1 (3 major versions) — verified live: celery worker/beat ping successfully, job-progress/cache round-trips through `redis_manager` work correctly
-- **sentry-sdk** 2.63.0 → 2.66.1, **imagehash** 4.3.1 → 4.3.2 (dev-only)
-- **CI**: actions/setup-python v6 → v7, actions/labeler v6 → v7, ruby/setup-ruby 1.319.0 → 1.321.0
-
-## [0.12.21] - 2026-07-19 - Dependabot Sweep
-
-### Security
-- **GHSA-4jhm-jv67-739f**: lxml 6.1.0 → 6.1.1 — `xlink:href` URL bypass in embedded SVG/MathML; also bundles libxslt fixes for CVE-2025-7424 / CVE-2025-11731
-- **GHSA-r397-ff8c-wv2g**: aiomysql >=0.2.0 → >=0.3.2 — local_infile load bypass
-
-### Changed
-- **pymysql** 1.1.1 → 1.2.0 (`requirements.txt` + `requirements-fastapi.txt`) — v1.2.0 makes TLS required-by-default when the server supports it; verified against live MariaDB with no regression
-- **marshmallow** 3.26.2 → 4.3.0, **flake8** 6.1.0 → 7.3.0 (dev-only)
-- **CI**: ruby/setup-ruby 1.316.0 → 1.319.0
-
-## [0.12.20] - 2026-07-16 - Fix Stuck Download Queue
-
-### Fixed
-- **"Stop Download" 400 error**: the queue view is built from `Video.status == DOWNLOADING`, but `stop_download` always looked the id up as a `Download` table row, so stopping a stuck video almost always 400'd. Queue ids from videos are now unambiguously tagged (`video_123`) and routed to the right table.
-- **"Force Clear All" reported nothing to clear**: the endpoint only reset videos reachable through a `Download` row still in `queued`/`downloading`/`pending`; a video stuck at `DOWNLOADING` with no such row was invisible to it. It now also resets orphaned stuck videos directly.
-- **Misleading "no stuck downloads found" message**: the frontend's success message depended on a `cleared_count` field the backend never sent, so it always claimed nothing was found. Backend now returns the real count.
-
-## [0.12.19] - 2026-07-16 - YouTube Max-Quality Downloads & Dead-URL Recovery
-
-Core fix contributed by **@Ktell123** in [#282](https://github.com/prefect421/mvidarr/pull/282).
-
-### Fixed
-- **Anti-detection setting ignored**: `enable_aggressive_anti_detection` was read with `settings.get()`, which returns the string `'False'` — truthy in Python — forcing AGGRESSIVE anti-detection (and the Android YouTube client) on every download and capping quality at ~360p. Now uses `settings.get_bool()`.
-- **Retry file-preservation bug** (found in code review): the low-res retry logic deleted the original download's file before confirming the retry actually succeeded or was better, so a failed or worse retry could report success while pointing at a deleted file. Fixed, with 16 new unit tests covering the retry paths.
-
-### Changed
-- **Player client priority**: prefer `web,mweb,tv` YouTube clients over android-first clients that hide adaptive HD/4K formats
-- **Format selection**: yt-dlp Node JS runtime + resolution-first format sort (`-S res,br`), improved `best` format string, automatic MODERATE retry when an escalated (AGGRESSIVE/STEALTH) download still lands at ≤360p
-
-### Added
-- **Dead YouTube URL recovery**: when a stored YouTube URL is private, unavailable, or terminated, MVidarr now searches for an official alternate upload, persists the new URL, and retries the download once
-
-## [0.12.18] - 2026-07-05 - Dependency Sweep
-
-### Changed
-- **fastapi** 0.138.1 → 0.139.0, **Pillow** 12.2.0 → 12.3.0, **opencv-python-headless** >=4.13.0.92 → >=5.0.0.93
-- **click** 8.1.7 → 8.4.2, **tqdm** 4.66.3 → 4.68.3
-- **CI**: ruby/setup-ruby 1.314.0 → 1.315.0
-
-### Fixed
-- `release.yml` now tolerates pre-existing release tags (skips create if already exists)
-
-## [0.12.17] - 2026-06-27 - Security Sweep
-
-### Security
-- **GHSA-4xgf-cpjx-pc3j** (MEDIUM): pydantic-settings 2.14.1 → 2.14.2 — `NestedSecretsSettingsSource` symlink traversal; also fixed in `requirements-fastapi.txt` (a stale pin was silently downgrading httpx in Docker)
-
-### Changed
-- **fastapi** 0.136.3 → 0.138.1, **alembic** 1.18.4 → 1.18.5, **httpx** 0.25.2 → 0.28.1, **python-slugify** 8.0.1 → 8.0.4
-- **mypy** 1.7.1 → 2.1.0 (dev-only, not run in CI), **CI**: actions/cache v5 → v6, ruby/setup-ruby 1.313.0 → 1.314.0
-
-## [0.12.16] - 2026-06-19 - Security Sweep
-
-### Security
-- **CVE-2026-53539** (HIGH, CVSS 7.5): python-multipart 0.0.27 → 0.0.32 — quadratic CPU DoS via semicolon separators
-- **Dependabot #20** (MEDIUM, CVSS 6.1): bleach 6.1.0 → 6.4.0 — `formaction` URI scheme bypass
-- **CVE-2026-53538** (LOW): python-multipart — semicolon field separator parameter smuggling
-- **CVE-2026-53537** (LOW): python-multipart — Content-Disposition RFC 2231 smuggling
-- **CVE-2026-45152** (LOW): python-multipart — negative Content-Length buffers body
-- **Dependabot #19** (LOW): bleach — Unicode >U+00A0 URI sanitization bypass
-
-### Changed
-- **sentry-sdk** 2.8.0 → 2.63.0 (FastAPI 0.137 compat fix), **starlette** floor >=1.2.1 → >=1.3.1
-- **CI**: actions/checkout v6 → v7
-
-## [0.12.15] - 2026-06-06 - Security Sweep
-
-### Security
-- **CVE-2026-34993** (MEDIUM): aiohttp 3.13.4 → 3.14.0 — `CookieJar.load()` deserialization RCE
-- **CVE-2026-47265** (MEDIUM): aiohttp 3.13.4 → 3.14.0 — cross-origin redirect leaks per-request cookies
-
-### Changed
-- **bcrypt** 4.1.2 → 5.0.0 — breaking: passwords >72 bytes now raise `ValueError`; guard added in auth service
-- **requests** 2.33.0 → 2.34.2, **alembic** 1.13.1 → 1.18.4, **zeroconf** 0.149.7 → 0.149.16
-- **CI**: GitHub Actions Node 24 — docker/metadata-action@v6, upload-pages-artifact@v5, labeler@v6, label-actions@v5, lock-threads@v6
-
-## [0.12.14] - 2026-06-02 - Security Sweep
-
-### Security
-- **PYSEC-2026-179/178/177/176/175**: PyJWT 2.12.0 → 2.13.0 — HMAC algorithm confusion, detached JWS DoS, unbounded JWKS unauthenticated DoS, algorithm allow-list bypass via PyJWK, PyJWKClient SSRF via file://, ftp://, data://
-
-### Fixed
-- 3 stale Trivy code scanning alerts (zeroconf CVE-2026-47180/83/84) cleared via fresh scan
-
-## [0.12.13] - 2026-06-01 - Video Streaming Fix
-
-### Fixed
-- Streaming 404 errors — `find_relocated_video()` used `getattr(file_path)` returning `None`, silently ignoring `local_path`
-- Streaming 404 errors — added `Config.BASE_DIR`-anchored path fallback for relative `local_path` values in Docker
-- Both `stream` and `stream-transcode` endpoints patched
-
-## [0.12.12] - 2026-06-01 - Dependabot Sweep + Python 3.14
-
-### Changed
-- Python base image 3.12-slim → 3.14-slim (verified: netifaces, mysqlclient, moviepy compile cleanly)
-- **aiofiles** 23.2.1 → 25.1.0, **starlette** ≥1.2.1, **python-dateutil** 2.9.0.post0, **werkzeug** 3.1.8, **PyYAML** 6.0.3
-- **CI**: Actions Node.js 24 — checkout@v6, login-action@v4, build-push-action@v7, github-script@v9, deploy-pages@v5
-
-## [0.12.11] - 2026-06-01 - Security Sweep + CI Modernization
-
-### Security
-- **CVE-2026-47180, CVE-2026-47183, CVE-2026-47184**: zeroconf 0.132.2 → 0.149.7 — LAN-local DoS/OOM via mDNS flood
-- **PYSEC-2026-161**: starlette ≥1.0.1 — Host header injection / authentication bypass
-
-### Changed
-- **fastapi** 0.123.0 → 0.136.3, **pydantic** 2.5.0 → 2.13.4, **pydantic-settings** 2.1.0 → 2.14.1, **typing-inspection** ≥0.4.2
-- **CI**: GitHub Actions v4 → Node.js 24 (checkout@v5, cache@v5, setup-python@v6, upload-artifact@v7, codecov@v6)
-
-### Fixed
-- codecov `file:` → `files:` input rename (Unexpected input warnings)
-
-## [0.12.10] - 2026-05-16 - Security Sweep
-
-### Security
-- **CVE-2026-44432** (HIGH, CVSS 7.5): urllib3 2.6.3 → 2.7.0 — decompression-bomb bypass
-- **CVE-2026-44431** (HIGH, CVSS 5.3): urllib3 2.6.3 → 2.7.0 — sensitive header forwarding
-
-### Fixed
-- pytest-asyncio 0.23.8 → 1.3.0 (0.x incompatible with pytest 9.x, broke pip-audit + test suite)
-- pytest-playwright 0.4.3 → 0.7.2 (required for pytest 9.x compatibility)
-
-### Changed
-- Dockerfile: added `--timeout 120` to pip install for reliable builds on slow connections
-
-## [0.12.9] - 2026-05-11 - YouTube Quota & Discovery Improvements
-
-### Changed
-- Reduced YouTube searches from 4 to 2 per artist for quota efficiency
-- Quota enforcement with file locking in `YouTubeQuotaTracker`
-- Per-artist `last_discovery` committed after each artist to survive interrupted runs
-
-## [0.12.8] - 2026-05-07 - Security Patches
-
-### Security
-- **CVE-2026-41066** (HIGH): lxml 4.9.3 → 6.1.0 — XXE local file read
-- **CVE-2026-42561** (MEDIUM): python-multipart 0.0.26 → 0.0.27 — DoS via header parsing
-- **CVE-2026-28684** (MEDIUM): python-dotenv 1.0.0 → 1.2.2 — symlink arbitrary file overwrite
-
-### Fixed
-- broken `-r requirements-prod.txt` include in `requirements-dev.txt` → `-r requirements.txt`
-- isort import ordering corrected across `src/`
-
-## [0.12.7] - 2026-04-16 - Dependency Cleanup & Test Infrastructure
-
-### Security
-- 5 CVEs resolved (python-multipart, Pillow, pytest)
-
-### Changed
-- Removed sphinx from production runtime (dev-only)
-- pytest-cov 4.1.0 → 7.1.0 for pytest 9.x compatibility
-
-## [0.12.6] - 2026-04-09 - Security Dependency Updates
-
-### Security
-- **CVE-2026-25645** (MEDIUM): requests 2.32.4 → 2.33.0 — predictable temporary file creation
-- **CVE-2026-22815/34513-34520**: aiohttp 3.13.3 → 3.13.4 — multiple DoS and injection fixes
-- 12 CVEs total resolved
-
-## [0.12.5] - 2026-03-19 - Security & Bug Fixes
-
-### Security
-- **CVE-2026-32597**: PyJWT 2.8.0 → 2.12.0 — missing `crit` header validation
-- **CVE-2026-32274**: black 24.3.0 → 26.3.1 — arbitrary cache file write
-- Removed black from runtime requirements (dev tool only)
-
-### Fixed
-- Docker `git_branch` always unknown — `version.json` now read first in health endpoint
-- Docker ERROR log spam from missing git binary on every health check
-- Installation wizard credentials now applied to login (#199)
-- Thumbnail download on video completion (#200)
-
-## [0.12.4] - 2026-02-26 - Scheduler & Auto-Download Fixes
-
-### Security
-- **CVE-2026-27205**: Flask 3.1.1 → 3.1.3 in docker/monitor (Vary: Cookie)
-- **CVE-2026-27199**: werkzeug → 3.1.6 (Windows device names in `safe_join`)
-- **CVE-2026-25990**: Pillow → 12.1.1 (out-of-bounds write on PSD images)
-- Replaced python-jose/ecdsa (CVE-2024-23342) with PyJWT
-
-### Fixed
-- Celery connection check no longer hangs — 2s timeout + ps fallback
-- `trigger/discovery` and `trigger/downloads` no longer 500 after 19s timeout
-- Metadata enrichment endpoints no longer block the async event loop
-- Job progress bar stuck at 0% — nested progress object now parsed correctly
-- Job completion not detected — status normalized to lowercase
-- Auto-download scheduling priority was computed but then discarded
-- `auto_download_max_videos` raised from 10 → 50
-- Pre-v0.10.1 artists with NULL `download_enabled` excluded from download queue
-- MONITORED videos never promoted to WANTED when artist enables `auto_download`
-- Plain "Artist - Song" titles classified as None type, blocked by `allowed_video_types`
-- Videos no longer set to WANTED for monitor-only artists
-- `allowed_video_types` and 20+ other artist fields now save correctly
-
-### Changed
-- Default: Official Music Video pre-selected for all artists
-
-### Migration
-- Migration 004: backfill NULL Scheduler V2 fields for all existing artists
+### Migration Notes
+- **Before deploying this release**, check production for pre-existing duplicate `youtube_id` values -- migration 024 will refuse to start the application if any are found (with an actionable error naming the exact values and remediation SQL), rather than starting with a defective/blocked migration:
+  ```sql
+  SELECT youtube_id, COUNT(*) c FROM videos
+  WHERE youtube_id IS NOT NULL AND youtube_id != ''
+  GROUP BY youtube_id HAVING c > 1;
+  ```
+  If this returns any rows, resolve them first (e.g. keep the oldest row per `youtube_id` and null out the others) before upgrading -- the migration's own error message includes the exact remediation SQL.
 
 ## [0.12.3] - 2026-02-16
 
@@ -542,28 +333,7 @@ Previous version history not documented. See GitHub releases for more informatio
 
 ## Version Links
 
-[Unreleased]: https://github.com/prefect421/mvidarr/compare/v0.12.24...HEAD
-[0.12.24]: https://github.com/prefect421/mvidarr/compare/v0.12.23...v0.12.24
-[0.12.23]: https://github.com/prefect421/mvidarr/compare/v0.12.22...v0.12.23
-[0.12.22]: https://github.com/prefect421/mvidarr/compare/v0.12.21...v0.12.22
-[0.12.21]: https://github.com/prefect421/mvidarr/compare/v0.12.20...v0.12.21
-[0.12.20]: https://github.com/prefect421/mvidarr/compare/v0.12.19...v0.12.20
-[0.12.19]: https://github.com/prefect421/mvidarr/compare/v0.12.18...v0.12.19
-[0.12.18]: https://github.com/prefect421/mvidarr/compare/v0.12.17...v0.12.18
-[0.12.17]: https://github.com/prefect421/mvidarr/compare/v0.12.16...v0.12.17
-[0.12.16]: https://github.com/prefect421/mvidarr/compare/v0.12.15...v0.12.16
-[0.12.15]: https://github.com/prefect421/mvidarr/compare/v0.12.14...v0.12.15
-[0.12.14]: https://github.com/prefect421/mvidarr/compare/v0.12.13...v0.12.14
-[0.12.13]: https://github.com/prefect421/mvidarr/compare/v0.12.12...v0.12.13
-[0.12.12]: https://github.com/prefect421/mvidarr/compare/v0.12.11...v0.12.12
-[0.12.11]: https://github.com/prefect421/mvidarr/compare/v0.12.10...v0.12.11
-[0.12.10]: https://github.com/prefect421/mvidarr/compare/v0.12.9...v0.12.10
-[0.12.9]: https://github.com/prefect421/mvidarr/compare/v0.12.8...v0.12.9
-[0.12.8]: https://github.com/prefect421/mvidarr/compare/v0.12.7...v0.12.8
-[0.12.7]: https://github.com/prefect421/mvidarr/compare/v0.12.6...v0.12.7
-[0.12.6]: https://github.com/prefect421/mvidarr/compare/v0.12.5...v0.12.6
-[0.12.5]: https://github.com/prefect421/mvidarr/compare/v0.12.4...v0.12.5
-[0.12.4]: https://github.com/prefect421/mvidarr/compare/v0.12.3...v0.12.4
+[Unreleased]: https://github.com/prefect421/mvidarr/compare/v0.12.3...HEAD
 [0.12.3]: https://github.com/prefect421/mvidarr/compare/v0.12.2...v0.12.3
 [0.12.2]: https://github.com/prefect421/mvidarr/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/prefect421/mvidarr/compare/v0.12.0...v0.12.1

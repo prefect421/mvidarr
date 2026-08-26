@@ -450,7 +450,7 @@ class Video(Base):
     artist_id = Column(Integer, ForeignKey("artists.id"), nullable=False)
     title = Column(String(500), nullable=False)
     imvdb_id = Column(String(100), unique=True, nullable=True)
-    youtube_id = Column(String(100), nullable=True)
+    youtube_id = Column(String(100), unique=True, nullable=True)
     youtube_url = Column(String(500), nullable=True)  # YouTube video URL
     url = Column(String(500), nullable=True)  # Video URL (YouTube, etc.)
     playlist_id = Column(
@@ -515,7 +515,11 @@ class Video(Base):
     __table_args__ = (
         Index("idx_video_artist_id", "artist_id"),
         Index("idx_video_imvdb_id", "imvdb_id"),
-        Index("idx_video_youtube_id", "youtube_id"),
+        # idx_video_youtube_id intentionally removed (#377 Finding 6):
+        # redundant with the unique=True index already created by the
+        # youtube_id column definition above, and keeping both risked a
+        # third, differently-named index being added on fresh installs
+        # via migration 024's (now column-based) idempotence check.
         Index("idx_video_playlist_id", "playlist_id"),
         Index("idx_video_status", "status"),
         Index("idx_video_title", "title"),
@@ -891,6 +895,18 @@ class Playlist(Base):
                 self.video_count = 0
                 self.total_duration = None
             return
+
+        # The real app's session factory (DatabaseManager.
+        # create_session_factory()) configures autoflush=False. Every
+        # caller that adds new PlaylistEntry rows and then immediately
+        # calls update_stats() in the same uncommitted transaction --
+        # e.g. dynamic-playlist creation -- would otherwise have this
+        # count query run against the database's pre-transaction state,
+        # missing those still-pending inserts and reporting 0 even
+        # though they get committed correctly moments later. Flushing
+        # here makes the count accurate regardless of caller flush
+        # discipline or session autoflush configuration.
+        session.flush()
 
         # Query database directly for accurate count (fixes issue #177)
         entry_count = (

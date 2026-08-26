@@ -65,6 +65,13 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    # #457: SYS_PTRACE lets py-spy attach to the fastapi/celery processes
+    # in this same container to sample a live stack trace
+    # (`py-spy dump --pid <pid>`) when something hangs, without killing
+    # it. Dev-only diagnostic capability -- not added to the prod compose
+    # file.
+    cap_add:
+      - SYS_PTRACE
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s

@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.logging_middleware import setup_logging_middleware
 from src.api.fastapi.wizard_middleware import setup_wizard_middleware
 
@@ -146,7 +147,9 @@ async def lifespan(app: FastAPI):
         if result.get("status") == "started":
             logger.info("✅ Scheduler V2 service started successfully")
         else:
-            logger.warning(f"⚠️ Scheduler V2: {result.get('message', 'Unknown status')}")
+            logger.warning(
+                f"⚠️ Scheduler V2: {result.get('message', 'Unknown status')}"
+            )
 
         # ytdlp_service is already initialized and pending downloads resumed during import
         logger.info(
@@ -469,7 +472,6 @@ from src.middleware.circuit_breaker_middleware import (
     CircuitBreakerConfig,
     CircuitBreakerMiddleware,
 )
-from src.middleware.jwt_auth_middleware import JWTAuthMiddleware, TokenConfig
 
 # Add performance monitoring middleware
 from src.middleware.performance_middleware import (
@@ -488,24 +490,18 @@ from src.middleware.security_validation_middleware import (
     SecurityValidationMiddleware,
 )
 
-# Add middleware in correct order (last added = first executed)
-# Re-enabling basic authentication middleware with safe configuration
-try:
-    from src.middleware.jwt_auth_middleware import JWTAuthMiddleware, TokenConfig
-
-    # Use basic token config to prevent timeout issues
-    basic_token_config = TokenConfig(
-        access_token_expire_minutes=60,  # Longer timeout
-        refresh_token_expire_days=7,  # Shorter refresh period
-        algorithm="HS256",
-    )
-
-    app.add_middleware(JWTAuthMiddleware, config=basic_token_config)
-    logger.info("✅ JWT Authentication middleware enabled with safe configuration")
-except Exception as e:
-    logger.warning(
-        f"⚠️ Failed to load JWT middleware: {e}, continuing without authentication middleware"
-    )
+# Note: a JWTAuthMiddleware previously ran here as an app-wide auth gate.
+# #323's investigation confirmed it was already a fully inert no-op for
+# every request (its own public_paths allowlist had a bare "/" entry,
+# which every path matches, so it always short-circuited straight
+# through) — and nothing in the codebase ever read the request.state it
+# would have set even if that bug were fixed. Removed rather than fixed:
+# real auth enforcement lives entirely in route-level dependencies
+# (src/api/fastapi/auth_dependencies.py for API routes,
+# src/api/fastapi/template_system.py for frontend pages), both backed by
+# the one real UserRole enum in src.database.models. A second, app-wide
+# gate duplicating that would reintroduce the exact parallel-systems
+# hazard #323 was filed to close.
 
 # Setup structured logging middleware for production monitoring
 setup_logging_middleware(app)
@@ -730,7 +726,9 @@ async def health_check():
 
 
 @app.get("/api/discover")
-async def discover_search(q: str = Query(...)):
+async def discover_search(
+    q: str = Query(...), current_user: dict = Depends(require_authentication)
+):
     """Universal search endpoint for videos, artists, and external sources (IMVDb, YouTube)"""
     try:
         from sqlalchemy.orm import Session
@@ -1168,7 +1166,9 @@ async def retry_download(download_id: str):
 
 
 @app.delete("/api/metube/download/{download_id}")
-async def delete_download(download_id: int):
+async def delete_download(
+    download_id: int, current_user: dict = Depends(require_authentication)
+):
     """Delete a queued download"""
     try:
         from sqlalchemy.orm import Session
@@ -1283,7 +1283,9 @@ async def search_imvdb_videos(q: str = Query(...)):
 
 
 @app.post("/api/metube/process-queue")
-async def process_queued_downloads():
+async def process_queued_downloads(
+    current_user: dict = Depends(require_authentication),
+):
     """Process all queued downloads by submitting them to the job queue"""
     try:
         from sqlalchemy.orm import Session
