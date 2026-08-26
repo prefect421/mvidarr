@@ -6,7 +6,7 @@ Multi-source artist discovery with metadata enrichment and intelligence.
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Dict, List, Optional
 
 import requests
@@ -32,8 +32,19 @@ class DiscoverySource(Enum):
     MANUAL = "manual"
 
 
-class MetadataQuality(Enum):
-    """Quality levels for metadata"""
+class MetadataQuality(IntEnum):
+    """Quality levels for metadata.
+
+    IntEnum, not plain Enum (#317): _merge_artist_metadata() does
+    `max(d.quality_score for d in discoveries)` to keep the best
+    quality_score across merged sources -- a plain Enum's members don't
+    support `<`/`>` comparison at all, so that call raised
+    `TypeError: '>' not supported between instances of 'MetadataQuality'
+    and 'MetadataQuality'` on every real invocation with more than one
+    discovery (i.e. every actual multi-source merge -- the whole point
+    of this "multi-source discovery" service). Never caught because
+    there was no test coverage exercising this path with 2+ discoveries.
+    """
 
     EXCELLENT = 5
     GOOD = 4
