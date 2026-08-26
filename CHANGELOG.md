@@ -16,13 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **IMVDb Import Duplicate Handling**: `import_from_imvdb()`'s `IntegrityError` handler now re-queries by `imvdb_id` *or* `youtube_id` (previously `imvdb_id` only), so importing the IMVDb record for a video already discovered via YouTube returns "already exists" instead of a 500.
 
 ### Migration Notes
-- **Before deploying this release**, check production for pre-existing duplicate `youtube_id` values -- migration 024 will refuse to start the application if any are found (with an actionable error naming the exact values and remediation SQL), rather than starting with a defective/blocked migration:
-  ```sql
-  SELECT youtube_id, COUNT(*) c FROM videos
-  WHERE youtube_id IS NOT NULL AND youtube_id != ''
-  GROUP BY youtube_id HAVING c > 1;
-  ```
-  If this returns any rows, resolve them first (e.g. keep the oldest row per `youtube_id` and null out the others) before upgrading -- the migration's own error message includes the exact remediation SQL.
+- Migration 024 now **auto-resolves** any pre-existing duplicate `youtube_id` values instead of refusing to start the application until an operator manually runs remediation SQL. For each group of duplicates it keeps `youtube_id` on whichever row actually has a downloaded file (falling back to `status == DOWNLOADED`, then the oldest row) and clears it — never deletes the row — on the rest, printing exactly what it did. No pre-flight check needed before upgrading.
 
 ## [1.0.0] - 2026-08-17
 
