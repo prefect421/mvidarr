@@ -306,7 +306,13 @@ class SchedulerServiceV2:
                     return None
 
             else:
-                # Try to parse as comma-separated days (monday,wednesday,friday)
+                # Try to parse as one or more comma-separated day names
+                # (monday,wednesday,friday -- or just "monday" alone, #317:
+                # this used to require a literal comma to even attempt
+                # day-name parsing, so a single selected day -- a
+                # thoroughly plausible input, e.g. a UI that lets a user
+                # pick just one day -- fell through to "Unknown schedule
+                # frequency" and silently scheduled nothing).
                 days_map = {
                     "monday": 1,
                     "tuesday": 2,
@@ -317,16 +323,15 @@ class SchedulerServiceV2:
                     "sunday": 0,
                 }
 
-                if "," in frequency:
-                    day_names = [d.strip().lower() for d in frequency.split(",")]
-                    day_numbers = [days_map.get(d) for d in day_names if d in days_map]
+                day_names = [d.strip().lower() for d in frequency.split(",")]
+                day_numbers = [days_map.get(d) for d in day_names if d in days_map]
 
-                    if day_numbers:
-                        return crontab(
-                            hour=hour,
-                            minute=minute,
-                            day_of_week=",".join(map(str, day_numbers)),
-                        )
+                if day_numbers:
+                    return crontab(
+                        hour=hour,
+                        minute=minute,
+                        day_of_week=",".join(map(str, day_numbers)),
+                    )
 
                 logger.warning(f"Unknown schedule frequency: {frequency}")
                 return None
