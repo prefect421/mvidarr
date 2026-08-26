@@ -505,7 +505,11 @@ function proceedDownloadWantedVideos() {
         if (data.success) {
             if (data.success_count > 0) {
                 showSuccess(`Successfully queued ${data.success_count} wanted videos for download!`);
-            } else {
+            } else if (data.failed_count === 0) {
+                // Only show this as a success toast when there were no
+                // failures either -- an all-failed batch (success_count
+                // === 0, failed_count > 0) must not get a false "success"
+                // notification; the error toast below is its only signal.
                 showSuccess(data.message || 'No wanted videos found to download');
             }
 
