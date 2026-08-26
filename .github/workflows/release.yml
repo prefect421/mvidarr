@@ -87,9 +87,9 @@ jobs:
         echo "- 10GB+ storage for downloads" >> release_notes.md
         echo "" >> release_notes.md
         echo "### 📖 Documentation:" >> release_notes.md
-        echo "- [Installation Guide](https://github.com/${{ github.repository }}/blob/main/docs/INSTALLATION.md)" >> release_notes.md
-        echo "- [User Guide](https://github.com/${{ github.repository }}/blob/main/docs/USER_GUIDE.md)" >> release_notes.md
-        echo "- [API Documentation](https://github.com/${{ github.repository }}/blob/main/docs/API.md)" >> release_notes.md
+        echo "- [Installation Guide](https://github.com/${{ github.repository }}/blob/main/docs/installation.md)" >> release_notes.md
+        echo "- [User Guide](https://github.com/${{ github.repository }}/blob/main/docs/USER-GUIDE.md)" >> release_notes.md
+        echo "- [API Documentation](https://github.com/${{ github.repository }}/blob/main/docs/API_DOCUMENTATION.md)" >> release_notes.md
         echo "" >> release_notes.md
         echo "🎉 **Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$TAG_NAME" >> release_notes.md
         
