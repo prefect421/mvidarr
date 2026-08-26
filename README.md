@@ -75,7 +75,7 @@
 
 5. **Access the application:**
    - Open your browser to `http://localhost:5000`
-   - Default login: `admin` / `admin` (change immediately)
+   - Default login: `admin` / `mvidarr` (change immediately)
    - Complete the first-run setup wizard
 
 **Docker Images:**
