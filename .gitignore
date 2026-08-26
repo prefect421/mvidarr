@@ -1,7 +1,10 @@
-# Environment variables
+# Environment variables (any .env.* variant holds real secrets - only
+# the checked-in .example/.template files should ever be tracked)
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
+!.env.*.example
+!.env.*.template
 
 # Database
 data/mvidarr.db
