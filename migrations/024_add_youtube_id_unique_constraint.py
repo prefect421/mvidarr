@@ -10,21 +10,43 @@ protection (unique=True); youtube_id did not.
 MariaDB/MySQL unique indexes treat each NULL as distinct, so existing
 videos without a youtube_id are unaffected.
 
-Before adding the constraint, this migration checks for pre-existing
-duplicate youtube_id values and raises a RuntimeError naming exactly
-which values collide, plus the exact remediation SQL -- rather than
-letting the raw ALTER TABLE fail with a bare MariaDB "Duplicate entry"
-error and leave the operator with nothing actionable. Note this is
-still a hard-fail on a database with real duplicates: a failed
-migration is fatal to application startup (MigrationManager.migrate()
-treats any migration failure as fatal and init_db.py does not start
-the app), so any operator upgrading through this migration should run
-the duplicate-check query below against production *before* deploying.
+Before adding the constraint, this migration auto-resolves any
+pre-existing duplicate youtube_id values rather than requiring the
+operator to run remediation SQL by hand before upgrading (the original
+version of this migration hard-failed with instructions -- a manual DB
+step is a bad fit for this project's self-hosting audience, and a
+failed migration is fatal to application startup, so a duplicate the
+operator didn't know about would just brick the upgrade). For each
+group of rows sharing a youtube_id, _pick_survivor() keeps it on
+whichever row actually has a downloaded file (or failing that, whichever
+is DOWNLOADED, or failing that, the oldest row) and clears it (NULL,
+never a delete) on the rest -- no data is lost, the losing rows just
+stop being linked by that youtube_id. Each resolution is printed so an
+operator can review what happened.
 
 Date: 2026-08-18
 """
 
 from sqlalchemy import text
+
+
+def _pick_survivor(rows):
+    """Given candidate rows that share a duplicate youtube_id (each a
+    mapping with 'id', 'local_path', 'status'), decide which one keeps
+    it. Priority: has an actual downloaded file (local_path set) >
+    status is DOWNLOADED > oldest id (first discovered) as the final
+    tiebreaker. Pulled out as a pure function so the decision itself is
+    unit-testable without a database.
+    """
+
+    def sort_key(row):
+        return (
+            0 if row["local_path"] else 1,
+            0 if row["status"] == "DOWNLOADED" else 1,
+            row["id"],
+        )
+
+    return min(rows, key=sort_key)
 
 
 def upgrade(connection):
@@ -47,27 +69,44 @@ def upgrade(connection):
         print("✅ Unique index on videos.youtube_id already exists (skipped)")
         return
 
-    # Duplicate pre-check: on any database that already has colliding
-    # youtube_id values, the bare ALTER TABLE below fails with an
-    # unhelpful "Duplicate entry" error -- and that failure is fatal to
-    # application startup. Fail loudly here instead, naming exactly
-    # which values collide and the exact remediation SQL.
-    duplicates = connection.execute(text("""
-        SELECT youtube_id, COUNT(*) as cnt FROM videos
+    # Auto-resolve pre-existing duplicates before the ALTER TABLE below,
+    # which would otherwise fail with a bare, unhelpful MariaDB
+    # "Duplicate entry" error.
+    duplicate_youtube_ids = connection.execute(text("""
+        SELECT youtube_id FROM videos
         WHERE youtube_id IS NOT NULL AND youtube_id != ''
-        GROUP BY youtube_id HAVING cnt > 1
+        GROUP BY youtube_id HAVING COUNT(*) > 1
     """)).fetchall()
-    if duplicates:
-        duplicate_list = ", ".join(f"{row[0]} ({row[1]}x)" for row in duplicates)
-        raise RuntimeError(
-            f"Cannot add unique index on videos.youtube_id: "
-            f"{len(duplicates)} duplicate value(s) found: {duplicate_list}. "
-            f"Resolve these first, e.g. by keeping the oldest row per "
-            f"youtube_id and nulling out youtube_id on the others: "
-            f"UPDATE videos v1 JOIN videos v2 ON v1.youtube_id = v2.youtube_id "
-            f"AND v1.id > v2.id SET v1.youtube_id = NULL WHERE v1.youtube_id "
-            f"IS NOT NULL; -- then re-run migrations."
+
+    if duplicate_youtube_ids:
+        print(
+            f"⚠️  Found {len(duplicate_youtube_ids)} duplicate youtube_id "
+            f"value(s) -- auto-resolving before adding the unique index"
         )
+        for (yt_id,) in duplicate_youtube_ids:
+            rows = [
+                dict(row._mapping)
+                for row in connection.execute(
+                    text(
+                        "SELECT id, title, local_path, status FROM videos "
+                        "WHERE youtube_id = :yt_id"
+                    ),
+                    {"yt_id": yt_id},
+                ).fetchall()
+            ]
+            survivor = _pick_survivor(rows)
+            for row in rows:
+                if row["id"] == survivor["id"]:
+                    continue
+                connection.execute(
+                    text("UPDATE videos SET youtube_id = NULL WHERE id = :id"),
+                    {"id": row["id"]},
+                )
+                print(
+                    f"   youtube_id {yt_id}: kept on video #{survivor['id']} "
+                    f"({survivor['title']!r}), cleared on duplicate "
+                    f"video #{row['id']} ({row['title']!r})"
+                )
 
     connection.execute(text("""
         ALTER TABLE videos
