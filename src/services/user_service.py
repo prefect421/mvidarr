@@ -94,8 +94,8 @@ class UserService:
     def change_password(self, user_id: int, new_password: str) -> bool:
         """Change user password"""
         try:
-            if len(new_password) < 6:
-                raise ValueError("Password must be at least 6 characters long")
+            if len(new_password) < 8:
+                raise ValueError("Password must be at least 8 characters long")
 
             password_hash = self.hash_password(new_password)
 

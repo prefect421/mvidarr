@@ -150,8 +150,12 @@ class SimpleAuthService:
         return username, has_credentials
 
     @staticmethod
-    def _is_default_password() -> bool:
-        """Check if current password is still the default 'mvidarr'."""
+    def is_default_password() -> bool:
+        """Check if current password is still the default 'mvidarr'.
+
+        Used to warn a logged-in admin that they never changed the
+        bootstrap credential (see frontend base template).
+        """
         try:
             stored_password_hash = SettingsService.get("simple_auth_password")
             if not stored_password_hash:

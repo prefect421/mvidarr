@@ -1437,6 +1437,55 @@
     <div class="app-layout">
         <main class="main-content" id="mainContent" role="main" aria-label="Main content">
             <a href="#mainContent" class="skip-link">Skip to main content</a>
+            {% if is_authenticated and default_password_active %}
+            <div class="default-password-warning" id="defaultPasswordWarning" role="alert">
+                <iconify-icon icon="tabler:alert-triangle"></iconify-icon>
+                <span>You're still using the default login password. <a href="/settings#userCredentialsSection">Change it now</a>.</span>
+                <button type="button" class="default-password-warning-dismiss" onclick="dismissDefaultPasswordWarning()" aria-label="Dismiss">✕</button>
+            </div>
+            <style>
+                .default-password-warning {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.6rem;
+                    background: #f59e0b;
+                    color: #1a1a1a;
+                    padding: 0.75rem 1rem;
+                    margin-bottom: 1rem;
+                    border-radius: 6px;
+                    font-size: 0.95rem;
+                }
+                .default-password-warning a {
+                    color: #1a1a1a;
+                    font-weight: 600;
+                    text-decoration: underline;
+                }
+                .default-password-warning-dismiss {
+                    margin-left: auto;
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: #1a1a1a;
+                    font-size: 1rem;
+                    line-height: 1;
+                }
+            </style>
+            <script>
+                (function() {
+                    try {
+                        if (sessionStorage.getItem('defaultPasswordWarningDismissed') === '1') {
+                            document.getElementById('defaultPasswordWarning').style.display = 'none';
+                        }
+                    } catch (e) { /* sessionStorage unavailable; leave the warning visible */ }
+                })();
+                function dismissDefaultPasswordWarning() {
+                    document.getElementById('defaultPasswordWarning').style.display = 'none';
+                    try {
+                        sessionStorage.setItem('defaultPasswordWarningDismissed', '1');
+                    } catch (e) { /* best-effort only */ }
+                }
+            </script>
+            {% endif %}
             {% block content %}{% endblock %}
         </main>
     </div>

@@ -69,7 +69,7 @@ docker-compose up -d
 
 **5. Access the application:**
 - Open your browser to `http://localhost:5000`
-- Default login: `admin` / `admin` (⚠️ **Change immediately**)
+- Default login: `admin` / `mvidarr` (⚠️ **Change immediately**)
 - Complete the first-run setup wizard
 
 ### Production Docker Image
@@ -317,7 +317,7 @@ celery -A src.celery_app beat --loglevel=info
 
 **8. Access the application:**
 - Open your browser to `http://localhost:5000`
-- Default login: `admin` / `admin`
+- Default login: `admin` / `mvidarr`
 
 ### Production Service (systemd)
 

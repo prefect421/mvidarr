@@ -24,6 +24,202 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
   If this returns any rows, resolve them first (e.g. keep the oldest row per `youtube_id` and null out the others) before upgrading -- the migration's own error message includes the exact remediation SQL.
 
+## [1.0.0] - 2026-08-17
+
+First production-ready release. Gated on (per the v1.0.0 GitHub milestone): RBAC actually enforced, a working/modern login page (OAuth reachable, no dead placeholder), and auth-path test coverage — all closed. See GitHub milestone "v1.0.0" for the complete issue list.
+
+### Added
+- OAuth login (Authentik, Google, GitHub) alongside password auth, with a signup allowlist and admin-only new-account policy
+- Two-Factor Authentication (TOTP + backup codes) and a password reset flow
+- Native Discord and Apprise notification providers, wired to real download/artist activity (not just a manual test endpoint)
+- "Recently Found" videos view (#316) — one-click view on the Videos page showing all videos sorted by `date_added` desc regardless of status, via a new button plus a shareable deep-link URL (`?sort_by=date_added&sort_order=desc&status=`)
+- Live artist thumbnail sourcing (Spotify/Last.fm tried before Wikipedia)
+- Login page redesign: paired rotating background/logo art, real OAuth provider buttons, scrollable card, fixed logo panel width
+
+### Security
+- Real RBAC enforcement — role checks were previously decorative; every session was hardcoded to admin
+- Fixed a privilege-escalation bug in Authentik group-role mapping
+- Rolling security dependency updates absorbed ahead of release, matching the fixes independently released on `main` as v0.12.20–v0.12.24: aiohttp 3.14.3 (CVE-2026-69244, CVE-2026-69243, CVE-2026-59881), lxml 6.1.1 (GHSA-4jhm-jv67-739f, CVE-2025-7424, CVE-2025-11731), aiomysql (GHSA-r397-ff8c-wv2g)
+
+### Fixed
+- **Duplicate concurrent download dispatch race (#329)**: `bulk_download_wanted_videos()` (FastAPI) and `download_all_wanted_videos_internal()` (Celery) could both dispatch the same WANTED video, with the loser silently overwriting the winner's result — including overwriting a real successful download back to FAILED — and firing a false download-failed webhook. Fixed via a new atomic `claim_video_for_download()` helper (row-locked `UPDATE ... WHERE status='WANTED'`) plus a defensive already-DOWNLOADED guard (which had shipped as dead code due to an enum-vs-string `.value` comparison bug, caught and fixed in final review) that also suppresses the false webhook
+- "Stop Download" 400 error — queue ids from videos are now unambiguously tagged (`video_123`) and routed to the right table instead of always being looked up as a `Download` row
+- "Force Clear All" now also resets orphaned stuck videos with no backing `Download` row
+- Misleading "no stuck downloads found" message — backend now returns the real cleared count
+- Numerous live-testing fixes: 2FA audit logging, OAuth callback error handling, Videos-page pagination dropping active filters, webhook URL credential logging, header username display, Edit Webhook modal scroll
+
+## [0.12.19] - 2026-07-16
+
+Core fix contributed by **@Ktell123** in [#282](https://github.com/prefect421/mvidarr/pull/282) — thank you!
+
+### Fixed
+- **Anti-detection setting ignored**: `enable_aggressive_anti_detection` was read with `settings.get()`, which returns the string `'False'` — truthy in Python — forcing AGGRESSIVE anti-detection (and the Android YouTube client) on every download and capping quality at ~360p. Now uses `settings.get_bool()`.
+- **Dead YouTube URL recovery**: when a stored YouTube URL is private, unavailable, or terminated, MVidarr now searches for an official alternate upload, persists the new URL, and retries the download once.
+- **Retry file-preservation bug** (found in code review): the low-res retry logic deleted the original download's file before confirming the retry actually succeeded or was better, so a failed or worse retry could report success while pointing at a deleted file. Fixed, with 16 new unit tests covering the retry paths.
+
+### Changed
+- **Player client priority**: prefer `web,mweb,tv` YouTube clients over android-first clients that hide adaptive HD/4K formats
+- **Format selection**: yt-dlp Node JS runtime + resolution-first format sort (`-S res,br`), improved `best` format string, and an automatic MODERATE retry when an escalated (AGGRESSIVE/STEALTH) download still lands at ≤360p
+
+## [0.12.18] - 2026-07-05
+
+All clear — zero CVEs, zero Dependabot security alerts, zero code scanning alerts.
+
+### Changed
+- fastapi 0.138.1 → 0.139.0, Pillow 12.2.0 → 12.3.0, opencv-python-headless >=4.13.0.92 → >=5.0.0.93
+- click 8.1.7 → 8.4.2, tqdm 4.66.3 → 4.68.3, ruby/setup-ruby 1.314.0 → 1.315.0
+
+### Fixed
+- release.yml now tolerates pre-existing release tags (skips create if already exists)
+
+## [0.12.17] - 2026-06-27
+
+### Security
+- GHSA-4xgf-cpjx-pc3j (MEDIUM): pydantic-settings 2.14.1 → 2.14.2 — `NestedSecretsSettingsSource` symlink traversal — also fixed in requirements-fastapi.txt (pre-existing stale pin was silently downgrading httpx in Docker)
+
+### Changed
+- fastapi 0.136.3 → 0.138.1, alembic 1.18.4 → 1.18.5, httpx 0.25.2 → 0.28.1, python-slugify 8.0.1 → 8.0.4
+- mypy 1.7.1 → 2.1.0 (dev, major version — local dev tool only, not run in CI)
+- CI: actions/cache v5 → v6 (ESM migration), ruby/setup-ruby 1.313.0 → 1.314.0
+
+## [0.12.16] - 2026-06-19
+
+### Security
+- CVE-2026-53539 (HIGH, CVSS 7.5): python-multipart 0.0.27 → 0.0.32 — quadratic CPU DoS via semicolon separators
+- Dependabot #20 (MEDIUM, CVSS 6.1): bleach 6.1.0 → 6.4.0 — `formaction` URI scheme bypass
+- CVE-2026-53538/53537/45152 (LOW): python-multipart — parameter smuggling + buffer fixes
+- Dependabot #19 (LOW): bleach — Unicode >U+00A0 URI sanitization bypass
+
+### Changed
+- sentry-sdk 2.8.0 → 2.63.0 (FastAPI 0.137 compat fix), starlette floor >=1.2.1 → >=1.3.1
+- CI: actions/checkout v6 → v7 (8 active workflows; blocks unsafe fork PR checkout)
+
+## [0.12.15] - 2026-06-06
+
+### Security
+- CVE-2026-34993: aiohttp 3.13.4 → 3.14.0 — `CookieJar.load()` deserialization → arbitrary code execution (MEDIUM)
+- CVE-2026-47265: aiohttp 3.13.4 → 3.14.0 — per-request cookies leaked via cross-origin redirect (MEDIUM)
+
+### Changed
+- bcrypt 4.1.2 → 5.0.0 (breaking: passwords >72 bytes raise ValueError; guard added in auth service)
+- requests 2.33.0 → 2.34.2, alembic 1.13.1 → 1.18.4, zeroconf 0.149.7 → 0.149.16
+- CI: GitHub Actions Node 24 — docker/metadata-action@v6, upload-pages-artifact@v5, labeler@v6, label-actions@v5, lock-threads@v6
+
+## [0.12.14] - 2026-06-02
+
+### Security
+- PYSEC-2026-179/178/177/176/175: PyJWT 2.12.0 → 2.13.0 — HMAC algorithm confusion, detached JWS DoS, unbounded JWKS fetches (unauthenticated DoS), algorithm allow-list bypass via PyJWK, PyJWKClient SSRF via file://, ftp://, data://
+
+### Fixed
+- 3 stale Trivy code scanning alerts (zeroconf CVE-2026-47180/83/84) cleared via fresh scan
+
+## [0.12.13] - 2026-06-01
+
+### Fixed
+- **Video streaming 404 errors**: `find_relocated_video()` used `getattr()` returning `None`, silently ignoring `local_path`; path resolution now tries both CWD-relative and `BASE_DIR`-anchored paths for relative `local_path` values in Docker. Both `stream` and `stream-transcode` endpoints patched.
+
+## [0.12.12] - 2026-06-01
+
+### Changed
+- Python base image 3.12-slim → 3.14-slim (verified: netifaces, mysqlclient, moviepy compile cleanly)
+- aiofiles 23.2.1 → 25.1.0, starlette ≥1.2.1, python-dateutil 2.9.0.post0, werkzeug 3.1.8, PyYAML 6.0.3
+- CI: GitHub Actions upgraded to Node.js 24 — checkout@v6, login-action@v4, build-push-action@v7, github-script@v9, deploy-pages@v5
+
+## [0.12.11] - 2026-06-01
+
+### Security
+- CVE-2026-47180, CVE-2026-47183, CVE-2026-47184: zeroconf 0.132.2 → 0.149.7 — LAN-local DoS/OOM via mDNS flood
+- PYSEC-2026-161: starlette ≥1.0.1 — Host header injection / authentication bypass
+
+### Changed
+- fastapi 0.123.0 → 0.136.3 (required for starlette 1.x), pydantic 2.5.0 → 2.13.4, pydantic-settings 2.1.0 → 2.14.1
+- typing-inspection ≥0.4.2 (new fastapi 0.136.3 requirement)
+- CI: GitHub Actions v4 → Node.js 24 (checkout@v5, cache@v5, setup-python@v6, upload-artifact@v7, codecov@v6); fixed codecov `file:` → `files:` input rename
+- Incorporates Dependabot PR #213 (zeroconf) into dev branch
+
+## [0.12.10] - 2026-05-16
+
+### Security
+- CVE-2026-44432 (HIGH, CVSS 7.5): urllib3 2.6.3 → 2.7.0 — decompression-bomb bypass
+- CVE-2026-44431 (HIGH, CVSS 5.3): urllib3 2.6.3 → 2.7.0 — sensitive header forwarding
+
+### Fixed
+- pytest-asyncio 0.23.8 → 1.3.0 (0.x incompatible with pytest 9.x, broke pip-audit + test suite)
+- pytest-playwright 0.4.3 → 0.7.2 (required for pytest 9.x compatibility)
+- Dockerfile: added `--timeout 120` to pip install for reliable builds on slow connections
+
+## [0.12.9] - 2026-05-11
+
+### Changed
+- Reduced YouTube searches from 4 to 2 per artist for quota efficiency
+- Quota enforcement with file locking in YouTubeQuotaTracker
+- Per-artist `last_discovery` now committed after each artist to survive interrupted runs
+
+## [0.12.8] - 2026-05-07
+
+### Security
+- CVE-2026-41066 (HIGH): lxml 4.9.3 → 6.1.0 — XXE local file read
+- CVE-2026-42561 (MEDIUM): python-multipart 0.0.26 → 0.0.27 — DoS header parsing
+- CVE-2026-28684 (MEDIUM): python-dotenv 1.0.0 → 1.2.2 — symlink arbitrary file overwrite
+
+### Fixed
+- Broken `-r requirements-prod.txt` include in `requirements-dev.txt` → `-r requirements.txt`
+- Import ordering corrected across `src/` for CI compliance
+
+## [0.12.7] - 2026-04-16
+
+### Security
+- 5 CVEs resolved (python-multipart, Pillow, pytest)
+
+### Removed
+- sphinx from production runtime (dev-only)
+
+### Changed
+- pytest-cov 4.1.0 → 7.1.0 for pytest 9.x compatibility
+
+## [0.12.6] - 2026-04-09
+
+### Security
+- CVE-2026-25645: requests 2.32.4 → 2.33.0 — predictable temporary file creation (MEDIUM)
+- CVE-2026-22815/34513-34520: aiohttp 3.13.3 → 3.13.4 — multiple DoS and injection fixes (12 CVEs total resolved)
+
+## [0.12.5] - 2026-03-19
+
+### Security
+- CVE-2026-32597: PyJWT 2.8.0 → 2.12.0 (missing `crit` header validation)
+- CVE-2026-32274: black 24.3.0 → 26.3.1 (arbitrary cache file write) — removed black from runtime requirements (dev tool only)
+
+### Fixed
+- Docker `git_branch` always unknown — version.json now read first in health endpoint
+- Docker ERROR log spam from missing git binary on every health check
+- Installation wizard credentials now applied to login (#199)
+- Thumbnail download on video completion (#200)
+
+## [0.12.4] - 2026-02-26
+
+### Security
+- CVE-2026-27205: Flask 3.1.1→3.1.3 in docker/monitor (Vary: Cookie)
+- CVE-2026-27199: werkzeug→3.1.6 (Windows device names in safe_join)
+- CVE-2026-25990: Pillow→12.1.1 (out-of-bounds write on PSD images)
+- Replaced python-jose/ecdsa (CVE-2024-23342) with PyJWT
+
+### Fixed
+- Celery connection check no longer hangs — 2s timeout + ps fallback
+- `trigger/discovery` and `trigger/downloads` no longer 500 after 19s timeout
+- Metadata enrichment endpoints no longer block the async event loop
+- Job progress bar stuck at 0% — nested progress object now parsed correctly
+- Job completion not detected — status normalized to lowercase
+- Auto-download scheduling priority was computed but then discarded; `auto_download_max_videos` raised from 10 → 50
+- Pre-v0.10.1 artists with NULL `download_enabled` excluded from download queue
+- MONITORED videos never promoted to WANTED when artist enables auto_download
+- Plain "Artist - Song" titles classified as None type, blocked by `allowed_video_types`
+- Videos no longer set to WANTED for monitor-only artists
+- `allowed_video_types` and 20+ other artist fields now save correctly
+
+### Changed
+- Migration 004: backfill NULL Scheduler V2 fields for all existing artists
+- Default: Official Music Video pre-selected for all artists
+
 ## [0.12.3] - 2026-02-16
 
 ### Fixed

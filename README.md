@@ -22,44 +22,18 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v0.12.24 - Security Sweep (aiohttp CVE fix, MKV warning fix, thumbnail hardening)**
+## 🚀 **LATEST: v1.0.0 - First Production-Ready Release**
 
-**Released**: August 9, 2026
+**Released**: August 17, 2026
 
-> **Note**: This is a pre-production release following SemVer 0.x conventions. The software is feature-complete but undergoing testing and validation before the official v1.0.0 production release.
+- **🔐 OAuth login** (Authentik, Google, GitHub) alongside password auth, with a signup allowlist and admin-only new-account policy
+- **🔐 Real RBAC enforcement** — role checks were previously decorative; every session was hardcoded to admin
+- **🔑 Two-Factor Authentication** (TOTP + backup codes) and a password reset flow
+- **🔔 Native Discord and Apprise notification providers**, wired to real download/artist activity
+- **🎬 "Recently Found" videos view** and live artist thumbnail sourcing (Spotify/Last.fm before Wikipedia)
+- **🎨 Login page redesign**: rotating background/logo art, real OAuth provider buttons
 
-### Security & Fixes
-- **🔒 HIGH — CVE-2026-69244 / GHSA-cq5v-8q36-5273**: aiohttp 3.14.1 → 3.14.3 — out-of-bounds heap read in the C HTTP response parser error path
-- **🔒 MEDIUM — CVE-2026-69243 / GHSA-mfx4-hv73-q22v**: aiohttp 3.14.1 → 3.14.3 — HTTP request smuggling via WebSocket upgrade
-- **🔒 MEDIUM — CVE-2026-59881 / GHSA-mq44-7p77-q5h7**: aiohttp 3.14.1 → 3.14.3 — WebSocket client decompressed frames without a negotiated permessage-deflate extension
-- **🐛 #307**: Removed a premature 3-second false-positive "format not supported" warning on MKV/AVI playback that raced against real-time transcoding and destroyed the live video element; the existing 30-second `loadTimeout` already handles genuine load failures
-- **🐛 #306** (partial/defensive): Thumbnail stale-path cleanup no longer treats a failed filesystem check as proof a thumbnail was deleted — only a confirmed-missing file now clears the database reference
-- Verified via rebuilt local Docker: full pytest suite passed (58 passed, 1 skipped); prod (192.168.1.68:5050) rebuilt and confirmed on v0.12.24
-- Closed/superseded Dependabot PR #308
-
-## 🎯 Previous Releases
-
-### v0.12.23 - Dependency Sweep (pytest, tqdm, sphinx, sphinx-rtd-theme, redis, psutil) (August 2, 2026)
-- **pytest** 9.0.3 → 9.1.1 (dev), **tqdm** 4.68.3 → 4.70.0
-- **sphinx** 7.2.6 → 9.1.0, **sphinx-rtd-theme** 1.3.0 → 3.1.0 (dev-only)
-- **redis** 8.0.1 → 8.1.0, **psutil** 5.9.6 → 7.2.2 (2 major versions)
-
-### v0.12.22 - Dependency Sweep (celery, redis, sentry-sdk, imagehash, actions/setup-python, actions/labeler, ruby/setup-ruby) (July 25, 2026)
-- **celery** 5.3.4 → 5.6.3, **redis** 5.0.1 → 8.0.1 (3 major versions) — both verified live: celery worker/beat ping successfully, job-progress/cache round-trips through `redis_manager` work correctly
-- **sentry-sdk** 2.63.0 → 2.66.1, **imagehash** 4.3.1 → 4.3.2 (dev-only)
-- **CI**: actions/setup-python v6 → v7, actions/labeler v6 → v7, ruby/setup-ruby 1.319.0 → 1.321.0
-
-### v0.12.21 - Dependabot Sweep (lxml, marshmallow, flake8, aiomysql, pymysql, ruby/setup-ruby) (July 19, 2026)
-- **🔒 lxml** 6.1.0 → 6.1.1 — fixes GHSA-4jhm-jv67-739f (`xlink:href` missing from known link attrs, URL bypass in embedded SVG/MathML) and bundles libxslt fixes for CVE-2025-7424 / CVE-2025-11731
-- **🔒 aiomysql** >=0.2.0 → >=0.3.2 — fixes GHSA-r397-ff8c-wv2g (local_infile load bypass)
-- **pymysql** 1.1.1 → 1.2.0, **marshmallow** 3.26.2 → 4.3.0, **flake8** 6.1.0 → 7.3.0 (dev-only)
-
-### v0.12.20 - Fix Stuck Download Queue (July 16, 2026)
-- **🐛 "Stop Download" 400 error**: queue ids from videos are now unambiguously tagged (`video_123`) and routed to the right table
-- **🐛 "Force Clear All"**: now also resets orphaned stuck videos with no backing `Download` row
-- **🐛 Misleading "no stuck downloads found" message**: backend now returns the real cleared count
-
-📜 **[View the full changelog](CHANGELOG.md)** for all earlier releases (v0.12.19 back through v0.9.8 and beyond).
+📜 **[View the full changelog](CHANGELOG.md)** for v1.0.0's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 
@@ -101,12 +75,12 @@
 
 5. **Access the application:**
    - Open your browser to `http://localhost:5000`
-   - Default login: `admin` / `admin` (change immediately)
+   - Default login: `admin` / `mvidarr` (change immediately)
    - Complete the first-run setup wizard
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v0.12.23`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v1.0.0`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -247,7 +221,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **yt-dlp** - Video download and processing
 - **IMVDb** - Music video metadata database
 - **YouTube API** - Video discovery and streaming
-- **Flask** - Web framework
+- **FastAPI** - Web framework
 - **MariaDB** - Database engine
 
 ## 📞 Support
@@ -258,4 +232,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v0.12.23** - Built with ❤️ for music video enthusiasts
+**MVidarr v1.0.0** - Built with ❤️ for music video enthusiasts

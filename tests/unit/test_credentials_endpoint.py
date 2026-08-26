@@ -71,3 +71,46 @@ class TestUpdateCredentialsRoleGating:
             "/api/auth/credentials", json={"username": "", "password": ""}
         )
         assert response.status_code in (400, 422)
+
+
+class TestPasswordLengthMismatchBetweenFrontendAndBackend:
+    """Regression for a real bug reported in dev testing: the frontend's
+    updateCredentials() accepted any password >= 6 characters, but
+    SimpleAuthService.set_credentials() (the actual backend enforcement)
+    requires >= 8. A 6-7 char password -- including "mvidarr", the
+    bootstrap default -- passed client-side validation and reached this
+    route, only to be rejected here with a 400 whose real message
+    ("Password must be at least 8 characters long") main.js's apiRequest()
+    then discarded in favor of a generic "HTTP error! status: 400"
+    (apiRequest checked data.error; FastAPI's HTTPException returns
+    data.detail). Both the frontend length check and the error-message
+    extraction were fixed in frontend/static/main.js; this test exercises
+    the backend half of the contract those fixes now actually match,
+    using the real (unmocked) set_credentials -- the 7-char password is
+    rejected before any DB access happens.
+    """
+
+    def test_seven_char_password_is_rejected_with_the_real_length_message(self):
+        client = _make_client({"role": "ADMIN", "user_id": 1})
+        response = client.post(
+            "/api/auth/credentials",
+            json={"username": "admin", "password": "mvidarr"},
+        )
+        assert response.status_code == 400
+        assert "8 characters" in response.json()["detail"]
+
+    def test_eight_char_password_reaches_set_credentials_unmodified(self):
+        # The route itself does no length check of its own -- that lives
+        # entirely in set_credentials. Confirms the route doesn't add a
+        # second, possibly-different length gate in front of it.
+        client = _make_client({"role": "ADMIN", "user_id": 1})
+        with patch(
+            "src.services.simple_auth_service.SimpleAuthService.set_credentials",
+            return_value=(True, "Credentials updated"),
+        ) as mock_set:
+            response = client.post(
+                "/api/auth/credentials",
+                json={"username": "admin", "password": "8charpw!"},
+            )
+        assert response.status_code == 200
+        mock_set.assert_called_once_with("admin", "8charpw!")
