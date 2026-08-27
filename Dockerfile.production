@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     default-libmysqlclient-dev \
     curl \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -32,6 +33,55 @@ RUN pip install --no-cache-dir --upgrade pip
 COPY requirements.txt requirements-fastapi.txt ./
 RUN pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements.txt && \
     pip install --no-cache-dir --prefix=/opt/python --timeout=1000 -r requirements-fastapi.txt
+
+# Install Node.js from official binaries, needed here only to build the
+# bgutil-ytdlp-pot-provider server below (npm ci / npx tsc); the runtime
+# stage installs its own copy to actually run it. Node >=22 is REQUIRED
+# (not just recommended): yt-dlp's own JS challenge solver (NodeJsRuntime)
+# hardcodes MIN_SUPPORTED_VERSION = (22, 0, 0) and refuses older runtimes
+# outright, and this server's package.json "engines" requires the same
+# floor -- confirmed live on 2026-08-25 that v20.18.1 is rejected by both.
+# Architecture-aware, matching the runtime stage's existing pattern.
+# SHA256s verified against https://nodejs.org/dist/v22.23.2/SHASUMS256.txt
+# -- when bumping this version, fetch the new SHASUMS256.txt and update
+# both hashes below (and the matching ones in the runtime stage); a
+# mismatch fails the build rather than installing silently.
+RUN ARCH=$(dpkg --print-architecture) \
+    && case "$ARCH" in \
+        amd64) NODE_ARCH="x64"; NODE_SHA256="d60acfe00a2932254bb0ad20e01b0d74397a0875595de719654b214f4b03f307" ;; \
+        arm64) NODE_ARCH="arm64"; NODE_SHA256="fff4078c5def658577f92c88db7db3bc0072924bfb93fe52c1e744a54e94abb8" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac \
+    && curl -fsSL https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-${NODE_ARCH}.tar.xz -o /tmp/node.tar.xz \
+    && echo "${NODE_SHA256}  /tmp/node.tar.xz" | sha256sum -c - \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
+    && rm /tmp/node.tar.xz \
+    && node --version && npm --version
+
+# Build the bgutil-ytdlp-pot-provider PO token server (#452): generates the
+# Proof-of-Origin tokens yt-dlp needs to bypass YouTube's SABR/bot-detection
+# gating on age-restricted and otherwise-protected videos. The Python
+# client plugin (bgutil-ytdlp-pot-provider) is already installed via
+# requirements.txt -- it was the client half only; this is its companion
+# HTTP server. Run by supervisord, reachable at the plugin's default
+# http://127.0.0.1:4416 with zero yt-dlp invocation changes needed. Built
+# here (builder stage) rather than at runtime so npm/tsc and their dev
+# dependencies never end up in the final image -- only the compiled
+# build/ output and pruned production node_modules get copied over.
+# Pinned to the same 1.3.2 release as the installed Python plugin. SHA256
+# pinned below (GitHub's tag archive is otherwise a mutable ref, not an
+# immutable release asset) -- recompute with `curl -fsSL <url> | sha256sum`
+# when bumping the version; a mismatch fails the build. This is a source
+# tarball, not an architecture-specific binary, so one hash covers both.
+RUN mkdir -p /app/vendor/bgutil-ytdlp-pot-provider \
+    && curl -fsSL https://github.com/Brainicism/bgutil-ytdlp-pot-provider/archive/refs/tags/1.3.2.tar.gz -o /tmp/pot-provider.tar.gz \
+    && echo "3545ac7ffc0869498755cb3b4760a72fa2f176689d0890a6f5b898d163012ba2  /tmp/pot-provider.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/pot-provider.tar.gz -C /app/vendor/bgutil-ytdlp-pot-provider --strip-components=1 \
+    && rm /tmp/pot-provider.tar.gz \
+    && cd /app/vendor/bgutil-ytdlp-pot-provider/server \
+    && npm ci --no-audit --no-fund \
+    && npx tsc \
+    && npm prune --omit=dev
 
 #################################
 # Stage 2: Runtime Environment
@@ -67,15 +117,21 @@ RUN apt-get update && apt-get install -y \
     && apt-get autoremove -y \
     && apt-get autoclean
 
-# Install Node.js from official binaries (required for yt-dlp JavaScript runtime)
-# Architecture-aware: selects correct binary for amd64 or arm64 builds
+# Install Node.js from official binaries (required for yt-dlp JavaScript
+# runtime and to run the bgutil-ytdlp-pot-provider server copied in below).
+# v22 required, not just v20 -- see the matching install in the builder
+# stage above for the full explanation. Architecture-aware: selects the
+# correct binary for amd64 or arm64 builds. SHA256-verified (this stage
+# previously installed Node with no checksum at all); a mismatch fails
+# the build rather than installing silently.
 RUN ARCH=$(dpkg --print-architecture) \
     && case "$ARCH" in \
-        amd64) NODE_ARCH="x64" ;; \
-        arm64) NODE_ARCH="arm64" ;; \
+        amd64) NODE_ARCH="x64"; NODE_SHA256="d60acfe00a2932254bb0ad20e01b0d74397a0875595de719654b214f4b03f307" ;; \
+        arm64) NODE_ARCH="arm64"; NODE_SHA256="fff4078c5def658577f92c88db7db3bc0072924bfb93fe52c1e744a54e94abb8" ;; \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
     esac \
-    && curl -fsSL https://nodejs.org/dist/v20.18.1/node-v20.18.1-linux-${NODE_ARCH}.tar.xz -o /tmp/node.tar.xz \
+    && curl -fsSL https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-${NODE_ARCH}.tar.xz -o /tmp/node.tar.xz \
+    && echo "${NODE_SHA256}  /tmp/node.tar.xz" | sha256sum -c - \
     && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
     && rm /tmp/node.tar.xz \
     && node --version && npm --version
@@ -88,6 +144,11 @@ WORKDIR /app
 
 # Copy Python packages from builder stage (cached if requirements unchanged)
 COPY --from=builder /opt/python /usr/local
+
+# Copy the compiled bgutil-ytdlp-pot-provider server built in the builder
+# stage -- npm/tsc and dev dependencies never touch this image, only the
+# already-built build/ output and pruned production node_modules.
+COPY --from=builder --chown=mvidarr:mvidarr /app/vendor /app/vendor
 
 # Create directories and set base permissions (cached layer - rarely changes)
 RUN mkdir -p /app/data/downloads /app/data/musicvideos /app/data/music_videos /app/data/thumbnails /app/data/logs /app/data/cache /app/data/backups /app/data/database /app/data/cookies /app/config && \
