@@ -14,7 +14,7 @@ pytest-mock==3.12.0
 # Code Quality and Formatting
 black==26.3.1  # Security: CVE-2026-32274 arbitrary file write fix
 flake8==7.3.0
-mypy==2.1.0
+mypy==2.3.1
 bandit==1.7.5
 pip-audit==2.10.0
 isort==9.0.0  # Pinned: was unpinned and silently broke CI when 9.0.0 changed how it collapses multiple `from X import (...)` blocks from the same module vs 8.0.1
