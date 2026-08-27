@@ -15,11 +15,7 @@ from sqlalchemy import (
     DateTime,
 )
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import (
-    ForeignKey,
-    Integer,
-    String,
-)
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from src.database.connection import Base

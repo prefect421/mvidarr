@@ -23,9 +23,7 @@ from fastapi import (
     HTTPException,
 )
 from fastapi import Path as FastAPIPath
-from fastapi import (
-    UploadFile,
-)
+from fastapi import UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
