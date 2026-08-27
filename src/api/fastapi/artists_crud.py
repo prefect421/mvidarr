@@ -23,9 +23,7 @@ from fastapi import (
     HTTPException,
 )
 from fastapi import Path as FastAPIPath
-from fastapi import (
-    Query,
-)
+from fastapi import Query
 from sqlalchemy import and_, desc, func, or_
 from sqlalchemy.orm import Session
 

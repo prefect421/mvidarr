@@ -14,11 +14,7 @@ from fastapi import (
     HTTPException,
 )
 from fastapi import Path as FastAPIPath
-from fastapi import (
-    Query,
-    Request,
-    UploadFile,
-)
+from fastapi import Query, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session, joinedload
 

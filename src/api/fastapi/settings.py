@@ -35,12 +35,10 @@ OAUTH_SECRET_KEYS = {
 # ====================================
 
 
-from src.api.fastapi.auth_dependencies import (  # noqa: E402
+from src.api.fastapi.auth_dependencies import (  # isort:skip # noqa: E402
     require_admin as get_current_admin,
 )
-from src.api.fastapi.auth_dependencies import (
-    require_authentication,
-)
+from src.api.fastapi.auth_dependencies import require_authentication  # noqa: E402
 
 # ====================================
 # Pydantic Models
