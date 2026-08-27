@@ -4,7 +4,7 @@
 fastapi==0.139.0
 starlette>=1.6.0  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 typing-inspection>=0.4.2
-uvicorn[standard]==0.52.3
+uvicorn[standard]==0.52.4
 python-multipart==0.0.32  # Security: CVE-2026-53539 quadratic CPU DoS fix, CVE-2026-53538 parameter smuggling fix, CVE-2026-53537 Content-Disposition smuggling fix, CVE-2026-45152 negative Content-Length fix
 jinja2==3.1.6
 
