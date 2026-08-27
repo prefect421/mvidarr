@@ -5,7 +5,7 @@ All notable changes to MVidarr will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Released]
 
 ### Security
 - **Duplicate Video Race (#377)**: Added a DB-level unique constraint on `videos.youtube_id` (migration 024) to close a race where two concurrent imports/discoveries of the same YouTube video could each pass the "does this video already exist" pre-check and create two separate rows, each independently triggering its own download. `videos.imvdb_id` already had this protection; `youtube_id` did not.
