@@ -1,10 +1,10 @@
 # MVidarr Enhanced - Production Dependencies
 
 # Core Framework - FastAPI primary, Flask for backwards compatibility
-fastapi==0.139.0
+fastapi==0.141.1
 starlette>=1.6.0  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 typing-inspection>=0.4.2
-uvicorn[standard]==0.52.3
+uvicorn[standard]==0.52.4
 python-multipart==0.0.32  # Security: CVE-2026-53539 quadratic CPU DoS fix, CVE-2026-53538 parameter smuggling fix, CVE-2026-53537 Content-Disposition smuggling fix, CVE-2026-45152 negative Content-Length fix
 jinja2==3.1.6
 
@@ -34,7 +34,7 @@ python-ffmpeg==2.0.12
 
 # Data Processing
 python-dateutil==2.9.0.post0
-python-dotenv==1.2.2  # Security: CVE-2026-28684 symlink following arbitrary file overwrite fix
+python-dotenv==1.2.3  # Security: CVE-2026-28684 symlink following arbitrary file overwrite fix
 pydantic==2.13.4
 pydantic-settings==2.14.2  # Security: GHSA-4xgf-cpjx-pc3j NestedSecretsSettingsSource symlink traversal fix
 marshmallow==4.3.0
@@ -81,7 +81,7 @@ yarl>=1.24.5
 aiofiles==25.1.0
 python-slugify==8.0.4
 bleach==6.4.0  # Security: Dependabot #20 formaction URI scheme bypass fix, #19 Unicode URI sanitization fix
-humanize==4.9.0
+humanize==4.16.0
 
 # Video processing (legacy support)
 yt-dlp>=2024.12.0

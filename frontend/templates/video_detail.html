@@ -934,6 +934,14 @@ function formatPersonList(data, cssClass) {
     return people.map(person => `<span class="${cssClass}">${escapeHtml(String(person))}</span>`).join(', ');
 }
 
+// Issue #485: tracks a same-view "×" dismissal of the MKV transcoding
+// notice. renderVideoDetails() re-runs on every loadVideoDetails() refresh
+// (download start, metadata enhancement, edits, quality upgrades all call
+// it) -- without this page-scoped flag, each refresh would recompute
+// hideMkvWarning from localStorage alone and silently bring the notice
+// back, undoing a dismissal the user just made.
+let mkvNoticeTemporarilyDismissed = false;
+
 function renderVideoDetails(video) {
     // Render header
     const headerHtml = `
@@ -979,13 +987,23 @@ function renderVideoDetails(video) {
         ? `/api/videos/${video.id}/stream-transcode`
         : `/api/videos/${video.id}/stream`;
 
+    // Issue #485: let users permanently dismiss the MKV transcoding notice
+    let hideMkvWarning = false;
+    try {
+        hideMkvWarning = localStorage.getItem('mvidarr_hide_mkv_warning') === 'true';
+    } catch (e) {
+        hideMkvWarning = false;
+    }
+
     const playerHtml = `
         <div class="video-player">
             ${video.local_path ? `
-                ${needsTranscoding ? `
-                    <div class="video-transcoding-notice">
+                ${needsTranscoding && !hideMkvWarning && !mkvNoticeTemporarilyDismissed ? `
+                    <div class="video-transcoding-notice" id="mkvTranscodingNotice">
+                        <button type="button" class="mkv-notice-close" onclick="dismissMkvWarning(false)" aria-label="Dismiss notice">&times;</button>
                         <p><iconify-icon icon="tabler:info-circle"></iconify-icon> MKV file detected - using real-time transcoding for browser compatibility.</p>
                         <p>Video is being converted on-the-fly for optimal playback.</p>
+                        <p class="mkv-notice-actions"><a href="#" onclick="dismissMkvWarning(true); return false;">Don't show this again</a></p>
                     </div>
                 ` : ''}
                 <video id="videoElement" controls class="video-element">
@@ -1224,6 +1242,26 @@ function renderVideoDetails(video) {
         </div>
     `;
     document.getElementById('videoStats').innerHTML = statsHtml;
+}
+
+// Issue #485: dismiss the MKV transcoding notice, optionally remembering the
+// choice so it doesn't reappear on future video pages. mkvNoticeTemporarilyDismissed
+// is set regardless of `permanent` so the notice also stays hidden across any
+// same-view re-render triggered by other page actions (see the flag's
+// declaration above renderVideoDetails for why that's necessary).
+function dismissMkvWarning(permanent) {
+    const notice = document.getElementById('mkvTranscodingNotice');
+    if (notice) {
+        notice.style.display = 'none';
+    }
+    mkvNoticeTemporarilyDismissed = true;
+    if (permanent) {
+        try {
+            localStorage.setItem('mvidarr_hide_mkv_warning', 'true');
+        } catch (e) {
+            console.warn('Unable to save MKV warning preference:', e);
+        }
+    }
 }
 
 function loadRelatedVideos(artistId) {
@@ -2279,13 +2317,47 @@ video::-moz-text-track-container {
 }
 
 .video-transcoding-notice {
+    position: relative;
     background: #fff3cd;
     border: 1px solid #ffc107;
     color: #856404;
-    padding: 1rem;
+    padding: 1rem 2.25rem 1rem 1rem;
     margin-bottom: 1rem;
     border-radius: 4px;
     text-align: center;
+}
+
+.mkv-notice-close {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    /* inherit, not a hardcoded hex, so this stays readable if
+       .video-transcoding-notice's color ever changes -- see the
+       sibling contrast regression test/comment on .video-transcoding-notice p
+       for why an un-inherited color on this element is exactly the class of
+       bug that bit that rule before. */
+    color: inherit;
+    opacity: 0.7;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+.mkv-notice-close:hover {
+    opacity: 1;
+}
+
+.mkv-notice-actions {
+    font-size: 0.85rem;
+}
+
+.mkv-notice-actions a {
+    color: #533f03;
+    text-decoration: underline;
+    cursor: pointer;
 }
 
 .video-transcoding-notice iconify-icon {
