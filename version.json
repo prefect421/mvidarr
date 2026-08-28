@@ -1,8 +1,8 @@
 {
   "version": "1.0.0",
-  "build_date": "2026-08-17T19:11:16.655781",
-  "git_commit": "1b14354a",
-  "git_branch": "dev",
+  "build_date": "2026-08-26T20:43:47.781090",
+  "git_commit": "a38ba145",
+  "git_branch": "main",
   "release_name": "v1.0.0 - First Production-Ready Release",
   "features": [
     "OAuth login (Authentik, Google, GitHub) alongside password auth, with a signup allowlist",
