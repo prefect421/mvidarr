@@ -6,6 +6,17 @@ Fix: the notice now renders a close button that hides it for the current
 view, plus a "Don't show this again" link that persists the dismissal in
 localStorage (key `mvidarr_hide_mkv_warning`) so the notice stops rendering
 on future page loads.
+
+Code review on the first version of this fix caught a real bug: the close
+button's dismissal only did `notice.style.display = 'none'` on the live DOM
+node, with nothing recorded outside it. `renderVideoDetails()` re-runs on
+every `loadVideoDetails()` refresh -- which several routine same-page
+actions trigger (starting a download, enhancing metadata, saving an edit,
+a quality upgrade) -- so the notice silently reappeared on the very next
+refresh, undoing the dismissal. The fix adds a page-scoped
+`mkvNoticeTemporarilyDismissed` flag, declared outside `renderVideoDetails`
+so it survives across repeated calls within the same page view, and set
+unconditionally in `dismissMkvWarning()` regardless of the `permanent` arg.
 """
 
 from pathlib import Path
@@ -38,6 +49,35 @@ class TestMkvWarningDismissible:
         end = self.html.index("</video>", start)
         render_block = self.html[start:end]
         assert "needsTranscoding && !hideMkvWarning" in render_block
+
+    def test_render_gate_also_checks_the_same_view_dismissal_flag(self):
+        # Regression: without this, a "x" dismissal was silently undone by
+        # any same-page action that refreshes video details (download
+        # start, metadata enhancement, edits, quality upgrades all call
+        # loadVideoDetails() -> renderVideoDetails() again).
+        start = self.html.index("const playerHtml = `")
+        end = self.html.index("</video>", start)
+        render_block = self.html[start:end]
+        assert "!mkvNoticeTemporarilyDismissed" in render_block
+
+    def test_temporary_dismissal_flag_is_scoped_outside_the_render_function(self):
+        # The flag must be declared above renderVideoDetails (module/script
+        # scope), not re-initialized inside it -- otherwise it would reset
+        # to false on every call and never actually persist across
+        # same-view re-renders.
+        declare_at = self.html.index("let mkvNoticeTemporarilyDismissed = false;")
+        render_fn_at = self.html.index("function renderVideoDetails(video) {")
+        assert declare_at < render_fn_at
+
+    def test_dismiss_handler_sets_temporary_flag_unconditionally(self):
+        # Must be set regardless of `permanent` -- a plain "x" close (not
+        # "don't show again") still needs to survive same-view re-renders.
+        start = self.html.index("function dismissMkvWarning(")
+        end = self.html.index("\n}", start)
+        body = self.html[start:end]
+        set_flag_at = body.index("mkvNoticeTemporarilyDismissed = true;")
+        if_permanent_at = body.index("if (permanent)")
+        assert set_flag_at < if_permanent_at
 
     def test_stored_preference_is_read_defensively(self):
         # localStorage access can throw (private browsing, blocked site
