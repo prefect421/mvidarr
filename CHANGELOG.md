@@ -5,15 +5,24 @@ All notable changes to MVidarr will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Released]
+## [1.0.1] - 2026-08-28
+
+Security sweep: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on all three requirements files at time of release.
 
 ### Security
 - **Duplicate Video Race (#377)**: Added a DB-level unique constraint on `videos.youtube_id` (migration 024) to close a race where two concurrent imports/discoveries of the same YouTube video could each pass the "does this video already exist" pre-check and create two separate rows, each independently triggering its own download. `videos.imvdb_id` already had this protection; `youtube_id` did not.
 
 ### Fixed
+- **MKV transcoding notice not dismissible (#485)**: the "MKV file detected" banner on the video detail page had no way to dismiss it and reappeared on every MKV video's page. Added a close (×) button plus a "Don't show this again" option persisted via `localStorage`. Code review on the initial fix (PR #486) caught a real follow-up bug: the close button's dismissal only touched the live DOM node, so any same-page refresh (starting a download, enhancing metadata, saving an edit, a quality upgrade all call `loadVideoDetails()` again) silently brought the notice back. Fixed with a page-scoped dismissal flag that survives re-renders within the same view.
+- **Dockerfile.production missing Node.js/pot-provider**: the multi-stage production Dockerfile — the one CI actually builds and publishes to ghcr.io — never received the Node 22 / bgutil-ytdlp-pot-provider additions that the single-stage `Dockerfile` got in #452, causing pot-provider to crash-loop with exit 127 on every boot in production (PO tokens silently unavailable for the container's whole life). Backported into the multi-stage build so the published image stays small.
+- **CI: unpinned isort silently broke the required CI/CD Pipeline check**: isort was never version-pinned (unlike black, which is pinned everywhere for the same reason), so CI always installed whatever was newest. isort 9.0.0 changed how it collapses multi-import blocks vs 8.0.1, flagging 6 unrelated files as "incorrectly sorted." Reformatted and pinned isort in both `requirements-dev.txt` and `ci-cd.yml`.
 - **Video Discovery Dedup**: `_store_discovered_video()`'s dedup check is now global on `youtube_id` instead of scoped per-artist, matching the new global uniqueness constraint. A video legitimately found under two different artists (e.g. a collaboration) is now correctly recognized as already existing instead of raising `IntegrityError` and silently discarding the rest of that artist's discovery run.
 - **Bulk Download Revert Path**: `bulk_download_videos()` now reverts a claimed video back to its real pre-claim status if creating its `Download` row or dispatching it fails, instead of leaving it stranded at `DOWNLOADING` forever. The per-video commit also moved from once at the end of the whole batch to immediately after each video's `Download` row is staged, narrowing a commit failure's blast radius from the whole batch to one video.
 - **IMVDb Import Duplicate Handling**: `import_from_imvdb()`'s `IntegrityError` handler now re-queries by `imvdb_id` *or* `youtube_id` (previously `imvdb_id` only), so importing the IMVDb record for a video already discovered via YouTube returns "already exists" instead of a 500.
+
+### Changed
+- fastapi 0.139.0 → 0.141.1 (#484), uvicorn 0.52.3 → 0.52.4 (#482), python-dotenv 1.2.2 → 1.2.3 (#481), humanize 4.9.0 → 4.16.0 (#480, dev-only mypy 2.1.0 → 2.3.1 also in #483)
+- Note: `humanize` was found during #480's code review to be unused anywhere in the codebase — flagged for removal in a future cleanup rather than continuing to version-bump a dead dependency
 
 ### Migration Notes
 - Migration 024 now **auto-resolves** any pre-existing duplicate `youtube_id` values instead of refusing to start the application until an operator manually runs remediation SQL. For each group of duplicates it keeps `youtube_id` on whichever row actually has a downloaded file (falling back to `status == DOWNLOADED`, then the oldest row) and clears it — never deletes the row — on the rest, printing exactly what it did. No pre-flight check needed before upgrading.
