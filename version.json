@@ -1,9 +1,9 @@
 {
-  "version": "1.0.0",
-  "build_date": "2026-08-26T20:43:47.781090",
-  "git_commit": "a38ba145",
+  "version": "1.0.1",
+  "build_date": "2026-08-28T16:23:01.981467",
+  "git_commit": "1d2f9f01",
   "git_branch": "main",
-  "release_name": "v1.0.0 - First Production-Ready Release",
+  "release_name": "v1.0.1 - MKV Notice Dismissible + Dependency Sweep",
   "features": [
     "OAuth login (Authentik, Google, GitHub) alongside password auth, with a signup allowlist",
     "Two-Factor Authentication with TOTP support and backup codes",

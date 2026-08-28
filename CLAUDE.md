@@ -214,17 +214,25 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.0.0 - Released
+### Current Phase: v1.0.1 - Released
 
-#### Versioning Policy (Updated 2026-08-17)
-- **Current Version**: 1.0.0 (Released 2026-08-17)
-- **Next Version**: 1.0.1 (Planning)
+#### Versioning Policy (Updated 2026-08-28)
+- **Current Version**: 1.0.1 (Released 2026-08-28)
+- **Next Version**: 1.0.2 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (past phase)
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **v1.0.1** (2026-08-28): Dependency & Bugfix Sweep
+  - ✅ Fix (#485/#486): MKV transcoding notice on the video detail page is now dismissible — close button plus a "Don't show this again" `localStorage`-persisted option. Code review on the initial fix caught a real follow-up bug (dismissal undone by any same-page refresh — download start, metadata enhancement, edit save, quality upgrade) before merge; fixed with a page-scoped dismissal flag that survives re-renders
+  - ✅ Fix: `Dockerfile.production` (the file CI actually builds/publishes to ghcr.io) was missing the Node.js/bgutil-ytdlp-pot-provider additions `Dockerfile` got in #452 — pot-provider crash-looped with exit 127 on every boot in production, PO tokens silently unavailable. Backported into the multi-stage build
+  - ✅ Fix: isort was never version-pinned (unlike black); isort 9.0.0 silently broke the required CI/CD Pipeline check on 6 unrelated files. Reformatted and pinned in `requirements-dev.txt` and `ci-cd.yml`
+  - ✅ Dependency: fastapi 0.139.0 → 0.141.1, uvicorn 0.52.3 → 0.52.4, python-dotenv 1.2.2 → 1.2.3, mypy 2.1.0 → 2.3.1 (dev-only). `humanize`'s bump (4.9.0 → 4.16.0) was reviewed and found to be an unused dependency — flagged for removal in a future cleanup (tracked informally, no issue filed) rather than continuing to bump a dead package
+  - ✅ Security scan: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on `requirements.txt`, `requirements-dev.txt`, `requirements-fastapi.txt` (note: `requirements-prod.txt`, referenced by some older tooling/docs, no longer exists — folded into `requirements-fastapi.txt` as of v0.12.7)
+  - ✅ Also rolled in: duplicate video race fix (#377, migration 024 unique constraint + auto-resolve), video discovery dedup fix, bulk download revert path fix, IMVDb import duplicate handling fix — these had been fast-tracked straight to `main` ahead of `dev` in prior sessions; this release's dev/main sync (`dev` was 3 commits behind `main`) brought `dev` back in line and this changelog entry is the first place they're formally documented under a version number
+  - Follow-up filed: #487 (no in-app way yet to re-enable the MKV notice after a permanent "don't show again" dismissal)
 - **v1.0.0** (2026-08-17): First Production-Ready Release
   - ✅ Gated on (per the v1.0.0 GitHub milestone): RBAC actually enforced, a working/modern login page (OAuth reachable, no dead placeholder), and auth-path test coverage — all closed
   - ✅ OAuth login (Authentik, Google, GitHub) with a signup allowlist, admin-only new-account policy, and a fixed privilege-escalation bug in Authentik group-role mapping
@@ -493,9 +501,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.0.0 (First Production-Ready Release)
+- **Current Version**: v1.0.1 (Dependency & Bugfix Sweep)
 - **Development Focus**: Stability, security
-- **Next Version**: v1.0.1
+- **Next Version**: v1.0.2
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -592,8 +600,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 0.12.8 (2026-05-07)
-- **Next Release**: Version 0.12.9 (Planning)
+- **Current Release**: Version 1.0.1 (2026-08-28)
+- **Next Release**: Version 1.0.2 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment

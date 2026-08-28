@@ -22,18 +22,17 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v1.0.0 - First Production-Ready Release**
+## 🚀 **LATEST: v1.0.1 - Dependency & Bugfix Sweep**
 
-**Released**: August 17, 2026
+**Released**: August 28, 2026
 
-- **🔐 OAuth login** (Authentik, Google, GitHub) alongside password auth, with a signup allowlist and admin-only new-account policy
-- **🔐 Real RBAC enforcement** — role checks were previously decorative; every session was hardcoded to admin
-- **🔑 Two-Factor Authentication** (TOTP + backup codes) and a password reset flow
-- **🔔 Native Discord and Apprise notification providers**, wired to real download/artist activity
-- **🎬 "Recently Found" videos view** and live artist thumbnail sourcing (Spotify/Last.fm before Wikipedia)
-- **🎨 Login page redesign**: rotating background/logo art, real OAuth provider buttons
+- **📺 MKV transcoding notice is now dismissible** (#485) — close button plus a "Don't show this again" option
+- **🐳 Fixed production Docker image** missing Node.js/pot-provider, which caused PO tokens to be silently unavailable
+- **🔧 CI stability fix**: isort pinned after an unpinned upgrade silently broke the required pipeline check
+- **🔒 Security**: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean across all requirements files
+- **📦 Dependency updates**: fastapi, uvicorn, python-dotenv, mypy
 
-📜 **[View the full changelog](CHANGELOG.md)** for v1.0.0's complete notes and every earlier release.
+📜 **[View the full changelog](CHANGELOG.md)** for v1.0.1's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 
@@ -80,7 +79,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v1.0.0`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v1.0.1`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -232,4 +231,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v1.0.0** - Built with ❤️ for music video enthusiasts
+**MVidarr v1.0.1** - Built with ❤️ for music video enthusiasts
