@@ -91,7 +91,7 @@ python fastapi_app.py
 # Verify access at http://localhost:5000
 ```
 
-Pending schema migrations (in `migrations/`) also run automatically on startup — there's no separate command needed after pulling someone else's schema change. See `docs/DATABASE_MIGRATIONS.md` if you need to add a new migration or check status via the `/api/migrations/status` endpoint.
+Pending schema migrations (in `migrations/`) also run automatically on startup — there's no separate command needed after pulling someone else's schema change. See `docs/DATABASE_MIGRATIONS.md` if you need to add a new migration.
 
 ### Development Tools Setup
 

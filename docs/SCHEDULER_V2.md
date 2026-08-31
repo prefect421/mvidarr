@@ -2,7 +2,7 @@
 
 **Version:** v0.10.1
 **Status:** Production Ready
-**Release Date:** December 2024
+**Release Date:** December 2025
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ Scheduler V2 is a complete rewrite of MVidarr's scheduling system, replacing the
 - **Robust Retry Mechanism** - Exponential backoff with configurable retries
 - **Job Tracking** - Comprehensive database-tracked job history
 - **Real-Time Monitoring** - Web dashboard with live status updates
-- **RESTful API** - 23 endpoints for complete programmatic control
+- **RESTful API** - full programmatic control (see `src/api/fastapi/scheduler_v2.py`, plus `scheduled_jobs.py` and `artists_scheduling.py` for related endpoints)
 - **Health Monitoring** - System health checks and diagnostics
 
 ### What's New in V2
@@ -40,7 +40,7 @@ Scheduler V2 is a complete rewrite of MVidarr's scheduling system, replacing the
 - Production-grade Celery Beat integration
 - Per-artist scheduling configuration
 - Job retry mechanism with exponential backoff
-- Comprehensive REST API (23 endpoints)
+- Comprehensive REST API across scheduler_v2.py, scheduled_jobs.py, and artists_scheduling.py
 - Real-time web dashboard
 - Job history and statistics
 

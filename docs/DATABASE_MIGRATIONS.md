@@ -14,17 +14,9 @@ The migration system ensures that database schema changes are applied consistent
 - **MigrationManager**: Handles migration execution and tracking
 - **Migration Tracking**: Uses `database_migrations` table to track applied migrations
 
-### 2. Migration API (`src/api/migrations.py`)
+### 2. Automatic Migration Execution
 
-Provides REST API endpoints for migration management:
-
-- `GET /api/migrations/status` - Get migration status
-- `POST /api/migrations/run` - Run pending migrations
-- `POST /api/migrations/rollback/<version>` - Rollback specific migration
-
-### 3. Automatic Migration Execution
-
-Migrations are automatically executed during database initialization in `src/database/init_db.py`.
+Migrations are automatically executed during database initialization in `src/database/init_db.py`, on every application startup — there is currently no REST API for checking status or triggering migrations manually (an earlier Flask-era API at these paths was never carried over in the FastAPI migration). To check what's applied, query the `database_migrations` tracking table directly or read the startup log output.
 
 ## Creating New Migrations
 
@@ -127,20 +119,9 @@ Migrations run automatically when the application starts:
 3. Applies migrations in version order
 4. Records successful migrations in `database_migrations` table
 
-### Manual Execution
+### Manual/Rollback Execution
 
-Using the API:
-
-```bash
-# Get migration status
-curl -X GET http://localhost:5001/api/migrations/status
-
-# Run pending migrations
-curl -X POST http://localhost:5001/api/migrations/run
-
-# Rollback specific migration
-curl -X POST http://localhost:5001/api/migrations/rollback/001
-```
+There is currently no REST API or CLI entry point for manually re-running or rolling back a specific migration outside of application startup. To roll back, either restore from a database backup taken before the migration, or connect directly and run the migration's `down()` SQL and delete its row from `database_migrations`.
 
 ## Migration Tracking
 
