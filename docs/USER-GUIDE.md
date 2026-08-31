@@ -800,7 +800,7 @@ Examples:
 **Connection Settings:**
 - **Host**: Database server (localhost for Docker)
 - **Port**: Database port (3306 default)
-- **Database Name**: Database name (mvidarr_enhanced)
+- **Database Name**: Database name (mvidarr)
 - **Username/Password**: Authentication credentials
 - **Connection Pool**: Performance tuning options
 

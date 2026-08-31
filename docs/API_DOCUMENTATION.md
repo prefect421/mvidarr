@@ -404,7 +404,7 @@ def after_request(response):
 
 ## Related Documentation
 - [User Guide](USER-GUIDE.md) - Using the web interface
-- [Developer Setup Guide](DEVELOPER_SETUP_GUIDE.md) - Development environment
+- [Contributing Guide](https://github.com/prefect421/mvidarr/blob/main/CONTRIBUTING.md) - Development environment setup
 - [Architecture Documentation](ARCHITECTURE.md) - System design
 - [Troubleshooting Guide](TROUBLESHOOTING.md) - Common API issues
 
