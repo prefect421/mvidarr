@@ -20,7 +20,7 @@
 - **📺 MvTV Continuous Player** - Cinematic mode for uninterrupted viewing
 - **🎭 Genre Management** - Automatic genre tagging and filtering
 - **🔐 User Authentication** - Role-based access control with security features
-- **🎨 Advanced Theme System** - 7 built-in themes with export/import functionality
+- **🎨 Advanced Theme System** - 6 built-in themes with export/import functionality
 
 ## 🚀 **LATEST: v1.0.1 - Dependency & Bugfix Sweep**
 
@@ -131,7 +131,7 @@ sudo systemctl status mvidarr.service
 
 ### Advanced Topics
 - **[API Documentation](docs/API_DOCUMENTATION.md)** - REST API reference and OpenAPI docs
-- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Production deployment with background jobs
+- **[Self-Hosted Production Guide](docs/SELF_HOSTED_PRODUCTION.md)** - Production deployment with background jobs
 - **[Docker Optimization](docs/DOCKER_OPTIMIZATION_GUIDE.md)** - Container optimization
 - **[Security Implementation](docs/SECURITY_IMPLEMENTATION.md)** - Security features
 - **[Architecture](docs/ARCHITECTURE.md)** - System architecture and design
