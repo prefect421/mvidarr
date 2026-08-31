@@ -43,6 +43,7 @@ Comprehensive documentation and guides for MVidarr users, administrators, and de
 ## 📋 Archive Documentation
 
 ### Historical Documentation
+- **[Docker Optimization Guide (2025, v0.9.4)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/DOCKER_OPTIMIZATION_GUIDE.md)** - Historical image-size optimization work; its "optimization opportunities" section recommends removing Celery/Redis as unused, which is no longer true (they're core infrastructure) - don't follow it literally. See `Dockerfile.production` for the current build.
 - **[Installation Archive](https://github.com/prefect421/mvidarr/blob/main/docs/archive/INSTALLATION_GUIDE.md)** - Historical installation guides
 - **[Docker Archive](https://github.com/prefect421/mvidarr/blob/main/docs/archive/DOCKER-QUICKSTART.md)** - Archived Docker documentation
 - **[Quickstart Archive](https://github.com/prefect421/mvidarr/blob/main/docs/archive/QUICKSTART.md)** - Historical quick start guides

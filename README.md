@@ -132,7 +132,7 @@ sudo systemctl status mvidarr.service
 ### Advanced Topics
 - **[API Documentation](docs/API_DOCUMENTATION.md)** - REST API reference and OpenAPI docs
 - **[Self-Hosted Production Guide](docs/SELF_HOSTED_PRODUCTION.md)** - Production deployment with background jobs
-- **[Docker Optimization](docs/DOCKER_OPTIMIZATION_GUIDE.md)** - Container optimization
+- **[Dockerfile.production](Dockerfile.production)** - Multi-stage production build
 - **[Security Implementation](docs/SECURITY_IMPLEMENTATION.md)** - Security features
 - **[Architecture](docs/ARCHITECTURE.md)** - System architecture and design
 
@@ -152,7 +152,7 @@ MVidarr is built with modern, high-performance architecture:
 - **Media Processing**: FFmpeg, yt-dlp for video downloading and processing
 - **Authentication**: Secure user management with role-based access control
 - **Security**: bcrypt password hashing, session management, audit logging
-- **Containerization**: Optimized Docker Compose with multi-stage builds, automated monitoring, and 1.41GB production images
+- **Containerization**: Optimized Docker Compose with multi-stage builds, automated monitoring, and multi-stage production images
 
 ## 🔧 Configuration
 

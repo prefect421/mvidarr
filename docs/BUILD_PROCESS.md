@@ -14,8 +14,9 @@ python --version  # Should be 3.12+
 # Install development dependencies
 pip install -r requirements-dev.txt
 
-# Install production dependencies
-pip install -r requirements-prod.txt
+# Install runtime dependencies (requirements-prod.txt no longer exists as of
+# v0.12.7 - folded into requirements.txt + requirements-fastapi.txt)
+pip install -r requirements.txt -r requirements-fastapi.txt
 ```
 
 ### Code Quality and Formatting
@@ -33,24 +34,20 @@ Before any build, ensure code quality:
 
 ### Local Development Server
 ```bash
-# Development mode with auto-reload
-python app.py
+# Development mode - tables/migrations run automatically on startup
+python fastapi_app.py
 
-# Production mode testing
-FLASK_ENV=production python app.py
+# Dev-only interactive API docs (Swagger/ReDoc) are enabled by MVIDARR_ENV=dev
+MVIDARR_ENV=dev python fastapi_app.py
 ```
 
 ### Running Tests
 ```bash
-# Run comprehensive test suite
-python comprehensive_test.py
+# Run the test suite
+pytest tests/ -v
 
-# Manual testing checklist
-# - Dashboard loads correctly
-# - Artists page functionality
-# - Videos page functionality  
-# - MvTV page playback
-# - Settings page operations
+# With coverage
+pytest tests/ --cov=src
 ```
 
 ## Production Docker Build Process
@@ -121,10 +118,7 @@ RUN groupadd -r mvidarr && useradd...
 # 3. Python packages (cached if requirements unchanged)
 COPY --from=builder /opt/python /usr/local
 
-# 4. Static config (cached if config unchanged)
-COPY docker-config.yml.sample...
-
-# 5. Application code (invalidated most frequently)
+# 4. Application code (invalidated most frequently)
 COPY --chown=mvidarr:mvidarr src/ /app/src/
 ```
 
@@ -167,18 +161,12 @@ The build process is automated through `.github/workflows/ci-cd.yml`:
        cache-to: type=gha,mode=max
    ```
 
-3. **Security Scanning**
-   ```yaml
-   - name: Security Scan
-     run: |
-       trivy image mvidarr:test
-       docker scout cves mvidarr:test
-   ```
+3. **Security Scanning**: covered separately by `.github/workflows/security-scan.yml` (pip-audit, Bandit, Semgrep, Trivy — see `CLAUDE.md` § Security Implementation), not inline in the build workflow
 
 4. **Registry Push** (if tests pass)
    ```yaml
    - name: Push to Registry
-     uses: docker/build-push-action@v6
+     uses: docker/build-push-action@v7
      with:
        push: true
        tags: |
@@ -187,15 +175,15 @@ The build process is automated through `.github/workflows/ci-cd.yml`:
    ```
 
 ### Build Matrix
-The CI pipeline tests multiple configurations:
+The test job runs against both supported Python versions:
 
 ```yaml
 strategy:
   matrix:
-    python-version: [3.12]
-    docker-platform: [linux/amd64, linux/arm64]
-    build-type: [development, production]
+    python-version: [3.11, 3.12]
 ```
+
+The Docker image build itself targets `linux/amd64` only in CI (the Dockerfile has arm64-aware logic for manual `buildx` builds, but the automated pipeline doesn't build/test that platform).
 
 ## Version Management in Builds
 
@@ -272,7 +260,8 @@ docker buildx du
 **Symptom**: `ReadTimeoutError` during pip install
 **Solution**: Extended timeout already configured in Dockerfile
 ```dockerfile
-RUN pip install --timeout=1000 -r requirements-prod.txt
+RUN pip install --no-cache-dir --timeout=1000 -r requirements.txt && \
+    pip install --no-cache-dir --timeout=1000 -r requirements-fastapi.txt
 ```
 
 #### 2. Memory Issues During Build
@@ -366,7 +355,7 @@ __pycache__/
 
 ## Related Documentation
 
-- [Docker Optimization Guide](DOCKER_OPTIMIZATION_GUIDE.md) - Detailed optimization strategies
+- [Dockerfile.production](https://github.com/prefect421/mvidarr/blob/main/Dockerfile.production) - Current multi-stage production build
 - [Deployment Guide](DEPLOYMENT.md) - Production deployment procedures
 - [Security Implementation](SECURITY_IMPLEMENTATION.md) - Security considerations in builds
 - [Performance Monitoring](PERFORMANCE_MONITORING.md) - Build performance tracking
