@@ -23,22 +23,23 @@ title: Home
 - **📺 MvTV Continuous Player** - Cinematic mode for uninterrupted viewing
 - **🎭 Genre Management** - Automatic genre tagging and filtering
 - **🔐 User Authentication** - Role-based access control with security features
-- **🌙 Dark/Light Themes** - Multiple theme options with automatic switching
+- **🎨 Theme System** - 6 built-in themes with automatic switching and export/import
+- **🔐 2FA & OAuth** - TOTP two-factor auth, plus Authentik/Google/GitHub login
+- **🔔 Notifications** - Native Discord and Apprise providers for download/artist activity
 
-## 🚀 **LATEST: v0.12.5 - Security & Bug Fixes**
+## 🚀 **LATEST: v1.0.1 - Dependency & Bugfix Sweep**
 
-**Released**: March 19, 2026
+**Released**: August 28, 2026
 
-> **Note**: Pre-production release following SemVer 0.x conventions. Feature-complete, undergoing testing before v1.0.0.
+> First production-ready release line (since v1.0.0). SemVer 1.x — see the [changelog]({{ site.github.repository_url }}/blob/main/CHANGELOG.md) for the full v1.0.0 feature set.
 
-### Security Fixes
-- **CVE-2026-32597**: PyJWT 2.8.0 → 2.12.0 — missing `crit` header validation (HIGH)
-- **CVE-2026-32274**: black 24.3.0 → 26.3.1 — arbitrary cache file write (HIGH)
+### This Release
+- MKV transcoding notice on the video detail page is now dismissible
+- Fixed production Docker image missing Node.js/pot-provider (PO tokens were silently unavailable)
+- isort pinned in CI after an unpinned bump silently broke the required pipeline check
+- Security scan: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean
 
-### Bug Fixes
-- **#197**: Docker containers no longer log `git not found` errors on every health check; `git_branch` now shown correctly in the sidebar
-- **#199**: Credentials set during the installation wizard are now used for login — default `admin`/`mvidarr` no longer overrides the wizard setup
-- **#200**: Thumbnails are now downloaded immediately when a video download completes; YouTube URL fallback chain added (`maxresdefault` → `hqdefault` → `mqdefault`)
+See the [full changelog]({{ site.github.repository_url }}/blob/main/CHANGELOG.md) for v1.0.1's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 
@@ -54,7 +55,7 @@ docker-compose up -d
 **Production Docker Image:**
 ```bash
 # Latest release
-docker pull ghcr.io/prefect421/mvidarr:v0.12.5
+docker pull ghcr.io/prefect421/mvidarr:v1.0.1
 
 # Or always latest
 docker pull ghcr.io/prefect421/mvidarr:latest
@@ -83,4 +84,4 @@ This project is licensed under the MIT License - see the [LICENSE]({{ site.githu
 
 ---
 
-**MVidarr v{{ site.data.version.current | default: "0.12.5" }}** - Built with ❤️ for music video enthusiasts
+**MVidarr v{{ site.data.version.current | default: "1.0.1" }}** - Built with ❤️ for music video enthusiasts

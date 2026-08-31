@@ -81,7 +81,7 @@ Use our production image:
 docker pull ghcr.io/prefect421/mvidarr:latest
 
 # Or specific version
-docker pull ghcr.io/prefect421/mvidarr:v0.10.0-beta.1
+docker pull ghcr.io/prefect421/mvidarr:v1.0.1
 ```
 
 The `docker-compose.yml` automatically uses the `:latest` tag for production deployments.
@@ -298,24 +298,20 @@ DB_NAME=mvidarr
 SECRET_KEY=$(openssl rand -hex 32)
 ```
 
-**6. Initialize database:**
-```bash
-python scripts/init_db.py
-```
-
-**7. Start services:**
+**6. Start the application:**
 ```bash
 # Terminal 1: Start FastAPI application
+# Database tables are created automatically on first startup - no separate init step needed
 python fastapi_app.py
 
 # Terminal 2: Start Celery worker (optional, for background jobs)
-celery -A src.celery_app worker --loglevel=info
+celery -A src.jobs.celery_app worker --loglevel=info
 
 # Terminal 3: Start Celery beat (optional, for scheduled tasks)
-celery -A src.celery_app beat --loglevel=info
+celery -A src.jobs.celery_app beat --loglevel=info
 ```
 
-**8. Access the application:**
+**7. Access the application:**
 - Open your browser to `http://localhost:5000`
 - Default login: `admin` / `mvidarr`
 

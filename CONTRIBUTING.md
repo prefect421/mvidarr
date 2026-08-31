@@ -41,11 +41,10 @@ We welcome various types of contributions:
 
 ### Prerequisites
 
-- **Python 3.9+** - Required for backend development
-- **Node.js 16+** - For frontend asset building (if applicable)
+- **Python 3.12+** - Required for backend development
 - **Git** - Version control
 - **Docker** (optional) - For containerized development
-- **MySQL/MariaDB** or **SQLite** - Database
+- **MariaDB 11.4+** or **MySQL 8.0+** - Database (required; MVidarr does not support SQLite)
 
 ### Environment Setup
 
@@ -81,34 +80,27 @@ cp .env.example .env
 # Add test API keys if available
 ```
 
-#### 4. Initialize Database
-```bash
-# Create database and tables
-python -c "from src.database.connection import init_database; init_database()"
-
-# Run any pending migrations
-python scripts/migrate.py
-```
-
-#### 5. Verify Setup
+#### 4. Verify Setup
 ```bash
 # Run basic tests
 python -m pytest tests/ -v
 
-# Start development server
-python app.py
+# Start development server - tables are created automatically on first startup
+python fastapi_app.py
 
 # Verify access at http://localhost:5000
 ```
+
+Pending schema migrations (in `migrations/`) also run automatically on startup — there's no separate command needed after pulling someone else's schema change. See `docs/DATABASE_MIGRATIONS.md` if you need to add a new migration or check status via the `/api/migrations/status` endpoint.
 
 ### Development Tools Setup
 
 #### Code Formatting (Required)
 ```bash
-# Install development tools
-pipx install black==24.3.0
-pipx install isort
-pipx install flake8
+# Install development tools (pinned to match CI - see requirements-dev.txt)
+pipx install black==26.3.1
+pipx install isort==9.0.0
+pipx install flake8==6.1.0
 
 # Format code before committing
 black src/
@@ -213,7 +205,7 @@ changes
 ### Python Code Style
 
 #### Formatting Requirements
-- **Black**: Code formatting (version 24.3.0)
+- **Black**: Code formatting (version 26.3.1 — pinned in `requirements-dev.txt`, must match exactly or CI's `black --check` will disagree with your local run)
 - **isort**: Import sorting with `--profile black`
 - **Line length**: 88 characters (Black default)
 - **String quotes**: Double quotes preferred
@@ -240,7 +232,7 @@ import sys
 from pathlib import Path
 
 # Third-party imports
-from flask import Flask, request, jsonify
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import Column, Integer, String
 
 # Local imports
@@ -352,12 +344,12 @@ def test_video_discovery_flow():
 
 #### API Tests
 ```python
-# Test API endpoints
+# Test API endpoints using FastAPI's TestClient
 def test_artists_list_endpoint(client):
     """Test artists listing API endpoint."""
     response = client.get('/api/artists')
     assert response.status_code == 200
-    assert 'artists' in response.json
+    assert 'artists' in response.json()  # note: a method call, not a property
 ```
 
 ### Running Tests
@@ -469,8 +461,8 @@ If applicable, add screenshots.
 
 **Environment**
 - OS: [e.g. Ubuntu 20.04]
-- MVidarr Version: [e.g. 0.9.3]
-- Python Version: [e.g. 3.9.7]
+- MVidarr Version: [e.g. 1.0.1]
+- Python Version: [e.g. 3.12.7]
 - Browser: [e.g. Chrome 95.0]
 
 **Additional Context**
