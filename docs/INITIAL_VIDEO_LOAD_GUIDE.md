@@ -21,7 +21,7 @@ The CLI script (`scripts/index_videos.py`) is **more reliable** for initial vide
 ## Method 1: Run in Production Container (Recommended)
 
 ### Step 1: Access Portainer
-1. Open: http://192.168.1.132:9000
+1. Open Portainer on your production host
 2. Navigate to **Containers**
 3. Click on **mvidarr** container
 4. Click **Console** button
@@ -58,8 +58,8 @@ python3 scripts/index_videos.py --stats
 ## Method 2: Run from Dev Server (if SSH works)
 
 ```bash
-# SSH to production
-ssh mike@192.168.1.132
+# SSH to your production host
+ssh user@your-production-host
 
 # Run inside container
 docker exec -it mvidarr python3 scripts/index_videos.py --index-all
@@ -72,7 +72,7 @@ docker exec -it mvidarr python3 scripts/index_videos.py --index-all
 If you prefer to run outside the container:
 
 ```bash
-# On production host (192.168.1.132)
+# On your production host
 # Copy the script
 docker cp mvidarr:/app/scripts/index_videos.py /tmp/
 

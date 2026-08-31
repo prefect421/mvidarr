@@ -22,7 +22,7 @@ Comprehensive documentation and guides for MVidarr users, administrators, and de
 
 ### Authentication & Access Control
 - **[Security Implementation](https://github.com/prefect421/mvidarr/blob/main/docs/SECURITY_IMPLEMENTATION.md)** - Complete security overview
-- **[Authentication Features](https://github.com/prefect421/mvidarr/blob/main/docs/AUTHENTICATION_FEATURE_LOG.md)** - Detailed authentication system documentation
+- **[Architecture: Security](https://github.com/prefect421/mvidarr/blob/main/docs/ARCHITECTURE.md#-security-architecture)** - Current authentication/authorization design
 
 
 ## 🐳 Deployment Documentation
@@ -54,6 +54,7 @@ Comprehensive documentation and guides for MVidarr users, administrators, and de
 - **[Legacy Installation Guide](https://github.com/prefect421/mvidarr/blob/main/docs/archive/INSTALLATION-GUIDE.md)** - Superseded by [Installation Guide](installation/); described a config format (`docker-config.yml`) no longer used
 - **[Development Journal (2025)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/JOURNAL.md)** - Point-in-time issue/lessons log; superseded by [CHANGELOG](https://github.com/prefect421/mvidarr/blob/main/CHANGELOG.md)
 - **[Screenshot Capture Reports](https://github.com/prefect421/mvidarr/tree/main/docs/archive)** - One-off notes from the original USER-GUIDE.md screenshot effort
+- **[Early Authentication Implementation Log (2025)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/AUTHENTICATION_FEATURE_LOG.md)** - Described a Flask decorator-based plan (`@login_required`, etc.) that was never actually adopted; real enforcement shipped differently in v1.0.0 via FastAPI dependencies
 
 
 ## 📞 Getting Help
