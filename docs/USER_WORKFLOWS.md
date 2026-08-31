@@ -465,7 +465,7 @@ This guide provides step-by-step workflows for common MVidarr tasks, helping use
 
 ## 🔗 Related Documentation
 
-- **Installation Guide**: `INSTALLATION-GUIDE.md`
+- **Installation Guide**: `installation.md`
 - **Configuration Guide**: `CONFIGURATION_GUIDE.md` 
 - **Troubleshooting**: `TROUBLESHOOTING.md`
 - **API Documentation**: `API_DOCUMENTATION.md`

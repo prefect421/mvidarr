@@ -404,6 +404,6 @@ fdupes -r /path/to/video/storage
 - **Performance Monitoring**: See `PERFORMANCE_MONITORING.md`
 - **Docker Troubleshooting**: See `TROUBLESHOOTING_DOCKER.md`
 - **System Architecture**: See `ARCHITECTURE.md`
-- **Installation Guide**: See `INSTALLATION-GUIDE.md`
+- **Installation Guide**: See `installation.md`
 
 This monitoring guide ensures optimal MVidarr performance and early issue detection through comprehensive system observation and proactive maintenance procedures.

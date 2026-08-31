@@ -642,7 +642,7 @@ sudo ufw deny 5000/tcp   # Block direct access (use reverse proxy)
 
 ## 🔗 Related Documentation
 
-- **Installation Guide**: See `INSTALLATION-GUIDE.md`
+- **Installation Guide**: See `installation.md`
 - **Docker Troubleshooting**: See `TROUBLESHOOTING_DOCKER.md`
 - **System Monitoring**: See `MONITORING.md`
 - **API Documentation**: See `API_DOCUMENTATION.md`

@@ -51,10 +51,10 @@ Comprehensive documentation and guides for MVidarr users, administrators, and de
 - **[Issues Log (2025 snapshot)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/issues/Issues.md)** - Point-in-time issue log, superseded by [GitHub Issues](https://github.com/prefect421/mvidarr/issues)
 - **[Features Snapshot (early)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/requirements/Features.md)** - Early feature-completion snapshot
 - **[Production Incident Diagnostics](https://github.com/prefect421/mvidarr/tree/main/docs/archive/diagnostics)** - One-off scripts/notes from specific past production incidents
+- **[Legacy Installation Guide](https://github.com/prefect421/mvidarr/blob/main/docs/archive/INSTALLATION-GUIDE.md)** - Superseded by [Installation Guide](installation/); described a config format (`docker-config.yml`) no longer used
+- **[Development Journal (2025)](https://github.com/prefect421/mvidarr/blob/main/docs/archive/JOURNAL.md)** - Point-in-time issue/lessons log; superseded by [CHANGELOG](https://github.com/prefect421/mvidarr/blob/main/CHANGELOG.md)
+- **[Screenshot Capture Reports](https://github.com/prefect421/mvidarr/tree/main/docs/archive)** - One-off notes from the original USER-GUIDE.md screenshot effort
 
-## 📖 Development Journal
-
-- **[Development Journal](https://github.com/prefect421/mvidarr/blob/main/docs/JOURNAL.md)** - Development progress and decisions
 
 ## 📞 Getting Help
 

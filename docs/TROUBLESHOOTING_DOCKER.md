@@ -538,7 +538,7 @@ docker exec mvidarr-app tar xzf /tmp/good-backup.tar.gz -C /
 
 - **Official Docker Documentation**: https://docs.docker.com/
 - **Docker Compose Reference**: https://docs.docker.com/compose/
-- **MVidarr Installation Guide**: See `INSTALLATION-GUIDE.md`
+- **MVidarr Installation Guide**: See `installation.md`
 - **System Monitoring**: See `MONITORING.md`
 - **General Troubleshooting**: See `TROUBLESHOOTING.md`
 
