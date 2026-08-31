@@ -54,7 +54,7 @@ cd mvidarr
 ### Method 2: Manual Docker Compose
 ```bash
 # Copy environment template
-cp .env.selfhosted.example .env
+cp .env.example .env
 nano .env  # Edit configuration
 
 # Start services
