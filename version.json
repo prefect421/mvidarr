@@ -1,10 +1,12 @@
 {
-  "version": "1.0.1",
-  "build_date": "2026-08-28T16:23:01.981467",
-  "git_commit": "1d2f9f01",
+  "version": "1.0.2",
+  "build_date": "2026-09-03T19:47:53.234236",
+  "git_commit": "030eae5a",
   "git_branch": "main",
-  "release_name": "v1.0.1 - MKV Notice Dismissible + Dependency Sweep",
+  "release_name": "v1.0.2 - Security Sweep: CORS/Proxy-Trust Hardening",
   "features": [
+    "Configurable CORS_ALLOWED_ORIGINS and loopback-default TRUSTED_PROXY_HOSTS (was hardcoded personal IP / trust-all)",
+    "Settings UI Preferences: re-enable the MKV transcoding notice after 'Don't show this again'",
     "OAuth login (Authentik, Google, GitHub) alongside password auth, with a signup allowlist",
     "Two-Factor Authentication with TOTP support and backup codes",
     "Role-based access control (RBAC) with real per-role enforcement",
