@@ -42,7 +42,7 @@ curl http://localhost:5000/health
 curl http://localhost:5000/api/settings/require_authentication
 
 # Check user exists (if using database auth)
-sqlite3 database/mvidarr.db "SELECT username, is_active FROM users;"
+mysql -u mvidarr -p mvidarr -e "SELECT username, is_active FROM users;"
 ```
 
 **Solutions:**
@@ -176,36 +176,32 @@ curl http://localhost:5000/api/videos/{video_id}/subtitles
 - Artists/videos not displaying
 
 **Diagnostic Steps:**
+
+MVidarr requires MariaDB/MySQL — there is no local database file to check permissions on.
+
 ```bash
-# Check database file exists and permissions
-ls -la database/mvidarr.db
-
 # Test database connectivity
-sqlite3 database/mvidarr.db ".tables"
+mysql -u mvidarr -p -h <db_host> mvidarr -e "SHOW TABLES;"
 
-# Check database integrity
-sqlite3 database/mvidarr.db "PRAGMA integrity_check;"
+# Check table integrity
+mysql -u mvidarr -p mvidarr -e "CHECK TABLE artists, videos, downloads, settings;"
 ```
 
 **Solutions:**
-1. **File permissions**:
-   ```bash
-   chmod 664 database/mvidarr.db
-   chown mvidarr:mvidarr database/mvidarr.db
-   ```
+1. **Connection/credentials**: verify `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` in `.env` match the MariaDB container/server
 
-2. **Database corruption**:
+2. **Table corruption**:
    ```bash
-   # Create backup first
-   cp database/mvidarr.db database/mvidarr.db.backup
-   
+   # Back up first
+   mysqldump -u mvidarr -p mvidarr > mvidarr-backup-before-repair.sql
+
    # Try to repair
-   sqlite3 database/mvidarr.db ".recover" | sqlite3 database/mvidarr_recovered.db
+   mysqlcheck -u mvidarr -p --auto-repair mvidarr
    ```
 
-3. **Missing database**:
-   - Restore from backup
-   - Or restart MVidarr to create new database
+3. **Missing database/tables**:
+   - Restore from a `mysqldump` backup, or
+   - Restart MVidarr — `initialize_database()` recreates tables and seeds defaults automatically on startup
 
 #### Database Performance Issues
 
@@ -260,14 +256,7 @@ ps aux | grep mvidarr
 
 **For libraries with 10,000+ videos:**
 
-1. **Database optimization**:
-   ```bash
-   # Increase cache size
-   sqlite3 database/mvidarr.db "PRAGMA cache_size=10000;"
-   
-   # Enable WAL mode
-   sqlite3 database/mvidarr.db "PRAGMA journal_mode=WAL;"
-   ```
+1. **Database optimization**: tune the connection pool (`DB_POOL_SIZE`/`db_pool_size` setting) and add composite indexes for your query patterns — see `docs/PERFORMANCE_MONITORING.md` and `docs/DATABASE_PERFORMANCE_OPTIMIZATION.md`
 
 2. **Frontend optimization**:
    - Enable virtualization for large lists
@@ -538,11 +527,11 @@ sar -u 1 5
 
 3. **Database recovery**:
    ```bash
-   # Backup current state
-   cp database/mvidarr.db database/mvidarr.db.broken
-   
+   # Back up current state
+   mysqldump -u mvidarr -p mvidarr > mvidarr-backup-before-recovery.sql
+
    # Try repair
-   sqlite3 database/mvidarr.db ".dump" | sqlite3 database/mvidarr_fixed.db
+   mysqlcheck -u mvidarr -p --auto-repair mvidarr
    ```
 
 4. **Fresh installation** (last resort):

@@ -5,6 +5,24 @@ All notable changes to MVidarr will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Removed
+- **Repo cleanup**: Removed stale/orphaned files accumulated since the pre-1.0 "MVidarr Enhanced" era and never cleaned up:
+  - `docs/pdf/` (97MB of PDFs branded with the old "MVidarr Enhanced" name, unreferenced anywhere)
+  - `docs/_tabs/` — an entire dead Jekyll page collection left over from a Chirpy-theme trial; the site has used Minima (per `docs/_config.yml`) since, and Minima never reads `_tabs/`. Contained 5 stale duplicate pages with broken links.
+  - 12 orphaned files inside `docs/archive/` not linked even from the curated archive index in `docs/documentation.md` (old strategic-pivot/QA-plan/completion docs, a duplicate archive README, a stray `to-do.md`)
+  - 9 orphaned one-off completion-report docs from `docs/` root never linked from the doc site nav (`FAVICON_IMPLEMENTATION_COMPLETE.md`, `PDF_DOCUMENTATION_COMPLETE.md`, `MVTV_PLAYER_FIX_SUMMARY.md`, `PHASE3_VALIDATION_GUIDE.md`, `SCREENSHOTS-NEEDED.md`, `v0.10.1_PROJECT_PLAN.md`, `CLEAN_DATABASE_VIDEOS.md`, `INSTALLATION_WIZARD_SPEC.md`, `DOCUMENTATION-SUMMARY.md`)
+  - 4 `tests/DISABLED_test_*.py` files (already excluded from pytest collection by filename, effectively dead code)
+  - `examples/index_enhanced.html`, `examples/settings_page.html` (old-branding, unreferenced)
+  - Stray untracked files: `examples/loginpage.png`, a misnamed screenshot in `docs/screenshots/`, an empty `data/database/.initialized` marker
+- **License conflict fixed**: `LICENSE` (MIT) and `LICENSE.md` (GPLv3) were both committed with genuinely different license text. Confirmed MIT is correct; removed `LICENSE.md`.
+- **Duplicate Unraid template resolved**: `unraid-template.xml` and `unraid-template-7.2.0.xml` had diverged (support URL, min-version requirements). The 7.2.0 content is current; it's now the sole `unraid-template.xml` (the filename `docs/UNRAID_INSTALLATION.md` and `docs/installation.md` link to).
+- Not touched this pass (flagged for follow-up): `alembic/` appears vestigial (one migration whose effect is already covered by `Base.metadata.create_all()`; all 26 real schema changes since have gone through the separate hand-rolled `migrations/` runner instead) but removing it cleanly requires also patching the alembic-based check in `src/api/fastapi/health.py` — deferred as a code change rather than a file cleanup. Also flagged: several `docs/*.md` files link to files that don't exist (doc rot); ~15 one-off `fix_*`/`backfill_*` scripts in `scripts/` not yet audited for staleness.
+
+### Changed
+- **Merged 4 overlapping performance docs into one**: `PERFORMANCE_OPTIMIZATION.md`, `PERFORMANCE_OPTIMIZATION_ANALYSIS.md`, and `PERFORMANCE_REGRESSION_PREVENTION.md` are gone; their durable content was folded into `PERFORMANCE_MONITORING.md` (kept under that name since `ARCHITECTURE.md`, `MONITORING.md`, and `BUILD_PROCESS.md` all link to it). In the process, corrected content that had drifted from the actual FastAPI code: the monitoring API section documented Flask-era endpoints (`/api/performance/stats`, `/slow`, `/summary`, `/log-summary`) that no longer exist — replaced with the real current routes in `src/api/fastapi/performance.py` (`/`, `/system`, `/cache`, `/endpoints`, `/trends`, `/cache/clear`, `/health`) and their actual auth requirements. The `@monitor_performance` decorator examples referenced API route names (`api.videos.search`) that were never real; replaced with real current usage sites in the service layer (`video_quality_service.py`, `dynamic_playlist_service.py`, etc). Dropped point-in-time "Issue #68" project narrative (executive summaries, phase timelines, monthly-report templates) that had no reference value once the work it described was done.
+
 ## [1.0.1] - 2026-08-28
 
 Security sweep: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on all three requirements files at time of release.

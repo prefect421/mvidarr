@@ -342,34 +342,34 @@ iostat -x 1 5
 docker exec mvidarr-app dd if=/dev/zero of=/tmp/test bs=1M count=1000
 
 # Use faster storage for volumes
-# Consider SSD storage for database and config
+# Consider SSD storage for the mariadb container's data volume and for videos
 volumes:
-  - "/fast/ssd/path:/app/database"
-  - "/regular/storage:/app/videos"
+  - "/fast/ssd/path:/var/lib/mysql"   # on the mariadb service
+  - "/regular/storage:/app/videos"    # on the mvidarr service
 ```
 
 ### Database Performance Problems
 
+MVidarr uses MariaDB/MySQL, not SQLite — there's no local `.db` file or lock files to manage inside the app container.
+
 #### Database Locks
 ```bash
-# Check for database lock files
-docker exec mvidarr-app ls -la /app/database/
+# Check for locked/long-running queries on the MariaDB container
+docker exec mvidarr-mariadb mysql -u root -p -e "SHOW PROCESSLIST;"
 
-# Stop container and remove lock files if safe
-docker-compose stop
-sudo rm /path/to/database/*.db-wal /path/to/database/*.db-shm
-docker-compose start
+# Kill a specific stuck query if needed
+docker exec mvidarr-mariadb mysql -u root -p -e "KILL <process_id>;"
 ```
 
 #### Database Corruption
 ```bash
-# Check database integrity
-docker exec mvidarr-app sqlite3 /app/database/mvidarr.db "PRAGMA integrity_check;"
+# Check and repair tables
+docker exec mvidarr-mariadb mysqlcheck -u root -p --auto-repair mvidarr
 
-# If corrupted, restore from backup
-docker-compose stop
-cp /path/to/backup/mvidarr.db /path/to/current/mvidarr.db
-docker-compose start
+# If corrupted beyond repair, restore from a mysqldump backup
+docker-compose stop mvidarr
+docker exec -i mvidarr-mariadb mysql -u root -p mvidarr < /path/to/backup/full-backup.sql
+docker-compose start mvidarr
 ```
 
 ## 🔐 Security and Access Issues
@@ -409,11 +409,11 @@ server {
 # Check authentication logs
 docker logs mvidarr-app | grep -i auth
 
-# Reset admin password (if supported)
-docker exec -it mvidarr-app python -c "from src.utils.auth import reset_admin_password; reset_admin_password()"
+# Reset admin password
+docker exec -it mvidarr-app python3 scripts/reset_admin_credentials.py
 
-# Verify user database
-docker exec mvidarr-app sqlite3 /app/database/mvidarr.db ".tables" | grep -i user
+# Verify user table
+docker exec mvidarr-mariadb mysql -u mvidarr -p mvidarr -e "SELECT username, is_active, role FROM users;"
 ```
 
 ## 🛠️ Advanced Troubleshooting
@@ -538,7 +538,7 @@ docker exec mvidarr-app tar xzf /tmp/good-backup.tar.gz -C /
 
 - **Official Docker Documentation**: https://docs.docker.com/
 - **Docker Compose Reference**: https://docs.docker.com/compose/
-- **MVidarr Installation Guide**: See `INSTALLATION-GUIDE.md`
+- **MVidarr Installation Guide**: See `installation.md`
 - **System Monitoring**: See `MONITORING.md`
 - **General Troubleshooting**: See `TROUBLESHOOTING.md`
 

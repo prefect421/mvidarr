@@ -2,712 +2,242 @@
 
 ## Overview
 
-MVidarr is a sophisticated music video management system built with a modern FastAPI-based architecture. The system follows a layered, service-oriented design pattern with clear separation of concerns across presentation, business logic, and data layers. This document provides a comprehensive overview of the system's architecture, component relationships, and design patterns.
+MVidarr is built with a modern, fully-async **FastAPI** architecture (the earlier Flask implementation was fully migrated away — zero Flask API endpoints remain, see `CHANGELOG.md` v0.9.8). The system follows a layered, service-oriented design with clear separation between the API layer, the service (business logic) layer, and the database layer.
 
 ## 🏗️ High-Level Architecture
 
-### System Overview
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    External APIs                            │
-│  YouTube │ IMVDB │ Spotify │ Last.fm │ Plex │ Lidarr       │
+│  YouTube │ IMVDb │ Spotify │ Last.fm │ Plex/Jellyfin/Emby   │
+│                    Lidarr │ Discord/Apprise                  │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
-│                 Service Layer                               │
-│  Integration Services │ Core Services │ Utility Services   │
+│                 Service Layer (src/services/)                │
+│  Integration Services │ Core Services │ Background Jobs      │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
-│                  API Layer                                  │
-│        RESTful Endpoints │ Authentication │ Middleware     │
+│              API Layer (src/api/fastapi/)                    │
+│    Async Routers │ Session Auth (Depends) │ Middleware       │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
-│               Frontend Layer                                │
-│      Templates │ JavaScript │ CSS │ Static Assets          │
+│               Frontend Layer (frontend/)                     │
+│      Jinja2 Templates │ JavaScript │ CSS │ Static Assets     │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
-│                Database Layer                               │
-│    Models │ Connection Pool │ Migration System             │
+│                Database Layer                                │
+│   MariaDB/MySQL │ SQLAlchemy Models │ Migration System        │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+Background work (discovery, downloads, metadata enrichment) runs through **Celery + Redis**, alongside the FastAPI process rather than inline in a request.
 
 ## 🏛️ Application Structure
 
 ### Directory Organization
 ```
 mvidarr/
-├── app.py                      # Main application entry point
-├── src/                        # Core application source
-│   ├── api/                    # RESTful API endpoints
-│   │   ├── artists.py          # Artist management API
-│   │   ├── videos.py           # Video management API  
-│   │   ├── settings.py         # Configuration API
-│   │   └── [other_apis].py     # Additional API modules
-│   ├── config/                 # Configuration management
-│   │   └── config.py           # Environment and database config
-│   ├── database/               # Database layer
-│   │   ├── models.py           # SQLAlchemy models
-│   │   └── connection.py       # Connection management
-│   ├── middleware/             # Request processing middleware
-│   │   └── auth.py             # Authentication middleware
-│   ├── services/               # Business logic layer
-│   │   ├── artist_service.py   # Artist management
-│   │   ├── video_discovery_service.py
-│   │   ├── settings_service.py # Configuration service
-│   │   └── [external_services] # API integrations
-│   └── utils/                  # Utility functions
-├── frontend/                   # Frontend assets
-│   ├── templates/              # Jinja2 HTML templates
-│   ├── static/                 # Static assets (JS, images)
-│   └── CSS/                    # Modular stylesheets
-└── data/                       # Application data
+├── fastapi_app.py               # Main application entry point
+├── src/
+│   ├── api/fastapi/              # FastAPI routers (one file per resource area)
+│   │   ├── videos.py, artists_crud.py, settings.py, performance.py, ...
+│   │   └── auth_dependencies.py  # require_authentication / require_admin
+│   ├── config/                   # Environment + database-backed configuration
+│   ├── database/
+│   │   ├── models.py             # SQLAlchemy models
+│   │   ├── connection.py         # Connection pooling
+│   │   ├── init_db.py            # Table creation + migration runner (runs on startup)
+│   │   └── migrations.py         # Custom migration framework (see migrations/)
+│   ├── services/                 # Business logic (167+ modules: discovery, downloads,
+│   │                              # thumbnails, OAuth, notifications, integrations, ...)
+│   ├── jobs/celery_app.py        # Celery application and task registration
+│   └── utils/                    # Logging, performance monitoring, shared helpers
+├── frontend/
+│   ├── templates/                # Jinja2 HTML templates (base.html + page templates)
+│   ├── static/                   # JavaScript and images
+│   └── CSS/                      # Modular stylesheets
+├── migrations/                   # Numbered schema migration scripts
+└── data/                         # Runtime data (videos, thumbnails, cache, logs)
 ```
 
 ### Main Application Entry Point
 
-**File**: `app.py`
-```python
-def create_app():
-    # Dynamic template and static directory configuration
-    template_dir = Path(__file__).parent / "frontend" / "templates"
-    static_dir = Path(__file__).parent / "frontend" / "static"
-    
-    app = FastAPI( 
-                template_folder=str(template_dir), 
-                static_folder=str(static_dir))
-    
-    # Load configuration from environment and database
-    config = Config()
-    app.config.from_object(config)
-    config.load_from_database()  # Runtime database configuration
-    
-    # Initialize security, authentication, and services
-    configure_security(app)
-    register_blueprints(app)
-    start_background_services(app)
-```
+**File**: `fastapi_app.py`
 
-**Key Responsibilities**:
-- FastAPI application initialization
-- Dynamic configuration loading
-- Security and authentication setup
-- Router registration (FastAPI routers replace Flask blueprints)
-- Background service initialization
+Responsibilities on startup:
+- Calls `initialize_database()` (`src/database/init_db.py`), which creates tables if needed, seeds default settings and built-in themes, and runs any pending migrations — no manual DB setup step is required
+- Registers all FastAPI routers from `src/api/fastapi/`
+- Configures session middleware, CORS, and security headers
+- Starts background service hooks
 
 ## 🗄️ Database Architecture
 
 ### Database Technology Stack
-- **ORM**: SQLAlchemy with declarative base models
-- **Database**: MySQL/MariaDB (primary), SQLite (development)
-- **Connection Management**: Thread-safe connection pooling
-- **Migration**: SQLAlchemy migration support
+- **ORM**: SQLAlchemy, declarative models
+- **Database**: MariaDB 11.4+ / MySQL 8.0+ only — MVidarr does not support SQLite
+- **Connection Management**: Pooled connections (see `docs/PERFORMANCE_MONITORING.md` for tuning)
+- **Migrations**: Two systems exist historically — the active one is the numbered-script runner in `src/database/migrations.py` + `migrations/`, invoked automatically by `initialize_database()`. An `alembic/` setup also exists but has effectively gone unused since a single early migration; treat `migrations/` as the source of truth.
 
-### Connection Pool Configuration
-```python
-class DatabaseManager:
-    def create_engine(self):
-        return create_engine(
-            connection_url,
-            poolclass=QueuePool,
-            pool_size=10,           # Base connections
-            max_overflow=20,        # Additional connections
-            pool_timeout=30,        # Connection timeout
-            pool_pre_ping=True,     # Validate connections
-            pool_recycle=3600       # Recycle connections hourly
-        )
-```
+### Core Domain Models (abbreviated — see `src/database/models.py` for the full schema)
 
-### Core Domain Models
-
-#### Artist Model
 ```python
 class Artist(Base):
-    __tablename__ = 'artists'
-    
-    # Core fields
+    __tablename__ = "artists"
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False, unique=True)
     folder_path = Column(String(500))
-    
-    # External service integration
     imvdb_id = Column(Integer, index=True)
     spotify_id = Column(String(255), index=True)
-    
-    # Metadata and media
-    bio = Column(Text)
     thumbnail_url = Column(String(500))
-    thumbnail_path = Column(String(500))
-    
-    # Relationships
     videos = relationship("Video", back_populates="artist")
-```
 
-#### Video Model
-```python
+
 class Video(Base):
-    __tablename__ = 'videos'
-    
-    # Core identification
+    __tablename__ = "videos"
     id = Column(Integer, primary_key=True)
     title = Column(String(255), nullable=False)
-    artist_id = Column(Integer, ForeignKey('artists.id'), nullable=False)
-    
-    # Source and metadata
-    url = Column(String(500))
-    youtube_id = Column(String(50), unique=True, index=True)
-    imvdb_id = Column(Integer, unique=True, index=True)
-    
-    # Status and processing
+    artist_id = Column(Integer, ForeignKey("artists.id"), nullable=False)
+    youtube_id = Column(String(50), unique=True, index=True)   # unique constraint closes a
+    imvdb_id = Column(Integer, unique=True, index=True)         # duplicate-download race (#377)
     status = Column(Enum(VideoStatus), default=VideoStatus.WANTED)
     file_path = Column(String(500))
-    thumbnail_path = Column(String(500))
-    
-    # Relationships
     artist = relationship("Artist", back_populates="videos")
-    downloads = relationship("Download", back_populates="video")
-```
 
-#### User Model (Authentication)
-```python
+
 class User(Base):
-    __tablename__ = 'users'
-    
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     username = Column(String(80), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), default=UserRole.USER)
-    
-    # Security features
-    is_active = Column(Boolean, default=True)
-    failed_login_attempts = Column(Integer, default=0)
-    locked_until = Column(DateTime)
-    two_factor_secret = Column(String(32))
+    email = Column(String(120), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)   # bcrypt
+    role = Column(SQLEnum(UserRole), default=UserRole.USER, nullable=False)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
+    two_factor_secret = Column(String(32), nullable=True)
+    two_factor_enabled = Column(Boolean, default=False, nullable=False)
+    backup_codes = Column(JSON, nullable=True)
 ```
 
-### Database Session Management
-
-**Context Manager Pattern**:
-```python
-@contextmanager
-def get_db():
-    session = SessionLocal()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-# Usage in services
-def create_artist(name):
-    with get_db() as session:
-        artist = Artist(name=name)
-        session.add(artist)
-        return artist.id
-```
+`UserRole` is hierarchical: `READONLY < USER < MANAGER < ADMIN`. RBAC is enforced on every route via `Depends(require_authentication)` / `Depends(require_admin)` — see Security Architecture below.
 
 ## 🔧 Service Layer Architecture
 
-### Service Design Patterns
+Services in `src/services/` follow a consistent shape: a class wrapping one area of business logic, using `get_logger("mvidarr.<name>")` for logging and `SettingsService` for database-backed configuration. Long-running or externally-facing methods are wrapped with `@monitor_performance("service.method")` (see `docs/PERFORMANCE_MONITORING.md`).
 
-#### Core Service Structure
-```python
-class BaseService:
-    def __init__(self):
-        self.settings_service = SettingsService()
-        self.logger = get_logger(f"mvidarr.{self.__class__.__name__}")
-    
-    def _handle_api_error(self, response, operation):
-        """Standardized error handling across services"""
-        if not response.ok:
-            self.logger.error(f"{operation} failed: {response.status_code}")
-            raise ServiceException(f"{operation} failed")
-```
+Representative service groups:
+- **Discovery & downloads**: `video_discovery_service`, `youtube_download_engine`, `ytdlp_download_manager`, `video_quality_service`
+- **Metadata & thumbnails**: `imvdb_discovery_service`, `imvdb_analytics_service`, `thumbnail_service`
+- **External integrations**: `async_spotify_service`, `spotify_sync_service`, `lastfm_service`, `plex_service`, `jellyfin_service`, `emby_service`
+- **Notifications**: `discord_notification_formatter`, `apprise_notification_service`, `webhook_service`
+- **Auth & security**: `auth_service`, `oauth_service`, `two_factor_service`
+- **Scheduling**: Scheduler V2 (Celery Beat-based) — see `docs/SCHEDULER_V2.md`
 
-### Core Services
+### External Service Integration Pattern
 
-#### Settings Service
-**Purpose**: Centralized configuration management with caching
-```python
-class SettingsService:
-    _instance = None
-    _cache = {}
-    
-    @classmethod
-    def get(cls, key, default=None):
-        # Check cache first
-        if key in cls._cache:
-            return cls._cache[key]
-        
-        # Load from database
-        with get_db() as session:
-            setting = session.query(Setting).filter(Setting.key == key).first()
-            value = setting.value if setting else default
-            
-        # Cache the result
-        cls._cache[key] = value
-        return value
-    
-    @classmethod
-    def reload_cache(cls):
-        """Clear cache to force reload from database"""
-        cls._cache.clear()
-```
-
-#### Video Discovery Service
-**Purpose**: Automated video discovery from external sources
-```python
-class VideoDiscoveryService:
-    def __init__(self):
-        self.imvdb_service = imvdb_service
-        self.youtube_service = youtube_service
-        self.thumbnail_service = thumbnail_service
-    
-    def discover_videos_for_artist(self, artist_id):
-        with get_db() as session:
-            artist = session.query(Artist).get(artist_id)
-            
-            # Search multiple sources
-            imvdb_videos = self.imvdb_service.search_artist_videos(artist.name)
-            youtube_videos = self.youtube_service.search_videos(f"{artist.name} music video")
-            
-            # Process and deduplicate
-            new_videos = self._process_discovered_videos(
-                artist, imvdb_videos + youtube_videos
-            )
-            
-            return new_videos
-```
-
-### External Service Integration
-
-#### Common Integration Pattern
-```python
-class ExternalServiceBase:
-    def __init__(self, service_name):
-        self.service_name = service_name
-        self.api_key = SettingsService.get(f"{service_name}_api_key")
-        self.rate_limit_delay = 1.0
-        self.session = requests.Session()
-    
-    def _rate_limited_request(self, url, **kwargs):
-        """Rate-limited API request with error handling"""
-        time.sleep(self.rate_limit_delay)
-        
-        try:
-            response = self.session.get(url, timeout=30, **kwargs)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logger.error(f"{self.service_name} API error: {e}")
-            raise ServiceException(f"{self.service_name} API unavailable")
-```
-
-#### Service Dependencies
-```
-VideoDiscoveryService
-├── IMVDBService          # Video metadata and artist info
-├── YouTubeService        # Video search and metadata  
-├── ThumbnailService      # Image processing
-└── SettingsService       # Configuration
-
-ArtistService
-├── VideoDiscoveryService # Find new videos
-├── ThumbnailService      # Artist images
-└── DatabaseConnection    # Data persistence
-
-SchedulerService
-├── VideoDiscoveryService # Scheduled discovery
-├── DownloadService       # Scheduled downloads
-└── SettingsService       # Schedule configuration
-```
+External API clients share a common shape: pull the API key from `SettingsService`, rate-limit outbound requests, and raise a domain-specific exception on failure so callers don't have to inspect raw HTTP responses.
 
 ## 🌐 API Layer Architecture
 
 ### Router Organization
 
-#### Main API Structure
+Each resource area is a FastAPI `APIRouter` in `src/api/fastapi/`, registered on the main app in `fastapi_app.py`:
+
 ```python
-# Main API router registration
-api_router = APIRouter(prefix='/api')
+router = APIRouter(prefix="/api/videos", tags=["videos"])
 
-# Core resource routers
-app.include_router(artists_router)    # /api/artists
-app.include_router(videos_router)     # /api/videos
-app.include_router(settings_router)   # /api/settings
+@router.get("/")
+async def list_videos(current_user: dict = Depends(require_authentication)):
+    ...
 
-# External integration routers  
-app.include_router(spotify_router)    # /api/spotify
-app.include_router(youtube_router)    # /api/youtube
-app.include_router(imvdb_router)      # /api/imvdb
+@router.post("/{video_id}/download")
+async def download_video(video_id: int, current_user: dict = Depends(require_authentication)):
+    ...
 ```
 
-### RESTful Endpoint Patterns
+### Authentication & Authorization
 
-#### Artists API Router
+Every API endpoint requires an authenticated session — there is no unauthenticated API surface (see `CLAUDE.md` § API Development & Testing). This is enforced per-route via FastAPI dependencies, not a global before-request hook:
+
 ```python
-@artists_router.get("/")
-async def list_artists():
-    """GET /api/artists - List artists with filtering"""
-    
-@artists_router.post("/") 
-async def create_artist():
-    """POST /api/artists - Create new artist"""
-    
-@artists_router.get("/{artist_id}")
-async def get_artist(artist_id: int):
-    """GET /api/artists/{id} - Get artist details"""
-    
-@artists_router.get("/{artist_id}/videos")
-async def get_artist_videos(artist_id: int):
-    """GET /api/artists/{id}/videos - Get artist's videos"""
-    
-@artists_router.post("/{artist_id}/discover")
-async def discover_artist_videos(artist_id: int):
-    """POST /api/artists/{id}/discover - Trigger video discovery"""
+# src/api/fastapi/auth_dependencies.py
+async def require_authentication(current_user: dict = Depends(get_current_user)) -> dict:
+    """Any authenticated user (any role)"""
+    ...
+
+async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """ADMIN role only"""
+    ...
 ```
 
-### Authentication Middleware
+Routes pick the dependency matching the access level they need. This replaced an earlier, decorative RBAC implementation where every session was effectively hardcoded to admin — real enforcement shipped in v1.0.0.
 
-#### Dynamic Authentication System
-```python
-class DynamicAuthMiddleware:
-    def __init__(self, app):
-        self.app = app
-        app.before_request(self.check_authentication)
-    
-    def check_authentication(self):
-        # Skip auth for static files and health checks
-        if request.endpoint in ['static', 'health']:
-            return
-        
-        # Check if authentication is required (database setting)
-        auth_required = SettingsService.get_bool("require_authentication", False)
-        
-        if auth_required:
-            if not session.get("authenticated"):
-                if request.path.startswith('/api/'):
-                    return jsonify({"error": "Authentication required"}), 401
-                else:
-                    return redirect("/simple-login")
-```
-
-#### Role-Based Access Control
-```python
-def require_role(required_role):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if not session.get("authenticated"):
-                abort(401)
-            
-            user_role = session.get("user_role", "USER")
-            if not has_permission(user_role, required_role):
-                abort(403)
-                
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
-# Usage
-@artists_bp.route("/bulk-delete", methods=["POST"])
-@require_role("ADMIN")
-def bulk_delete_artists():
-    # Admin-only functionality
-```
+OAuth login (Authentik, Google, GitHub) and TOTP-based two-factor authentication sit in front of this — see `src/services/oauth_service.py` and `src/services/two_factor_service.py`.
 
 ## 🖥️ Frontend Architecture
 
 ### Template System
 
-#### Base Template Structure
+Server-rendered Jinja2 templates, all extending a shared `base.html`:
+
 ```jinja2
-<!-- base.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{% block title %}MVidarr{% endblock %}</title>
-    <!-- Dynamic theme loading -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
-    {% block head %}{% endblock %}
-</head>
-<body>
-    <!-- Navigation with authentication state -->
-    <nav class="navbar">
-        {% if session.authenticated %}
-            <a href="/artists">Artists</a>
-            <a href="/videos">Videos</a>
-            <a href="/settings">Settings</a>
-            <a href="/logout">Logout</a>
-        {% else %}
-            <a href="/login">Login</a>
-        {% endif %}
-    </nav>
-    
-    <!-- Main content area -->
-    <main>
-        {% block content %}{% endblock %}
-    </main>
-    
-    <!-- Core JavaScript -->
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    {% block scripts %}{% endblock %}
-</body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+  ...
+{% endblock %}
 ```
 
-### JavaScript Architecture
-
-#### Modular JavaScript Design
-```javascript
-// Core API communication
-class APIClient {
-    static async request(endpoint, options = {}) {
-        const response = await fetch(`/api${endpoint}`, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-        
-        if (!response.ok) {
-            throw new Error(`API request failed: ${response.status}`);
-        }
-        
-        return response.json();
-    }
-}
-
-// Settings management
-class SettingsManager {
-    static async get(key) {
-        const data = await APIClient.request(`/settings/${key}`);
-        return data.value;
-    }
-    
-    static async set(key, value) {
-        await APIClient.request(`/settings/${key}`, {
-            method: 'PUT',
-            body: JSON.stringify({ value })
-        });
-        
-        // Trigger settings change event
-        document.dispatchEvent(new CustomEvent('settingsChanged', { 
-            detail: { key, value } 
-        }));
-    }
-}
-```
-
-#### Feature-Specific Modules
-- **video-management-enhanced.js**: Video list management, bulk operations
-- **universal-search.js**: Global search functionality across all content
-- **virtualization-engine.js**: Performance optimization for large datasets
-- **ui-enhancements.js**: Interactive UI components and animations
+`base.html` loads the core scripts on every page: `toast.js`, `main.js`, `loading-feedback.js`, `js/background-jobs.js`, plus Socket.IO (client-side) for real-time job/download progress updates.
 
 ### Static Asset Organization
 
-#### CSS Architecture
 ```
 frontend/CSS/
-├── main.css                # Base styles and layout
-├── themes.css              # Theme variables and customization
-├── ui-enhancements.css     # Interactive component styles  
-├── videos.css              # Video-specific styling
-└── accessibility.css       # Accessibility improvements
-```
-
-#### Asset Loading Strategy
-```python
-# Dynamic CSS loading based on page
-@app.route('/artists')
-def artists_page():
-    return render_template('artists.html', 
-                         extra_css=['artists.css'],
-                         extra_js=['artist-management.js'])
-```
-
-## 🔄 Data Flow Patterns
-
-### Request Processing Flow
-
-#### Frontend Request Flow
-```
-User Action → JavaScript Event → API Request → Authentication Check → 
-Service Layer → Database Query → Response → UI Update → User Feedback
-```
-
-#### Background Task Flow
-```
-Scheduler Trigger → Service Method → External API Calls → 
-Data Processing → Database Updates → User Notifications
-```
-
-### Video Discovery Data Flow
-
-```mermaid
-graph TD
-    A[User Adds Artist] --> B[VideoDiscoveryService]
-    B --> C[IMVDB API Search]
-    B --> D[YouTube API Search]
-    C --> E[Metadata Processing]
-    D --> E
-    E --> F[Deduplication]
-    F --> G[Database Storage]
-    G --> H[Thumbnail Generation]
-    H --> I[User Notification]
-```
-
-### Download Processing Flow
-
-```mermaid
-graph TD
-    A[Video Queued] --> B[DownloadService]
-    B --> C[yt-dlp Processing]
-    C --> D[File Download]
-    D --> E[Video Organization]
-    E --> F[Metadata Extraction]
-    F --> G[Database Update]
-    G --> H[User Notification]
+├── main.css              # Base styles and layout
+├── themes.css            # Theme variables (6 built-in themes)
+├── layout.css, typography.css, buttons.css
+├── videos.css            # Video-specific styling
+├── bulk-operations-enhanced.css
+└── accessibility.css
 ```
 
 ## 🔐 Security Architecture
 
-### Authentication Layers
+1. **Session-based authentication**, enforced per-endpoint via FastAPI `Depends`
+2. **Role-Based Access Control**: `READONLY < USER < MANAGER < ADMIN`, actually checked (not decorative)
+3. **OAuth 2.0 / OIDC**: Authentik, Google, GitHub, with a signup allowlist and admin-only account creation policy
+4. **Two-Factor Authentication**: TOTP + backup codes
+5. **Account protection**: failed-login lockout, bcrypt password hashing, secure password reset
+6. **Audit logging** for authentication and security-relevant events
 
-1. **Dynamic Authentication Check**: Database-driven auth requirement
-2. **Session Management**: Secure session handling with configurable timeouts
-3. **Role-Based Access**: Multi-tier user roles (ADMIN, MANAGER, USER, READONLY)
-4. **Two-Factor Authentication**: TOTP-based 2FA support
-5. **Account Security**: Login attempt limiting and account locking
+## 🚀 Performance
 
-### Security Middleware Stack
+See `docs/PERFORMANCE_MONITORING.md` for the live monitoring API, instrumentation pattern, and database/frontend optimization guidance, and `docs/DATABASE_PERFORMANCE_OPTIMIZATION.md` for the indexing/query-optimization work behind `DatabasePerformanceOptimizer`.
+
+## 🔍 Logging
 
 ```python
-def configure_security(app):
-    # CORS configuration
-    CORS(app, origins=allowed_origins, supports_credentials=True)
-    
-    # Security headers
-    @app.after_request
-    def set_security_headers(response):
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'DENY'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        return response
-    
-    # Authentication middleware
-    DynamicAuthMiddleware(app)
+from src.utils.logger import get_logger
+logger = get_logger("mvidarr.<component>")
 ```
 
-## 🚀 Performance Optimizations
+Rotating file handler, size and retention configurable via database settings (`log_max_size`, `log_backup_count`).
 
-### Database Performance
-- **Connection Pooling**: Configurable pool size and overflow
-- **Query Optimization**: Strategic indexing on frequently queried fields
-- **Lazy Loading**: Relationship loading optimizations
-- **Connection Recycling**: Hourly connection refresh
-
-### Frontend Performance
-- **Asset Optimization**: CSS/JS minification and compression
-- **Virtualization**: Large list rendering optimization
-- **Caching**: Strategic caching of API responses
-- **Image Optimization**: Thumbnail generation and caching
-
-### Background Processing
-- **Scheduler Optimization**: Multiple scheduler strategies (standard/enhanced)
-- **Rate Limiting**: External API rate limit compliance
-- **Batch Processing**: Efficient bulk operations
-- **Resource Management**: Memory-efficient processing for large datasets
-
-## 📈 Scalability Considerations
-
-### Horizontal Scaling
-- **Stateless Design**: Session data stored in database, not memory
-- **Service Isolation**: Services can be deployed independently
-- **Database Scaling**: Connection pooling supports multiple application instances
-
-### Vertical Scaling
-- **Resource Configuration**: Configurable connection pools and worker counts
-- **Memory Management**: Efficient caching with automatic cleanup
-- **Processing Optimization**: Background task optimization and resource limits
-
-## 🔧 Design Patterns
-
-### Core Patterns Used
-
-1. **Service Layer Pattern**: Business logic encapsulated in service classes
-2. **Repository Pattern**: Database access abstracted through model classes
-3. **Factory Pattern**: Service and database session instantiation
-4. **Observer Pattern**: Settings changes trigger system reconfiguration
-5. **Strategy Pattern**: Multiple authentication strategies
-6. **Command Pattern**: Background task execution
-7. **Singleton Pattern**: Service instances and configuration management
-
-### Integration Patterns
-
-1. **Adapter Pattern**: External API integration standardization
-2. **Facade Pattern**: Simplified interfaces for complex subsystems
-3. **Chain of Responsibility**: Request processing middleware
-4. **Template Method**: Common processing flows for different content types
-
-## 🔍 Monitoring and Observability
-
-### Performance Monitoring
-- **API Performance Tracking**: Response time monitoring for critical endpoints
-- **Database Monitoring**: Connection pool usage and query performance
-- **Service Health Checks**: Automated health monitoring for all services
-
-### Logging Architecture
-```python
-class LoggingManager:
-    def __init__(self):
-        self.logger = self._configure_logger()
-    
-    def _configure_logger(self):
-        level = SettingsService.get("log_level", "INFO")
-        max_size = SettingsService.get_int("log_max_size", 10485760)
-        backup_count = SettingsService.get_int("log_backup_count", 5)
-        
-        # Rotating file handler with configurable size and retention
-        handler = RotatingFileHandler(
-            filename="logs/mvidarr.log",
-            maxBytes=max_size,
-            backupCount=backup_count
-        )
-```
-
-## 📚 Architecture Documentation
-
-For additional architectural details, see:
+## 📚 Related Documentation
 
 - **Configuration Guide**: `CONFIGURATION_GUIDE.md`
-- **API Documentation**: `API_DOCUMENTATION.md` 
-- **Database Schema**: Generated via SQLAlchemy models
-- **Service Documentation**: Individual service docstrings
+- **API Documentation**: `API_DOCUMENTATION.md`
+- **Database Migrations**: `DATABASE_MIGRATIONS.md`
 - **Performance Monitoring**: `PERFORMANCE_MONITORING.md`
+- **Scheduler V2**: `SCHEDULER_V2.md`
+- **Security**: `SECURITY_IMPLEMENTATION.md`
 
-## 🔄 Evolution and Maintenance
+## 🔄 Design Principles
 
-### Architecture Evolution
-The MVidarr architecture is designed for evolution:
-- **Modular Services**: Easy to add new external service integrations
-- **API Versioning**: Support for API evolution without breaking changes
-- **Database Migrations**: Structured schema evolution
-- **Configuration-Driven**: Runtime behavior changes without code deployment
-
-### Code Organization Principles
-1. **Separation of Concerns**: Clear boundaries between layers
-2. **DRY (Don't Repeat Yourself)**: Common patterns abstracted into base classes
-3. **Single Responsibility**: Each service has a focused purpose
-4. **Open/Closed Principle**: Open for extension, closed for modification
-5. **Dependency Injection**: Services receive dependencies rather than creating them
-
-This architecture provides a solid foundation for music video management while maintaining flexibility for future enhancements and integrations.
+- **Layered separation**: API routers stay thin; business logic lives in services
+- **Database-driven configuration**: most settings changeable at runtime via `SettingsService`, no redeploy needed
+- **Async throughout**: the FastAPI layer and Celery background jobs both use async I/O where it matters (external API calls, downloads)
+- **Structured migrations**: schema changes are numbered, tracked, and applied automatically on startup

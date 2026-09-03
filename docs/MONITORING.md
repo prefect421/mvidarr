@@ -88,20 +88,17 @@ find /path/to/video/library -type f -exec du -h {} + | sort -rh | head -20
 
 #### Database Size and Growth
 ```bash
-# SQLite database size
-ls -lh /path/to/database/mvidarr.db
-
-# Database growth over time (create script)
-echo "$(date): $(ls -lh /path/to/database/mvidarr.db | awk '{print $5}')" >> /var/log/mvidarr-db-size.log
+# Database size (MariaDB/MySQL - mvidarr does not use SQLite)
+mysql -u mvidarr -p -e "SELECT table_schema AS db, ROUND(SUM(data_length+index_length)/1024/1024,1) AS size_mb FROM information_schema.tables WHERE table_schema='mvidarr' GROUP BY table_schema;"
 ```
 
 #### Database Performance
 ```bash
-# Check database integrity
-sqlite3 /path/to/database/mvidarr.db "PRAGMA integrity_check;"
+# Check table status/integrity
+mysql -u mvidarr -p mvidarr -e "CHECK TABLE artists, videos, downloads, settings;"
 
 # Database statistics
-sqlite3 /path/to/database/mvidarr.db "PRAGMA database_list; .tables; .schema"
+mysql -u mvidarr -p mvidarr -e "SHOW TABLE STATUS;"
 ```
 
 ## 📊 Performance Monitoring
@@ -404,6 +401,6 @@ fdupes -r /path/to/video/storage
 - **Performance Monitoring**: See `PERFORMANCE_MONITORING.md`
 - **Docker Troubleshooting**: See `TROUBLESHOOTING_DOCKER.md`
 - **System Architecture**: See `ARCHITECTURE.md`
-- **Installation Guide**: See `INSTALLATION-GUIDE.md`
+- **Installation Guide**: See `installation.md`
 
 This monitoring guide ensures optimal MVidarr performance and early issue detection through comprehensive system observation and proactive maintenance procedures.

@@ -27,7 +27,7 @@ This guide provides comprehensive instructions for configuring MVidarr, includin
 | `app_port` | 5000 | Port for web interface |
 | `app_host` | 0.0.0.0 | Host binding address |
 | `debug_mode` | false | Enable debug logging |
-| `secret_key` | auto-generated | Flask session secret |
+| `secret_key` | auto-generated | Session signing secret |
 | `language` | en | Application language |
 | `ui_theme` | default | User interface theme |
 
@@ -53,17 +53,20 @@ export SECRET_KEY="your-secure-random-key"
 # Recommended directory structure
 /mvidarr-data/
 ├── downloads/          # Temporary processing
-├── musicvideos/       # Final organized library  
+├── musicvideos/       # Final organized library
 ├── thumbnails/        # Generated thumbnails
-└── database/          # SQLite database files
+└── logs/               # Application logs
 ```
+
+MVidarr requires MariaDB/MySQL — there's no SQLite database file to place here.
 
 **Permissions Setup:**
 ```bash
-# Set appropriate permissions
+# Set ownership to match the container/service user, then grant group write
+# access where the app needs it - avoid 777, it grants write to every user
 sudo chown -R $(id -u):$(id -g) /path/to/mvidarr-data
 chmod -R 755 /path/to/mvidarr-data
-chmod -R 777 /path/to/mvidarr-data/downloads  # Needs write access
+chmod -R 775 /path/to/mvidarr-data/downloads  # needs write access
 ```
 
 ## 🔐 Authentication & Security
@@ -75,17 +78,11 @@ chmod -R 777 /path/to/mvidarr-data/downloads  # Needs write access
 # Via web interface: Settings → General → Authentication
 require_authentication=true
 simple_auth_username="admin"
-simple_auth_password="secure_password_hash"  # SHA-256 hashed
+simple_auth_password="..."  # set via the Settings UI - hashed with bcrypt automatically
 ```
 
 #### Password Hashing
-```python
-# Generate password hash
-import hashlib
-password = "your_secure_password"
-hash_value = hashlib.sha256(password.encode()).hexdigest()
-print(f"Password hash: {hash_value}")
-```
+Passwords are hashed with **bcrypt** (`src/services/simple_auth_service.py`) — don't hash a password yourself and paste in the hash. Set the password through the Settings UI or the installation wizard and let the app hash it. (Older installs with a pre-existing SHA-256 hash are lazily migrated to bcrypt on next successful login; SHA-256 is not used for anything new.)
 
 ### SSL/HTTPS Configuration
 
@@ -268,6 +265,8 @@ Configure via Settings page:
 
 #### Scheduler V2 API Endpoints
 
+Like all MVidarr API endpoints, these require an authenticated session (add `-H "Cookie: session=..."` or use `curl -b`/`-c` with a prior login) — omitted below for brevity.
+
 ```bash
 # Get scheduler status
 curl http://localhost:5000/api/v2/scheduler/status
@@ -321,23 +320,7 @@ GRANT ALL PRIVILEGES ON mvidarr.* TO 'mvidarr_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-### SQLite Configuration (Alternative)
-
-#### SQLite Setup
-```bash
-# For smaller deployments
-db_host="sqlite"
-db_name="/app/database/mvidarr.db"
-```
-
-**SQLite Optimization:**
-```sql
--- Performance settings (applied automatically)
-PRAGMA journal_mode=WAL;
-PRAGMA synchronous=NORMAL;
-PRAGMA cache_size=1000;
-PRAGMA temp_store=memory;
-```
+MVidarr requires MariaDB or MySQL — there is no SQLite mode, for any deployment size.
 
 ## 📊 Logging & Monitoring
 
@@ -564,8 +547,8 @@ curl -X PUT http://localhost:5000/api/settings/bulk \
 # Export all settings
 curl http://localhost:5000/api/settings/ > mvidarr-settings-backup.json
 
-# Create full backup
-docker exec mvidarr-app sqlite3 /app/database/mvidarr.db ".backup /app/backup/full-backup.db"
+# Create full database backup (MariaDB/MySQL - see CLAUDE.md, mvidarr does not use SQLite)
+docker exec mvidarr-mariadb mysqldump -u mvidarr -p mvidarr > full-backup.sql
 ```
 
 #### Import Settings
@@ -642,7 +625,7 @@ sudo ufw deny 5000/tcp   # Block direct access (use reverse proxy)
 
 ## 🔗 Related Documentation
 
-- **Installation Guide**: See `INSTALLATION-GUIDE.md`
+- **Installation Guide**: See `installation.md`
 - **Docker Troubleshooting**: See `TROUBLESHOOTING_DOCKER.md`
 - **System Monitoring**: See `MONITORING.md`
 - **API Documentation**: See `API_DOCUMENTATION.md`

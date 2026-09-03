@@ -157,7 +157,7 @@ navigator.userAgent
 
 ## Related Documentation
 
-- [Installation Guide](INSTALLATION-GUIDE.md)
+- [Installation Guide](installation.md)
 - [User Guide](USER-GUIDE.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
 - [API Documentation](API_DOCUMENTATION.md)

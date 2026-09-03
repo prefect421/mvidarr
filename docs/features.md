@@ -6,171 +6,71 @@ permalink: /features/
 
 # Features
 
-MVidarr provides a comprehensive suite of features designed for serious music video enthusiasts and organizations.
+## 🎯 Artist Management
 
-## 🎯 Core Features
-
-### Advanced Artist Management
 - **Multi-criteria Search**: Find artists by name, genre, source, monitoring status
 - **Bulk Operations**: Edit multiple artists simultaneously with progress tracking
-- **Automated Discovery**: Discover new artists from Spotify imports and similar artist recommendations
-- **Metadata Enrichment**: Automatic thumbnail fetching, genre tagging, and biography updates
-- **Monitoring Controls**: Enable/disable monitoring per artist with granular control
+- **Metadata Enrichment**: Automatic thumbnail fetching (Spotify/Last.fm prioritized over Wikipedia), genre tagging, biography updates
+- **Per-Artist Video-Type Filtering**: Choose which video types (Official Video, Official Music Video, Live, Lyric Video, etc.) auto-download per artist
+- **Monitoring Controls**: Enable/disable monitoring and auto-download per artist
 
-### Comprehensive Video Discovery
-- **Dual-Source Integration**: IMVDb and YouTube API integration for maximum coverage
-- **Smart Filtering**: Filter by status, quality, year, genre, and custom criteria
-- **Automated Downloads**: Queue management with priority-based processing
+## 🔍 Video Discovery & Download
+
+- **Dual-Source Discovery**: IMVDb + YouTube, with quota-aware search batching
+- **Scheduler V2**: Prioritized, automated discovery/download runs with exponential/linear/fixed retry strategies
+- **Duplicate Detection**: DB-level unique constraints on `youtube_id`/`imvdb_id` close race conditions between concurrent imports
+- **Quality Control**: Configurable min/max/default quality, format sorting, automatic quality upgrades
 - **Video Status Tracking**: WANTED, DOWNLOADING, DOWNLOADED, IGNORED, FAILED, MONITORED
-- **Duplicate Detection**: Intelligent duplicate video identification and management
+- **"Recently Found"**: Live view of newly discovered videos
 
-### Modern Streaming Experience
-- **Built-in Player**: HTML5 video player with transcoding support
-- **MvTV Mode**: Continuous playback mode for uninterrupted viewing
-- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
-- **Theme System**: Dark/light themes with automatic switching
-- **Fullscreen Support**: Cinematic viewing experience
+## 📺 Streaming Experience
 
-## 🛡️ Security Features
+- **Built-in HTML5 Player** with real-time MKV transcoding (FFmpeg remux/transcode, browser-compatible output)
+- **Subtitle Support**: WebVTT, SRT, ASS, SSA, SUB, with smart language-pattern resolution for YouTube's non-standard codes
+- **MvTV Mode**: Continuous playback for uninterrupted viewing
+- **Responsive Design** across desktop, tablet, and mobile
+- **Theme System**: 6 built-in themes (Default, Cyber, VaporWave, TARDIS, Punk 77, MTV) with export/import
 
-### Authentication & Authorization
-- **Role-Based Access Control**: Admin, Manager, User, ReadOnly roles with granular permissions
-- **Secure Authentication**: bcrypt password hashing with configurable complexity
-- **Session Management**: Secure token-based sessions with automatic expiration
-- **Account Protection**: Failed login attempt tracking with automatic lockout
-- **Password Reset**: Secure token-based password recovery system
+## 🛡️ Security & Access Control
 
-### Security Hardening
-- **SQL Injection Prevention**: Parameterized queries and ORM protection
-- **XSS Protection**: Input sanitization and output encoding
-- **CSRF Protection**: Cross-site request forgery prevention
-- **Audit Logging**: Comprehensive activity tracking and security event logging
-- **Docker Security**: Non-root containers with minimal attack surface
+- **Enforced RBAC**: Admin, Manager, User, ReadOnly roles — actually checked on every request, not decorative
+- **OAuth Login**: Authentik, Google, GitHub, alongside local accounts, with a signup allowlist and admin-only account creation policy
+- **Two-Factor Authentication**: TOTP + backup codes
+- **Session-Based Auth**: Every API endpoint requires an authenticated session
+- **bcrypt Password Hashing**, account lockout on repeated failed logins, secure password-reset flow
+- **Audit Logging** for authentication and security-relevant events
 
-## 📊 Management Features
+## 🔔 Notifications & Integrations
 
-### System Health Monitoring
-- **Real-time Status**: Database connection, API connectivity, disk space monitoring
-- **Performance Metrics**: Response times, query performance, resource usage
-- **Health Dashboard**: Visual indicators for all system components
-- **Alert System**: Proactive notifications for system issues
-- **Diagnostic Tools**: Built-in troubleshooting and system analysis
+- **Discord** and **Apprise** notification providers, wired to real download/artist activity
+- **Webhooks** for event-driven external integration
+- **Spotify** (OAuth import, similar-artist discovery), **Last.fm** thumbnail/metadata sourcing
+- **Media Server Sync**: Plex, Jellyfin, and Emby library synchronization
+- **Lidarr** integration for music library sync
 
-### Download Management
-- **Queue Visualization**: Real-time download progress with detailed status
-- **Priority Management**: Configurable download priorities and scheduling
-- **Error Handling**: Automatic retry logic with exponential backoff
-- **Quality Selection**: Configurable video quality preferences
-- **Bandwidth Control**: Download rate limiting and scheduling
+## 📊 Management & Monitoring
 
-### Database-Driven Configuration
-- **Runtime Settings**: Modify configuration without application restart
-- **Environment Overrides**: Flexible configuration hierarchy
-- **Backup/Restore**: Configuration export and import capabilities
-- **Validation**: Input validation with helpful error messages
-- **Documentation**: Built-in help and configuration guides
+- **System Health Dashboard**: Database, cache, and system resource status (`/api/performance/*`)
+- **Download Queue**: Real-time progress, priority management, automatic retry with backoff
+- **Database-Driven Configuration**: Change most settings at runtime, no restart required
+- **Backup Management**: Scheduled backups with retention policies
 
-## 🎨 User Interface Features
+## 🎨 User Interface
 
-### Modern Design
-- **Left Sidebar Navigation**: Intuitive navigation with collapsible sections
-- **Responsive Layout**: Adaptive design for all screen sizes
-- **Progressive Enhancement**: Graceful degradation for older browsers
-- **Accessibility**: WCAG compliance with keyboard navigation support
-- **Fast Loading**: Optimized assets and lazy loading
+- **Left Sidebar Navigation** with collapsible sections
+- **Real-Time Search** with advanced multi-criteria filters and bulk selection
+- **Responsive Layout** across screen sizes
 
-### Search & Filtering
-- **Real-time Search**: Instant search results with autocomplete
-- **Advanced Filters**: Multi-criteria filtering with saved filter presets
-- **Bulk Selection**: Multi-select with bulk action capabilities
-- **Sort Options**: Flexible sorting by multiple criteria
-- **Pagination**: Efficient handling of large datasets
+## 🔧 Architecture Highlights
 
-### Theming System
-- **Multiple Themes**: Dark, light, and custom theme options
-- **Automatic Switching**: Time-based or system preference detection
-- **Custom Themes**: User-defined color schemes and styling
-- **Theme Persistence**: Remember user preferences across sessions
-- **Accessibility Themes**: High contrast and accessibility-focused options
+- **FastAPI** backend, fully async — the Flask-to-FastAPI migration is complete, no Flask API endpoints remain
+- **Celery + Redis** for background job processing (discovery, downloads, metadata enrichment)
+- **MariaDB 11.4+** with SQLAlchemy, connection pooling tuned for library size
+- **Docker**: simple 3-container deployment (app+Celery via supervisord, MariaDB, Redis)
 
-## 🔧 Integration Features
+## What's Next
 
-### External Services
-- **IMVDb Integration**: Comprehensive music video metadata database
-- **YouTube API**: Video discovery and metadata enrichment
-- **Spotify Integration**: Artist discovery and library import
-- **Media Server Support**: Plex, Jellyfin, Emby integration (planned)
-- **Webhook Support**: Real-time notifications and external integrations
-
-### Import/Export
-- **Data Portability**: Export libraries in multiple formats (JSON, CSV)
-- **Backup Solutions**: Automated backup scheduling with retention policies
-- **Migration Tools**: Import from other music video management systems
-- **Configuration Export**: Portable configuration management
-- **Selective Export**: Choose specific data for export
-
-## 📈 Performance Features
-
-### Optimization
-- **Database Indexing**: Optimized queries for large datasets
-- **Caching System**: Intelligent caching for frequently accessed data
-- **Lazy Loading**: On-demand loading for better performance
-- **Image Optimization**: Thumbnail generation and caching
-- **Minified Assets**: Optimized CSS and JavaScript delivery
-
-### Scalability
-- **Docker Optimization**: Multi-stage builds with 1.41GB production images
-- **Database Performance**: Optimized for libraries with 10,000+ videos
-- **Concurrent Operations**: Multi-threaded processing for bulk operations
-- **Resource Management**: Memory and CPU optimization for server environments
-- **Load Balancing**: Horizontal scaling support (planned)
-
-## ✅ Recently Completed (v0.9.7 - Enterprise Media Management)
-
-### Major Achievements
-- **47 Comprehensive Solutions** - Complete feature matrix across all application areas
-- **Enterprise Quality** - 185+ comprehensive tests with 6000+ lines documentation
-- **Production Ready** - Zero known vulnerabilities with automated security monitoring
-- **Advanced Video Management** - Multi-criteria search, bulk operations, professional players
-- **User Interface Excellence** - Streamlined workflows with modern responsive design
-- **Developer Experience** - Complete testing infrastructure and comprehensive API documentation
-
-## 🚀 Upcoming Features
-
-### Version 0.9.8 (In Development) - External Service Integrations
-- Enhanced Spotify integration and music discovery capabilities
-- Media server integration (Plex/Jellyfin/Emby) for centralized management
-- Advanced notification system with Discord/Slack integration
-- Third-party metadata providers integration for enriched content
-- Cloud storage integration and comprehensive backup solutions
-
-### Version 0.9.9 (Planned) - Enterprise & Multi-User Features
-- Advanced user management and role-based access control
-- Multi-tenant artist libraries and data isolation
-- Comprehensive audit logging and activity tracking
-- API rate limiting and resource quota management
-
-### Version 0.10.0-beta.1 (Current) - Beta Testing Phase
-
-**Status**: Active Development - Feature Complete
-**Focus**: Production validation, Docker testing, community feedback
-
-**Included Features**:
-- Security: 10 critical vulnerabilities resolved
-- Installation Wizard with validation
-- Reliable video import system
-- Performance monitoring dashboard
-- Complete documentation
-
-**Next**: v0.10.0-beta.2 after Docker testing and bug fixes
-
----
-
-### Version 1.0.0 (Planned Q1 2026) - Production Readiness
-- Complete documentation overhaul and user guides
-- Migration tools and database upgrade automation
-- Advanced backup and disaster recovery system
-- Production deployment automation and infrastructure
+Release history, in-progress work, and planned changes are tracked in the [changelog]({{ site.github.repository_url }}/blob/main/CHANGELOG.md) and the [GitHub milestones]({{ site.github.repository_url }}/milestones) — those are kept current release-to-release, unlike a hand-maintained roadmap on this page would be.
 
 ## 💡 Feature Requests
 
@@ -179,7 +79,3 @@ Have an idea for a new feature? We'd love to hear about it!
 - **GitHub Issues**: [Submit feature requests]({{ site.github.repository_url }}/issues/new?template=feature_request.md)
 - **Discussions**: [Join the conversation]({{ site.github.repository_url }}/discussions)
 - **Contributing**: [Help build the features you want]({{ site.github.repository_url }}/blob/main/CONTRIBUTING.md)
-
----
-
-Discover the full power of MVidarr's feature set in our [comprehensive documentation]({{ site.github.repository_url }}/tree/main/docs).

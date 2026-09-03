@@ -1,7 +1,7 @@
 # Migration Guide: v0.10.1 Scheduler V2
 
 **Version:** v0.10.1
-**Release Date:** December 2024
+**Release Date:** December 2025
 **Migration Difficulty:** Medium
 **Estimated Time:** 15-30 minutes
 

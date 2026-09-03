@@ -49,8 +49,8 @@
 - ✅ **Permissions-Policy** restricting sensitive features
 
 **Implementation Details:**
-- `SecurityHeaders` class with comprehensive header management
-- Applied automatically to all Flask responses
+- `SecurityHeaders` class with comprehensive header management (`src/utils/security.py`)
+- Applied automatically to all responses (this predates the FastAPI migration — the mechanism carried over, the "Flask response" framing didn't)
 - Production-ready CSP with media and script restrictions
 - HSTS configuration for HTTPS enforcement
 
@@ -150,29 +150,24 @@
 
 ## 🔧 **Security Tools & Components Implemented**
 
+All of the following live in `src/utils/security.py` unless noted, and were verified present as of this review:
+
 ### **Core Security Classes**
 1. **`InputValidator`** - Comprehensive input sanitization and validation
-2. **`SecurityHeaders`** - HTTP security header management
-3. **`RateLimiter`** - Rate limiting with sliding window implementation
-4. **`SecureConfig`** - Secure configuration and secret management
-5. **`SecurityManager`** - Central security configuration coordinator
+2. **`PasswordValidator`** - Password complexity checking
+3. **`SecurityHeaders`** - HTTP security header management
+4. **`RateLimiter`** - Rate limiting with sliding window implementation
+5. **`SecureConfig`** - Secure configuration and secret management
 
-### **Security Decorators**
-1. **`@require_rate_limit`** - Rate limiting for API endpoints
-2. **`@validate_request_data`** - Request payload validation
-3. **`@apply_security_headers`** - Automatic security header application
+### **Security Functions**
+1. **`apply_security_headers(response)`** - Applies the standard security header set
 
 ### **Security Scripts**
-1. **`security_assessment.py`** - Comprehensive vulnerability scanner
-2. **`production_security_setup.sh`** - Automated production security setup
-3. **`secure_mariadb.sql`** - Database security configuration
-4. **`secure_backup.sh`** - Encrypted backup procedures
-
-### **Configuration Templates**
-1. **`ssl.conf`** - SSL/TLS configuration for nginx
-2. **`mvidarr-fail2ban.conf`** - Fail2ban protection rules
+1. **`src/utils/security_assessment.py`** - Vulnerability scanner
+2. **`scripts/setup/production_security_setup.sh`** - Automated production security setup
 3. **`.env.example`** - Secure environment configuration template
-4. **`SECURITY_CHECKLIST.md`** - Production deployment checklist
+
+For CI/CD-level dependency and code scanning (pip-audit, Bandit, Semgrep, Trivy, secret detection, compliance monitoring), see `CLAUDE.md` § Security Implementation — that automated pipeline is the actively-maintained one; several artifacts an earlier draft of this document claimed (`secure_mariadb.sql`, an nginx `ssl.conf` template, a fail2ban config, `SECURITY_CHECKLIST.md`, `secure_backup.sh`) were never actually committed and have been removed from this list.
 
 ---
 
@@ -213,10 +208,9 @@
 
 # Verify security configuration
 python3 src/utils/security_assessment.py
-
-# Apply database security
-mysql < scripts/setup/secure_mariadb.sql
 ```
+
+Database hardening (privilege minimization, connection security) is documented in `CLAUDE.md` rather than a standalone SQL script — there's no committed `secure_mariadb.sql`.
 
 ### **Security Validation Process**
 1. **Environment Configuration** - Validate all security settings
@@ -266,33 +260,9 @@ mysql < scripts/setup/secure_mariadb.sql
 - ✅ **Logging & Monitoring** - Security event tracking
 - ✅ **Configuration Security** - Hardened production settings
 
-### **Production Readiness Certification**
-🛡️ **CERTIFIED SECURE**: MVidarr has achieved comprehensive security hardening suitable for production deployment with enterprise-grade protection against common web application vulnerabilities.
-
-**Security Implementation**: ✅ COMPLETE  
-**Vulnerability Assessment**: ✅ PASSED  
-**Production Configuration**: ✅ READY  
-**Security Monitoring**: ✅ ENABLED  
+This document covers the in-application request/input security layer (validation, headers, rate limiting) as it stood when first implemented (July 2025) and spot-checked for continued accuracy in this review. It's one piece of the picture, not a certification — for the actively-maintained vulnerability scanning, CVE remediation history, and compliance monitoring, see `CLAUDE.md` § Security Implementation and `CHANGELOG.md`, both of which are updated every release.
 
 ---
 
-## 🔐 **Final Security Summary**
-
-**MVidarr now implements enterprise-grade security with comprehensive protection against:**
-
-- **Injection Attacks** (SQL, XSS, Command)
-- **Authentication Bypass** 
-- **File Upload Vulnerabilities**
-- **Rate Limiting Bypass**
-- **Configuration Exposure**
-- **Data Exfiltration**
-- **Session Hijacking**
-- **Man-in-the-Middle Attacks**
-
-**The application is ready for production deployment with confidence in its security posture.**
-
----
-
-*Security Implementation Completed: July 19, 2025*  
-*Status: Production Security Ready*  
-*Next Review: Scheduled for ongoing maintenance*
+*Originally implemented: July 19, 2025*
+*Last accuracy review: this pass — core classes and scripts re-verified against source; several previously-listed artifacts that were never actually committed have been removed from this document*

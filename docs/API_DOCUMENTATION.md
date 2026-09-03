@@ -7,36 +7,25 @@ MVidarr provides a comprehensive REST API with full OpenAPI 3.0 specification, i
 ## API Access Points
 
 ### Interactive Documentation
-- **Swagger UI**: `http://localhost:5000/api/docs/swagger`
-  - Interactive interface with "try it out" functionality
-  - Perfect for testing endpoints and exploring parameters
-  - Real-time request/response examples
 
-- **ReDoc**: `http://localhost:5000/api/docs/redoc`  
-  - Clean, responsive documentation interface
-  - Detailed schema documentation with examples
-  - Ideal for reference and integration planning
+**These are only served when the app runs with `MVIDARR_ENV=dev`** (see `fastapi_app.py`) — they're disabled entirely in production/Docker deployments, so don't expect them on a normal self-hosted install:
 
-- **API Index**: `http://localhost:5000/api/docs/`
-  - Documentation hub with feature overview
-  - Getting started information
-  - Links to all documentation formats
-
-### Specification Access
-- **OpenAPI JSON**: `http://localhost:5000/api/docs/openapi.json`
-  - Raw OpenAPI 3.0 specification
-  - Use for code generation and CI/CD integration
-  - Machine-readable format for tooling
+- **Swagger UI**: `http://localhost:5000/docs`
+- **ReDoc**: `http://localhost:5000/redoc`
+- **OpenAPI JSON**: `http://localhost:5000/openapi.json`
 
 ## API Structure
 
 ### Base Configuration
 ```yaml
-OpenAPI Version: 3.0.0
+OpenAPI Version: 3.0.0 (FastAPI-generated)
 Base URL: http://localhost:5000/api
 Content-Type: application/json
-Authentication: None (currently)
-Rate Limiting: None (currently)
+Authentication: Required on every endpoint (session cookie) - see CLAUDE.md
+                § API Development & Testing. There is no unauthenticated
+                API surface; test through a logged-in browser session.
+Rate Limiting: Enforced (src/middleware/rate_limiting_middleware.py) -
+                300 requests/min by default, static files exempt
 ```
 
 ### Core Resource Categories
@@ -210,12 +199,17 @@ All request/response data follows strict OpenAPI schemas with:
 
 ## Integration Examples
 
+All examples below need an authenticated session — none of these calls work unauthenticated. Log in through the web UI first and reuse that session's cookie (e.g. `requests.Session()` after a POST to the login endpoint, or your browser's cookie for a quick `curl` test), per `CLAUDE.md` § API Development & Testing.
+
 ### 1. Python Integration
 ```python
 import requests
 
+session = requests.Session()
+session.post('http://localhost:5000/auth/login', json={"username": "...", "password": "..."})
+
 # Get all monitored artists
-response = requests.get('http://localhost:5000/api/artists?monitored=true')
+response = session.get('http://localhost:5000/api/artists?monitored=true')
 artists = response.json()['artists']
 
 # Create new artist
@@ -225,12 +219,13 @@ artist_data = {
     "monitored": True,
     "keywords": ["rock", "alternative"]
 }
-response = requests.post('http://localhost:5000/api/artists', json=artist_data)
+response = session.post('http://localhost:5000/api/artists', json=artist_data)
 ```
 
 ### 2. JavaScript Integration
 ```javascript
-// Fetch videos with status filtering
+// Runs from a page already served by an authenticated session -
+// the session cookie is sent automatically
 const response = await fetch('/api/videos?status=DOWNLOADED&limit=100');
 const data = await response.json();
 const videos = data.videos;
@@ -246,15 +241,18 @@ await fetch(`/api/artists/${artistId}`, {
 
 ### 3. cURL Examples
 ```bash
+# Reuse your browser's session cookie (DevTools > Application > Cookies)
+COOKIE="session=..."
+
 # Get system health
-curl -X GET http://localhost:5000/api/health
+curl -H "Cookie: $COOKIE" http://localhost:5000/api/health
 
 # Search for artists
-curl -X GET "http://localhost:5000/api/artists?search=taylor&monitored=true"
+curl -H "Cookie: $COOKIE" "http://localhost:5000/api/artists?search=taylor&monitored=true"
 
 # Create playlist monitor
 curl -X POST http://localhost:5000/api/youtube/playlists \
-  -H "Content-Type: application/json" \
+  -H "Cookie: $COOKIE" -H "Content-Type: application/json" \
   -d '{"playlist_url": "https://youtube.com/playlist?list=...", "auto_download": true}'
 ```
 
@@ -406,7 +404,7 @@ def after_request(response):
 
 ## Related Documentation
 - [User Guide](USER-GUIDE.md) - Using the web interface
-- [Developer Setup Guide](DEVELOPER_SETUP_GUIDE.md) - Development environment
+- [Contributing Guide](https://github.com/prefect421/mvidarr/blob/main/CONTRIBUTING.md) - Development environment setup
 - [Architecture Documentation](ARCHITECTURE.md) - System design
 - [Troubleshooting Guide](TROUBLESHOOTING.md) - Common API issues
 

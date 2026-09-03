@@ -1,146 +1,131 @@
-# API Performance Monitoring
+# Performance Guide
 
 ## Overview
 
-MVidarr now includes comprehensive API performance monitoring to identify bottlenecks and optimize response times. This system provides real-time monitoring, statistics collection, and performance analysis for critical API endpoints.
+This is the single reference for MVidarr's performance work: the built-in monitoring API, how to instrument new code, and the optimization patterns the codebase already relies on (or should, when you're adding something new).
 
-## Features
-
-### 🔍 **Automatic Performance Tracking**
-- Response time measurement for all monitored endpoints
-- Automatic logging of slow responses (>500ms and >1s)
-- Thread-safe statistics collection
-- Memory-efficient rolling window of recent measurements
-
-### 📊 **Performance Statistics**
-- Average, minimum, and maximum response times
-- Request count tracking
-- Identification of slow endpoints
-- Historical performance data
-
-### 🚨 **Performance Alerts**
-- Automatic logging of slow API responses
-- Configurable thresholds for performance warnings
-- Real-time detection of performance degradation
-
-## API Endpoints
-
-### Performance Statistics
-- `GET /api/performance/stats` - Comprehensive performance statistics
-- `GET /api/performance/slow?threshold=500` - Endpoints slower than threshold (ms)
-- `GET /api/performance/summary` - Concise performance summary with recommendations
-- `POST /api/performance/log-summary` - Manually trigger performance logging
-- `GET /api/performance/health` - Performance monitoring health check
-
-## Monitored Endpoints
-
-The following critical endpoints are currently monitored:
-
-### Videos API
-- `api.videos.list` - Main video listing endpoint
-- `api.videos.search` - Video search with filters
-- `api.videos.universal_search` - Universal search across all content
-
-### Artists API
-- `api.artists.list` - Artist listing with search/filtering
-- `api.artists.advanced_search` - Advanced artist search
-
-### Settings API
-- `api.settings.get_all` - Application settings retrieval
-
-## Usage Examples
-
-### Check Overall Performance
-```bash
-curl http://localhost:5001/api/performance/summary
-```
-
-### Find Slow Endpoints
-```bash
-# Get endpoints slower than 300ms
-curl "http://localhost:5001/api/performance/slow?threshold=300"
-```
-
-### Get Detailed Statistics
-```bash
-curl http://localhost:5001/api/performance/stats
-```
-
-## Implementation Details
-
-### Performance Decorator
-```python
-from src.utils.performance_monitor import monitor_performance
-
-@monitor_performance("api.custom.endpoint")
-def my_api_endpoint():
-    # Your endpoint implementation
-    pass
-```
-
-### Manual Performance Tracking
-```python
-from src.utils.performance_monitor import perf_stats
-
-# Record response time manually
-perf_stats.record_time("custom.operation", 0.250)  # 250ms
-
-# Get statistics
-stats = perf_stats.get_stats("custom.operation")
-```
+This file consolidates what used to be four separate documents (`PERFORMANCE_OPTIMIZATION.md`, `PERFORMANCE_OPTIMIZATION_ANALYSIS.md`, `PERFORMANCE_REGRESSION_PREVENTION.md`, `PERFORMANCE_MONITORING.md`), which had drifted out of sync with each other and with the current FastAPI codebase (stale endpoint paths, decorator examples pointing at code that no longer exists, and a lot of point-in-time "Issue #68" project narrative that had no lasting reference value). The content below has been checked against the current source rather than carried forward as-is.
 
 ## Performance Targets
 
-Based on issue #68 requirements:
+Rough guidelines, not hard SLAs — this is a self-hosted app, not a service with paying customers waiting on a dashboard:
 
-- **Search APIs**: Target <500ms response time
-- **Core APIs**: Target <200ms response time  
-- **Critical Operations**: Monitor for >1s responses
+| Area | Target |
+|---|---|
+| Main page load | < 2s |
+| Typical API endpoint | < 500ms |
+| Video listing (1000+ videos) | < 1s |
+| Search | < 1s |
+| Download initialization | < 5s |
+| Memory (5000+ video library) | < 1GB |
+| DB query (common case) | < 100ms |
 
-## Logging Levels
+## Monitoring API
 
-- **Debug**: All API responses with timing
-- **Info**: Responses taking 500ms-1s
-- **Warning**: Responses taking >1s
-- **Error**: Performance system errors
+Live performance metrics are served from `src/api/fastapi/performance.py` under the `/api/performance` prefix. Like every other MVidarr endpoint, these require an authenticated session (see `CLAUDE.md` § API Development & Testing) — test them through the browser/UI session, not bare `curl`.
 
-## Data Collection
+| Endpoint | Method | Auth | Returns |
+|---|---|---|---|
+| `/api/performance/` | GET | admin | Full overview: system + API + cache metrics, overall status |
+| `/api/performance/system` | GET | admin | CPU, memory, disk, load average (via `psutil`) |
+| `/api/performance/cache` | GET | any authenticated user | Cache hit/miss counts and hit rate (`MediaCacheManager`) |
+| `/api/performance/endpoints` | GET | any authenticated user | Per-endpoint stats (`?limit=`, default 20, max 100) |
+| `/api/performance/trends` | GET | any authenticated user | Trend data over `?hours=` (default 24, max 168) |
+| `/api/performance/cache/clear` | POST | admin | Clears API/function/performance cache patterns |
+| `/api/performance/health` | GET | admin | Quick status check; `warning` above 80% CPU/85% mem, `critical` above 95%/95% or cache down |
 
-- **Rolling Window**: Last 100 requests per endpoint (memory efficient)
-- **Thread Safe**: Concurrent request handling
-- **Automatic Cleanup**: Prevents memory bloat
-- **Real-time**: Immediate statistics availability
+Metrics for `/`, `/endpoints`, and `/trends` are backed by `src/services/performance_monitor.py` (`get_performance_monitor()`), which is separate from the decorator described below.
 
-## Benefits
+## Instrumenting New Code
 
-1. **Proactive Issue Detection**: Identify slow endpoints before users complain
-2. **Performance Optimization Guidance**: Data-driven optimization decisions  
-3. **Regression Prevention**: Monitor performance changes over time
-4. **User Experience Improvement**: Focus optimization efforts on high-impact areas
+`src/utils/performance_monitor.py` provides a `@monitor_performance(name)` decorator that records timing into an in-process, thread-safe rolling window (last 100 calls per name). It's currently applied at the **service layer**, not on API route handlers — see `src/services/video_quality_service.py`, `src/services/dynamic_playlist_service.py`, `src/services/imvdb_discovery_service.py`, and `src/services/imvdb_analytics_service.py` for real examples:
 
-## Integration
+```python
+from src.utils.performance_monitor import monitor_performance
 
-The performance monitoring system integrates with:
+@monitor_performance("video_quality.analyze_video_quality")
+def analyze_video_quality(self, video_id: int):
+    ...
+```
 
-- **Database Optimization** (#67): Coordinate query optimizations
-- **Frontend Performance** (#69): API improvements enhance user experience
-- **Logging System**: Performance data in application logs
-- **Health Monitoring**: Performance health checks
+Use a `service_name.method_name` label so it's identifiable in logs. Warnings are logged automatically at 500ms–1s, errors above 1s (see the logger namespace `mvidarr.performance`).
 
-## Next Steps
+## Database Performance
 
-1. **Expand Coverage**: Add monitoring to more API endpoints
-2. **Performance Alerts**: Implement alerting for degraded performance
-3. **Historical Analysis**: Store long-term performance trends
-4. **Optimization Recommendations**: Automated performance improvement suggestions
+### Connection pool
 
-## Critical Analysis
+Pool size is configuration, not a hardcoded constant — set it via `DB_POOL_SIZE` (env var) or the `db_pool_size` setting (see `src/config/config.py`), not by editing source. As a starting point for self-hosted deployments:
 
-This implementation addresses the core issues with issue #68:
+- Small library (< 1,000 videos): pool 5, overflow 10
+- Medium (1,000–10,000): pool 10, overflow 20
+- Large (10,000+): pool 20, overflow 40
 
-- ✅ **Provides Baseline Data**: Real performance measurements vs assumptions
-- ✅ **Focused Approach**: Start with critical endpoints, expand systematically  
-- ✅ **Evidence-Based Targets**: Use real data to set realistic performance goals
-- ✅ **Root Cause Analysis**: Identify actual bottlenecks vs perceived issues
+### Indexing
 
-The system provides the foundation for data-driven API optimization rather than premature optimization based on assumptions.
+Composite indexes matter most on the columns actually filtered/sorted together — e.g. `(artist_id, status)`, `(status, created_at)`. New migrations go through `migrations/` (see `docs/DATABASE_MIGRATIONS.md`), not by hand-editing the schema.
+
+### Query anti-patterns to avoid
+
+```python
+# N+1: one query per artist
+for artist in session.query(Artist).all():
+    print(artist.videos)  # separate query each time
+
+# Fix: eager load
+artists = session.query(Artist).options(joinedload(Artist.videos)).all()
+```
+
+```python
+# Unconditional JOIN + count-on-joined-table, even when the join buys nothing
+query = session.query(Video).join(Artist, isouter=True)
+total = query.count()
+
+# Fix: only join when the result actually needs it (e.g. sorting by artist name)
+if sort_by == "artist_name":
+    query = session.query(Video).join(Artist, isouter=True)
+    total = query.count()
+else:
+    total = session.query(Video).count()
+    query = session.query(Video).options(joinedload(Video.artist))
+```
+
+```python
+# OFFSET pagination degrades on large tables
+videos = session.query(Video).offset(1000).limit(50).all()
+
+# Prefer cursor-based pagination for large lists
+videos = session.query(Video).filter(Video.id > last_id).limit(50).all()
+```
+
+## Frontend Performance
+
+These are established patterns for the video/artist list views, worth reapplying whenever those pages grow new features:
+
+- **Virtualize long lists** — render only the visible slice of a large video/artist list rather than the whole DOM.
+- **Debounce search input** (~300ms) instead of firing a request per keystroke.
+- **Batch DOM writes** — build a `DocumentFragment` and append once, not per-item.
+- **Prefer transform/opacity transitions** over animating layout properties (`width`/`height`) to avoid layout thrash.
+
+## Load Testing
+
+Don't hand-roll a load test script — use what's already in the repo:
+
+- `src/testing/load_testing_framework.py` — async load/stress testing against the running FastAPI app
+- `src/utils/performance_testing.py` — request-based validation tooling
+
+## Performance Checklist (for new endpoints/features)
+
+- [ ] Queries avoid N+1 (eager-load relationships you'll actually access)
+- [ ] Joins are conditional on what the request actually needs
+- [ ] List endpoints paginate; large tables avoid `OFFSET`-based pagination
+- [ ] New indexes added via a `migrations/` migration if a new filter/sort path needs one
+- [ ] Anything non-trivial gets a `@monitor_performance` label
+- [ ] Checked against `/api/performance/endpoints` after deploying, not just assumed fast
+
+## Related Documentation
+
+- **System Monitoring**: `MONITORING.md`
+- **Architecture**: `ARCHITECTURE.md`
+- **Database Migrations**: `DATABASE_MIGRATIONS.md`
+- **Configuration**: `CONFIGURATION_GUIDE.md`
+- **Troubleshooting**: `TROUBLESHOOTING.md`

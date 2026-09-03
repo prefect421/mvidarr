@@ -6,102 +6,67 @@ permalink: /about/
 
 # About MVidarr
 
-MVidarr is a comprehensive music video management and discovery platform designed for music enthusiasts who want to organize, discover, and stream their music video collections with professional-grade tools and intelligent automation.
-
-## Project Vision
-
-Our vision is to create the ultimate music video management solution that combines the discovery power of multiple sources with intelligent organization, advanced search capabilities, and a modern streaming experience.
+MVidarr is a music video collection and management system built for the home self-hoster who wants to organize, discover, and stream their own music video library without depending on a third-party service.
 
 ## Key Capabilities
 
-### 🎯 Advanced Artist Management
+### 🎯 Artist Management
 - Multi-criteria search and filtering
 - Bulk operations for efficient management
-- Automated metadata enrichment
-- Artist relationship tracking
+- Automated metadata enrichment (thumbnails, genres, biography)
+- Per-artist video-type filtering and monitoring controls
 
-### 🔍 Comprehensive Discovery
-- Dual-source integration (IMVDb + YouTube)
-- Automated video discovery
-- Smart recommendation engine
-- Genre-based filtering and organization
+### 🔍 Video Discovery & Download
+- Dual-source discovery (IMVDb + YouTube)
+- yt-dlp-based downloading with quality preferences and automatic retry
+- Duplicate detection at the database level
+- Scheduler V2 for automated, prioritized discovery/download runs
 
-### 📺 Modern Streaming Experience
-- Built-in video player with transcoding support
-- MvTV continuous player mode
-- Responsive design for all devices
-- Multiple theme options
+### 📺 Streaming Experience
+- Built-in HTML5 player with real-time MKV transcoding (FFmpeg)
+- Full subtitle support (WebVTT, SRT, ASS, SSA, SUB) with smart language resolution
+- MvTV continuous-playback mode
+- Multiple built-in themes
 
-### 🛡️ Enterprise Security
-- Role-based access control (Admin, Manager, User, ReadOnly)
-- Secure authentication with bcrypt password hashing
-- Session management with secure tokens
-- Comprehensive audit logging
-- Account lockout protection
+### 🛡️ Security
+- Real, enforced role-based access control (Admin, Manager, User, ReadOnly)
+- OAuth login (Authentik, Google, GitHub) alongside local accounts
+- Two-factor authentication (TOTP + backup codes)
+- bcrypt password hashing, session-based auth on every API endpoint
+- Native Discord and Apprise notifications for download/artist activity
 
 ## Technology Stack
 
-MVidarr is built using modern, reliable technologies:
-
-- **Backend**: Flask (Python 3.12+)
-- **Database**: MariaDB 11.4+ with SQLAlchemy ORM
-- **Frontend**: HTML5/CSS3/JavaScript with responsive design
+- **Backend**: FastAPI (Python 3.12+), async throughout
+- **Database**: MariaDB 11.4+ / MySQL 8.0+ via SQLAlchemy
+- **Background Jobs**: Celery + Redis
+- **Frontend**: HTML5/CSS3/JavaScript, server-rendered Jinja2 templates
 - **Media Processing**: FFmpeg, yt-dlp
-- **Containerization**: Docker with multi-stage optimized builds
-- **Security**: bcrypt, secure session management, SQL injection prevention
+- **Containerization**: Docker (3-container: app+Celery, MariaDB, Redis)
 
 ## Development Philosophy
 
-We follow these core principles:
-
-- **Security First**: Every feature is designed with security in mind
-- **User Experience**: Intuitive interfaces that don't compromise on functionality  
-- **Performance**: Optimized for speed and reliability
-- **Maintainability**: Clean, well-documented code architecture
-- **Extensibility**: Built to grow with your needs
+- **Security first** — every endpoint is authenticated; RBAC is enforced, not decorative
+- **Self-hoster scale** — built for a personal or small home-server library, not an enterprise deployment
+- **Maintainability** — clean architecture, current documentation, active dependency hygiene
+- **Extensibility** — service-integration points for Spotify, Last.fm, Plex, Lidarr, and more
 
 ## Project Status
 
-**Current Version**: v0.9.8 (Released)  
-**Development Version**: v0.9.5-dev  
-**Next Milestone**: Performance & User Experience Enhancements
+**Current Version**: v1.0.1 (Released August 28, 2026) — first production-ready release line
+**Development Branch**: `dev`, targeting v1.0.2
 
-### Recent Achievements
-- ✅ Complete Docker optimization with 8-minute reliable builds
-- ✅ Container size optimization (1.41GB production images)
-- ✅ Comprehensive build monitoring infrastructure
-- ✅ 100% build success rate with automated health checks
-- ✅ Enterprise-grade security implementation
-
-## Roadmap
-
-Our development roadmap focuses on continuous improvement:
-
-- **0.9.5**: Performance optimization and user experience enhancements
-- **0.9.6**: Quality assurance and testing infrastructure
-- **0.9.7**: Advanced features and integration capabilities
-- **0.9.8**: External service integrations
-- **0.9.9**: Enterprise and multi-user features
-- **0.10.0-beta.1**: First beta release - active testing phase
-- **1.0.0**: Production readiness and public release (planned Q1 2026)
+See the [full changelog](https://github.com/prefect421/mvidarr/blob/main/CHANGELOG.md) for release-by-release history, and the [documentation index](documentation/) for guides.
 
 ## Contributing
 
-We welcome contributions from the community! Whether you're interested in:
-
-- Feature development
-- Documentation improvements
-- Bug reports and testing
-- Security reviews
-- Performance optimization
-
-Check out our [Contributing Guide]({{ site.github.repository_url }}/blob/main/CONTRIBUTING.md) to get started.
+We welcome contributions — feature development, documentation improvements, bug reports, security reviews, or performance work. Check out our [Contributing Guide]({{ site.github.repository_url }}/blob/main/CONTRIBUTING.md) to get started.
 
 ## Support
 
-- **Documentation**: Comprehensive guides in our [docs directory]({{ site.github.repository_url }}/tree/main/docs)
-- **Issues**: Report bugs via [GitHub Issues]({{ site.github.repository_url }}/issues)
-- **Discussions**: Join our [GitHub Discussions]({{ site.github.repository_url }}/discussions)
+- **Documentation**: [docs directory]({{ site.github.repository_url }}/tree/main/docs)
+- **Issues**: [GitHub Issues]({{ site.github.repository_url }}/issues)
+- **Discussions**: [GitHub Discussions]({{ site.github.repository_url }}/discussions)
 
 ---
 
