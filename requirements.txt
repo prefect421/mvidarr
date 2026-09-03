@@ -70,7 +70,7 @@ zeroconf==0.150.0
 
 # Monitoring and Logging
 prometheus-client==0.26.0
-structlog==23.2.0
+structlog==26.1.0
 sentry-sdk==2.66.1
 
 # Production Server - ASGI (FastAPI)
