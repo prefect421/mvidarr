@@ -23,6 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Merged 4 overlapping performance docs into one**: `PERFORMANCE_OPTIMIZATION.md`, `PERFORMANCE_OPTIMIZATION_ANALYSIS.md`, and `PERFORMANCE_REGRESSION_PREVENTION.md` are gone; their durable content was folded into `PERFORMANCE_MONITORING.md` (kept under that name since `ARCHITECTURE.md`, `MONITORING.md`, and `BUILD_PROCESS.md` all link to it). In the process, corrected content that had drifted from the actual FastAPI code: the monitoring API section documented Flask-era endpoints (`/api/performance/stats`, `/slow`, `/summary`, `/log-summary`) that no longer exist — replaced with the real current routes in `src/api/fastapi/performance.py` (`/`, `/system`, `/cache`, `/endpoints`, `/trends`, `/cache/clear`, `/health`) and their actual auth requirements. The `@monitor_performance` decorator examples referenced API route names (`api.videos.search`) that were never real; replaced with real current usage sites in the service layer (`video_quality_service.py`, `dynamic_playlist_service.py`, etc). Dropped point-in-time "Issue #68" project narrative (executive summaries, phase timelines, monthly-report templates) that had no reference value once the work it described was done.
 
+## [1.0.2] - 2026-09-03
+
+Security sweep: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on all three requirements files at time of release.
+
+### Security
+- **Fix (#488)**: CORS `allow_origins` was hardcoded to the maintainer's old personal LAN IP (`192.168.1.145`) and didn't match any of this project's actual environments. Now configurable via `CORS_ALLOWED_ORIGINS` (comma-separated env var), documented in `.env.example`, defaulting to localhost/127.0.0.1 on the dev/Docker/prod ports plus the documented reverse-proxy origin.
+- **Fix (#488)**: `TRUSTED_PROXY_HOSTS` defaulted to `"*"`, trusting `X-Forwarded-For`/`X-Forwarded-Proto` from any peer. A client reaching FastAPI directly (no reverse proxy in front) could spoof its IP to bypass the rate limiter and forge the source IP in login/2FA audit logs. Now defaults to loopback-only; deployments behind a reverse proxy must set it explicitly.
+
+### Fixed
+- **#487**: Added a "UI Preferences" section to Settings (General tab) with a button to re-enable the MKV transcoding notice after a permanent "Don't show this again" dismissal — previously required clearing `localStorage` via DevTools.
+
 ## [1.0.1] - 2026-08-28
 
 Security sweep: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on all three requirements files at time of release.
