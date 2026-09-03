@@ -214,17 +214,23 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.0.1 - Released
+### Current Phase: v1.0.2 - Released
 
-#### Versioning Policy (Updated 2026-08-28)
-- **Current Version**: 1.0.1 (Released 2026-08-28)
-- **Next Version**: 1.0.2 (Planning)
+#### Versioning Policy (Updated 2026-09-03)
+- **Current Version**: 1.0.2 (Released 2026-09-03)
+- **Next Version**: 1.0.3 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (past phase)
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **v1.0.2** (2026-09-03): Security Sweep — CORS/Proxy-Trust Hardening
+  - ✅ Fix (#488): CORS `allow_origins` was hardcoded to the maintainer's old personal LAN IP (`192.168.1.145`), matching none of this project's actual environments. Now configurable via `CORS_ALLOWED_ORIGINS` (comma-separated env var), documented in `.env.example`, defaulting to localhost/127.0.0.1 on the dev (:5000)/Docker (:5001)/prod (:5050) ports plus the reverse-proxy origin referenced elsewhere in the code
+  - ✅ Fix (#488): `TRUSTED_PROXY_HOSTS` defaulted to `"*"` (trust any peer's `X-Forwarded-*` headers) — a client reaching FastAPI directly (no reverse proxy in front) could spoof its IP to bypass the rate limiter and forge the source IP in login/2FA audit logs. Now defaults to loopback-only; deployments behind a reverse proxy must set it explicitly. Verified on prod: no reverse proxy currently in front, so the tightened default is safe as shipped
+  - ✅ Fix (#487): Added a "UI Preferences" section to Settings (General tab) with a button to clear the `mvidarr_hide_mkv_warning` `localStorage` flag, closing the follow-up gap left by v1.0.1's MKV notice dismissal (previously needed DevTools)
+  - ✅ Security scan: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on `requirements.txt`, `requirements-dev.txt`, `requirements-fastapi.txt`
+  - Local tooling note: this session's `~/.local/bin/isort` was stale at 8.0.1 against the `isort==9.0.0` CI pin, and silently reformatted 5 unrelated files in the wrong direction on first pass — caught by CI failing on the PR, fixed by upgrading the local binary (`pip install --user --upgrade --break-system-packages isort==9.0.0`). Worth checking if other local dev environments have the same stale binary
 - **v1.0.1** (2026-08-28): Dependency & Bugfix Sweep
   - ✅ Fix (#485/#486): MKV transcoding notice on the video detail page is now dismissible — close button plus a "Don't show this again" `localStorage`-persisted option. Code review on the initial fix caught a real follow-up bug (dismissal undone by any same-page refresh — download start, metadata enhancement, edit save, quality upgrade) before merge; fixed with a page-scoped dismissal flag that survives re-renders
   - ✅ Fix: `Dockerfile.production` (the file CI actually builds/publishes to ghcr.io) was missing the Node.js/bgutil-ytdlp-pot-provider additions `Dockerfile` got in #452 — pot-provider crash-looped with exit 127 on every boot in production, PO tokens silently unavailable. Backported into the multi-stage build
@@ -501,9 +507,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.0.1 (Dependency & Bugfix Sweep)
+- **Current Version**: v1.0.2 (Security Sweep: CORS/Proxy-Trust Hardening)
 - **Development Focus**: Stability, security
-- **Next Version**: v1.0.2
+- **Next Version**: v1.0.3
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -600,8 +606,8 @@ All issues should be planned with the following attributes:
 - **Stop Date**: Target completion date for the issue
 
 ### Release Management
-- **Current Release**: Version 1.0.1 (2026-08-28)
-- **Next Release**: Version 1.0.2 (Planning)
+- **Current Release**: Version 1.0.2 (2026-09-03)
+- **Next Release**: Version 1.0.3 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment

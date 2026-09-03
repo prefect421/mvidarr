@@ -22,17 +22,16 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 6 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v1.0.1 - Dependency & Bugfix Sweep**
+## 🚀 **LATEST: v1.0.2 - Security Sweep: CORS/Proxy-Trust Hardening**
 
-**Released**: August 28, 2026
+**Released**: September 3, 2026
 
-- **📺 MKV transcoding notice is now dismissible** (#485) — close button plus a "Don't show this again" option
-- **🐳 Fixed production Docker image** missing Node.js/pot-provider, which caused PO tokens to be silently unavailable
-- **🔧 CI stability fix**: isort pinned after an unpinned upgrade silently broke the required pipeline check
-- **🔒 Security**: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean across all requirements files
-- **📦 Dependency updates**: fastapi, uvicorn, python-dotenv, mypy
+- **🔒 CORS allowlist is now configurable** (#488) — `CORS_ALLOWED_ORIGINS` env var replaces a hardcoded personal LAN IP that didn't match any real deployment
+- **🔒 Proxy trust hardened** (#488) — `TRUSTED_PROXY_HOSTS` now defaults to loopback-only instead of trusting `X-Forwarded-*` headers from any peer, closing a rate-limit-bypass / audit-log-spoofing gap for deployments not behind a reverse proxy
+- **⚙️ Settings UI Preferences** (#487) — re-enable the MKV transcoding notice after a permanent "Don't show this again" dismissal, without needing DevTools
+- **🔒 Security scan**: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean across all requirements files
 
-📜 **[View the full changelog](CHANGELOG.md)** for v1.0.1's complete notes and every earlier release.
+📜 **[View the full changelog](CHANGELOG.md)** for v1.0.2's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 
@@ -79,7 +78,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v1.0.1`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v1.0.2`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -231,4 +230,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v1.0.1** - Built with ❤️ for music video enthusiasts
+**MVidarr v1.0.2** - Built with ❤️ for music video enthusiasts
