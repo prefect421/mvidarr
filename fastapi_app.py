@@ -416,16 +416,30 @@ logger.info(
 )
 
 # Add CORS middleware with optimized configuration
+# Allowed origins are configurable via CORS_ALLOWED_ORIGINS (comma-separated) so
+# self-hosters running on non-default hosts/ports aren't stuck behind someone
+# else's hardcoded LAN IP (see issue #488). Defaults cover this project's own
+# documented environments (dev :5000, Docker :5001, prod :5050) plus loopback
+# and the reverse-proxy origin referenced below.
+_default_cors_origins = [
+    "http://localhost:5000",
+    "http://localhost:5001",
+    "http://localhost:5050",
+    "http://127.0.0.1:5000",
+    "http://127.0.0.1:5001",
+    "http://127.0.0.1:5050",
+    "https://mvidarr.prefect42.com",
+]
+_cors_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "").strip()
+cors_allowed_origins = (
+    [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
+    if _cors_origins_env
+    else _default_cors_origins
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://192.168.1.145:5000",
-        "http://192.168.1.145:5010",
-        "http://localhost:5000",
-        "http://localhost:5010",
-        "http://127.0.0.1:5000",
-        "http://127.0.0.1:5010",
-    ],
+    allow_origins=cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -435,9 +449,16 @@ app.add_middleware(
 # Add proxy headers middleware for HTTPS reverse proxy support
 # This allows FastAPI to trust X-Forwarded-* headers from reverse proxies
 # Fixes mixed content issues when accessing via HTTPS proxy (e.g., https://mvidarr.prefect42.com)
+#
+# TRUSTED_PROXY_HOSTS defaults to loopback-only (issue #488) rather than "*" —
+# trusting X-Forwarded-For/X-Forwarded-Proto from any peer lets a client that
+# can reach FastAPI directly (no reverse proxy in front) spoof its own IP,
+# bypassing the rate limiter and forging the source IP in login/2FA audit logs.
+# Deployments that sit behind a reverse proxy (e.g. https://mvidarr.prefect42.com)
+# MUST set TRUSTED_PROXY_HOSTS explicitly to the proxy's IP/hostname.
 app.add_middleware(
     ProxyHeadersMiddleware,
-    trusted_hosts=os.environ.get("TRUSTED_PROXY_HOSTS", "*").split(","),
+    trusted_hosts=os.environ.get("TRUSTED_PROXY_HOSTS", "127.0.0.1").split(","),
 )
 logger.info("✅ Proxy headers middleware enabled for reverse proxy support")
 

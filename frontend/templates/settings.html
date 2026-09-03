@@ -278,6 +278,18 @@ input:checked + .slider:before {
             </div>
         </div>
 
+        <div class="settings-section" id="uiPreferencesSection">
+            <h2>🖥️ UI Preferences</h2>
+            <p class="section-description">Stored in this browser only — not synced across browsers or devices.</p>
+            <div class="form-group">
+                <label>MKV Transcoding Notice:</label>
+                <button type="button" id="mkvNoticeToggleBtn" class="btn btn-secondary" onclick="toggleMkvNoticePreference()" style="display: none;">Re-enable Notice</button>
+                <div class="form-help">
+                    <small id="mkvNoticeStatusText"></small>
+                </div>
+            </div>
+        </div>
+
         <div class="settings-section" id="userCredentialsSection" style="display: none;">
             <h2>👤 User Credentials</h2>
             <div class="form-help">
@@ -2707,6 +2719,40 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Issue #487: "UI Preferences" -- lets users undo a permanent "Don't show
+// this again" dismissal of the MKV transcoding notice (issue #485) without
+// needing DevTools. The dismissal lives entirely in localStorage (per-browser,
+// not a server-side setting), so this just reads/clears that same key.
+function getMkvNoticeHidden() {
+    try {
+        return localStorage.getItem('mvidarr_hide_mkv_warning') === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+function refreshMkvNoticeUI() {
+    const btn = document.getElementById('mkvNoticeToggleBtn');
+    const status = document.getElementById('mkvNoticeStatusText');
+    if (!btn || !status) return;
+    const hidden = getMkvNoticeHidden();
+    btn.style.display = hidden ? '' : 'none';
+    status.textContent = hidden
+        ? 'Currently hidden -- you selected "Don\'t show this again" on a video\'s MKV transcoding notice.'
+        : 'Shown by default on video pages with MKV files that need transcoding.';
+}
+
+function toggleMkvNoticePreference() {
+    try {
+        localStorage.removeItem('mvidarr_hide_mkv_warning');
+    } catch (e) {
+        // localStorage unavailable (private browsing, etc.) -- nothing to clear
+    }
+    refreshMkvNoticeUI();
+}
+
+document.addEventListener('DOMContentLoaded', refreshMkvNoticeUI);
 
 // Handle hash changes
 window.addEventListener('hashchange', initializeTab);
