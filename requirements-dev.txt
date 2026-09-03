@@ -25,7 +25,7 @@ sphinx-rtd-theme==3.1.0
 
 # Visual Testing and Browser Automation
 playwright==1.62.0
-pytest-playwright==0.7.2
+pytest-playwright==0.9.0
 Pillow==12.3.0  # Security: CVE-2026-25990 PSD fix, CVE-2026-40192 FITS GZIP decompression bomb fix
 imagehash==4.3.2
 
