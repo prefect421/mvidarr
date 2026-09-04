@@ -175,6 +175,13 @@ YOUTUBE_API_KEY=your-youtube-key
 REDIS_URL=redis://redis:6379/0
 CELERY_BROKER_URL=redis://redis:6379/0
 BACKGROUND_JOBS_ENABLED=true
+
+# Reverse proxy (required if accessing over HTTPS through nginx/Traefik/etc.)
+# Without this, pages behind the proxy can fail to load with a browser
+# "mixed active content" error. See docs/CONFIGURATION_GUIDE.md for a gotcha
+# when the proxy shares a Docker host with MVidarr.
+TRUSTED_PROXY_HOSTS=your-proxy-ip-or-hostname
+CORS_ALLOWED_ORIGINS=https://your-domain.example.com
 ```
 
 ## 🛡️ Security

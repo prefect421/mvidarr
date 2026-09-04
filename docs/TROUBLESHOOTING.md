@@ -32,6 +32,19 @@ curl http://localhost:5000/health
 3. **Firewall blocking**: Allow port 5000 through firewall
 4. **Wrong URL**: Verify correct IP address and port
 
+### Videos Page Fails to Load Behind a Reverse Proxy (Mixed Content Blocked)
+
+#### Problem: Browser console shows "Blocked loading mixed active content" for `/api/...` requests, videos grid never loads
+
+This happens when MVidarr is accessed over `https://` through a reverse proxy, but the proxy's address isn't in `TRUSTED_PROXY_HOSTS`. MVidarr then thinks the request arrived over plain `http://`, and any endpoint that redirects (e.g. FastAPI's trailing-slash redirect on `/api/videos` → `/api/videos/`) emits an `http://` `Location` header — which the browser blocks as mixed content since the page itself is `https://`.
+
+**Fix:** set `TRUSTED_PROXY_HOSTS` in `.env` to your reverse proxy's address and recreate the container (a `restart` alone won't reload env vars):
+```bash
+docker compose --env-file .env up -d --force-recreate mvidarr
+```
+
+**If you already set it to the proxy's IP and it's still broken**, and the proxy runs on the same Docker host as MVidarr but connects via the *published port* rather than a shared Docker network, you likely need the bridge gateway IP instead — see the "Same-host Docker gotcha" in [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md#ssl-https-configuration) for how to find and confirm the correct value.
+
 ### Login Issues
 
 #### Problem: Can't login with correct credentials

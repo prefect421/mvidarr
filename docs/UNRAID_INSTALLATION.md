@@ -462,6 +462,7 @@ If using Nginx Proxy Manager on Unraid:
 4. Set **Forward Port** to `5000`
 5. Enable **WebSocket Support**
 6. Apply SSL certificate
+7. In MVidarr's `.env`, set `TRUSTED_PROXY_HOSTS` to NPM's address and recreate the container — **required**, not optional, or pages will fail to load with a browser "mixed active content" error once you're accessing MVidarr over `https://` through NPM. See the "Required: `TRUSTED_PROXY_HOSTS`" note in [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md#ssl-https-configuration) — because NPM here reaches MVidarr via the Unraid host's own IP + published port (as set up above) rather than a shared Docker network, you likely need Docker's *bridge gateway* IP rather than NPM's own container IP; that doc explains why and how to find the right value.
 
 ---
 

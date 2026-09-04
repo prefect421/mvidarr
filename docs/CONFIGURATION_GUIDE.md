@@ -123,6 +123,25 @@ server {
 }
 ```
 
+**Required: `TRUSTED_PROXY_HOSTS`**
+
+Setting `X-Forwarded-Proto` in the proxy config above isn't enough by itself — MVidarr only trusts that header from peers listed in the `TRUSTED_PROXY_HOSTS` env var (defaults to loopback-only, `127.0.0.1`, since v1.0.2 / issue #488). Without it set to your proxy's address, MVidarr thinks every request arrived over plain HTTP even though the browser is on `https://`, and any endpoint that issues a redirect (e.g. FastAPI's trailing-slash redirects) will emit an `http://` `Location` header — which the browser then blocks as **mixed active content**, breaking API calls on pages like `/videos`.
+
+```bash
+# In your MVidarr .env:
+TRUSTED_PROXY_HOSTS=<proxy's IP or hostname, comma-separated if multiple>
+```
+
+⚠️ **Same-host Docker gotcha**: if the proxy runs in Docker on the *same host* as MVidarr but reaches it via the **published port** (`proxy → http://<host-ip>:5050`) rather than a shared Docker network, Docker's hairpin NAT rewrites the connection's source address to the network's **bridge gateway IP** (typically `172.x.x.1`) — not the proxy container's own IP. `TRUSTED_PROXY_HOSTS` set to the proxy's container IP will never match in that topology, and you'll keep seeing the mixed-content error even after setting it. Either:
+- Set `TRUSTED_PROXY_HOSTS` to the bridge gateway IP instead (find it via `docker network inspect <network>`, or empirically — see below), understanding this trusts forwarded headers from *any* local process reaching the published port, not just the proxy specifically; or
+- Put the proxy on MVidarr's Docker network (or a shared external network) so it connects by container name/IP directly, and trust that IP — a tighter boundary.
+
+To find the actual peer address MVidarr sees, run this while making a request through the proxy (`1388` hex = port 5000):
+```bash
+docker exec <mvidarr-container> sh -c "grep ' 01 ' /proc/net/tcp | grep ':1388 '"
+```
+The remote-address column is a hex-encoded, byte-reversed IPv4 address (e.g. `010015AC` → reverse the byte pairs → `AC.15.00.01` → `172.21.0.1`).
+
 ## 🌐 External Service Integration
 
 ### IMVDB Integration

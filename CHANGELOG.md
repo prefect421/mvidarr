@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- **`TRUSTED_PROXY_HOSTS` reverse-proxy setup gap closed**: found live on prod (`mvidarr.prefect42.com`) — the v1.0.2 (#488) hardening that made `TRUSTED_PROXY_HOSTS` default to loopback-only was correct, but nothing documented that deployers behind a reverse proxy must set it, so `/videos` failed to load entirely (browser blocked `/api/*` calls as mixed active content once an unset proxy trust made FastAPI emit `http://` redirect URLs on an `https://` page). Also documented a same-Docker-host gotcha: a proxy that reaches MVidarr via its *published port* rather than a shared Docker network gets NAT'd to the bridge gateway IP, not its own container IP — trusting the proxy's real IP silently never matches in that topology. Added guidance + a `/proc/net/tcp` diagnostic one-liner to `.env.example`, `docs/CONFIGURATION_GUIDE.md`, `docs/TROUBLESHOOTING.md`, and `README.md`. No code changes; deployment/config-only.
+
 ### Removed
 - **Repo cleanup**: Removed stale/orphaned files accumulated since the pre-1.0 "MVidarr Enhanced" era and never cleaned up:
   - `docs/pdf/` (97MB of PDFs branded with the old "MVidarr Enhanced" name, unreferenced anywhere)
