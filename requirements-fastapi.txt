@@ -16,7 +16,7 @@ aiofiles==25.1.0
 
 # Validation and serialization  
 pydantic==2.13.4
-pydantic-settings==2.14.2  # Security: GHSA-4xgf-cpjx-pc3j fix
+pydantic-settings==2.15.0  # Security: GHSA-4xgf-cpjx-pc3j fix
 
 # HTTP client for async requests
 httpx==0.28.1
