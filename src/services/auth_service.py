@@ -3,6 +3,7 @@ Authentication and user management service for MVidarr
 """
 
 import re
+import secrets
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
@@ -775,11 +776,13 @@ class AuthService:
                 admin_count = session.query(User).filter_by(role=UserRole.ADMIN).count()
 
                 if admin_count == 0:
-                    # Create default admin
+                    # Create default admin with a freshly generated password -
+                    # never a fixed literal, so every install gets a unique one
+                    generated_password = secrets.token_urlsafe(16)
                     success, message, admin_user = AuthService.create_user(
                         username="admin",
                         email="admin@mvidarr.local",
-                        password="MVidarr@dmin123",  # Strong default password
+                        password=generated_password,
                         role=UserRole.ADMIN,
                     )
 
@@ -787,7 +790,8 @@ class AuthService:
                         logger.info("Default admin user created")
                         return (
                             True,
-                            "Default admin user created with username 'admin' and password 'MVidarr@dmin123'. Please change the password immediately.",
+                            f"Default admin user created with username 'admin' and password '{generated_password}'. "
+                            "This password is not stored anywhere else - copy it now and change it immediately.",
                         )
                     else:
                         return False, f"Failed to create default admin: {message}"

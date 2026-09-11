@@ -321,6 +321,38 @@ input:checked + .slider:before {
             </div>
         </div>
 
+        <div class="settings-section">
+            <h2>Paths</h2>
+            <div class="form-group">
+                <label for="downloads_path">Downloads Directory:</label>
+                <input type="text" id="downloads_path" name="downloads_path" placeholder="/app/data/downloads">
+                <div class="form-help">
+                    <small>Where MVidarr saves videos immediately after download, before organizing them.</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="music_videos_path">Music Videos Directory:</label>
+                <input type="text" id="music_videos_path" name="music_videos_path" placeholder="/app/data/musicvideos">
+                <div class="form-help">
+                    <small>Organized music videos by artist.</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="thumbnails_path">Thumbnails Directory:</label>
+                <input type="text" id="thumbnails_path" name="thumbnails_path" placeholder="/app/data/thumbnails">
+                <div class="form-help">
+                    <small>Where artist, video, and playlist thumbnail images are stored.</small>
+                </div>
+            </div>
+        </div>
+
+            </div>
+        </div>
+
+        <!-- Security Tab -->
+        <div id="security-tab" class="settings-tab-panel">
+            <div class="settings-sections">
+
         <div class="settings-section" id="twoFactorSection">
             <h2>🛡️ Two-Factor Authentication</h2>
             <div class="form-help">
@@ -407,30 +439,6 @@ input:checked + .slider:before {
                 <small>Comma separated. Each entry is either an exact email address, or <code>@domain.com</code> to allow anyone at that domain. This only gates <strong>new</strong> accounts — anyone who already has a MVidarr account can still sign in via OAuth regardless of this list. Leave empty to block all new OAuth signups (existing accounts are unaffected).</small>
             </div>
         </div>
-
-
-        <div class="settings-section">
-            <h2>Paths</h2>
-            <div class="form-group">
-                <label for="downloads_path">Downloads Directory:</label>
-                <input type="text" id="downloads_path" name="downloads_path">
-            </div>
-            <div class="form-group">
-                <label for="music_videos_path">Music Videos Directory:</label>
-                <input type="text" id="music_videos_path" name="music_videos_path" placeholder="Organized music videos by artist">
-            </div>
-            <div class="form-group">
-                <label for="thumbnails_path">Thumbnails Directory:</label>
-                <input type="text" id="thumbnails_path" name="thumbnails_path">
-            </div>
-        </div>
-        
-            </div>
-        </div>
-        
-        <!-- Security Tab -->
-        <div id="security-tab" class="settings-tab-panel">
-            <div class="settings-sections">
 
         <div class="settings-section">
             <h2>🔒 SSL/TLS Security</h2>

@@ -7,7 +7,6 @@ import hashlib
 import hmac
 import json
 import os
-import pickle
 import time
 import zlib
 from dataclasses import dataclass, field
