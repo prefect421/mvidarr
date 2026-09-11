@@ -19,7 +19,11 @@ from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session, joinedload
 
 from src.api.fastapi.auth_dependencies import require_authentication
-from src.api.fastapi.playlists_auth import UserInfo, get_current_user_from_session
+from src.api.fastapi.playlists_auth import (
+    UserInfo,
+    can_modify_playlist,
+    get_current_user_from_session,
+)
 from src.api.fastapi.playlists_models import (
     DynamicPlaylistPreviewRequest,
     DynamicPlaylistRequest,
@@ -215,7 +219,7 @@ async def create_dynamic_playlist(
 async def refresh_dynamic_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     session: Session = Depends(get_db_session),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
 ):
     """Manually refresh dynamic playlist"""
     try:
@@ -227,7 +231,11 @@ async def refresh_dynamic_playlist(
         if not getattr(playlist, "is_dynamic", False):
             raise HTTPException(status_code=400, detail="Playlist is not dynamic")
 
-        # Note: Permission check would go here when auth system is implemented
+        if not can_modify_playlist(playlist, current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to modify this playlist",
+            )
 
         # Import dynamic playlist service
         try:
@@ -278,6 +286,12 @@ async def update_dynamic_playlist_filters(
 
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
+
+        if not can_modify_playlist(playlist, current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to modify this playlist",
+            )
 
         # Check if playlist is dynamic
         try:
@@ -414,7 +428,7 @@ async def upload_playlist_thumbnail_url(
     playlist_id: int = FastAPIPath(..., ge=1),
     thumbnail_url: str = Body(..., embed=True),
     session: Session = Depends(get_db_session),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
 ):
     """Upload thumbnail from URL"""
     try:
@@ -423,7 +437,11 @@ async def upload_playlist_thumbnail_url(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        # Note: Permission check would go here when auth system is implemented
+        if not can_modify_playlist(playlist, current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to modify this playlist",
+            )
 
         # Use thumbnail service to download and process
         thumbnail_service = ThumbnailService()
@@ -459,7 +477,7 @@ async def upload_playlist_thumbnail_file(
     playlist_id: int = FastAPIPath(..., ge=1),
     file: UploadFile = File(...),
     session: Session = Depends(get_db_session),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
 ):
     """Upload thumbnail file"""
     try:
@@ -468,7 +486,11 @@ async def upload_playlist_thumbnail_file(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        # Note: Permission check would go here when auth system is implemented
+        if not can_modify_playlist(playlist, current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to modify this playlist",
+            )
 
         # Validate file
         if file.size > 10 * 1024 * 1024:  # 10MB limit

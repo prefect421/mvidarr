@@ -312,6 +312,18 @@ async def preview_indexing(
             f"Previewing indexing for '{preview_request.file_path}' for user {current_user.get('username')}"
         )
 
+        from src.config.config import Config
+        from src.utils.security import is_safe_path
+
+        if not is_safe_path(
+            preview_request.file_path,
+            [Config.MUSIC_VIDEOS_DIR, Config.DOWNLOADS_DIR],
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="file_path must be inside the configured media library directories",
+            )
+
         file_metadata = video_indexing_service.extract_file_metadata(
             Path(preview_request.file_path)
         )
@@ -336,6 +348,8 @@ async def preview_indexing(
 
         return preview
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to preview indexing: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

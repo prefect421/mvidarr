@@ -542,3 +542,39 @@ def apply_security_headers(response):
     for header, value in headers.items():
         response.headers[header] = value
     return response
+
+
+def is_safe_path(candidate, allowed_base_dirs) -> bool:
+    """
+    Check whether `candidate` resolves to a location inside one of
+    `allowed_base_dirs`, rejecting path traversal (`../`), absolute
+    escapes, and symlink tricks.
+
+    Args:
+        candidate: Path-like value supplied by a caller (str or Path)
+        allowed_base_dirs: A single base dir or iterable of base dirs the
+            resolved path must fall under
+
+    Returns:
+        True if the resolved candidate is under one of the allowed base
+        directories, False otherwise (including on any resolution error)
+    """
+    from pathlib import Path
+
+    if isinstance(allowed_base_dirs, (str, Path)):
+        allowed_base_dirs = [allowed_base_dirs]
+
+    try:
+        resolved = Path(candidate).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+    for base in allowed_base_dirs:
+        try:
+            resolved_base = Path(base).resolve()
+        except (OSError, RuntimeError, ValueError):
+            continue
+        if resolved == resolved_base or resolved_base in resolved.parents:
+            return True
+
+    return False

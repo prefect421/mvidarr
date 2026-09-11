@@ -2,10 +2,21 @@
 Configuration Management for MVidarr
 """
 
+import logging
 import os
+import secrets
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger("mvidarr.config")
+
+# Historical hardcoded fallbacks that must never be used as a real secret key.
+# Any value matching one of these is treated the same as "not configured".
+_INSECURE_SECRET_KEYS = {
+    "mvidarr-dev-key-change-in-production",
+    "change_me_to_random_string_for_production",
+}
 
 
 class Config:
@@ -49,7 +60,7 @@ DB_PASSWORD=change_me_to_your_password
 # Application settings
 PORT=5000
 DEBUG=false
-SECRET_KEY=change_me_to_random_string_for_production
+SECRET_KEY={secret_key}
 
 # External services
 IMVDB_API_KEY=
@@ -66,7 +77,7 @@ LOG_BACKUP_COUNT=5
 DB_POOL_SIZE=10
 DB_MAX_OVERFLOW=20
 DB_POOL_TIMEOUT=30
-"""
+""".format(secret_key=secrets.token_urlsafe(64))
         env_file = cls.BASE_DIR / ".env"
         with open(env_file, "w") as f:
             f.write(env_content)
@@ -85,9 +96,19 @@ DB_POOL_TIMEOUT=30
             from src.services.settings_service import SettingsService
 
             # Flask configuration
-            self.SECRET_KEY = SettingsService.get(
-                "secret_key", "mvidarr-dev-key-change-in-production"
-            )
+            self.SECRET_KEY = SettingsService.get("secret_key", None)
+            if not self.SECRET_KEY or self.SECRET_KEY in _INSECURE_SECRET_KEYS:
+                self.SECRET_KEY = secrets.token_urlsafe(64)
+                SettingsService.set(
+                    "secret_key",
+                    self.SECRET_KEY,
+                    "Auto-generated on first run for session signing - keep private",
+                )
+                logger.warning(
+                    "No secret_key setting was configured (or it was left at the "
+                    "insecure default) - generated and persisted a new random key. "
+                    "Any existing sessions have been invalidated."
+                )
             self.DEBUG = SettingsService.get_bool("debug_mode", False)
 
             # Default application settings
@@ -131,9 +152,14 @@ DB_POOL_TIMEOUT=30
     def _load_env_vars(self):
         """Fallback: Load environment variables when database is not available"""
         # Flask configuration
-        self.SECRET_KEY = (
-            os.environ.get("SECRET_KEY") or "mvidarr-dev-key-change-in-production"
-        )
+        self.SECRET_KEY = os.environ.get("SECRET_KEY")
+        if not self.SECRET_KEY or self.SECRET_KEY in _INSECURE_SECRET_KEYS:
+            self.SECRET_KEY = secrets.token_urlsafe(64)
+            logger.warning(
+                "SECRET_KEY environment variable was not set (or was left at the "
+                "insecure default) - generated a random key for this process. Set "
+                "SECRET_KEY in your environment or .env file to persist it across restarts."
+            )
         self.DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
         # Default application settings

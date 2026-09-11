@@ -83,8 +83,12 @@ def can_access_playlist(playlist: Playlist, user: UserInfo) -> bool:
     if not user:
         return False
 
-    # Owner can always access
-    if playlist.user_id == 1:  # placeholder user id
+    # Owner can always access their own playlist
+    if playlist.user_id == user.id:
+        return True
+
+    # Admins/managers can access any playlist
+    if user.can_access_admin():
         return True
 
     # Public playlists are accessible to all
@@ -98,18 +102,16 @@ def can_access_playlist(playlist: Playlist, user: UserInfo) -> bool:
 
 
 def can_modify_playlist(playlist: Playlist, user: UserInfo) -> bool:
-    """Check if user can modify playlist
-
-    Note: Simplified authentication - currently allows modification for placeholder user
-    TODO: Implement proper user authentication when auth system is ready
-    """
+    """Check if user can modify playlist"""
     if not user:
         return False
 
-    # Owner can always modify
-    if playlist.user_id == 1:  # placeholder user id
+    # Owner can always modify their own playlist
+    if playlist.user_id == user.id:
         return True
 
-    # Note: Admin check would go here when auth system is implemented
+    # Admins/managers can modify any playlist
+    if user.can_access_admin():
+        return True
 
     return False

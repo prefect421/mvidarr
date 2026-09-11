@@ -12,7 +12,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from src.api.fastapi.auth_dependencies import require_authentication
-from src.api.fastapi.playlists_auth import UserInfo, get_current_user_from_session
+from src.api.fastapi.playlists_auth import (
+    UserInfo,
+    can_modify_playlist,
+    get_current_user_from_session,
+)
 from src.api.fastapi.playlists_models import (
     AddVideoRequest,
     BulkDeleteRequest,
@@ -210,7 +214,7 @@ async def create_playlist(
 async def update_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     update_data: PlaylistUpdateRequest = Body(...),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
     session: Session = Depends(get_db_session),
 ):
     """Update playlist details"""
@@ -220,14 +224,19 @@ async def update_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        # Note: Permission check would go here when auth system is implemented
-        # Currently allows all modifications for development
+        if not can_modify_playlist(playlist, current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to modify this playlist",
+            )
 
         # Update fields
         update_fields = update_data.dict(exclude_unset=True)
 
-        # Note: Admin check for featured status would go here when auth is implemented
-        # For now, allow featured status updates in development
+        if update_fields.get("is_featured") and not current_user.can_access_admin():
+            raise HTTPException(
+                status_code=403, detail="Only admins can set featured status"
+            )
 
         # Allowlist of fields that can be updated
         allowed_fields = {
@@ -287,7 +296,7 @@ async def update_playlist(
 @router.delete("/{playlist_id}")
 async def delete_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
     session: Session = Depends(get_db_session),
 ):
     """Delete playlist"""
@@ -297,7 +306,11 @@ async def delete_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        # Note: Permission check would go here when auth system is implemented
+        if not can_modify_playlist(playlist, current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to delete this playlist",
+            )
 
         playlist_name = playlist.name
 
@@ -326,7 +339,7 @@ async def delete_playlist(
 async def add_videos_to_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     request_data: AddVideoRequest = Body(...),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
     session: Session = Depends(get_db_session),
 ):
     """Add video(s) to playlist"""
@@ -336,7 +349,11 @@ async def add_videos_to_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        # Note: Permission check would go here when auth system is implemented
+        if not can_modify_playlist(playlist, current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to modify this playlist",
+            )
 
         # Validate videos exist
         videos = session.query(Video).filter(Video.id.in_(request_data.video_ids)).all()
@@ -420,7 +437,7 @@ async def add_videos_to_playlist(
 async def remove_video_from_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     entry_id: int = FastAPIPath(..., ge=1),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
     session: Session = Depends(get_db_session),
 ):
     """Remove video from playlist"""
@@ -430,7 +447,11 @@ async def remove_video_from_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        # Note: Permission check would go here when auth system is implemented
+        if not can_modify_playlist(playlist, current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to modify this playlist",
+            )
 
         # Find the entry
         entry = (
@@ -477,7 +498,7 @@ async def remove_video_from_playlist(
 async def reorder_videos_in_playlist(
     playlist_id: int = FastAPIPath(..., ge=1),
     reorder_data: ReorderVideoRequest = Body(...),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
     session: Session = Depends(get_db_session),
 ):
     """Reorder videos in playlist"""
@@ -487,7 +508,11 @@ async def reorder_videos_in_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        # Note: Permission check would go here when auth system is implemented
+        if not can_modify_playlist(playlist, current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to modify this playlist",
+            )
 
         # Find the entry
         entry = (
@@ -564,7 +589,7 @@ async def reorder_videos_in_playlist(
 @router.post("/bulk/delete")
 async def bulk_delete_playlists(
     request: BulkDeleteRequest = Body(...),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
     session: Session = Depends(get_db_session),
 ):
     """Delete multiple playlists"""
@@ -585,7 +610,9 @@ async def bulk_delete_playlists(
 
         for playlist in playlists:
             try:
-                # Note: Permission check would go here when auth system is implemented
+                if not can_modify_playlist(playlist, current_user):
+                    errors.append(f"Playlist {playlist.id}: permission denied")
+                    continue
 
                 playlist_name = playlist.name
                 session.delete(playlist)
