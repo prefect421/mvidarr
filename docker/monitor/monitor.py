@@ -215,7 +215,7 @@ class MVidarrMonitor:
             )
             uptime = datetime.now(started_at.tzinfo) - started_at
             return str(uptime).split('.')[0]  # Remove microseconds
-        except:
+        except Exception:
             return 'unknown'
 
     def _get_system_uptime(self):
@@ -224,7 +224,7 @@ class MVidarrMonitor:
             uptime_seconds = time.time() - psutil.boot_time()
             uptime = timedelta(seconds=int(uptime_seconds))
             return str(uptime)
-        except:
+        except Exception:
             return 'unknown'
 
     def _send_alert(self, title, message):

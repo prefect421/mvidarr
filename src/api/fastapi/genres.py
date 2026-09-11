@@ -60,18 +60,7 @@ def parse_genre_string(genre_string):
                 parsed = json.loads(json_str)
                 if isinstance(parsed, list):
                     return [str(item).strip() for item in parsed if str(item).strip()]
-            except:
-                pass
-
-        # Try ast.literal_eval for Python list strings
-        if genre_string.startswith("['") or genre_string.startswith('["'):
-            import ast
-
-            try:
-                parsed = ast.literal_eval(genre_string)
-                if isinstance(parsed, list):
-                    return [str(item).strip() for item in parsed if str(item).strip()]
-            except:
+            except (json.JSONDecodeError, TypeError):
                 pass
 
         # Fallback: treat as comma-separated values

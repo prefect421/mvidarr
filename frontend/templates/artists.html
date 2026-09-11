@@ -636,10 +636,10 @@ function loadArtists(page = 1, resetPage = false) {
                                 ${artist.has_thumbnail ? '<span class="stat has-thumbnail" title="Has Thumbnail">📷</span>' : ''}
                                 ${artist.has_imvdb_data ? '<span class="stat has-imvdb" title="Has IMVDB Data">🎵</span>' : ''}
                                 <span class="stat-actions">
-                                    <button onclick="viewArtist(${artist.id})" class="btn btn-small btn-icon" title="Edit Artist">
+                                    <button onclick="viewArtist(${artist.id})" class="btn btn-small btn-icon" title="Edit Artist" aria-label="Edit artist">
                                         ✏️
                                     </button>
-                                    <button onclick="deleteArtist(${artist.id})" class="btn btn-small btn-icon btn-danger" title="Delete Artist">
+                                    <button onclick="deleteArtist(${artist.id})" class="btn btn-small btn-icon btn-danger" title="Delete Artist" aria-label="Delete artist">
                                         🗑️
                                     </button>
                                 </span>
@@ -724,10 +724,10 @@ function loadArtists(page = 1, resetPage = false) {
                                         </span>
                                         ${artist.auto_download ? '<span class="stat auto-download" title="Auto-Download Enabled">⬇️</span>' : ''}
                                         <span class="stat-actions">
-                                            <button onclick="viewArtist(${artist.id})" class="btn btn-small btn-icon" title="Edit Artist">
+                                            <button onclick="viewArtist(${artist.id})" class="btn btn-small btn-icon" title="Edit Artist" aria-label="Edit artist">
                                                 ✏️
                                             </button>
-                                            <button onclick="deleteArtist(${artist.id})" class="btn btn-small btn-icon btn-danger" title="Delete Artist">
+                                            <button onclick="deleteArtist(${artist.id})" class="btn btn-small btn-icon btn-danger" title="Delete Artist" aria-label="Delete artist">
                                                 🗑️
                                             </button>
                                         </span>

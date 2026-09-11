@@ -1,25 +1,28 @@
-"""Tests for playlists_features.py's auth fix (#392 Phase 2). Of the 8
-routes on this router, 3 already genuinely enforce authentication via
-get_current_user_from_session() (which delegates to the real
-auth_dependencies.get_current_user(), raising 401 if unauthenticated,
-plus resolves the actual DB user record) -- create_dynamic_playlist,
-update_dynamic_playlist_filters, and get_user_playlists. Those 3 are
-correctly implemented already and are deliberately left untouched here
-(replacing their auth call with Depends(require_authentication) would
-lose the DB user-record lookup those routes actually use).
+"""Tests for playlists_features.py's auth fix (#392 Phase 2, updated for
+#500). Of the 8 routes on this router, 6 now genuinely enforce
+authentication via get_current_user_from_session() (which delegates to
+the real auth_dependencies.get_current_user(), raising 401 if
+unauthenticated, plus resolves the actual DB user record) --
+create_dynamic_playlist, update_dynamic_playlist_filters,
+get_user_playlists, refresh_dynamic_playlist, upload_playlist_thumbnail_url,
+and upload_playlist_thumbnail_file.
 
-The other 5 had zero authentication at all -- three of them
-(refresh_dynamic_playlist, upload_playlist_thumbnail_url,
-upload_playlist_thumbnail_file) even carry a "Permission check would
-go here when auth system is implemented" comment (refresh_dynamic_
-playlist's presence in that group was caught by this test file itself
-during initial development -- an earlier draft misclassified it as
-already-secure based on its proximity to routes that do call
-get_current_user_from_session(), not its own body). All 5 get
-require_authentication, matching the tier already used throughout
-playlists_crud.py (this file's sibling, already fully protected) --
-playlists are regular per-user content, not admin-only config, so no
-admin split is needed here either.
+The first 3 were already correctly implemented under #392. The latter 3
+were widened from a bare Depends(require_authentication) (added under
+#392 Phase 2, replacing "Permission check would go here when auth system
+is implemented" placeholders) to the session-based lookup as part of
+#500: those routes act on a specific playlist_id and had *no ownership
+check at all* -- any authenticated user could modify/delete another
+user's playlist. Fixing that requires the real UserInfo (with .id and
+.can_access_admin()) that only get_current_user_from_session() provides,
+plus a can_modify_playlist(playlist, current_user) check in the route
+body -- require_authentication's bare dict isn't enough for that.
+
+The remaining 2 (preview_dynamic_playlist, get_playlist_thumbnail) don't
+act on a caller-owned resource in a way that needs an identity check
+(preview takes no playlist_id; thumbnail-serving is read-only) and
+correctly stay on require_authentication, matching the tier used
+throughout playlists_crud.py for non-ownership-sensitive routes.
 """
 
 import ast
@@ -43,16 +46,23 @@ SOURCE_PATH = (
 
 NEWLY_GATED_ROUTES = {
     "preview_dynamic_playlist",
-    "refresh_dynamic_playlist",
     "get_playlist_thumbnail",
-    "upload_playlist_thumbnail_url",
-    "upload_playlist_thumbnail_file",
 }
 
 ALREADY_SECURE_VIA_SESSION_LOOKUP = {
     "create_dynamic_playlist",
     "update_dynamic_playlist_filters",
     "get_user_playlists",
+    "refresh_dynamic_playlist",
+    "upload_playlist_thumbnail_url",
+    "upload_playlist_thumbnail_file",
+}
+
+OWNERSHIP_CHECKED_ROUTES = {
+    "refresh_dynamic_playlist",
+    "update_dynamic_playlist_filters",
+    "upload_playlist_thumbnail_url",
+    "upload_playlist_thumbnail_file",
 }
 
 
@@ -77,18 +87,33 @@ class TestPlaylistsFeaturesNewlyGatedRoutes:
             ), f"{function_name} should use Depends(require_authentication), got:\n{source}"
 
     def test_already_secure_routes_still_use_the_session_lookup(self):
-        # Guards against a future edit accidentally removing the
-        # existing, correctly-working auth call on these 4 while
-        # "cleaning up" -- they were deliberately left alone here.
+        # Guards against a future edit accidentally removing the real
+        # session-based identity lookup on these routes while "cleaning
+        # up". Two call styles are both valid here: an explicit
+        # `await get_current_user_from_session(request)` (used where the
+        # route needs the user before other logic runs), or FastAPI
+        # resolving it via `Depends(get_current_user_from_session)` in
+        # the signature -- both end up calling the same function and
+        # getting the same real UserInfo. Check for the name generically
+        # rather than one specific calling convention.
         for function_name in ALREADY_SECURE_VIA_SESSION_LOOKUP:
             source = _function_source(function_name)
-            assert "get_current_user_from_session(" in source
+            assert "get_current_user_from_session" in source
 
     def test_all_eight_routes_are_accounted_for(self):
         route_function_names = {route.endpoint.__name__ for route in router.routes}
         assert route_function_names == (
             NEWLY_GATED_ROUTES | ALREADY_SECURE_VIA_SESSION_LOOKUP
         )
+
+    def test_ownership_checked_routes_call_can_modify_playlist(self):
+        # #500: these routes act on a specific playlist_id and must reject
+        # a caller who doesn't own the playlist (and isn't an admin/manager).
+        for function_name in OWNERSHIP_CHECKED_ROUTES:
+            source = _function_source(function_name)
+            assert (
+                "can_modify_playlist(" in source
+            ), f"{function_name} should check can_modify_playlist(), got:\n{source}"
 
 
 class TestPlaylistsFeaturesBehavioralAuth:

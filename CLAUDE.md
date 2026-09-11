@@ -599,11 +599,12 @@ git push origin dev
 - Issues should be prioritized and planned according to their position on the roadmap
 
 ### Issue Management
-All issues should be planned with the following attributes:
+All issues should be planned with the following attributes (fields on the [MVidarr Roadmap project board](https://github.com/users/prefect421/projects/1); confirmed 2026-09-04 against the board's actual field list):
 - **Milestone**: Correlates to version number being released
-- **Release Slot**: Designated release window for the issue
 - **Start Date**: When work on the issue should begin
-- **Stop Date**: Target completion date for the issue
+- **End Date**: Target completion date for the issue
+
+Note: there is no separate "Release Slot" field — the board never got one built; `Milestone` is what actually designates the release window.
 
 ### Release Management
 - **Current Release**: Version 1.0.2 (2026-09-03)

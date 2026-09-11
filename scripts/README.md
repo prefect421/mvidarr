@@ -201,25 +201,6 @@ Options:
 
 ---
 
-### `setup_production.py`
-
-**Purpose**: Configure MVidarr for production deployment
-
-**Usage**:
-```bash
-python3 scripts/setup_production.py
-```
-
-**What It Does**:
-1. Generates secure secret keys
-2. Sets production environment variables
-3. Configures logging
-4. Sets up SSL/TLS if certificates available
-5. Optimizes database settings
-6. Configures Gunicorn workers
-
----
-
 ## Utilities & Maintenance
 
 ### `update_version.sh`
@@ -375,11 +356,13 @@ python3 scripts/create_admin_user.py
 **Usage**:
 ```bash
 python3 scripts/reset_admin_credentials.py
-
-Options:
-  --username USER    Username to reset (default: admin)
-  --password PASS    New password (prompted if not provided)
 ```
+
+Generates a random password, applies it to both the simple-auth `admin`
+account (in `settings`) and the full-auth `admin` user (in `users`, if that
+table exists), clears active sessions, then prints the new password once.
+It is not stored anywhere else - copy it immediately and change it after
+logging in.
 
 ---
 
