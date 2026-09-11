@@ -214,17 +214,26 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.0.2 - Released
+### Current Phase: v1.0.3 - Released
 
-#### Versioning Policy (Updated 2026-09-03)
-- **Current Version**: 1.0.2 (Released 2026-09-03)
-- **Next Version**: 1.0.3 (Planning)
+#### Versioning Policy (Updated 2026-09-11)
+- **Current Version**: 1.0.3 (Released 2026-09-11)
+- **Next Version**: 1.0.4 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (past phase)
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **v1.0.3** (2026-09-11): Security Sweep — Playlist RBAC & SECRET_KEY Hardening
+  - ✅ Fix (#500): Playlist `update`/`delete`/`add-video`/`remove-video`/`reorder`/`bulk-delete`/`thumbnail-upload`/`dynamic-filter` endpoints had **no ownership check at all** (`# Note: Permission check would go here when auth system is implemented`) — any authenticated user could modify or delete any other user's playlist. The filed issue described a related but unused `user_id == 1` placeholder in `playlists_auth.py`; both are fixed — `can_access_playlist`/`can_modify_playlist` now check real ownership plus admin/manager override, wired into every write-path endpoint
+  - ✅ Fix (#501): `SECRET_KEY` silently fell back to a hardcoded, public default with no startup validation — now generates and persists a random key on first run in both the DB-settings and env-var config paths; the first-run `.env` template embeds a generated key instead of a literal placeholder. Added an `is_safe_path()` base-dir guard on `video_indexing.py`'s `preview_indexing` endpoint (the one path-accepting, non-admin-gated route)
+  - ✅ Fix (#499): `reset_admin_credentials.py` hardcoded a shared `mvidarr` password hashed with raw SHA-256 — incompatible with the real login path's hash format, so the documented recovery procedure would have left the account unable to log in. Now generates a random password and hashes it correctly. Deleted the orphaned `simple_auth_migration.py`
+  - ✅ Fix (#497): moved Two-Factor Authentication/OAuth Login Providers/OAuth Signup Allowlist from the default General tab into the existing Advanced-gated Security tab
+  - ✅ Fix (#498, #496, #502): Settings path field help text, icon-button aria-labels, bare-except/dead-import cleanup
+  - ✅ Dependency: click 8.5.0, sentry-sdk 2.68.1, SQLAlchemy 2.0.52, pydantic-settings 2.15.0, typing-inspection ≥0.4.4 — routine, no CVEs
+  - ✅ Security scan: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on `requirements.txt`, `requirements-dev.txt`, `requirements-fastapi.txt`
+  - Follow-ups filed (real design decisions, not drop-in patches): #509 (playlist listing still shows all users' playlists regardless of ownership — read-side gap distinct from #500's write-path fix), #510 (`init_db.py`'s fresh-install bootstrap still writes a hardcoded `admin`/`mvidarr` default, mitigated by an existing nag-banner check — found while verifying README accuracy, needs a decision on the right fix)
 - **v1.0.2** (2026-09-03): Security Sweep — CORS/Proxy-Trust Hardening
   - ✅ Fix (#488): CORS `allow_origins` was hardcoded to the maintainer's old personal LAN IP (`192.168.1.145`), matching none of this project's actual environments. Now configurable via `CORS_ALLOWED_ORIGINS` (comma-separated env var), documented in `.env.example`, defaulting to localhost/127.0.0.1 on the dev (:5000)/Docker (:5001)/prod (:5050) ports plus the reverse-proxy origin referenced elsewhere in the code
   - ✅ Fix (#488): `TRUSTED_PROXY_HOSTS` defaulted to `"*"` (trust any peer's `X-Forwarded-*` headers) — a client reaching FastAPI directly (no reverse proxy in front) could spoof its IP to bypass the rate limiter and forge the source IP in login/2FA audit logs. Now defaults to loopback-only; deployments behind a reverse proxy must set it explicitly. Verified on prod: no reverse proxy currently in front, so the tightened default is safe as shipped
@@ -507,9 +516,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.0.2 (Security Sweep: CORS/Proxy-Trust Hardening)
+- **Current Version**: v1.0.3 (Security Sweep: Playlist RBAC & SECRET_KEY Hardening)
 - **Development Focus**: Stability, security
-- **Next Version**: v1.0.3
+- **Next Version**: v1.0.4
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -607,8 +616,8 @@ All issues should be planned with the following attributes (fields on the [MVida
 Note: there is no separate "Release Slot" field — the board never got one built; `Milestone` is what actually designates the release window.
 
 ### Release Management
-- **Current Release**: Version 1.0.2 (2026-09-03)
-- **Next Release**: Version 1.0.3 (Planning)
+- **Current Release**: Version 1.0.3 (2026-09-11)
+- **Next Release**: Version 1.0.4 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment

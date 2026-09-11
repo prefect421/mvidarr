@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-09-11
+
+Security sweep: closed all 6 open issues (3 security, 1 medium, 2 low). Zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on all three requirements files at time of release.
+
+### Security
+- **Fix (#500)**: Playlist `update`/`delete`/`add-video`/`remove-video`/`reorder`/`bulk-delete`/`thumbnail-upload`/`dynamic-filter` endpoints performed no ownership check at all (`# Note: Permission check would go here when auth system is implemented`) — any authenticated user could modify or delete any other user's playlist. The originally-filed issue described a related but unused `user_id == 1` placeholder in `playlists_auth.py`; both are now fixed — `can_access_playlist`/`can_modify_playlist` check real ownership plus admin/manager override, and every write-path endpoint calls it.
+- **Fix (#501)**: `SECRET_KEY` silently fell back to a hardcoded, public default (`mvidarr-dev-key-change-in-production`) in both the DB-settings and env-var config paths, with no startup validation — any instance that hadn't explicitly set one signed sessions with a key published in this repo. Now generates and persists a random key on first run in both paths, and the first-run `.env` template embeds a generated key instead of a literal placeholder. Also added an `is_safe_path()` base-dir guard on `video_indexing.py`'s `preview_indexing` endpoint (the one path-accepting, non-admin-gated route).
+- **Fix (#499)**: `reset_admin_credentials.py` (the documented recovery script) hardcoded a shared `mvidarr` password and hashed it with raw SHA-256 — incompatible with the real login path's `werkzeug` hash format, so running the "reset" would have left the account unable to log in at all. Now generates a random password and hashes it correctly. Deleted the orphaned `simple_auth_migration.py` (superseded by Alembic, no callers).
+
+### Fixed
+- **#497**: Two-Factor Authentication, OAuth Login Providers, and the OAuth Signup Allowlist lived in the default-visible General tab in Settings, ahead of anything gated behind the existing "Show Advanced Settings" toggle. Moved into the Advanced-gated Security tab.
+- **#498**: Downloads/Music Videos/Thumbnails directory fields in Settings had no placeholder or example value.
+- **#496**: Icon-only Edit/Delete artist buttons and thumbnail-delete overlay buttons had no `aria-label`, so screen readers announced the raw emoji glyph instead of a meaningful name.
+- **#502**: Bare `except:` clauses in `genres.py` and `monitor.py` replaced with narrow/`Exception` catches; dropped the `ast.literal_eval` branch in `parse_genre_string()` in favor of the existing JSON/comma-split paths; removed the dead `import pickle` from `media_cache_manager.py`.
+
+### Dependencies
+- click 8.4.2 → 8.5.0, sentry-sdk 2.66.1 → 2.68.1, SQLAlchemy 2.0.51 → 2.0.52, pydantic-settings 2.14.2 → 2.15.0, typing-inspection ≥0.4.2 → ≥0.4.4 — all routine, CI-green, no CVEs.
+
+Follow-ups filed, not fixed in this release (real design decisions, not drop-in patches):
+- **#509**: playlist *listing* still shows every user's playlists regardless of ownership/`is_public` — a read-side gap distinct from #500's write-path bypass.
+- **#510**: `init_db.py`'s fresh-install bootstrap still writes a hardcoded `admin`/`mvidarr` default (mitigated by an existing nag-banner check, unlike #499's three findings) — found while verifying README accuracy; needs a decision on the right fix, not just a randomize-it patch.
+
 ### Documentation
 - **`TRUSTED_PROXY_HOSTS` reverse-proxy setup gap closed**: found live on prod (`mvidarr.prefect42.com`) — the v1.0.2 (#488) hardening that made `TRUSTED_PROXY_HOSTS` default to loopback-only was correct, but nothing documented that deployers behind a reverse proxy must set it, so `/videos` failed to load entirely (browser blocked `/api/*` calls as mixed active content once an unset proxy trust made FastAPI emit `http://` redirect URLs on an `https://` page). Also documented a same-Docker-host gotcha: a proxy that reaches MVidarr via its *published port* rather than a shared Docker network gets NAT'd to the bridge gateway IP, not its own container IP — trusting the proxy's real IP silently never matches in that topology. Added guidance + a `/proc/net/tcp` diagnostic one-liner to `.env.example`, `docs/CONFIGURATION_GUIDE.md`, `docs/TROUBLESHOOTING.md`, and `README.md`. No code changes; deployment/config-only.
 
