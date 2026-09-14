@@ -2,8 +2,6 @@
 # Simple 3-container deployment: MVidarr, MariaDB, Redis
 # FastAPI + Celery worker managed by supervisord in the main container
 
-version: '3.8'
-
 services:
   mvidarr:
     image: ghcr.io/prefect421/mvidarr:latest
@@ -30,6 +28,11 @@ services:
       - DEBUG=false
       - PYTHONUNBUFFERED=1
       - TZ=${TZ:-America/New_York}
+
+      # Reverse Proxy / CORS (read directly from the environment, no
+      # database-settings fallback — must be set here to take effect)
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
+      - TRUSTED_PROXY_HOSTS=${TRUSTED_PROXY_HOSTS:-127.0.0.1}
 
       # User/Group IDs (for file permissions)
       - PUID=${PUID:-1000}
