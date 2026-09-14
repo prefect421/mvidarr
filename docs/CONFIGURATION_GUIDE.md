@@ -187,24 +187,24 @@ metube_host="localhost"
 metube_port=8081
 ```
 
-**Docker Compose Setup:**
+**Running MeTube alongside MVidarr:**
+
+MVidarr's own `docker-compose.yml` doesn't bundle a MeTube container — MeTube is an optional, separately-run service you point MVidarr at via the `metube_host`/`metube_port` settings above. To run one on the same Docker host, add this service block into the `services:` section of your existing `docker-compose.yml`, alongside `mvidarr`, `mariadb`, and `redis` (it reuses that same file's `mvidarr` network, so no extra network setup is needed):
+
 ```yaml
-version: '3.8'
-services:
-  mvidarr:
-    image: mvidarr:latest
-    ports:
-      - "5000:5000"
-    depends_on:
-      - metube
-      
   metube:
     image: ghcr.io/alexta69/metube
+    container_name: mvidarr-metube
+    restart: unless-stopped
     ports:
       - "8081:8081"
     volumes:
-      - ./downloads:/downloads
+      - ./data/downloads:/downloads
+    networks:
+      - mvidarr
 ```
+
+Then `docker compose up -d` to start it, and set `metube_host=metube` and `metube_port=8081` in Settings — or `metube_host=localhost` if MeTube instead runs directly on the host, outside Docker.
 
 ### Spotify Integration
 
@@ -386,116 +386,71 @@ enable_notifications=true
 
 ## 🐳 Docker Configuration
 
-### Environment Variables
+### The docker-compose.yml File
 
-#### Complete Docker Environment
+MVidarr ships a ready-to-use `docker-compose.yml` in the repo root — **you don't write one from scratch**; you configure the shipped one through a `.env` file next to it. It defines a 3-container stack, all on a shared `mvidarr` bridge network:
+
+| Service | Container name | Image | Purpose |
+|---------|----------------|-------|---------|
+| `mvidarr` | `mvidarr` | `ghcr.io/prefect421/mvidarr:latest` | FastAPI app + Celery worker (managed by supervisord) |
+| `mariadb` | `mvidarr-mariadb` | `mariadb:11.4` | Database |
+| `redis` | `mvidarr-redis` | `redis:7-alpine` | Cache and Celery job queue (password-protected) |
+
+There's also a separate `docker-compose.dev.yml`, which builds the `mvidarr` image from local source instead of pulling it — that one's for working on MVidarr itself, not for a normal deployment.
+
+### Setting Up .env
+
 ```bash
-# docker-compose.env
-# Core Application
-PORT=5000
-DEBUG=false
-SECRET_KEY=your-secure-secret-key
-
-# Database
-DB_HOST=db
-DB_PORT=3306
-DB_NAME=mvidarr
-DB_USER=mvidarr
-DB_PASSWORD=secure-password
-
-# Redis Configuration
-# Use these when connecting to a non-default or external Redis server
-REDIS_HOST=redis           # Redis hostname (default: redis)
-REDIS_PORT=6379            # Redis port (default: 6379)
-REDIS_URL=redis://redis:6379/0         # Full Redis URL for main cache
-CELERY_BROKER_URL=redis://redis:6379/0 # Celery broker URL
-CELERY_RESULT_BACKEND=redis://redis:6379/1  # Celery results backend
-
-# External Services
-IMVDB_API_KEY=your-imvdb-api-key
-YOUTUBE_API_KEY=your-youtube-api-key
-
-# MeTube Integration
-METUBE_HOST=metube
-METUBE_PORT=8081
-
-# Paths (container paths)
-DOWNLOADS_PATH=/app/downloads
-MUSIC_VIDEOS_PATH=/app/musicvideos
-THUMBNAILS_PATH=/app/thumbnails
-
-# NOTE: Scheduler configuration moved to database (Scheduler V2)
-# Configure via Settings page in web UI instead of environment variables
+cp .env.example .env
+nano .env
 ```
 
-### Docker Compose Configuration
+`.env.example` is the only environment-file template that matches the shipped `docker-compose.yml` — use it, not anything else you may find referenced in older forum posts or issues.
 
-#### Complete docker-compose.yml
-```yaml
-version: '3.8'
+**Required — the compose file has no working default for these:**
 
-services:
-  mvidarr:
-    image: mvidarr:latest
-    container_name: mvidarr-app
-    restart: unless-stopped
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./config:/app/config
-      - ./downloads:/app/downloads
-      - ./musicvideos:/app/musicvideos
-      - ./thumbnails:/app/thumbnails
-      - ./database:/app/database
-      - ./logs:/app/logs
-    environment:
-      - DB_HOST=db
-      - DB_NAME=mvidarr
-      - DB_USER=mvidarr
-      - DB_PASSWORD=${DB_PASSWORD}
-      - IMVDB_API_KEY=${IMVDB_API_KEY}
-      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
-    env_file:
-      - .env
-    depends_on:
-      - db
-      - metube
-    networks:
-      - mvidarr-network
+| Variable | Description |
+|----------|-------------|
+| `DB_PASSWORD` | Password for the MariaDB app user (`mvidarr`) |
+| `MYSQL_ROOT_PASSWORD` | MariaDB root password (used for admin/backup tasks) |
+| `SECRET_KEY` | Session-signing secret — generate with `openssl rand -hex 32` |
+| `MUSIC_VIDEOS_PATH` | Host path to your music video library — no default, must be an absolute path that exists |
 
-  db:
-    image: mariadb:10.11
-    container_name: mvidarr-db
-    restart: unless-stopped
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=mvidarr
-      - MYSQL_USER=mvidarr
-      - MYSQL_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - db_data:/var/lib/mysql
-      - ./database/backup:/backup
-    networks:
-      - mvidarr-network
+**Optional — sensible defaults are built into `docker-compose.yml`:**
 
-  metube:
-    image: ghcr.io/alexta69/metube
-    container_name: mvidarr-metube
-    restart: unless-stopped
-    ports:
-      - "8081:8081"
-    volumes:
-      - ./downloads:/downloads
-    networks:
-      - mvidarr-network
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_USER` | `mvidarr` | MariaDB app user |
+| `DB_NAME` | `mvidarr` | Database name |
+| `MVIDARR_PORT` | `5000` | Host port mapped to the app's container port (always `5000` internally) |
+| `REDIS_PASSWORD` | `mvidarr_redis_default` | Redis auth password — Redis isn't published to the host, but set your own anyway |
+| `DOWNLOADS_PATH` | `./data/downloads` | Host path for in-progress downloads |
+| `THUMBNAILS_PATH` | `./data/thumbnails` | Host path for cached thumbnails |
+| `DATABASE_PATH` | `./data/database` | Host path for MVidarr's own DB backup/export files — **not** MariaDB's live data, which lives in the separate `mariadb_data` named Docker volume (back that up with `mysqldump`, not this path) |
+| `LOGS_PATH` | `./data/logs` | Host path for application logs |
+| `CACHE_PATH` | `./data/cache` | Host path for temp/cache files |
+| `IMVDB_API_KEY`, `YOUTUBE_API_KEY` | *(empty)* | Metadata enrichment — can also be set later via the Settings UI |
+| `TZ` | `America/New_York` | Container timezone |
+| `PUID`, `PGID` | `1000` | User/group IDs the app writes files as — match your host user |
+| `CORS_ALLOWED_ORIGINS`, `TRUSTED_PROXY_HOSTS` | *(project defaults)* | See [Reverse Proxy Setup](#sslhttps-configuration) above if you're behind one |
 
-volumes:
-  db_data:
+> **Scheduler settings are not environment variables.** Scheduler V2 (auto-download/auto-discovery timing) is configured entirely through the Settings page in the web UI, database-backed — there's nothing to set here or in `docker-compose.yml`.
 
-networks:
-  mvidarr-network:
-    driver: bridge
+### Starting the Stack
+
+```bash
+docker compose up -d      # or: docker-compose up -d, depending on your Docker install
 ```
+
+`mariadb` and `redis` both have healthchecks, and `mvidarr` waits (`depends_on: condition: service_healthy`) for both before it starts — so a first `up -d` can take a little while as MariaDB initializes.
+
+### Customizing docker-compose.yml
+
+If you need to change something the `.env` variables above don't cover — memory/CPU limits, a MeTube sidecar (see [MeTube Integration](#metube-integration) above), a different MariaDB storage location, etc. — edit `docker-compose.yml` directly rather than writing a replacement from scratch, so you don't lose the healthchecks and network wiring the shipped file already gets right. A couple of things worth knowing before you do:
+
+- The app's container port is hardcoded to `5000`; only the host-side mapping (`MVIDARR_PORT`) is configurable.
+- Container-internal data paths are all under `/app/data/...` (e.g. `/app/data/musicvideos`), not `/app/...` — this changed from older, pre-1.0 layouts you may see referenced in old issues.
+- `DB_HOST` inside the `mvidarr` service is hardcoded to `mariadb` (the service name) — it's not one of the `.env` variables, since it always needs to match the `mariadb` service block.
 
 ## ⚡ Performance Optimization
 

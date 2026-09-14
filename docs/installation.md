@@ -36,7 +36,7 @@ cp .env.example .env
 nano .env  # or use your preferred editor
 ```
 
-**Required settings to configure:**
+**Required settings to configure** — `docker-compose.yml` has no working default for these:
 ```bash
 # Database passwords
 DB_PASSWORD=your_secure_database_password_here
@@ -45,22 +45,28 @@ MYSQL_ROOT_PASSWORD=your_secure_root_password_here
 # Application security (generate with: openssl rand -hex 32)
 SECRET_KEY=your_secret_key_here_minimum_32_characters
 
-# Path to your music video collection
+# Path to your music video collection (must be an absolute path that exists)
 MUSIC_VIDEOS_PATH=/path/to/your/music/videos
 ```
 
-**Optional settings:**
+**Optional settings** — sensible defaults are already built into `docker-compose.yml`:
 ```bash
-# API Keys for metadata enrichment
+# API Keys for metadata enrichment (can also be set later via the Settings UI)
 IMVDB_API_KEY=your_imvdb_api_key
 YOUTUBE_API_KEY=your_youtube_api_key
 
-# Port configuration
+# Port configuration (host side only — the app always listens on 5000 in-container)
 MVIDARR_PORT=5000
+
+# Redis auth — Redis isn't published to the host, but set your own instead of
+# relying on the shared built-in default
+REDIS_PASSWORD=your_redis_password_here
 
 # Timezone
 TZ=America/New_York
 ```
+
+> `.env.example` is the single source of truth for what `docker-compose.yml` expects — see the [Configuration Guide](https://github.com/prefect421/mvidarr/blob/main/docs/CONFIGURATION_GUIDE.md#-docker-configuration) for the complete variable reference, including data-path and file-permission (`PUID`/`PGID`) options not shown above.
 
 **4. Start MVidarr:**
 ```bash

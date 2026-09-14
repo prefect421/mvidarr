@@ -162,21 +162,21 @@ Configuration is managed through:
 - Environment variables
 - Docker Compose environment files
 
-Key environment variables:
+The Docker Compose stack (`docker-compose.yml`) is entirely configured through the `.env` file you copy from `.env.example` — see the [Configuration Guide](docs/CONFIGURATION_GUIDE.md#-docker-configuration) for the full variable reference. Key ones:
 ```bash
-# Database
-DB_HOST=mariadb
+# Database password (DB_HOST=mariadb is fixed by docker-compose.yml, not user-set)
 DB_PASSWORD=secure_password
+MYSQL_ROOT_PASSWORD=secure_root_password
+
+# Application security
 SECRET_KEY=your-secret-key
 
-# External APIs
+# External APIs (optional — can also be set later via the Settings UI)
 IMVDB_API_KEY=your-imvdb-key
 YOUTUBE_API_KEY=your-youtube-key
 
-# Background Jobs (New!)
-REDIS_URL=redis://redis:6379/0
-CELERY_BROKER_URL=redis://redis:6379/0
-BACKGROUND_JOBS_ENABLED=true
+# Redis auth (optional; Celery/Redis URLs are derived from this automatically)
+REDIS_PASSWORD=your-redis-password
 
 # Reverse proxy (required if accessing over HTTPS through nginx/Traefik/etc.)
 # Without this, pages behind the proxy can fail to load with a browser

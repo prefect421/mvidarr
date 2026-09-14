@@ -67,19 +67,18 @@ docker-compose config
 # - Incorrect port mapping format
 ```
 
-**Example of correct docker-compose.yml format:**
+**Example of correct docker-compose.yml format** (see the shipped `docker-compose.yml` in the repo root for the full, real file):
 ```yaml
-version: '3.8'
 services:
   mvidarr:
-    image: mvidarr:latest
+    image: ghcr.io/prefect421/mvidarr:latest
+    container_name: mvidarr
     ports:
-      - "5001:5001"
+      - "${MVIDARR_PORT:-5000}:5000"
     volumes:
-      - "./config:/app/config"
-      - "./videos:/app/videos"
+      - ${MUSIC_VIDEOS_PATH}:/app/data/musicvideos
     environment:
-      - MVIDARR_DEBUG=false
+      - DEBUG=false
 ```
 
 ## 🔄 Container Runtime Issues
@@ -89,33 +88,33 @@ services:
 #### Check Container Logs
 ```bash
 # View recent logs
-docker logs mvidarr-app
+docker logs mvidarr
 
 # Follow live logs
-docker logs -f mvidarr-app
+docker logs -f mvidarr
 
 # Get last 50 lines
-docker logs --tail 50 mvidarr-app
+docker logs --tail 50 mvidarr
 
 # Include timestamps
-docker logs -t mvidarr-app
+docker logs -t mvidarr
 ```
 
 #### Common Startup Failures
 
 **Port Already in Use:**
 ```bash
-# Check what's using port 5001
-sudo netstat -tulpn | grep 5001
+# Check what's using port 5000
+sudo netstat -tulpn | grep 5000
 # or
-sudo lsof -i :5001
+sudo lsof -i :5000
 
 # Kill process using the port
 sudo kill -9 <PID>
 
 # Or change port in docker-compose.yml
 ports:
-  - "5002:5001"  # Use different external port
+  - "5002:5000"  # Use different external port
 ```
 
 **Permission Issues with Volumes:**
@@ -129,13 +128,17 @@ ls -la /path/to/mvidarr/data
 ```
 
 **Database Issues:**
-```bash
-# Check if database file exists and is writable
-ls -la /path/to/database/mvidarr.db
 
-# Fix database permissions
-sudo chown 1000:1000 /path/to/database/mvidarr.db
-sudo chmod 664 /path/to/database/mvidarr.db
+MVidarr uses MariaDB/MySQL, not SQLite — there's no local `.db` file to check. If `mvidarr` won't start, check whether `mariadb` is actually healthy first (it must pass its healthcheck before `mvidarr` is even allowed to start):
+```bash
+# Check container health/status
+docker compose ps
+
+# Check MariaDB's own logs for startup errors
+docker logs mvidarr-mariadb
+
+# Confirm the mvidarr container can resolve/reach it
+docker exec mvidarr getent hosts mariadb
 ```
 
 ### Container Keeps Restarting
@@ -143,10 +146,10 @@ sudo chmod 664 /path/to/database/mvidarr.db
 #### Check Exit Codes
 ```bash
 # Get container exit code
-docker ps -a | grep mvidarr-app
+docker ps -a | grep mvidarr
 
 # Inspect container for exit code
-docker inspect mvidarr-app --format='{{.State.ExitCode}}'
+docker inspect mvidarr --format='{{.State.ExitCode}}'
 ```
 
 **Common Exit Codes:**
@@ -158,7 +161,7 @@ docker inspect mvidarr-app --format='{{.State.ExitCode}}'
 #### Memory Issues
 ```bash
 # Check container memory usage
-docker stats mvidarr-app --no-stream
+docker stats mvidarr --no-stream
 
 # Increase memory limit in docker-compose.yml
 deploy:
@@ -179,10 +182,10 @@ deploy:
 docker ps | grep mvidarr
 
 # Check port mapping
-docker port mvidarr-app
+docker port mvidarr
 
 # Test internal connectivity
-docker exec mvidarr-app curl -f http://localhost:5001/health
+docker exec mvidarr curl -f http://localhost:5000/health
 ```
 
 #### Firewall Issues
@@ -191,10 +194,10 @@ docker exec mvidarr-app curl -f http://localhost:5001/health
 sudo ufw status
 
 # Allow port through firewall
-sudo ufw allow 5001
+sudo ufw allow 5000
 
 # For CentOS/RHEL
-sudo firewall-cmd --permanent --add-port=5001/tcp
+sudo firewall-cmd --permanent --add-port=5000/tcp
 sudo firewall-cmd --reload
 ```
 
@@ -204,7 +207,7 @@ sudo firewall-cmd --reload
 docker network ls
 
 # Check container network settings
-docker inspect mvidarr-app | grep -A 20 NetworkSettings
+docker inspect mvidarr | grep -A 20 NetworkSettings
 
 # Recreate network if needed
 docker-compose down
@@ -217,14 +220,14 @@ docker-compose up -d
 #### External API Access Problems
 ```bash
 # Test connectivity from within container
-docker exec mvidarr-app ping -c 3 api.imvdb.com
-docker exec mvidarr-app curl -I https://api.imvdb.com
+docker exec mvidarr ping -c 3 api.imvdb.com
+docker exec mvidarr curl -I https://api.imvdb.com
 
 # Check DNS resolution
-docker exec mvidarr-app nslookup api.imvdb.com
+docker exec mvidarr nslookup api.imvdb.com
 
 # Test YouTube API connectivity
-docker exec mvidarr-app curl -I https://www.googleapis.com/youtube/v3/
+docker exec mvidarr curl -I https://www.googleapis.com/youtube/v3/
 ```
 
 #### Proxy/Corporate Network Issues
@@ -249,14 +252,14 @@ Environment="HTTPS_PROXY=http://proxy.company.com:8080"
 #### Permission Denied Errors
 ```bash
 # Check volume mount points
-docker inspect mvidarr-app | grep -A 10 Mounts
+docker inspect mvidarr | grep -A 10 Mounts
 
-# Fix ownership of mounted directories
-sudo chown -R $(id -u):$(id -g) /path/to/volumes
+# Fix ownership of mounted directories (match PUID/PGID from your .env)
+sudo chown -R $(id -u):$(id -g) ./data
 
 # Set proper permissions
-sudo chmod -R 755 /path/to/config
-sudo chmod -R 755 /path/to/videos
+sudo chmod -R 755 ./data
+sudo chmod -R 755 "$MUSIC_VIDEOS_PATH"
 ```
 
 #### Volume Not Mounting
@@ -285,13 +288,13 @@ docker system prune -a
 docker volume prune
 
 # Check available space in containers
-docker exec mvidarr-app df -h
+docker exec mvidarr df -h
 ```
 
 #### Log Files Growing Too Large
 ```bash
 # Check container log size
-du -sh $(docker inspect --format='{{.LogPath}}' mvidarr-app)
+du -sh $(docker inspect --format='{{.LogPath}}' mvidarr)
 
 # Configure log rotation in docker-compose.yml
 logging:
@@ -317,7 +320,7 @@ logging:
 #### Resource Constraints
 ```bash
 # Monitor real-time resource usage
-docker stats mvidarr-app
+docker stats mvidarr
 
 # Check system resources
 htop
@@ -339,13 +342,13 @@ deploy:
 iostat -x 1 5
 
 # Test disk performance
-docker exec mvidarr-app dd if=/dev/zero of=/tmp/test bs=1M count=1000
+docker exec mvidarr dd if=/dev/zero of=/tmp/test bs=1M count=1000
 
 # Use faster storage for volumes
 # Consider SSD storage for the mariadb container's data volume and for videos
 volumes:
-  - "/fast/ssd/path:/var/lib/mysql"   # on the mariadb service
-  - "/regular/storage:/app/videos"    # on the mvidarr service
+  - "/fast/ssd/path:/var/lib/mysql"          # on the mariadb service
+  - "/regular/storage:/app/data/musicvideos" # on the mvidarr service (MUSIC_VIDEOS_PATH in .env)
 ```
 
 ### Database Performance Problems
@@ -393,7 +396,7 @@ server {
     server_name yourdomain.com;
     
     location / {
-        proxy_pass http://localhost:5001;
+        proxy_pass http://localhost:5000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -407,10 +410,10 @@ server {
 #### Login Problems
 ```bash
 # Check authentication logs
-docker logs mvidarr-app | grep -i auth
+docker logs mvidarr | grep -i auth
 
 # Reset admin password
-docker exec -it mvidarr-app python3 scripts/reset_admin_credentials.py
+docker exec -it mvidarr python3 scripts/reset_admin_credentials.py
 
 # Verify user table
 docker exec mvidarr-mariadb mysql -u mvidarr -p mvidarr -e "SELECT username, is_active, role FROM users;"
@@ -423,26 +426,26 @@ docker exec mvidarr-mariadb mysql -u mvidarr -p mvidarr -e "SELECT username, is_
 #### Interactive Shell Access
 ```bash
 # Access container shell
-docker exec -it mvidarr-app /bin/bash
+docker exec -it mvidarr /bin/bash
 
 # Or if bash not available
-docker exec -it mvidarr-app /bin/sh
+docker exec -it mvidarr /bin/sh
 
 # Run commands directly
-docker exec mvidarr-app ps aux
-docker exec mvidarr-app netstat -tulpn
+docker exec mvidarr ps aux
+docker exec mvidarr netstat -tulpn
 ```
 
 #### Process Investigation
 ```bash
 # Check running processes in container
-docker exec mvidarr-app ps aux
+docker exec mvidarr ps aux
 
 # Check system calls (Linux only)
-docker exec mvidarr-app strace -p <PID>
+docker exec mvidarr strace -p <PID>
 
 # Monitor file access
-docker exec mvidarr-app lsof -p <PID>
+docker exec mvidarr lsof -p <PID>
 ```
 
 ### Docker Daemon Issues
@@ -480,42 +483,46 @@ docker-compose up -d
 ## 🆘 Emergency Recovery Procedures
 
 ### Complete Container Reset
+⚠️ `-v` also deletes the `mariadb_data` and `redis_data` named volumes — your database. Take the backup below first unless you genuinely want to start over.
 ```bash
-# Stop and remove everything
+# Stop and remove everything, including the database volume
 docker-compose down -v
 
-# Remove all MVidarr-related containers
-docker rm $(docker ps -a -q -f ancestor=mvidarr)
-
-# Remove MVidarr images
-docker rmi mvidarr:latest
+# Remove the pulled MVidarr image (docker-compose pulls a fresh one on next up)
+docker rmi ghcr.io/prefect421/mvidarr:latest
 
 # Clean system
 docker system prune -a
 
-# Rebuild and restart
-docker-compose up --build -d
+# Recreate and restart (no --build — this compose file pulls a prebuilt image;
+# see docker-compose.dev.yml if you're building from local source instead)
+docker-compose up -d
 ```
 
 ### Data Recovery
+The database lives in MariaDB's own data volume, not inside the `mvidarr` container — back it up with `mysqldump`, and back up the bind-mounted data directories separately:
 ```bash
-# Backup current state before recovery
-docker exec mvidarr-app tar czf /tmp/backup.tar.gz /app/database /app/config
+# Database dump
+docker exec mvidarr-mariadb mysqldump -u root -p mvidarr > emergency-backup.sql
 
-# Copy backup out of container
-docker cp mvidarr-app:/tmp/backup.tar.gz ./emergency-backup.tar.gz
+# Data directories (host-side — matches your .env's *_PATH variables)
+tar czf emergency-data-backup.tar.gz ./data
 
-# Restore from known good backup
-docker cp ./good-backup.tar.gz mvidarr-app:/tmp/
-docker exec mvidarr-app tar xzf /tmp/good-backup.tar.gz -C /
+# Restore the database from a known-good dump
+docker-compose stop mvidarr
+docker exec -i mvidarr-mariadb mysql -u root -p mvidarr < emergency-backup.sql
+docker-compose start mvidarr
+
+# Restore data directories
+tar xzf emergency-data-backup.tar.gz
 ```
 
 ## 📋 Diagnostic Checklist
 
 ### Quick Health Check
 - [ ] Container is running (`docker ps`)
-- [ ] Logs show no errors (`docker logs mvidarr-app`)
-- [ ] Web interface accessible (`curl http://localhost:5001`)
+- [ ] Logs show no errors (`docker logs mvidarr`)
+- [ ] Web interface accessible (`curl http://localhost:5000`)
 - [ ] Database is accessible
 - [ ] Sufficient disk space
 - [ ] Network connectivity to external APIs
@@ -555,7 +562,7 @@ When reporting Docker issues:
 
 2. **Gather Logs**:
    ```bash
-   docker logs mvidarr-app > docker-logs.txt
+   docker logs mvidarr > docker-logs.txt
    docker-compose logs > compose-logs.txt
    ```
 
