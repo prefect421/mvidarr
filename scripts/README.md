@@ -127,33 +127,7 @@ Commands:
 
 ## Installation & Setup
 
-### `install.sh`
-
-**Purpose**: Main installation script for MVidarr on Linux systems
-
-**Usage**:
-```bash
-chmod +x scripts/install.sh
-./scripts/install.sh
-```
-
-**What It Does**:
-1. Checks system requirements (Python 3.11+, MySQL/MariaDB, Redis)
-2. Creates Python virtual environment
-3. Installs dependencies from requirements.txt
-4. Sets up database schema
-5. Creates initial configuration
-6. Sets up systemd services
-7. Configures file permissions
-
-**Requirements**:
-- Ubuntu/Debian-based Linux
-- Python 3.11 or higher
-- MySQL 8.0+ or MariaDB 10.5+
-- Redis 6.0+
-- FFmpeg (for video processing)
-
----
+There's no standalone `install.sh` here — installation is via Docker Compose (`docker-compose.yml` + `.env`, see [docs/installation.md](../docs/installation.md) and [docs/CONFIGURATION_GUIDE.md](../docs/CONFIGURATION_GUIDE.md)) or the manual/systemd steps below for a non-Docker deployment.
 
 ### `install_service.sh`
 
