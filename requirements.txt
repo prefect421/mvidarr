@@ -66,7 +66,7 @@ tqdm==4.70.0
 psutil==7.2.2
 schedule==1.2.0
 netifaces==0.11.0
-zeroconf==0.150.0
+zeroconf==0.151.3
 
 # Monitoring and Logging
 prometheus-client==0.26.0
