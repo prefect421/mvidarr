@@ -62,7 +62,7 @@ defusedxml==0.7.1
 # Utilities
 click==8.5.0
 colorama==0.4.6
-tqdm==4.70.0
+tqdm==4.70.1
 psutil==7.2.2
 schedule==1.2.0
 netifaces==0.11.0
