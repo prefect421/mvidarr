@@ -16,7 +16,7 @@ Flask-Session==0.8.0
 SQLAlchemy==2.0.52
 PyMySQL==1.2.0
 alembic==1.18.5
-mysqlclient>=2.2.0
+mysqlclient>=2.3.0
 
 # HTTP and API
 requests==2.34.2  # Security: CVE-2026-25645 predictable temp file creation fix
