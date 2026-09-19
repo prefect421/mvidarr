@@ -472,6 +472,13 @@ app.add_middleware(
 )
 logger.info("✅ Request size limit middleware enabled (uploads: 100MB, forms: 10MB)")
 
+# Refuse state-changing API calls while the bootstrap admin/mvidarr password is
+# still in place (#510). Set ALLOW_DEFAULT_PASSWORD=true to disable.
+from src.middleware.default_password_gate import DefaultPasswordGateMiddleware
+
+app.add_middleware(DefaultPasswordGateMiddleware)
+logger.info("✅ Default-password write gate enabled")
+
 # Add analytics middleware - Phase 3 Week 36
 from src.middleware.analytics_middleware import AnalyticsMiddleware
 

@@ -410,6 +410,11 @@ async def create_admin_user(
                         ).decode()
                         SettingsService.set("simple_auth_username", username)
                         SettingsService.set("simple_auth_password", password_hash)
+                        from src.middleware.default_password_gate import (
+                            invalidate_cache,
+                        )
+
+                        invalidate_cache()
                         logger.info(
                             f"✅ SimpleAuth credentials synced for wizard user: {username}"
                         )
