@@ -167,7 +167,8 @@ ENV PYTHONPATH=/app/src \
     PYTHONUNBUFFERED=1 \
     FLASK_ENV=production \
     PORT=5000 \
-    HOST=0.0.0.0
+    HOST=0.0.0.0 \
+    CELERY_WORKER_EXTRA_ARGS=""
 
 # Copy application source code LAST (invalidates cache most frequently)
 COPY --chown=mvidarr:mvidarr src/ /app/src/

@@ -98,6 +98,8 @@ RUN mkdir -p /app/logs /app/downloads /app/data/musicvideos /app/data/logs /app/
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+# Extra args appended to the Celery worker command in supervisord.conf (#517)
+ENV CELERY_WORKER_EXTRA_ARGS=""
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

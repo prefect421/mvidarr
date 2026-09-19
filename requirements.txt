@@ -16,7 +16,7 @@ Flask-Session==0.8.0
 SQLAlchemy==2.0.52
 PyMySQL==1.2.0
 alembic==1.18.5
-mysqlclient>=2.2.0
+mysqlclient>=2.3.0
 
 # HTTP and API
 requests==2.34.2  # Security: CVE-2026-25645 predictable temp file creation fix
@@ -53,7 +53,7 @@ flower==2.1.0
 werkzeug==3.1.8  # Security: CVE-2026-21860, CVE-2026-27199 Windows device names fix
 bcrypt==5.0.0
 cryptography>=50.0.0
-PyJWT==2.13.0  # Security: CVE-2026-32597 crit header validation fix, PYSEC-2026-175/176/177/178/179 JWKS/HMAC/DoS fixes
+PyJWT==2.14.0  # Security: CVE-2026-32597 crit header validation fix, PYSEC-2026-175/176/177/178/179 JWKS/HMAC/DoS fixes
 passlib==1.7.4
 pyotp==2.10.0
 qrcode==7.4.2
@@ -62,11 +62,11 @@ defusedxml==0.7.1
 # Utilities
 click==8.5.0
 colorama==0.4.6
-tqdm==4.70.0
+tqdm==4.70.1
 psutil==7.2.2
 schedule==1.2.0
 netifaces==0.11.0
-zeroconf==0.150.0
+zeroconf==0.151.3
 
 # Monitoring and Logging
 prometheus-client==0.26.0
@@ -79,7 +79,6 @@ sentry-sdk==2.68.1
 # Additional utilities
 yarl>=1.24.5
 aiofiles==25.1.0
-python-slugify==8.0.4
 bleach==6.4.0  # Security: Dependabot #20 formaction URI scheme bypass fix, #19 Unicode URI sanitization fix
 humanize==4.16.0
 
