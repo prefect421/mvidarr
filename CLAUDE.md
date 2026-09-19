@@ -214,17 +214,26 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.0.3 - Released
+### Current Phase: v1.0.4 - Released
 
-#### Versioning Policy (Updated 2026-09-11)
-- **Current Version**: 1.0.3 (Released 2026-09-11)
-- **Next Version**: 1.0.4 (Planning)
+#### Versioning Policy (Updated 2026-09-19)
+- **Current Version**: 1.0.4 (Released 2026-09-19)
+- **Next Version**: 1.0.5 (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (past phase)
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **v1.0.4** (2026-09-19): Issue/PR Sweep — Playlist Read Access, Celery Mingle Fix, Dependency Sweep
+  - ✅ Fix (#509): playlist list/read endpoints leaked every user's playlists — `get_playlists` now filters to own + public (admin/manager see all) and `get_playlist` applies `can_access_playlist()`, returning 404 (not 403) so private IDs can't be probed. Completes the read-side half of #500. 7 new tests in `tests/unit/test_playlists_read_access.py`, 3 confirmed failing against the old code
+  - ✅ Fix (#517): Celery worker crash-looped (`ContentDisallowed: application/x-signed-pickle`) when the Redis broker was shared with another app — worker now starts with `--without-mingle`. New `CELERY_WORKER_EXTRA_ARGS` env var is expanded by supervisor as `%(ENV_CELERY_WORKER_EXTRA_ARGS)s`, which **errors if undefined**, so it has an empty default in both Dockerfiles *and* is exported by `entrypoint.sh`
+  - ✅ Dependency: PyJWT 2.14.0, zeroconf 0.151.3, tqdm 4.70.1, mysqlclient ≥2.3.0, setup-ruby 1.322.0 — consolidated into one PR (#518), Dependabot #511-#516 closed as superseded. `python-slugify` removed rather than bumped to 9.0.0 (#511): nothing in `src/` imports it
+  - ✅ Security scan: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on `requirements.txt`, `requirements-dev.txt`, `requirements-fastapi.txt`
+  - ⚠️ **Rebuild gotcha (found post-merge)**: rebuilding `mvidarr-dev` recreated the container with the v1.0.2 default `TRUSTED_PROXY_HOSTS=127.0.0.1`, breaking `/videos` behind the https reverse proxy ("Blocked loading mixed active content" on `/api/videos/`). Fixed by setting `TRUSTED_PROXY_HOSTS=192.168.1.68` in the gitignored `.env.dev`; a reminder comment now sits in `docker-compose.dev.yml`. Check this after any rebuild of a proxied instance, prod included
+  - ⚠️ Release was pushed straight to `main` (admin bypass; `main` requires a PR + 1 approval otherwise). Prod rebuild not yet done as of this entry
+  - Still open: #510 (`init_db.py` bootstrap writes hardcoded `admin`/`mvidarr`) — needs a design decision; recommended option is keep the default but restrict the app until the password is changed, as its own PR
+  - Local tooling note: CI pins `isort==9.0.0` (`ci-cd.yml`) but `requirements-dev.txt` pins 9.0.1 — formatting was clean under 9.0.1, worth aligning the two
 - **v1.0.3** (2026-09-11): Security Sweep — Playlist RBAC & SECRET_KEY Hardening
   - ✅ Fix (#500): Playlist `update`/`delete`/`add-video`/`remove-video`/`reorder`/`bulk-delete`/`thumbnail-upload`/`dynamic-filter` endpoints had **no ownership check at all** (`# Note: Permission check would go here when auth system is implemented`) — any authenticated user could modify or delete any other user's playlist. The filed issue described a related but unused `user_id == 1` placeholder in `playlists_auth.py`; both are fixed — `can_access_playlist`/`can_modify_playlist` now check real ownership plus admin/manager override, wired into every write-path endpoint
   - ✅ Fix (#501): `SECRET_KEY` silently fell back to a hardcoded, public default with no startup validation — now generates and persists a random key on first run in both the DB-settings and env-var config paths; the first-run `.env` template embeds a generated key instead of a literal placeholder. Added an `is_safe_path()` base-dir guard on `video_indexing.py`'s `preview_indexing` endpoint (the one path-accepting, non-admin-gated route)
@@ -516,9 +525,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.0.3 (Security Sweep: Playlist RBAC & SECRET_KEY Hardening)
+- **Current Version**: v1.0.4 (Playlist Read Access, Celery Mingle Fix, Dependency Sweep)
 - **Development Focus**: Stability, security
-- **Next Version**: v1.0.4
+- **Next Version**: v1.0.5
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -616,8 +625,8 @@ All issues should be planned with the following attributes (fields on the [MVida
 Note: there is no separate "Release Slot" field — the board never got one built; `Milestone` is what actually designates the release window.
 
 ### Release Management
-- **Current Release**: Version 1.0.3 (2026-09-11)
-- **Next Release**: Version 1.0.4 (Planning)
+- **Current Release**: Version 1.0.4 (2026-09-19)
+- **Next Release**: Version 1.0.5 (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment

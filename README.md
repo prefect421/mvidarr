@@ -22,18 +22,17 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 6 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v1.0.3 - Security Sweep: Playlist RBAC & SECRET_KEY Hardening**
+## 🚀 **LATEST: v1.0.4 - Playlist Read Access, Celery Worker Fix & Dependency Sweep**
 
-**Released**: September 11, 2026
+**Released**: September 19, 2026
 
-- **🔒 Playlist ownership enforced** (#500) — update/delete/add-video/remove-video/reorder/bulk-delete/thumbnail-upload endpoints previously had *no ownership check at all*; any authenticated user could modify or delete another user's playlist. Now requires real per-owner (or admin/manager) authorization.
-- **🔒 SECRET_KEY no longer falls back to a public default** (#501) — generated and persisted randomly on first run instead of a literal string shipped in this repo; added a path-traversal guard on the one non-admin-gated file-path endpoint
-- **🔒 Admin credential reset script fixed** (#499) — generates a random password instead of a fixed shared default, and hashes it correctly (the old hash format would have left the account unable to log in)
-- **⚙️ OAuth/2FA/Signup-Allowlist relocated** (#497) — moved into the Advanced-gated Security tab instead of the default General tab
-- **♿ Accessibility & UX fixes** (#496, #498) — aria-labels on icon-only buttons, placeholders/help text on Settings path fields
+- **🔒 Playlist privacy on the read side** (#509) — the playlist list and single-playlist endpoints previously showed every user's playlists to any signed-in user. They now return only your own and public playlists (admins/managers still see all), and a private playlist you can't access returns 404.
+- **🛠️ Celery worker no longer crash-loops on a shared Redis** (#517) — the bundled worker runs with `--without-mingle`, so control messages from other apps on the same Redis DB can't kill it at startup. New optional `CELERY_WORKER_EXTRA_ARGS` env var for extra worker arguments (handy on Unraid). Giving MVidarr its own Redis DB is still the cleanest setup.
+- **📦 Dependencies**: PyJWT 2.14.0, zeroconf 0.151.3, tqdm 4.70.1, mysqlclient ≥ 2.3.0; removed the unused `python-slugify`
+- **📝 Behind a reverse proxy?** After rebuilding, make sure `TRUSTED_PROXY_HOSTS` is still set for your proxy — otherwise `/videos` fails with "Blocked loading mixed active content". See [Troubleshooting](docs/TROUBLESHOOTING.md).
 - **🔒 Security scan**: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean across all requirements files
 
-📜 **[View the full changelog](CHANGELOG.md)** for v1.0.3's complete notes and every earlier release.
+📜 **[View the full changelog](CHANGELOG.md)** for v1.0.4's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 
@@ -80,7 +79,7 @@
 
 **Docker Images:**
 - **Latest:** `ghcr.io/prefect421/mvidarr:latest`
-- **Specific version:** `ghcr.io/prefect421/mvidarr:v1.0.3`
+- **Specific version:** `ghcr.io/prefect421/mvidarr:v1.0.4`
 
 **What's Running:**
 - All background jobs (Celery) run automatically inside the main container
@@ -239,4 +238,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**MVidarr v1.0.3** - Built with ❤️ for music video enthusiasts
+**MVidarr v1.0.4** - Built with ❤️ for music video enthusiasts
