@@ -147,6 +147,9 @@ except Exception as e:
 "
 
 # Start the application
+# supervisord.conf expands %(ENV_CELERY_WORKER_EXTRA_ARGS)s and refuses to start if unset (#517)
+export CELERY_WORKER_EXTRA_ARGS="${CELERY_WORKER_EXTRA_ARGS:-}"
+
 echo "🚀 Starting MVidarr with supervisord (FastAPI + Celery)..."
 echo "📍 Working directory: $(pwd)"
 echo "🐍 Python path: $PYTHONPATH"
