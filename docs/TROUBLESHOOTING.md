@@ -53,6 +53,14 @@ docker compose --env-file .env up -d --force-recreate mvidarr
 
 **If you still see it / want extra worker options:** `CELERY_WORKER_EXTRA_ARGS` in `.env` (or your container template) is appended to the worker command. Better long-term fix: give MVidarr its own Redis DB number or instance so other apps' messages never reach it.
 
+### Changes Fail With "still using the default admin password" (HTTP 403)
+
+**Symptom:** saving settings, adding artists, starting downloads etc. fail with a 403 saying the instance is still using the default admin password; browsing and playback still work.
+
+**Cause:** the install is still on the bootstrap `admin` / `mvidarr` credential. Until it's changed, MVidarr refuses state-changing API calls (#510).
+
+**Fix:** change the password (the yellow banner links to the credentials form, or `POST /api/auth/credentials` as an admin). It takes effect within seconds. To knowingly keep the default, set `ALLOW_DEFAULT_PASSWORD=true` in `.env` and recreate the container.
+
 ### Login Issues
 
 #### Problem: Can't login with correct credentials
