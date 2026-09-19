@@ -21,6 +21,9 @@ Issue/PR sweep: 2 issues fixed, Dependabot PRs #512-#516 consolidated, #511 reso
 - PyJWT 2.13.0 → 2.14.0 (#513), zeroconf 0.150.0 → 0.151.3 (#515), tqdm 4.70.0 → 4.70.1 (#512), mysqlclient floor `>=2.2.0` → `>=2.3.0` (#514), ruby/setup-ruby 1.321.0 → 1.322.0 (#516).
 - Removed `python-slugify` (#511 proposed a 8.0.4 → 9.0.0 major bump): nothing in `src/` imports it.
 
+### Notes
+- Rebuilding a dev/self-hosted instance that sits behind an https reverse proxy recreates the container with the v1.0.2 default `TRUSTED_PROXY_HOSTS=127.0.0.1` unless it is set in that instance's env file — symptom is `/videos` failing with "Blocked loading mixed active content" for `/api/videos/`. Set it to the proxy's peer address (see docs/TROUBLESHOOTING.md and docs/CONFIGURATION_GUIDE.md). Added a reminder comment to `docker-compose.dev.yml`.
+
 Follow-up still open: **#510** (hardcoded `admin`/`mvidarr` bootstrap default) — needs a design decision, tracked separately.
 
 ## [1.0.3] - 2026-09-11

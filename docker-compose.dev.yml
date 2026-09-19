@@ -36,6 +36,10 @@ services:
       # database-settings fallback — must be set here to take effect)
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
       - TRUSTED_PROXY_HOSTS=${TRUSTED_PROXY_HOSTS:-127.0.0.1}
+      # NOTE: if this dev instance is reached through a reverse proxy over https,
+      # set TRUSTED_PROXY_HOSTS in .env.dev to the proxy's peer address. A rebuild
+      # that drops it falls back to 127.0.0.1 and /videos breaks with "Blocked
+      # loading mixed active content" (see docs/TROUBLESHOOTING.md).
 
       # User/Group IDs
       - PUID=1000
