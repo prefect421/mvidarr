@@ -45,6 +45,14 @@ docker compose --env-file .env up -d --force-recreate mvidarr
 
 **If you already set it to the proxy's IP and it's still broken**, and the proxy runs on the same Docker host as MVidarr but connects via the *published port* rather than a shared Docker network, you likely need the bridge gateway IP instead — see the "Same-host Docker gotcha" in [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md#ssl-https-configuration) for how to find and confirm the correct value.
 
+### Celery Worker Crash-Loops (`ContentDisallowed: application/x-signed-pickle`)
+
+**Symptom:** background jobs never run; supervisor logs show `celery-worker` repeatedly exiting (`exit status 1; not expected`) with `kombu.exceptions.ContentDisallowed: Refusing to deserialize untrusted content of type application/x-signed-pickle`.
+
+**Cause:** MVidarr's Celery worker only accepts JSON. If the Redis database it uses is shared with another application that publishes pickle-serialized control messages, the worker's startup "mingle" step reads one and dies. Fixed in v1.0.4 (#517): the worker now starts with `--without-mingle`.
+
+**If you still see it / want extra worker options:** `CELERY_WORKER_EXTRA_ARGS` in `.env` (or your container template) is appended to the worker command. Better long-term fix: give MVidarr its own Redis DB number or instance so other apps' messages never reach it.
+
 ### Login Issues
 
 #### Problem: Can't login with correct credentials

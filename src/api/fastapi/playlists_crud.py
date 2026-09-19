@@ -8,12 +8,12 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath
 from fastapi import Query, Request
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
-from src.api.fastapi.auth_dependencies import require_authentication
 from src.api.fastapi.playlists_auth import (
     UserInfo,
+    can_access_playlist,
     can_modify_playlist,
     get_current_user_from_session,
 )
@@ -43,16 +43,22 @@ logger = get_logger("mvidarr.api.fastapi.playlists_crud")
 async def get_playlists(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
-    current_user: dict = Depends(require_authentication),
+    current_user: UserInfo = Depends(get_current_user_from_session),
     session: Session = Depends(get_db_session),
 ):
     """Get paginated list of playlists accessible to current user"""
     try:
         offset = (page - 1) * per_page
 
-        # Show all playlists (user owns all playlists in single-user system)
-        # In multi-user system, this would filter by user_id or is_public
+        # Mirrors can_access_playlist(): owner, public, or admin/manager (#509)
         query = session.query(Playlist)
+        if not current_user.can_access_admin():
+            query = query.filter(
+                or_(
+                    Playlist.user_id == current_user.id,
+                    Playlist.is_public.is_(True),
+                )
+            )
 
         total_count = query.count()
 
@@ -132,8 +138,9 @@ async def get_playlist(
         if not playlist:
             raise HTTPException(status_code=404, detail="Playlist not found")
 
-        # Allow access to all playlists (single-user system)
-        # In multi-user system, would check: playlist.user_id == current_user.id or playlist.is_public
+        # 404 (not 403) so private playlist IDs can't be probed (#509)
+        if not can_access_playlist(playlist, current_user):
+            raise HTTPException(status_code=404, detail="Playlist not found")
 
         playlist_data = playlist_to_dict(
             playlist, include_entries=include_entries, user=current_user

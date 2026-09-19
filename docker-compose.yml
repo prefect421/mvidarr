@@ -34,6 +34,9 @@ services:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
       - TRUSTED_PROXY_HOSTS=${TRUSTED_PROXY_HOSTS:-127.0.0.1}
 
+      # Extra args appended to the Celery worker command (optional)
+      - CELERY_WORKER_EXTRA_ARGS=${CELERY_WORKER_EXTRA_ARGS:-}
+
       # User/Group IDs (for file permissions)
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}

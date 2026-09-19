@@ -433,6 +433,7 @@ nano .env
 | `TZ` | `America/New_York` | Container timezone |
 | `PUID`, `PGID` | `1000` | User/group IDs the app writes files as — match your host user |
 | `CORS_ALLOWED_ORIGINS`, `TRUSTED_PROXY_HOSTS` | *(project defaults)* | See [Reverse Proxy Setup](#sslhttps-configuration) above if you're behind one |
+| `CELERY_WORKER_EXTRA_ARGS` | *(empty)* | Extra arguments appended to the Docker Celery worker command (the worker already runs with `--without-mingle`) |
 
 > **Scheduler settings are not environment variables.** Scheduler V2 (auto-download/auto-discovery timing) is configured entirely through the Settings page in the web UI, database-backed — there's nothing to set here or in `docker-compose.yml`.
 

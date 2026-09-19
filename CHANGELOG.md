@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-19
+
+Issue/PR sweep: 2 issues fixed, Dependabot PRs #512-#516 consolidated, #511 resolved by removing the unused dependency. Zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on all three requirements files.
+
+### Security
+- **Fix (#509)**: Playlist listing (`GET /api/playlists/`) returned every user's playlists, and `GET /api/playlists/{id}` returned any playlist by ID, regardless of ownership or `is_public` — a read-side gap left over from #500's write-path fix. The list is now filtered to the caller's own + public playlists (admins/managers still see all), and the single-playlist endpoint applies `can_access_playlist()`, returning 404 (not 403) so private playlist IDs can't be probed.
+
+### Fixed
+- **Fix (#517)**: The bundled Celery worker crash-looped on startup (`ContentDisallowed: application/x-signed-pickle`) when the Redis broker was shared with another application publishing non-JSON control messages — Celery's startup "mingle" step read them and the JSON-only worker refused them. The worker now runs with `--without-mingle` (MVidarr runs a single worker, so nothing is lost). Added a `CELERY_WORKER_EXTRA_ARGS` environment variable (default empty) for appending extra worker arguments in Docker/Unraid without overriding `supervisord.conf`. Root-cause note: a dedicated Redis DB/instance for MVidarr avoids the foreign messages entirely.
+
+### Dependencies
+- PyJWT 2.13.0 → 2.14.0 (#513), zeroconf 0.150.0 → 0.151.3 (#515), tqdm 4.70.0 → 4.70.1 (#512), mysqlclient floor `>=2.2.0` → `>=2.3.0` (#514), ruby/setup-ruby 1.321.0 → 1.322.0 (#516).
+- Removed `python-slugify` (#511 proposed a 8.0.4 → 9.0.0 major bump): nothing in `src/` imports it.
+
+### Notes
+- Rebuilding a dev/self-hosted instance that sits behind an https reverse proxy recreates the container with the v1.0.2 default `TRUSTED_PROXY_HOSTS=127.0.0.1` unless it is set in that instance's env file — symptom is `/videos` failing with "Blocked loading mixed active content" for `/api/videos/`. Set it to the proxy's peer address (see docs/TROUBLESHOOTING.md and docs/CONFIGURATION_GUIDE.md). Added a reminder comment to `docker-compose.dev.yml`.
+
+Follow-up still open: **#510** (hardcoded `admin`/`mvidarr` bootstrap default) — needs a design decision, tracked separately.
+
 ## [1.0.3] - 2026-09-11
 
 Security sweep: closed all 6 open issues (3 security, 1 medium, 2 low). Zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on all three requirements files at time of release.
