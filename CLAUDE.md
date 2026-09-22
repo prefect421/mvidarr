@@ -631,6 +631,14 @@ Note: there is no separate "Release Slot" field — the board never got one buil
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
 
+### v1.0.6 (Planned, after v1.0.5) — IMVDb Removal & MusicBrainz Video Discovery
+- **Why**: #520 found IMVDb's `search/videos`/`search/entities` endpoints are broken on IMVDb's own infrastructure (confirmed via IMVDb's own official API sandbox — not an mvidarr bug, not fixable from mvidarr's side). #522 scoped the dependency (20 live files) and researched replacements. Decided 2026-09-22: full removal of IMVDb, not just the broken search path — their infrastructure looks generally unmaintained (API changelog silent since their 2013 beta, edge running ~2018-era nginx), so even the still-working `video/{id}` lookups aren't worth keeping long-term.
+- **Replacement**: MusicBrainz already models "which video is the official one for this track" via its `music video` and `free streaming` (`video` attribute) recording relationship types — the same curated signal IMVDb provided, on infrastructure mvidarr already depends on and that's actively maintained.
+- **Plan**: `docs/superpowers/plans/2026-09-22-imvdb-removal-musicbrainz-migration.md`
+- **Milestone**: [v1.0.6](https://github.com/prefect421/mvidarr/milestone/21)
+- **Issues** (in dependency order): #523 (MusicBrainz `find_official_video()` foundation) → #524 (migrate `src/services/`) + #525 (migrate `src/api/fastapi/` routes, parallel to #524) → #526 (delete IMVDb client/service/settings) → #527 (frontend + e2e cleanup, can run anytime but ships after #526) → #528 (docs, changelog, version bump)
+- **Keep**: the `imvdb_id` columns on `Artist`/`Video` (real historical data, no destructive migration) — just stop populating them.
+
 ## Security Implementation
 
 ### Comprehensive Security Audit - Phase I Complete ✅
