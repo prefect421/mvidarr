@@ -65,7 +65,7 @@ class IMVDbClient:
         self._rate_limit()
 
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        headers = {"User-Agent": "MVidarr/1.0", "Authorization": f"Bearer {api_key}"}
+        headers = {"User-Agent": "MVidarr/1.0", "IMVDB-APP-KEY": api_key}
 
         if params is None:
             params = {}
@@ -227,7 +227,7 @@ class IMVDbClient:
         self._rate_limit()
 
         url = f"{self.base_url}/search/videos"
-        headers = {"User-Agent": "MVidarr/1.0", "Authorization": f"Bearer {api_key}"}
+        headers = {"User-Agent": "MVidarr/1.0", "IMVDB-APP-KEY": api_key}
         params = {"q": "test", "limit": 1}
 
         try:
@@ -236,13 +236,10 @@ class IMVDbClient:
 
             if response.status_code == 200:
                 data = response.json()
-                # IMVDb's search endpoint is public and doesn't require authentication
-                # We can verify connectivity but not key validity until using protected endpoints
                 return {
                     "success": True,
-                    "message": "IMVDb API connection successful. Key will be validated during use.",
+                    "message": "IMVDb API connection successful.",
                     "results_count": len(data.get("results", [])),
-                    "note": "Search endpoint is public - key validity confirmed on first use",
                 }
             elif response.status_code == 401:
                 return {
