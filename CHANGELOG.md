@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - **Fix (#510)**: A fresh install bootstraps the shared `admin`/`mvidarr` credential, and the nag banner alone let an instance stay on that public default indefinitely. While the stored password still matches the shipped default, state-changing API calls (POST/PUT/PATCH/DELETE under `/api/`) now return `403` with `code: default_password_active`. Pages, reads, playback and the banner keep working, and login/logout/credentials (`/api/auth/`), the installation wizard and health stay open so the password can always be changed. The gate fails open — installs with no simple-auth password (e.g. OAuth-only) or a transient settings error are never locked out — and `ALLOW_DEFAULT_PASSWORD=true` disables it entirely.
 
+### Fixed
+- **Fix (#520)**: IMVDb API connection always failed with a 403 (`API key lacks required permissions`), regardless of key validity. `IMVDbClient` authenticated every request with `Authorization: Bearer <key>`, but IMVDb's API doesn't support Bearer auth — it requires the key in an `IMVDB-APP-KEY` header, and any request missing that header is unconditionally rejected with 403. This has been wrong since the project's first commit, so IMVDb search has likely never worked. Fixed both call sites (`_make_request`, `test_api_key`) in `src/services/imvdb/imvdb_client.py` to send `IMVDB-APP-KEY`.
+
 ## [1.0.4] - 2026-09-19
 
 Issue/PR sweep: 2 issues fixed, Dependabot PRs #512-#516 consolidated, #511 resolved by removing the unused dependency. Zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean on all three requirements files.
