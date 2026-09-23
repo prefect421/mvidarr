@@ -233,8 +233,6 @@ class MetadataEnrichmentService:
                             Artist.spotify_id == "",
                             Artist.lastfm_name.is_(None),
                             Artist.lastfm_name == "",
-                            Artist.imvdb_id.is_(None),
-                            Artist.imvdb_id == "",
                         )
                     )
                     .count()
