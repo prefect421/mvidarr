@@ -22,7 +22,6 @@ from sqlalchemy import or_
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.services.allmusic_service import allmusic_service
-from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 
 # Import refactored modules
@@ -54,7 +53,6 @@ class MetadataEnrichmentService:
         # Service integrations
         self.spotify = spotify_service
         self.lastfm = lastfm_service
-        self.imvdb = imvdb_service
         self.musicbrainz = musicbrainz_service
         self.allmusic = allmusic_service
         self.wikipedia = WikipediaService()
