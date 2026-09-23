@@ -500,7 +500,7 @@ class MusicBrainzService:
         query = f'recording:"{track_name}" AND artist:"{artist_name}"'
         params = {
             "query": query,
-            "limit": 1,
+            "limit": 25,
             "inc": "url-rels+recording-rels",
         }
 
@@ -508,19 +508,28 @@ class MusicBrainzService:
         if not data or not data.get("recordings"):
             return None
 
-        recording = data["recordings"][0]
-        video_url, relationship_type = self._extract_video_relationship(recording)
+        # MusicBrainz frequently returns many same-title/same-artist
+        # candidates tied at the top relevance score (DJ-mix inclusions,
+        # live versions, remasters) -- the actual video-carrying recording
+        # is often not first. Recordings MusicBrainz itself flags as
+        # `video: true` are the most reliable signal, so check those first;
+        # a stable sort keeps MusicBrainz's own relevance order otherwise.
+        candidates = sorted(
+            data["recordings"], key=lambda r: r.get("video") is not True
+        )
 
-        if video_url is None:
-            return None
+        for recording in candidates:
+            video_url, relationship_type = self._extract_video_relationship(recording)
+            if video_url is not None:
+                return {
+                    "video_url": video_url,
+                    "recording_id": recording.get("id"),
+                    "recording_title": recording.get("title"),
+                    "relationship_type": relationship_type,
+                    "score": recording.get("score", 0),
+                }
 
-        return {
-            "video_url": video_url,
-            "recording_id": recording.get("id"),
-            "recording_title": recording.get("title"),
-            "relationship_type": relationship_type,
-            "score": recording.get("score", 0),
-        }
+        return None
 
     def _extract_video_relationship(
         self, recording: Dict
