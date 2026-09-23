@@ -14,7 +14,6 @@ from sqlalchemy import and_, desc
 
 from src.database.connection import get_db
 from src.database.models import Artist
-from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import LastFmService
 from src.services.spotify_service import SpotifyService
 from src.utils.logger import get_logger
@@ -25,7 +24,6 @@ logger = get_logger("mvidarr.services.enhanced_artist_discovery")
 class DiscoverySource(Enum):
     """Sources for artist discovery"""
 
-    IMVDB = "imvdb"
     SPOTIFY = "spotify"
     LASTFM = "lastfm"
     WIKIPEDIA = "wikipedia"
@@ -135,17 +133,7 @@ class EnhancedArtistDiscoveryService:
 
         discovered_artists = []
 
-        # 1. IMVDb Discovery (existing integration)
-        try:
-            imvdb_results = self._discover_from_imvdb(search_query)
-            discovered_artists.extend(imvdb_results)
-            logger.info(
-                f"IMVDb returned {len(imvdb_results)} artists for: {search_query}"
-            )
-        except Exception as e:
-            logger.error(f"Error discovering from IMVDb: {e}")
-
-        # 2. Spotify Discovery
+        # 1. Spotify Discovery
         try:
             spotify_results = self._discover_from_spotify(search_query)
             discovered_artists.extend(spotify_results)
@@ -155,7 +143,7 @@ class EnhancedArtistDiscoveryService:
         except Exception as e:
             logger.error(f"Error discovering from Spotify: {e}")
 
-        # 3. Last.fm Discovery
+        # 2. Last.fm Discovery
         try:
             lastfm_results = self._discover_from_lastfm(search_query)
             discovered_artists.extend(lastfm_results)
@@ -165,7 +153,7 @@ class EnhancedArtistDiscoveryService:
         except Exception as e:
             logger.error(f"Error discovering from Last.fm: {e}")
 
-        # 4. Wikipedia Discovery (for additional metadata)
+        # 3. Wikipedia Discovery (for additional metadata)
         try:
             wikipedia_results = self._discover_from_wikipedia(search_query)
             discovered_artists.extend(wikipedia_results)
@@ -175,13 +163,13 @@ class EnhancedArtistDiscoveryService:
         except Exception as e:
             logger.error(f"Error discovering from Wikipedia: {e}")
 
-        # 5. Intelligent deduplication and merging
+        # 4. Intelligent deduplication and merging
         merged_artists = self._merge_duplicate_discoveries(discovered_artists)
 
-        # 6. Quality scoring and ranking
+        # 5. Quality scoring and ranking
         ranked_artists = self._rank_and_score_discoveries(merged_artists)
 
-        # 7. Limit results and apply confidence threshold
+        # 6. Limit results and apply confidence threshold
         filtered_artists = [
             artist
             for artist in ranked_artists
@@ -392,31 +380,6 @@ class EnhancedArtistDiscoveryService:
             return []
 
     # Private helper methods for different discovery sources
-
-    def _discover_from_imvdb(self, search_query: str) -> List[ArtistMetadata]:
-        """Discover artists from IMVDb"""
-        try:
-            results = imvdb_service.search_artists(
-                search_query, self.max_results_per_source
-            )
-
-            artist_metadata = []
-            for artist_data in results.get("artists", []):
-                metadata = ArtistMetadata(
-                    name=artist_data.get("name", ""),
-                    source=DiscoverySource.IMVDB,
-                    confidence=0.9,  # IMVDb is high quality for music videos
-                    external_ids={"imvdb_id": str(artist_data.get("id", ""))},
-                    image_url=artist_data.get("image_url", ""),
-                    quality_score=MetadataQuality.GOOD,
-                )
-                artist_metadata.append(metadata)
-
-            return artist_metadata
-
-        except Exception as e:
-            logger.error(f"IMVDb discovery error: {e}")
-            return []
 
     def _discover_from_spotify(self, search_query: str) -> List[ArtistMetadata]:
         """Discover artists from Spotify"""
