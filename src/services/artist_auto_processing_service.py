@@ -2,7 +2,6 @@
 Service for automatically processing newly added artists with auto-match and metadata enrichment
 """
 
-import asyncio
 from typing import Any, Dict
 
 from src.database.models import Artist
@@ -139,34 +138,15 @@ class ArtistAutoProcessingService:
 
         try:
             # Import services for auto-match
-            from src.services.imvdb_service import imvdb_service
             from src.services.lastfm_service import lastfm_service
             from src.services.musicbrainz_service import musicbrainz_service
             from src.services.spotify_service import spotify_service
 
             # Check current values from database to avoid session issues
-            current_imvdb_id = artist.imvdb_id
             current_spotify_id = artist.spotify_id
             current_lastfm_name = artist.lastfm_name
             current_metadata = artist.imvdb_metadata or {}
             current_musicbrainz_id = current_metadata.get("musicbrainz_id")
-
-            # IMVDb auto-match
-            try:
-                if not current_imvdb_id:  # Only if not already set
-                    imvdb_match = imvdb_service.search_artist(artist_name)
-                    if imvdb_match and imvdb_match.get("id"):
-                        matches["imvdb"] = {
-                            "id": imvdb_match["id"],
-                            "name": imvdb_match.get("name"),
-                            "url": imvdb_match.get("url"),
-                        }
-                        pending_updates["imvdb_id"] = str(imvdb_match["id"])
-                        logger.info(
-                            f"Auto-matched IMVDb ID: {imvdb_match['id']} for {artist_name}"
-                        )
-            except Exception as e:
-                logger.warning(f"IMVDb auto-match failed for {artist_name}: {e}")
 
             # Spotify auto-match
             try:
@@ -295,93 +275,74 @@ class ArtistAutoProcessingService:
     def _run_thumbnail_generation(artist_id: int, artist_name: str) -> Dict[str, Any]:
         """Run thumbnail generation for the artist"""
         try:
-            from src.services.imvdb_service import imvdb_service
-
             logger.info(
                 f"Attempting thumbnail generation for {artist_name} (ID: {artist_id})"
             )
 
-            # Try to get thumbnail from IMVDb service
             thumbnail_url = None
-            if hasattr(imvdb_service, "get_artist_thumbnail"):
-                try:
-                    # Run the async method in a synchronous context
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        thumbnail_url = loop.run_until_complete(
-                            imvdb_service.get_artist_thumbnail(artist_name)
-                        )
-                    finally:
-                        loop.close()
-                except Exception as imvdb_error:
-                    logger.warning(
-                        f"IMVDb thumbnail lookup failed for {artist_name}: {imvdb_error}"
-                    )
 
-            # Try alternative thumbnail sources if IMVDb fails
-            if not thumbnail_url:
-                try:
-                    # Try to get thumbnail from any matched metadata services
-                    from src.database.connection import get_db_session
-                    from src.database.models import Artist
+            # Try alternative thumbnail sources (Spotify, then Last.fm)
+            try:
+                # Try to get thumbnail from any matched metadata services
+                from src.database.connection import get_db_session
+                from src.database.models import Artist
 
-                    with next(get_db_session()) as session:
-                        artist = session.query(Artist).filter_by(id=artist_id).first()
-                        if artist:
-                            # Check if we have Spotify ID and can get image from there
-                            if artist.spotify_id:
-                                try:
-                                    from src.services.spotify_service import (
-                                        spotify_service,
-                                    )
+                with next(get_db_session()) as session:
+                    artist = session.query(Artist).filter_by(id=artist_id).first()
+                    if artist:
+                        # Check if we have Spotify ID and can get image from there
+                        if artist.spotify_id:
+                            try:
+                                from src.services.spotify_service import (
+                                    spotify_service,
+                                )
 
-                                    spotify_data = spotify_service.get_artist(
-                                        artist.spotify_id
-                                    )
-                                    if spotify_data and spotify_data.get("images"):
-                                        # Get the largest image
-                                        images = spotify_data["images"]
-                                        if images:
-                                            thumbnail_url = images[0]["url"]
-                                            logger.info(
-                                                f"Found Spotify thumbnail for {artist_name}: {thumbnail_url}"
-                                            )
-                                except Exception as spotify_error:
-                                    logger.warning(
-                                        f"Spotify thumbnail lookup failed for {artist_name}: {spotify_error}"
-                                    )
+                                spotify_data = spotify_service.get_artist(
+                                    artist.spotify_id
+                                )
+                                if spotify_data and spotify_data.get("images"):
+                                    # Get the largest image
+                                    images = spotify_data["images"]
+                                    if images:
+                                        thumbnail_url = images[0]["url"]
+                                        logger.info(
+                                            f"Found Spotify thumbnail for {artist_name}: {thumbnail_url}"
+                                        )
+                            except Exception as spotify_error:
+                                logger.warning(
+                                    f"Spotify thumbnail lookup failed for {artist_name}: {spotify_error}"
+                                )
 
-                            # Check if we have Last.fm data
-                            if not thumbnail_url and artist.lastfm_name:
-                                try:
-                                    from src.services.lastfm_service import (
-                                        lastfm_service,
-                                    )
+                        # Check if we have Last.fm data
+                        if not thumbnail_url and artist.lastfm_name:
+                            try:
+                                from src.services.lastfm_service import (
+                                    lastfm_service,
+                                )
 
-                                    lastfm_data = lastfm_service.get_artist_info(
-                                        artist.lastfm_name
-                                    )
-                                    if lastfm_data and lastfm_data.get("image"):
-                                        images = lastfm_data["image"]
-                                        # Get the largest image (usually the last one)
-                                        if images and isinstance(images, list):
-                                            for img in reversed(images):
-                                                if img.get("#text"):
-                                                    thumbnail_url = img["#text"]
-                                                    logger.info(
-                                                        f"Found Last.fm thumbnail for {artist_name}: {thumbnail_url}"
-                                                    )
-                                                    break
-                                except Exception as lastfm_error:
-                                    logger.warning(
-                                        f"Last.fm thumbnail lookup failed for {artist_name}: {lastfm_error}"
-                                    )
+                                lastfm_data = lastfm_service.get_artist_info(
+                                    artist.lastfm_name
+                                )
+                                if lastfm_data and lastfm_data.get("image"):
+                                    images = lastfm_data["image"]
+                                    # Get the largest image (usually the last one)
+                                    if images and isinstance(images, list):
+                                        for img in reversed(images):
+                                            if img.get("#text"):
+                                                thumbnail_url = img["#text"]
+                                                logger.info(
+                                                    f"Found Last.fm thumbnail for {artist_name}: {thumbnail_url}"
+                                                )
+                                                break
+                            except Exception as lastfm_error:
+                                logger.warning(
+                                    f"Last.fm thumbnail lookup failed for {artist_name}: {lastfm_error}"
+                                )
 
-                except Exception as alt_error:
-                    logger.warning(
-                        f"Alternative thumbnail lookup failed for {artist_name}: {alt_error}"
-                    )
+            except Exception as alt_error:
+                logger.warning(
+                    f"Alternative thumbnail lookup failed for {artist_name}: {alt_error}"
+                )
 
             if thumbnail_url:
                 logger.info(
@@ -397,7 +358,7 @@ class ArtistAutoProcessingService:
                 return {
                     "success": False,
                     "message": "No thumbnail sources available",
-                    "searched_sources": ["imvdb", "spotify", "lastfm"],
+                    "searched_sources": ["spotify", "lastfm"],
                 }
 
         except Exception as e:
