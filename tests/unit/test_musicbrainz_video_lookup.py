@@ -179,6 +179,78 @@ class TestFindOfficialVideo:
         assert result["video_url"] == "https://www.youtube.com/watch?v=right222"
         assert result["recording_id"] == "official-video-recording"
 
+    def test_follows_up_with_direct_lookup_when_video_flagged_recording_has_no_inline_relations(
+        self,
+    ):
+        # Live-reported (2026-09-23): MusicBrainz's recording *search*
+        # endpoint never actually inlines `relations`, even when
+        # `inc=url-rels+recording-rels` is requested -- confirmed against
+        # the real API on multiple queries. Only a direct entity GET
+        # (`recording/{id}`) reliably returns them. Verified live: Rick
+        # Astley - "Never Gonna Give You Up" has recordings flagged
+        # `video: true` whose search-result relations are always empty,
+        # but a direct GET on the same ID returns the real
+        # free-streaming+video relation.
+        service = MusicBrainzService()
+        search_response = {
+            "recordings": [
+                {"id": "audio-take-1", "title": "Rats", "score": 100, "relations": []},
+                {
+                    "id": "official-video-recording",
+                    "title": "Rats",
+                    "score": 100,
+                    "video": True,
+                    "disambiguation": "Official Music Video",
+                    "relations": [],  # search endpoint never inlines these
+                },
+            ]
+        }
+        direct_lookup_response = {
+            "id": "official-video-recording",
+            "relations": [
+                {
+                    "type": "free streaming",
+                    "attributes": ["video"],
+                    "url": {"resource": "https://www.youtube.com/watch?v=real123"},
+                }
+            ],
+        }
+
+        with patch.object(
+            service,
+            "_make_request",
+            side_effect=[search_response, direct_lookup_response],
+        ) as mock_request:
+            result = service.find_official_video("Ghost", "Rats")
+
+        assert result["video_url"] == "https://www.youtube.com/watch?v=real123"
+        assert result["recording_id"] == "official-video-recording"
+        # Bounded cost: only the video-flagged candidate gets a follow-up
+        # direct lookup, not every candidate in the search results.
+        assert mock_request.call_count == 2
+
+    def test_does_not_follow_up_on_non_video_flagged_candidates_with_empty_relations(
+        self,
+    ):
+        # Bounds the extra-request cost: candidates MusicBrainz doesn't
+        # flag as video get no follow-up lookup even if their inline
+        # relations are empty (the common case for most candidates).
+        service = MusicBrainzService()
+        search_response = {
+            "recordings": [
+                {"id": "audio-take-1", "title": "Rats", "score": 100, "relations": []},
+                {"id": "audio-take-2", "title": "Rats", "score": 100, "relations": []},
+            ]
+        }
+
+        with patch.object(
+            service, "_make_request", return_value=search_response
+        ) as mock_request:
+            result = service.find_official_video("Ghost", "Rats")
+
+        assert result is None
+        assert mock_request.call_count == 1
+
     def test_returns_none_when_musicbrainz_disabled(self):
         service = MusicBrainzService()
         service.enabled = False

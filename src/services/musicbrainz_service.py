@@ -520,6 +520,23 @@ class MusicBrainzService:
 
         for recording in candidates:
             video_url, relationship_type = self._extract_video_relationship(recording)
+
+            # MusicBrainz's recording *search* endpoint never reliably
+            # inlines `relations`, even with inc=url-rels requested --
+            # confirmed live against the real API. A direct entity lookup
+            # does return them. Recordings MusicBrainz itself flags
+            # `video: true` are a strong enough signal to be worth that
+            # extra request; anything else falls through without one, to
+            # bound the cost of an artist/track with many candidates.
+            if video_url is None and recording.get("video") is True:
+                full_recording = self._make_request(
+                    f"recording/{recording.get('id')}", {"inc": "url-rels"}
+                )
+                if full_recording:
+                    video_url, relationship_type = self._extract_video_relationship(
+                        full_recording
+                    )
+
             if video_url is not None:
                 return {
                     "video_url": video_url,
