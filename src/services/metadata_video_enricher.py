@@ -3,10 +3,9 @@ Video Metadata Enrichment Module for MVidarr
 
 Extracted from metadata_enrichment_service.py to improve code modularity.
 Handles video metadata enrichment from multiple sources including:
-- IMVDb (Internet Music Video Database)
+- MusicBrainz (authoritative music metadata, incl. official video lookup)
 - Spotify (track and album metadata)
 - Last.fm (track information and tags)
-- MusicBrainz (authoritative music metadata)
 - YouTube (video discovery and metadata)
 - FFmpeg (local video file analysis)
 - Lyrics search (Lyrics.ovh API)
@@ -22,7 +21,6 @@ from sqlalchemy.orm.attributes import flag_modified
 from src.database.connection import get_db
 from src.database.models import Video
 from src.services.discogs_service import discogs_service
-from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 from src.services.metadata_models import EnrichmentResult
 from src.services.musicbrainz_service import musicbrainz_service
@@ -195,7 +193,6 @@ async def enrich_video_metadata(
             # Extract data before API calls
             artist_name = video.artist.name
             video_title = video.title
-            current_imvdb_id = video.imvdb_id
 
             logger.info(
                 f"Enhanced enrichment for video: {video_title} by {artist_name}"
@@ -206,81 +203,48 @@ async def enrich_video_metadata(
             updated_fields = []
             errors = []
 
-            # 1. IMVDb enrichment (re-enabled with improved handling)
+            # 1. MusicBrainz official video lookup (curated `music video` /
+            # `free streaming` recording relationships -- replaces the old
+            # IMVDb video match). Unlike IMVDb this only yields a video URL,
+            # not year/directors/producers/thumbnail -- year/release_date
+            # come from Discogs/MusicBrainz release lookups below (steps 2-3),
+            # and thumbnail comes from the YouTube thumbnail step (step 7)
+            # once youtube_id is set here.
             try:
                 # Ensure video stays attached to session
                 video = session.merge(video)
 
-                if not current_imvdb_id or force_refresh:
-                    # Search for video on IMVDb if not already linked
-                    imvdb_videos = imvdb_service.search_videos(artist_name, video_title)
+                if not video.youtube_id or force_refresh:
+                    clean_title = clean_title_for_metadata_search(
+                        video_title, artist_name
+                    )
+                    video_match = musicbrainz_service.find_official_video(
+                        artist_name, clean_title
+                    )
 
-                    if imvdb_videos:
-                        best_match = imvdb_service.find_best_video_match(
-                            artist_name, video_title
-                        )
+                    if video_match and video_match.get("video_url"):
+                        metadata_sources["musicbrainz_video"] = video_match
+                        video_url = video_match["video_url"]
 
-                        if best_match:
-                            metadata_sources["imvdb"] = best_match
-                            imvdb_metadata = imvdb_service.extract_metadata(best_match)
+                        youtube_id = None
+                        if "watch?v=" in video_url:
+                            youtube_id = video_url.split("watch?v=")[1].split("&")[0]
+                        elif "youtu.be/" in video_url:
+                            youtube_id = video_url.split("youtu.be/")[1].split("?")[0]
 
-                            # Apply IMVDb metadata with conflict resolution
-                            if not video.imvdb_id and imvdb_metadata.get("imvdb_id"):
-                                video.imvdb_id = str(imvdb_metadata["imvdb_id"])
-                                updated_fields.append("imvdb_id")
-
-                            if not video.year and imvdb_metadata.get("year"):
-                                video.year = imvdb_metadata["year"]
-                                updated_fields.append("year")
-
-                            if not video.directors and imvdb_metadata.get("directors"):
-                                video.directors = imvdb_metadata["directors"]
-                                updated_fields.append("directors")
-
-                            if not video.producers and imvdb_metadata.get("producers"):
-                                video.producers = imvdb_metadata["producers"]
-                                updated_fields.append("producers")
-
-                            # Handle thumbnail extraction with validation and force refresh support
-                            thumbnail_url = imvdb_metadata.get("thumbnail_url")
-                            if (
-                                thumbnail_url
-                                and thumbnail_url != "https://imvdb.com/"
-                                and len(thumbnail_url) > 20
-                            ):
-                                if (
-                                    not video.thumbnail_url
-                                    or force_refresh
-                                    or not video.thumbnail_source
-                                ):
-                                    video.thumbnail_url = thumbnail_url
-                                    video.thumbnail_source = "imvdb"
-                                    updated_fields.extend(
-                                        ["thumbnail_url", "thumbnail_source"]
-                                    )
-                                    logger.info(
-                                        f"Added thumbnail from IMVDb for video {video_id}: {video.thumbnail_url}"
-                                    )
-                            elif video.thumbnail_url:
-                                logger.debug(
-                                    f"Video {video_id} already has thumbnail: {video.thumbnail_url}"
-                                )
-                            elif not thumbnail_url:
-                                logger.debug(
-                                    f"No valid thumbnail available in IMVDb metadata for video {video_id}"
-                                )
-                            else:
-                                logger.debug(
-                                    f"Rejected invalid IMVDb thumbnail for video {video_id}: {thumbnail_url}"
-                                )
-
-                            # Store raw IMVDb metadata
-                            video.imvdb_metadata = imvdb_metadata.get("raw_metadata")
-                            updated_fields.append("imvdb_metadata")
+                        if youtube_id:
+                            video.youtube_id = youtube_id
+                            video.youtube_url = video_url
+                            updated_fields.extend(["youtube_id", "youtube_url"])
+                            logger.info(
+                                f"Found official video via MusicBrainz for video {video_id}: {video_url}"
+                            )
 
             except Exception as e:
-                errors.append(f"IMVDb enrichment failed: {str(e)}")
-                logger.warning(f"IMVDb enrichment failed for video {video_id}: {e}")
+                errors.append(f"MusicBrainz video lookup failed: {str(e)}")
+                logger.warning(
+                    f"MusicBrainz video lookup failed for video {video_id}: {e}"
+                )
 
             # 2. Discogs enrichment (HIGHEST PRIORITY for release dates and album info)
             try:
@@ -638,12 +602,17 @@ async def enrich_video_metadata(
             # MusicBrainz enrichment is now handled earlier (step 2) with recording search
             # Old MusicBrainz section removed as it was redundant and broken
 
-            # 6. YouTube ID discovery (if we don't have YouTube ID)
+            # 6. YouTube ID discovery (if we don't have YouTube ID). Skipped
+            # when step 1 already found a curated MusicBrainz video match --
+            # no reason for a heuristic title-similarity guess to overwrite
+            # a confirmed official video on refresh.
             try:
                 # Ensure video stays attached to session
                 video = session.merge(video)
 
-                if not video.youtube_id or force_refresh:
+                if (not video.youtube_id or force_refresh) and (
+                    "musicbrainz_video" not in metadata_sources
+                ):
                     # Search for YouTube video using title and artist
                     search_result = youtube_search_service.search_video_by_title(
                         video_title, artist_name, limit=5
