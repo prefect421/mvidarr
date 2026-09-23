@@ -6,7 +6,7 @@ Provides authoritative music metadata from the MusicBrainz database.
 import json
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote_plus
 
 import requests
@@ -58,6 +58,12 @@ class MusicBrainzService:
         """Check if MusicBrainz integration is enabled"""
         self._load_settings()
         return self._enabled
+
+    @enabled.setter
+    def enabled(self, value: bool):
+        """Set the enabled state for MusicBrainz integration"""
+        self._enabled = value
+        self._settings_loaded = True
 
     def _safe_get_annotation(self, data: Dict) -> str:
         """Safely extract annotation text from API response"""
@@ -476,6 +482,79 @@ class MusicBrainzService:
         except Exception as e:
             logger.error(f"Error searching MusicBrainz recordings: {e}")
             return []
+
+    def find_official_video(self, artist_name: str, track_name: str) -> Optional[Dict]:
+        """
+        Find the official music video URL for a track, using MusicBrainz's
+        curated `music video` and `free streaming` (video attribute)
+        recording relationships.
+
+        Returns None if MusicBrainz is disabled, the recording can't be
+        found, or no video relationship exists for it -- callers should
+        fall back to heuristic YouTube search in that case.
+        """
+        if not self.enabled:
+            logger.debug("MusicBrainz is disabled, skipping video lookup")
+            return None
+
+        query = f'recording:"{track_name}" AND artist:"{artist_name}"'
+        params = {
+            "query": query,
+            "limit": 1,
+            "inc": "url-rels+recording-rels",
+        }
+
+        data = self._make_request("recording", params)
+        if not data or not data.get("recordings"):
+            return None
+
+        recording = data["recordings"][0]
+        video_url, relationship_type = self._extract_video_relationship(recording)
+
+        if video_url is None:
+            return None
+
+        return {
+            "video_url": video_url,
+            "recording_id": recording.get("id"),
+            "recording_title": recording.get("title"),
+            "relationship_type": relationship_type,
+            "score": recording.get("score", 0),
+        }
+
+    def _extract_video_relationship(
+        self, recording: Dict
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Walk a recording's relations for a music-video URL. Returns (url, type)."""
+        for relation in recording.get("relations", []):
+            rel_type = relation.get("type")
+
+            if rel_type == "free streaming" and "video" in relation.get(
+                "attributes", []
+            ):
+                url = relation.get("url", {}).get("resource")
+                if url:
+                    return url, "free streaming"
+
+            if rel_type == "music video" and relation.get("target-type") == "recording":
+                video_recording = relation.get("recording", {})
+                video_recording_id = video_recording.get("id")
+                if video_recording_id:
+                    video_data = self._make_request(
+                        f"recording/{video_recording_id}", {"inc": "url-rels"}
+                    )
+                    if video_data:
+                        for video_relation in video_data.get("relations", []):
+                            if video_relation.get(
+                                "type"
+                            ) == "free streaming" and "video" in video_relation.get(
+                                "attributes", []
+                            ):
+                                url = video_relation.get("url", {}).get("resource")
+                                if url:
+                                    return url, "music video"
+
+        return None, None
 
     def get_recording_release_date(
         self, track_name: str, artist_name: str
