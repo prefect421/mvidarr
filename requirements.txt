@@ -42,7 +42,7 @@ PyYAML==6.0.3
 
 # HTML Parsing (for AllMusic web scraping)
 beautifulsoup4==4.15.0
-lxml==6.1.1  # Security: CVE-2026-41066 XXE local file read fix, GHSA-4jhm-jv67-739f xlink:href URL bypass fix, CVE-2025-7424/CVE-2025-11731 libxslt fixes
+lxml==6.1.3  # Security: CVE-2026-41066 XXE local file read fix, GHSA-4jhm-jv67-739f xlink:href URL bypass fix, CVE-2025-7424/CVE-2025-11731 libxslt fixes
 
 # Background Tasks
 celery==5.6.3
