@@ -29,7 +29,6 @@ from src.api.fastapi.auth_dependencies import (
 )
 from src.database.connection import get_db_session
 from src.database.models import WizardState, WizardStatus, WizardStep
-from src.services.imvdb_service import imvdb_service
 
 # Note: Wizard now uses Celery for video indexing instead of custom JobQueue
 # No need to import job_queue here anymore
@@ -189,7 +188,7 @@ class DirectoryValidationResponse(BaseModel):
 class APITestRequest(BaseModel):
     """API test request"""
 
-    api_type: str = Field(..., description="API type to test (imvdb, youtube)")
+    api_type: str = Field(..., description="API type to test (youtube)")
     api_key: Optional[str] = Field(None, description="API key to test")
     cookies_content: Optional[str] = Field(None, description="YouTube cookies content")
 
@@ -197,7 +196,7 @@ class APITestRequest(BaseModel):
     @classmethod
     def validate_api_type(cls, v):
         """Validate API type"""
-        valid_types = ["imvdb", "youtube"]
+        valid_types = ["youtube"]
         if v not in valid_types:
             raise ValueError(f"Invalid API type: {v}")
         return v
@@ -282,13 +281,6 @@ async def get_wizard_status(
         # Pre-populate API keys from environment if not already configured
         if not config_data.get("apis"):
             config_data["apis"] = {}
-
-        # IMVDB API key from environment (only if not already set by user)
-        if not config_data["apis"].get("imvdb"):
-            env_imvdb_key = os.getenv("IMVDB_API_KEY", "").strip()
-            if env_imvdb_key:
-                config_data["apis"]["imvdb"] = env_imvdb_key
-                logger.info("Pre-populated IMVDB_API_KEY from environment")
 
         # YouTube API key from environment (only if not already set by user)
         if not config_data["apis"].get("youtube_api_key"):
@@ -686,34 +678,13 @@ async def test_api(
     Test API keys/credentials before saving.
 
     Tests connectivity and validity of:
-    - IMVDb API key
     - YouTube cookies
 
     Note: This endpoint does NOT require authentication since it's used
     during first-run setup before any users exist.
     """
     try:
-        if request.api_type == "imvdb":
-            # Test IMVDb API key
-            if not request.api_key:
-                return APITestResponse(
-                    success=False,
-                    api_type="imvdb",
-                    message="API key is required",
-                    error="Missing API key",
-                )
-
-            # Test API key using the new test_api_key method
-            # This tests the key directly without saving to settings first
-            test_result = imvdb_service.test_api_key(request.api_key)
-            return APITestResponse(
-                success=test_result.get("success", False),
-                api_type="imvdb",
-                message=test_result.get("message", "API test completed"),
-                error=test_result.get("error"),
-            )
-
-        elif request.api_type == "youtube":
+        if request.api_type == "youtube":
             # Test YouTube cookies
             if not request.cookies_content:
                 return APITestResponse(

@@ -55,12 +55,6 @@ except ImportError:
     logger.warning("Wikipedia service not available")
     wikipedia_service = None
 
-try:
-    from src.services.imvdb_service import imvdb_service
-except ImportError:
-    logger.warning("IMVDb service not available")
-    imvdb_service = None
-
 
 @router.post("/enrich/artist/{artist_id}")
 async def enrich_artist_metadata(
@@ -243,7 +237,6 @@ async def auto_match_services(
             "spotify": False,
             "lastfm": False,
             "musicbrainz": False,
-            "imvdb": False,
             "allmusic": False,
             "wikipedia": False,
         }
@@ -254,7 +247,6 @@ async def auto_match_services(
         logger.info(f"🔍 Checking artist current service IDs:")
         logger.info(f"  - Spotify ID: {artist.spotify_id}")
         logger.info(f"  - Last.fm name: {artist.lastfm_name}")
-        logger.info(f"  - IMVDb ID: {artist.imvdb_id}")
         logger.info(f"  - imvdb_metadata: {artist.imvdb_metadata}")
 
         # Spotify auto-match
@@ -449,38 +441,6 @@ async def auto_match_services(
             except Exception as e:
                 logger.warning(f"MusicBrainz auto-match failed for {artist.name}: {e}")
 
-        # IMVDb auto-match
-        if imvdb_service and not artist.imvdb_id:
-            try:
-                imvdb_result = await asyncio.to_thread(
-                    imvdb_service.search_artist, artist.name
-                )
-                if imvdb_result and isinstance(imvdb_result, dict):
-                    imvdb_id = imvdb_result.get("id") or imvdb_result.get("imvdb_id")
-                    if imvdb_id:
-                        artist.imvdb_id = imvdb_id
-                        matches_found["imvdb"] = True
-                        updated_fields.append("imvdb_id")
-                        logger.info(
-                            f"Found and saved IMVDb match for {artist.name}: {imvdb_id}"
-                        )
-                elif imvdb_result and isinstance(imvdb_result, list) and imvdb_result:
-                    # Handle list result
-                    imvdb_id = (
-                        imvdb_result[0].get("id")
-                        if isinstance(imvdb_result[0], dict)
-                        else None
-                    )
-                    if imvdb_id:
-                        artist.imvdb_id = imvdb_id
-                        matches_found["imvdb"] = True
-                        updated_fields.append("imvdb_id")
-                        logger.info(
-                            f"Found and saved IMVDb match for {artist.name}: {imvdb_id}"
-                        )
-            except Exception as e:
-                logger.warning(f"IMVDb auto-match failed for {artist.name}: {e}")
-
         # AllMusic auto-match
         if allmusic_service:
             try:
@@ -611,7 +571,6 @@ async def auto_match_services(
                         "spotify_id": "spotify",
                         "lastfm_name": "lastfm",
                         "musicbrainz_id": "musicbrainz",
-                        "imvdb_id": "imvdb",
                         "allmusic_id": "allmusic",
                         "wikipedia_page": "wikipedia",
                         "wikipedia_url": "wikipedia",
@@ -950,7 +909,6 @@ async def _auto_match_artist(artist, session):
         "spotify": False,
         "lastfm": False,
         "musicbrainz": False,
-        "imvdb": False,
         "allmusic": False,
         "wikipedia": False,
     }
@@ -1049,22 +1007,5 @@ async def _auto_match_artist(artist, session):
                     updated_fields.append("musicbrainz_id")
         except Exception as e:
             logger.warning(f"MusicBrainz auto-match failed for {artist.name}: {e}")
-
-    # IMVDb auto-match
-    if imvdb_service and not artist.imvdb_id:
-        try:
-            imvdb_result = await asyncio.to_thread(
-                imvdb_service.search_artist, artist.name
-            )
-            if imvdb_result:
-                imvdb_id = (
-                    imvdb_result.get("id") if isinstance(imvdb_result, dict) else None
-                )
-                if imvdb_id:
-                    artist.imvdb_id = imvdb_id
-                    matches_found["imvdb"] = True
-                    updated_fields.append("imvdb_id")
-        except Exception as e:
-            logger.warning(f"IMVDb auto-match failed for {artist.name}: {e}")
 
     return matches_found

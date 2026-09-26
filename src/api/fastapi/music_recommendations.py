@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 from src.services.music_recommendations import (
     RecommendationType,
@@ -19,6 +18,7 @@ from src.services.music_recommendations import (
     get_similar_artist_videos,
     get_trending_music_videos,
 )
+from src.services.musicbrainz_service import musicbrainz_service
 from src.services.performance_monitor import track_media_processing_time
 from src.services.spotify_service import spotify_service
 from src.utils.logger import get_logger
@@ -59,7 +59,8 @@ class ArtistRecommendationRequest(BaseModel):
     )
     include_videos: bool = Field(default=True, description="Include music video links")
     sources: Optional[List[str]] = Field(
-        default=None, description="Specific sources to use (spotify, lastfm, imvdb)"
+        default=None,
+        description="Specific sources to use (spotify, lastfm, musicbrainz)",
     )
 
 
@@ -196,23 +197,25 @@ async def generate_custom_spotify_recommendations(
             artist_name = track["artists"][0]["name"]
             track_name = track["name"]
 
-            # Use IMVDb to find music video
+            # Use MusicBrainz's curated official-video relationships to find
+            # the music video for this track (no thumbnail equivalent --
+            # MusicBrainz only yields a video URL)
             try:
-                # Use the global imvdb service instance
-                videos = await asyncio.to_thread(
-                    imvdb_service.search_videos, artist_name, track_name
+                video_match = await asyncio.to_thread(
+                    musicbrainz_service.find_official_video, artist_name, track_name
                 )
 
-                video_url = videos[0].get("url") if videos else None
-                thumbnail_url = videos[0].get("image", {}).get("l") if videos else None
+                video_url = video_match.get("video_url") if video_match else None
 
                 recommendations.append(
                     {
-                        "video_id": videos[0].get("id", "") if videos else "",
+                        "video_id": (
+                            video_match.get("recording_id", "") if video_match else ""
+                        ),
                         "title": track_name,
                         "artist_name": artist_name,
                         "video_url": video_url,
-                        "thumbnail_url": thumbnail_url,
+                        "thumbnail_url": None,
                         "confidence": 0.9,  # High confidence from Spotify
                         "relevance_score": track.get("popularity", 50) / 100.0,
                         "recommendation_type": "spotify_custom",
@@ -252,7 +255,7 @@ async def generate_custom_spotify_recommendations(
             recommendations=recommendations,
             total_found=len(recommendations),
             processing_time=processing_time,
-            sources_used=["spotify", "imvdb"],
+            sources_used=["spotify", "musicbrainz"],
         )
 
     except Exception as e:
@@ -557,7 +560,6 @@ async def recommendation_health_check():
         for service_name, service_getter in [
             ("spotify", spotify_service),
             ("lastfm", lastfm_service),
-            ("imvdb", imvdb_service),
         ]:
             try:
                 service = await service_getter()

@@ -15,7 +15,7 @@ SOURCE_PATH = (
     Path(__file__).parent.parent.parent / "src" / "api" / "fastapi" / "videos_import.py"
 )
 
-EXPECTED_AUTHENTICATED_ROUTES = ["import_from_youtube", "import_from_imvdb"]
+EXPECTED_AUTHENTICATED_ROUTES = ["import_from_youtube"]
 
 
 def _function_source(function_name: str) -> str:
@@ -35,6 +35,16 @@ class TestVideosImportAllRoutesAuthenticated:
         for function_name in EXPECTED_AUTHENTICATED_ROUTES:
             source = _function_source(function_name)
             assert "Depends(require_authentication)" in source
+
+
+class TestImportFromImvdbRemoved:
+    """#525: import-by-IMVDb-ID had no MusicBrainz equivalent (MusicBrainz
+    doesn't use IMVDb's numeric IDs) and IMVDb's own infra is being fully
+    removed per the v1.1.0 plan -- deleted outright, not migrated."""
+
+    def test_no_import_from_imvdb_route_remains(self):
+        paths = {route.path for route in videos_import_router.routes}
+        assert "/import-from-imvdb" not in paths
 
 
 class TestVideosImportBehavioralAuth:

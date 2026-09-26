@@ -375,11 +375,6 @@ from src.api.fastapi.spotify_enhanced import router as spotify_enhanced_router
 
 app.include_router(spotify_enhanced_router)
 
-# IMVDb Router
-from src.api.fastapi.imvdb import router as imvdb_router
-
-app.include_router(imvdb_router)
-
 # Plex Router
 from src.api.fastapi.plex import router as plex_router
 
@@ -757,7 +752,7 @@ async def health_check():
 async def discover_search(
     q: str = Query(...), current_user: dict = Depends(require_authentication)
 ):
-    """Universal search endpoint for videos, artists, and external sources (IMVDb, YouTube)"""
+    """Universal search endpoint for videos, artists, and external sources (YouTube)"""
     try:
         from sqlalchemy.orm import Session
 
@@ -767,7 +762,6 @@ async def discover_search(
         # Initialize result containers
         local_videos = []
         local_artists = []
-        imvdb_results = []
         youtube_results = []
 
         # Search local database
@@ -829,20 +823,6 @@ async def discover_search(
         # Search external sources in parallel
         external_search_tasks = []
 
-        # Search IMVDb
-        try:
-            from src.services.imvdb_service import imvdb_service
-
-            if imvdb_service:
-                import asyncio
-
-                imvdb_task = asyncio.create_task(
-                    asyncio.to_thread(imvdb_service.search_artist, q)
-                )
-                external_search_tasks.append(("imvdb", imvdb_task))
-        except Exception as e:
-            logger.warning(f"Failed to initialize IMVDb search: {e}")
-
         # Search YouTube
         try:
             from src.services.youtube_search_service import youtube_search_service
@@ -867,30 +847,7 @@ async def discover_search(
                         task, timeout=3.0
                     )  # 3 second timeout
 
-                    if source == "imvdb" and result:
-                        if isinstance(result, list):
-                            for item in result[:5]:  # Limit to 5 results
-                                imvdb_results.append(
-                                    {
-                                        "id": item.get("id"),
-                                        "name": item.get("name"),
-                                        "url": item.get("url"),
-                                        "source": "imvdb",
-                                        "type": "artist",
-                                    }
-                                )
-                        else:
-                            imvdb_results.append(
-                                {
-                                    "id": result.get("id"),
-                                    "name": result.get("name"),
-                                    "url": result.get("url"),
-                                    "source": "imvdb",
-                                    "type": "artist",
-                                }
-                            )
-
-                    elif source == "youtube" and result and result.get("videos"):
+                    if source == "youtube" and result and result.get("videos"):
                         for video in result["videos"][:5]:  # Limit to 5 results
                             youtube_results.append(
                                 {
@@ -913,15 +870,10 @@ async def discover_search(
         all_results = {
             "videos": local_videos,
             "artists": local_artists,
-            "external": {"imvdb": imvdb_results, "youtube": youtube_results},
+            "external": {"youtube": youtube_results},
         }
 
-        total_count = (
-            len(local_videos)
-            + len(local_artists)
-            + len(imvdb_results)
-            + len(youtube_results)
-        )
+        total_count = len(local_videos) + len(local_artists) + len(youtube_results)
 
         return {
             "success": True,
@@ -1276,38 +1228,6 @@ async def clear_metube_history():
     except Exception as e:
         logger.error(f"Error clearing download history: {e}")
         return {"success": False, "error": str(e), "cleared_count": 0}
-
-
-# Temporarily disabled - causing startup issues
-@app.get("/api/imvdb/search-videos")
-async def search_imvdb_videos(q: str = Query(...)):
-    """Search IMVDb for videos"""
-    try:
-        # Mock IMVDb search results for now
-        query = q.lower()
-
-        mock_results = [
-            {
-                "id": f"imvdb_{i}",
-                "title": f"{q} - IMVDb Result {i+1}",
-                "artist": f"Artist {i+1}",
-                "year": 2020 + i,
-                "director": f"Director {i+1}",
-                "imvdb_url": f"https://imvdb.com/video/mock_{i}",
-            }
-            for i in range(3)
-        ]
-
-        return {
-            "success": True,
-            "query": q,
-            "results": mock_results,
-            "total": len(mock_results),
-        }
-
-    except Exception as e:
-        logger.error(f"IMVDb search failed: {e}")
-        return {"success": False, "error": str(e), "results": [], "total": 0}
 
 
 @app.post("/api/metube/process-queue")

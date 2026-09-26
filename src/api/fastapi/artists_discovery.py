@@ -3,23 +3,18 @@ FastAPI Artists Discovery API - Artist and Video Discovery Operations
 Extracted from artists.py for better code organization
 
 This module contains endpoints for:
-- Artist discovery from external sources (IMVDb)
-- Artist import operations
 - Video discovery for artists
 - Auto-processing operations
 """
 
 import asyncio
-from datetime import datetime
 from typing import Any, Dict
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as FastAPIPath
-from fastapi import Query
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
-from src.api.fastapi.artists_models import ArtistResponse, IMVDbImportRequest
 from src.api.fastapi.auth_dependencies import (
     get_current_user,
     require_authentication,
@@ -27,7 +22,6 @@ from src.api.fastapi.auth_dependencies import (
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video
 from src.services.artist_auto_processing_service import artist_auto_processing_service
-from src.services.imvdb_service import imvdb_service
 from src.services.youtube_search_service import youtube_search_service
 from src.utils.filename_cleanup import FilenameCleanup
 from src.utils.logger import get_logger
@@ -70,239 +64,6 @@ async def ensure_artist_folder_path(artist: Artist, session: Session) -> str:
 
 
 # ========================================================================================
-# ARTIST DISCOVERY OPERATIONS
-# ========================================================================================
-
-
-@router.get("/discover")
-async def discover_artists(
-    q: str = Query(..., description="Search term for artist discovery"),
-    limit: int = Query(50, ge=1, le=100, description="Maximum number of results"),
-    current_user: dict = Depends(require_authentication),
-):
-    """Discover artists from IMVDb by search term"""
-    try:
-        search_term = q.strip()
-        if not search_term:
-            raise HTTPException(status_code=400, detail="Search term is required")
-
-        # Search IMVDb for artists
-        results = imvdb_service.search_artists(search_term, limit=limit)
-
-        if not results:
-            return {"artists": [], "count": 0, "search_term": search_term}
-
-        # Format results for frontend
-        artists_list = []
-        for artist_data in results:
-            # Extract name from slug if name is None
-            name = artist_data.get("name")
-            # Ensure name is a string if it exists (fix for integer name issue)
-            if name:
-                name = str(name)
-            if not name and artist_data.get("slug"):
-                # Convert slug to readable name (replace dashes with spaces, title case)
-                slug = str(artist_data.get("slug"))
-                name = slug.replace("-", " ").title()
-            elif not name:
-                # Skip artists without name or slug
-                continue
-
-            artist_entry = {
-                "imvdb_id": artist_data.get("id"),
-                "name": name,
-                "slug": artist_data.get("slug"),
-                "video_count": artist_data.get("video_count", 0),
-                "image": artist_data.get("image"),
-                "genres": artist_data.get("genres", []),
-                "featured_video": artist_data.get("featured_video"),
-            }
-            artists_list.append(artist_entry)
-
-        return {
-            "artists": artists_list,
-            "count": len(artists_list),
-            "search_term": search_term,
-        }
-
-    except Exception as e:
-        logger.error(f"Error discovering artists: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# ========================================================================================
-# IMVDB INTEGRATION OPERATIONS
-# ========================================================================================
-
-
-@router.post("/import-from-imvdb", response_model=ArtistResponse)
-async def import_artist_from_imvdb(
-    import_request: IMVDbImportRequest = Body(...),
-    current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db_session),
-):
-    """Import artist from IMVDb"""
-    try:
-        # Check if artist already exists with this IMVDb ID
-        existing = (
-            session.query(Artist)
-            .filter(Artist.imvdb_id == import_request.imvdb_id)
-            .first()
-        )
-
-        if existing:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Artist with IMVDb ID {import_request.imvdb_id} already exists: {existing.name}",
-            )
-
-        # Get artist data from IMVDb
-        try:
-            imvdb_data = imvdb_service.get_artist(str(import_request.imvdb_id))
-
-            if not imvdb_data:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Artist with IMVDb ID {import_request.imvdb_id} not found",
-                )
-
-        except Exception as e:
-            logger.error(f"Error fetching from IMVDb: {e}")
-            raise HTTPException(
-                status_code=502, detail="Failed to fetch artist data from IMVDb"
-            )
-
-        # Create artist from IMVDb data
-        artist = Artist(
-            name=imvdb_data.get("name"),
-            imvdb_id=str(import_request.imvdb_id),
-            monitored=True,
-            auto_download=False,
-            source="imvdb",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        )
-
-        # Ensure folder path
-        await ensure_artist_folder_path(artist, session)
-
-        session.add(artist)
-        session.flush()  # Get the ID
-
-        # Phase 1: Run synchronous auto-match for external services (fast, in-transaction)
-        # This populates spotify_id, lastfm_name, imvdb_id fields immediately
-        try:
-            from src.services.artist_auto_processing_service import (
-                ArtistAutoProcessingService,
-            )
-
-            auto_match_results = ArtistAutoProcessingService._run_auto_match(
-                artist.id, artist.name, session
-            )
-            logger.info(
-                f"Auto-match completed for {artist.name}: {auto_match_results['match_count']} services matched"
-            )
-
-        except Exception as e:
-            logger.error(f"Auto-match failed for {artist.name}: {e}")
-
-        # Commit the artist with auto-match data BEFORE dispatching Celery tasks
-        # This ensures the artist exists in database before background jobs try to access it
-        session.commit()
-        session.refresh(artist)
-
-        # Phase 2: Dispatch async background tasks AFTER commit (metadata enrichment, thumbnails)
-        # These are slow operations that should run in background via Celery
-        try:
-            from src.jobs.metadata_tasks import enrich_artist_metadata_task
-
-            # Queue metadata enrichment task - it will run after artist is committed
-            task = enrich_artist_metadata_task.delay(
-                artist_id=artist.id, force_refresh=True
-            )
-            logger.info(
-                f"Queued metadata enrichment task {task.id} for {artist.name} (ID: {artist.id})"
-            )
-
-        except Exception as e:
-            logger.error(f"Failed to queue metadata enrichment for {artist.name}: {e}")
-
-        # Auto-discover videos if specifically requested
-        if import_request.auto_discover_videos:
-            try:
-                # Add video discovery logic here if needed
-                logger.info(f"Video auto-discovery requested for {artist.name}")
-                # TODO: Implement video discovery if not already covered by auto-processing
-            except Exception as e:
-                logger.error(f"Video discovery failed for {artist.name}: {e}")
-
-        # Return artist in API format
-        # Use getattr for fields that may not exist on the Artist model
-        return ArtistResponse(
-            id=artist.id,
-            name=artist.name,
-            sort_name=getattr(artist, "sort_name", None),
-            folder_path=artist.folder_path,
-            imvdb_id=int(artist.imvdb_id) if artist.imvdb_id else None,
-            imvdb_slug=getattr(artist, "imvdb_slug", None),
-            thumbnail_url=artist.thumbnail_url,
-            biography=getattr(artist, "biography", None),
-            formed_year=getattr(artist, "formed_year", None),
-            location=getattr(artist, "location", None),
-            website=getattr(artist, "website", None),
-            wikipedia_url=getattr(artist, "wikipedia_url", None),
-            musicbrainz_id=getattr(artist, "musicbrainz_id", None),
-            spotify_id=artist.spotify_id,
-            monitored=artist.monitored,
-            auto_download=artist.auto_download,
-            video_count=0,
-            created_at=artist.created_at,
-            updated_at=artist.updated_at,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error importing from IMVDb: {e}")
-        session.rollback()
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-@router.get("/preview/{imvdb_id}")
-async def preview_imvdb_artist(
-    imvdb_id: int = FastAPIPath(..., ge=1),
-    current_user: dict = Depends(require_authentication),
-):
-    """Get artist preview from IMVDb without importing"""
-    try:
-        # Get artist data from IMVDb
-        imvdb_data = imvdb_service.get_artist(str(imvdb_id))
-
-        if not imvdb_data:
-            raise HTTPException(
-                status_code=404, detail=f"Artist with IMVDb ID {imvdb_id} not found"
-            )
-
-        return {
-            "imvdb_id": imvdb_id,
-            "name": imvdb_data.get("name"),
-            "slug": imvdb_data.get("slug"),
-            "description": imvdb_data.get("description"),
-            "formed_year": imvdb_data.get("formed_year"),
-            "location": imvdb_data.get("location"),
-            "website": imvdb_data.get("website"),
-            "image_url": imvdb_data.get("image_url"),
-            "video_count": imvdb_data.get("video_count", 0),
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error previewing IMVDb artist {imvdb_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# ========================================================================================
 # VIDEO DISCOVERY OPERATIONS
 # ========================================================================================
 
@@ -338,57 +99,6 @@ async def discover_artist_videos(
 
         # Extract artist data for use outside session
         artist_name = artist.name
-        artist_imvdb_id = artist.imvdb_id
-
-        # Search both IMVDb and YouTube in parallel for better performance
-        async def search_imvdb():
-            imvdb_videos = []
-            try:
-                if artist_imvdb_id:
-                    logger.info(
-                        f"Using IMVDb ID {artist_imvdb_id} for video discovery for artist {artist_name}"
-                    )
-                    videos_data = await asyncio.to_thread(
-                        imvdb_service.get_artist_videos_by_id, artist_imvdb_id, limit
-                    )
-                else:
-                    logger.info(
-                        f"Using name search for video discovery for artist {artist_name}"
-                    )
-                    videos_data = await asyncio.to_thread(
-                        imvdb_service.search_artist_videos, artist_name, limit
-                    )
-
-                if videos_data and videos_data.get("videos"):
-                    imvdb_videos = videos_data["videos"]
-                    logger.info(
-                        f"Found {len(imvdb_videos)} videos from IMVDb for {artist_name}"
-                    )
-
-                    # Set source field for all IMVDb videos
-                    for video in imvdb_videos:
-                        video["source"] = "imvdb"
-
-                    # Debug: Log sample video structure
-                    if imvdb_videos:
-                        sample_video = imvdb_videos[0]
-                        logger.debug(f"Sample IMVDb video structure: {sample_video}")
-                        logger.debug(
-                            f"Sample video fields: {list(sample_video.keys())}"
-                        )
-                        logger.debug(
-                            f"Sample video title: {sample_video.get('song_title')} / {sample_video.get('title')}"
-                        )
-                        logger.debug(
-                            f"Sample video imvdb_id: {sample_video.get('imvdb_id')} / {sample_video.get('id')}"
-                        )
-                else:
-                    logger.warning(
-                        f"No videos returned from IMVDb for {artist_name}, response: {videos_data}"
-                    )
-            except Exception as e:
-                logger.warning(f"IMVDb video discovery failed for {artist_name}: {e}")
-            return imvdb_videos
 
         async def search_youtube():
             youtube_videos = []
@@ -447,17 +157,9 @@ async def discover_artist_videos(
                 )
             return youtube_videos, youtube_error
 
-        # Execute both searches in parallel
-        logger.info(f"Starting parallel search on IMVDb and YouTube for {artist_name}")
-        results = await asyncio.gather(search_imvdb(), search_youtube())
-        imvdb_videos = results[0]
-        youtube_videos, youtube_error = results[1]
-
-        # Combine IMVDb and YouTube results
-        all_discovered_videos = imvdb_videos + youtube_videos
-        logger.info(
-            f"Total discovered videos: {len(all_discovered_videos)} (IMVDb: {len(imvdb_videos)}, YouTube: {len(youtube_videos)})"
-        )
+        logger.info(f"Starting YouTube search for {artist_name}")
+        all_discovered_videos, youtube_error = await search_youtube()
+        logger.info(f"Total discovered videos: {len(all_discovered_videos)}")
 
         # Get existing videos from database
         existing_videos = []
@@ -477,18 +179,17 @@ async def discover_artist_videos(
         stats = {
             "total_discovered": len(all_discovered_videos),
             "total_existing": len(existing_videos),
-            "imvdb_results": len(imvdb_videos),
-            "youtube_results": len(youtube_videos),
+            "youtube_results": len(all_discovered_videos),
             "youtube_error": youtube_error,  # Include error for debugging
             "with_thumbnails": 0,
             "high_quality": 0,
             "available_for_import": 0,
         }
 
-        # Note: Discovery shows only external results (IMVDb/YouTube), not database videos
+        # Note: Discovery shows only external (YouTube) results, not database videos
         # Database videos are used only for existence checking and filtering
 
-        # Process all discovered videos (IMVDb + YouTube)
+        # Process all discovered videos
         logger.info(
             f"Processing {len(all_discovered_videos)} discovered videos for enrichment"
         )
@@ -519,44 +220,10 @@ async def discover_artist_videos(
                 ):
                     continue
 
-            # Determine video source and ensure proper ID fields
-            video_source = video.get("source", "imvdb")
             youtube_id = video.get("youtube_id")
             logger.debug(
-                f"Processing video: {video.get('song_title', video.get('title', 'Unknown'))} | Source: {video_source} | Has ID: {video.get('id')} | Has youtube_id: {youtube_id}"
+                f"Processing video: {video.get('song_title', video.get('title', 'Unknown'))} | Has youtube_id: {youtube_id}"
             )
-
-            # For IMVDb videos, ensure we have a valid ID
-            if video_source == "imvdb":
-                # IMVDb API returns videos with 'id' field - map this to 'imvdb_id' for frontend
-                raw_id = video.get("id")
-                existing_imvdb_id = video.get("imvdb_id")
-                video_id_field = video.get("video_id")
-
-                print(
-                    f"DEBUG: IMVDb video processing - title: {video.get('song_title', 'Unknown')}"
-                )
-                print(
-                    f"DEBUG: Raw fields - id: {raw_id}, imvdb_id: {existing_imvdb_id}, video_id: {video_id_field}"
-                )
-
-                imvdb_id = existing_imvdb_id or raw_id or video_id_field
-                # Convert to string if it's a number (IMVDb IDs are large integers)
-                if imvdb_id is not None:
-                    imvdb_id = str(imvdb_id)
-                    print(f"DEBUG: Final imvdb_id: {imvdb_id}")
-                    logger.debug(
-                        f"IMVDb video ID assignment successful: {video.get('song_title', 'Unknown')} -> imvdb_id: {imvdb_id}"
-                    )
-                else:
-                    print(
-                        f"DEBUG: No valid ID found for IMVDb video: {video.get('song_title', 'Unknown')}"
-                    )
-                    logger.warning(
-                        f"IMVDb video missing ID field: {video.get('song_title', 'Unknown')}"
-                    )
-            else:
-                imvdb_id = video.get("imvdb_id")
 
             # Enrich video data - normalize field names for frontend compatibility
             enriched_video = {
@@ -571,9 +238,8 @@ async def discover_artist_videos(
                 "already_exists": video_exists,  # Frontend compatibility
                 "imported": False,  # New videos are not imported yet
                 "youtube_id": youtube_id,  # Frontend expects this field
-                "imvdb_id": imvdb_id,  # Frontend expects this field
                 "can_import": not video_exists
-                and (video.get("url") or video.get("youtube_url") or imvdb_id),
+                and bool(video.get("url") or video.get("youtube_url")),
                 "thumbnail_available": bool(
                     video.get("image_url") or video.get("image")
                 ),
@@ -584,17 +250,8 @@ async def discover_artist_videos(
                     else None
                 ),
                 "quality_indicator": video.get("quality", "unknown"),
-                "source": video_source,
+                "source": "youtube",
             }
-
-            # Debug: Verify the enriched video has the correct fields
-            if video_source == "imvdb":
-                print(
-                    f"DEBUG: Final enriched video - title: {enriched_video.get('song_title', 'Unknown')}, imvdb_id: {enriched_video.get('imvdb_id')}"
-                )
-                logger.info(
-                    f"ENRICHED VIDEO DEBUG - {enriched_video.get('song_title', 'Unknown')} | imvdb_id set to: {enriched_video.get('imvdb_id')} | source: {enriched_video.get('source')}"
-                )
 
             discovered_videos.append(enriched_video)
 
@@ -723,7 +380,6 @@ async def bulk_auto_process_artists(
                 .filter(
                     and_(
                         or_(
-                            Artist.imvdb_id.is_(None),
                             Artist.spotify_id.is_(None),
                             Artist.lastfm_name.is_(None),
                             Artist.musicbrainz_id.is_(None),
