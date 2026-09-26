@@ -89,35 +89,35 @@ test.describe('0.9.8 Bug Fixes Validation', () => {
       // Monitor API requests
       const apiResponses = [];
       page.on('response', response => {
-        if (response.url().includes('search-videos')) {
+        if (response.url().includes('/api/youtube/search')) {
           apiResponses.push(response);
         }
       });
-      
+
       // Click search
       await page.click('button:has-text("Search Videos"), button:has-text("Search")');
-      
+
       // Wait for API response
       await page.waitForTimeout(3000);
-      
+
       // Verify the endpoint exists (not 404)
       if (apiResponses.length > 0) {
         const response = apiResponses[0];
         expect(response.status()).not.toBe(404);
         console.log(`✅ Video search endpoint returned ${response.status()}`);
       } else {
-        console.log('ℹ️ No search-videos API call detected - checking manually');
-        
+        console.log('ℹ️ No YouTube search API call detected - checking manually');
+
         // Test endpoint directly
-        const response = await page.request.get('/api/imvdb/search-videos?q=test');
+        const response = await page.request.post('/api/youtube/search', { data: { q: 'test' } });
         expect(response.status()).not.toBe(404);
         console.log(`✅ Video search endpoint accessible: ${response.status()}`);
       }
     } else {
       console.log('⚠️ Add Video button not found - testing endpoint directly');
-      
+
       // Test endpoint directly
-      const response = await page.request.get('/api/imvdb/search-videos?q=test');
+      const response = await page.request.post('/api/youtube/search', { data: { q: 'test' } });
       expect(response.status()).not.toBe(404);
       console.log(`✅ Video search endpoint accessible: ${response.status()}`);
     }
@@ -329,7 +329,7 @@ test.describe('0.9.8 Bug Fixes Validation', () => {
     console.log('🧪 Testing: All critical endpoints accessible');
     
     const criticalEndpoints = [
-      { url: '/api/imvdb/search-videos?q=test', description: 'Video search' },
+      { url: '/api/youtube/search', method: 'POST', description: 'Video search' },
       { url: '/api/metube/clear-stuck', method: 'POST', description: 'Clear stuck downloads' },
       { url: '/api/metube/clear-stuck?force=true', method: 'POST', description: 'Force clear downloads' },
       { url: '/auth/logout', method: 'POST', description: 'Logout' },

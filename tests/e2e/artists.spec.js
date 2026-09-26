@@ -1,7 +1,7 @@
 // tests/e2e/artists.spec.js
 const { test, expect } = require('@playwright/test');
 const { login, waitForPageLoad, waitForApiResponse, fillForm } = require('../utils/test-helpers');
-const { testUsers, testArtists, mockResponses } = require('../fixtures/test-data');
+const { testUsers, testArtists } = require('../fixtures/test-data');
 
 test.describe('Artist Management', () => {
   
@@ -33,72 +33,6 @@ test.describe('Artist Management', () => {
     
     // Check modal content
     await expect(page.locator('#artistSearchInput, input[name="artistName"]')).toBeVisible();
-    await expect(page.locator('button:has-text("Search IMVDb")')).toBeVisible();
-  });
-
-  test('should search for artists in IMVDb', async ({ page }) => {
-    // Open Add Artist modal
-    await page.click('button:has-text("Add New Artist")');
-    
-    // Fill search input
-    await page.fill('#artistSearchInput', 'Taylor Swift');
-    
-    // Click search
-    await page.click('button:has-text("Search IMVDb")');
-    
-    // Wait for search results
-    await page.waitForSelector('#artistSearchResults, .search-results', { timeout: 10000 });
-    
-    // Results should appear
-    await expect(page.locator('#artistSearchResults')).toBeVisible();
-  });
-
-  test('should handle artist search with no results', async ({ page }) => {
-    // Open Add Artist modal
-    await page.click('button:has-text("Add New Artist")');
-    
-    // Search for non-existent artist
-    await page.fill('#artistSearchInput', 'NonExistentArtistXYZ123');
-    await page.click('button:has-text("Search IMVDb")');
-    
-    // Should show no results message
-    await expect(page.locator(':has-text("No results"), :has-text("not found")')).toBeVisible({ timeout: 10000 });
-  });
-
-  test('should import artist from search results', async ({ page }) => {
-    // Mock successful artist search
-    await page.route('**/api/artists/discover*', route => {
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(mockResponses.imvdbArtistSearch)
-      });
-    });
-    
-    // Mock successful artist import
-    await page.route('**/api/artists/import-from-imvdb', route => {
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          name: 'Test Artist',
-          id: 'test_artist_1'
-        })
-      });
-    });
-    
-    // Open Add Artist modal and search
-    await page.click('button:has-text("Add New Artist")');
-    await page.fill('#artistSearchInput', 'Test Artist');
-    await page.click('button:has-text("Search IMVDb")');
-    
-    // Wait for results and click import
-    await page.waitForSelector('.search-result-item, .artist-result');
-    await page.click('button:has-text("Import"), .btn:has-text("Add")');
-    
-    // Should show success message
-    await expect(page.locator(':has-text("added successfully"), .success')).toBeVisible({ timeout: 10000 });
   });
 
   test('should filter artists list', async ({ page }) => {
@@ -223,34 +157,25 @@ test.describe('Artist Management', () => {
     await expect(page.locator(':has-text("No artists"), :has-text("empty")')).toBeVisible();
   });
 
-  test('should handle artist import errors gracefully', async ({ page }) => {
-    // Mock error response
-    await page.route('**/api/artists/import-from-imvdb', route => {
-      route.fulfill({
-        status: 502,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: false, error: 'Import failed' })
-      });
+  test('should handle artist add errors gracefully', async ({ page }) => {
+    // Mock error response from the manual add-artist endpoint
+    await page.route('**/api/artists/', route => {
+      if (route.request().method() === 'POST') {
+        route.fulfill({
+          status: 502,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Add artist failed' })
+        });
+      } else {
+        route.continue();
+      }
     });
-    
-    // Try to import artist
+
+    // Open the Add Artist modal and submit the manual form
     await page.click('button:has-text("Add New Artist")');
-    await page.fill('#artistSearchInput', 'Test Artist');
-    await page.click('button:has-text("Search IMVDb")');
-    
-    // Mock search success first
-    await page.route('**/api/artists/discover*', route => {
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(mockResponses.imvdbArtistSearch)
-      });
-    });
-    
-    // Click import on first result
-    await page.waitForSelector('.search-result-item');
-    await page.click('button:has-text("Import")');
-    
+    await page.fill('#artistName', 'Test Artist');
+    await page.click('button:has-text("Add Artist")');
+
     // Should show error message
     await expect(page.locator(':has-text("error"), :has-text("failed")')).toBeVisible({ timeout: 10000 });
   });
