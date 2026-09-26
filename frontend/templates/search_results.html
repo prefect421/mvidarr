@@ -16,7 +16,7 @@
         <!-- Loading indicator -->
         <div id="searchLoading" class="loading-indicator" style="display: none;">
             <div class="spinner"></div>
-            <p>Searching IMVDb and YouTube...</p>
+            <p>Searching YouTube...</p>
         </div>
 
         <!-- Error message -->
@@ -26,17 +26,6 @@
 
         <!-- Results sections -->
         <div id="searchResults" style="display: none;">
-            <!-- IMVDb Results -->
-            <div class="results-section">
-                <h3>IMVDb Results</h3>
-                <div id="imvdbResults" class="results-grid">
-                    <!-- IMVDb results will be populated here -->
-                </div>
-                <div id="imvdbNoResults" class="no-results" style="display: none;">
-                    <p>No IMVDb results found.</p>
-                </div>
-            </div>
-
             <!-- YouTube Results -->
             <div class="results-section">
                 <h3>YouTube Results</h3>
@@ -317,29 +306,11 @@ class SearchResultsPage {
         this.showLoading();
         
         try {
-            // Search both IMVDb and YouTube
-            const [imvdbResults, youtubeResults] = await Promise.all([
-                this.searchIMVDb(query),
-                this.searchYouTube(query)
-            ]);
-            
-            // Display results
-            this.displayResults(imvdbResults, youtubeResults);
-            
+            const youtubeResults = await this.searchYouTube(query);
+            this.displayResults(youtubeResults);
         } catch (error) {
             console.error('Search error:', error);
             this.showError();
-        }
-    }
-
-    async searchIMVDb(query) {
-        try {
-            const response = await fetch(`/api/imvdb/search-videos?q=${encodeURIComponent(query)}`);
-            const data = await response.json();
-            return data.success ? data.results : [];
-        } catch (error) {
-            console.error('IMVDb search error:', error);
-            return [];
         }
     }
 
@@ -363,31 +334,14 @@ class SearchResultsPage {
         }
     }
 
-    displayResults(imvdbResults, youtubeResults) {
+    displayResults(youtubeResults) {
         // Hide loading, show results
         document.getElementById('searchLoading').style.display = 'none';
         document.getElementById('searchError').style.display = 'none';
         document.getElementById('searchResults').style.display = 'block';
-        
-        // Display IMVDb results
-        this.displayIMVDbResults(imvdbResults);
-        
+
         // Display YouTube results
         this.displayYouTubeResults(youtubeResults);
-    }
-
-    displayIMVDbResults(results) {
-        const container = document.getElementById('imvdbResults');
-        const noResults = document.getElementById('imvdbNoResults');
-        
-        if (!results || results.length === 0) {
-            container.innerHTML = '';
-            noResults.style.display = 'block';
-            return;
-        }
-        
-        noResults.style.display = 'none';
-        container.innerHTML = results.map(result => this.createIMVDbResultCard(result)).join('');
     }
 
     displayYouTubeResults(results) {
@@ -402,25 +356,6 @@ class SearchResultsPage {
         
         noResults.style.display = 'none';
         container.innerHTML = results.map(result => this.createYouTubeResultCard(result)).join('');
-    }
-
-    createIMVDbResultCard(result) {
-        const artistName = this.getArtistName(result);
-        const title = result.song_title || 'Unknown Title';
-        const year = result.year ? ` (${result.year})` : '';
-        
-        return `
-            <div class="result-item" onclick="window.open('https://imvdb.com/video/${result.id}', '_blank')">
-                <h4>${title}${year}</h4>
-                <p class="artist-name">${artistName}</p>
-                ${result.directors && result.directors.length > 0 ? `<p>Director: ${result.directors.join(', ')}</p>` : ''}
-                <span class="result-source">IMVDb</span>
-                <div class="result-actions">
-                    <button class="btn btn-primary" onclick="event.stopPropagation(); addToLibrary('${result.id}', 'imvdb')">Add to Library</button>
-                    <button class="btn btn-secondary" onclick="event.stopPropagation(); window.open('https://imvdb.com/video/${result.id}', '_blank')">View on IMVDb</button>
-                </div>
-            </div>
-        `;
     }
 
     createYouTubeResultCard(result) {
@@ -440,17 +375,6 @@ class SearchResultsPage {
                 </div>
             </div>
         `;
-    }
-
-    getArtistName(result) {
-        // Handle different artist field structures
-        if (result.artist && typeof result.artist === 'object' && result.artist.name) {
-            return result.artist.name;
-        }
-        if (result.artists && Array.isArray(result.artists) && result.artists.length > 0) {
-            return result.artists[0].name || 'Unknown Artist';
-        }
-        return 'Unknown Artist';
     }
 
     showLoading() {
