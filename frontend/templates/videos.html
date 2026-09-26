@@ -1589,11 +1589,11 @@ function refreshAndPlay(id) {
 }
 
 function refreshVideoMetadata(id) {
-    toastConfirm('Refresh enhanced metadata for this video using comprehensive sources including IMVDb, lyrics, FFmpeg analysis, and genre fallback? This will update all metadata fields with the most complete information available.', () => {
+    toastConfirm('Refresh enhanced metadata for this video using comprehensive sources including lyrics, FFmpeg analysis, and genre fallback? This will update all metadata fields with the most complete information available.', () => {
         // Find the video card to show loading state
         const videoCard = document.querySelector(`[data-video-id="${id}"]`).closest('.video-card');
         const originalContent = videoCard.innerHTML;
-        
+
         // Show enhanced loading state
         videoCard.innerHTML = `
             <div style="padding: 20px; text-align: center;">
@@ -1601,10 +1601,10 @@ function refreshVideoMetadata(id) {
                     <img src="{{ url_for('static', filename='MVidarr.png') }}" alt="MVidarr" class="spinning mvidarr-logo-spinner" style="width: 24px; height: 24px;">
                 </div>
                 <p>Enriching metadata from multiple sources...</p>
-                <small style="color: var(--text-muted);">Using IMVDb, lyrics, FFmpeg analysis, and genre fallback - this may take a moment</small>
+                <small style="color: var(--text-muted);">Using lyrics, FFmpeg analysis, and genre fallback - this may take a moment</small>
             </div>
         `;
-        
+
         fetch(`/api/videos/${id}/enhanced-refresh-metadata`, {
             method: 'POST',
             headers: {
@@ -1615,13 +1615,6 @@ function refreshVideoMetadata(id) {
             })
         })
         .then(response => {
-            if (response.status === 409) {
-                // Handle duplicate IMVDb ID conflict
-                return response.json().then(result => {
-                    showDuplicateVideoDialog(result, originalContent, videoCard);
-                    return null; // Skip normal processing
-                });
-            }
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -1629,8 +1622,8 @@ function refreshVideoMetadata(id) {
         })
         .then(result => {
             if (!result) return; // Skip if duplicate was handled
-            
-            if (result.error && result.error !== 'duplicate_imvdb_id') {
+
+            if (result.error) {
                 showError('Error: ' + result.error);
                 // Restore original content on error
                 videoCard.innerHTML = originalContent;
@@ -1642,7 +1635,6 @@ function refreshVideoMetadata(id) {
                 // Build success message based on what was updated
                 let message = `Enhanced metadata enriched successfully!`;
                 const sources = [];
-                if (result.imvdb_updated) sources.push('IMVDb');
                 if (result.ffmpeg_extracted) sources.push('FFmpeg analysis');
                 if (result.lyrics_found) sources.push('lyrics');
                 if (result.genre_applied) sources.push('genre fallback');
@@ -2290,7 +2282,7 @@ function loadModalSubtitleTracks() {
             <span class="modal-close" onclick="closeEnhancedMetadataConfigModal()">&times;</span>
         </div>
         <div class="modal-body">
-            <p>Configure metadata enrichment settings. This will enrich videos from multiple sources including MusicBrainz, Spotify, IMVDb, Last.fm, and more.</p>
+            <p>Configure metadata enrichment settings. This will enrich videos from multiple sources including MusicBrainz, Spotify, Last.fm, and more.</p>
 
             <div class="form-group">
                 <label for="metadataVideoLimit">
@@ -2323,7 +2315,6 @@ function loadModalSubtitleTracks() {
                 <ul>
                     <li><strong>MusicBrainz</strong> - Authoritative release dates and recording info</li>
                     <li><strong>Spotify</strong> - Album info, track durations, genres</li>
-                    <li><strong>IMVDb</strong> - Music video database</li>
                     <li><strong>Last.fm</strong> - Additional track metadata</li>
                     <li><strong>YouTube</strong> - Video discovery and metadata</li>
                     <li><strong>FFmpeg</strong> - Local file analysis</li>
@@ -2443,7 +2434,6 @@ function loadModalSubtitleTracks() {
                             <label>Search Sources:</label>
                             <div class="checkbox-group">
                                 <label><input type="checkbox" id="searchYoutube" checked> YouTube</label>
-                                <label><input type="checkbox" id="searchImvdb" checked> IMVDb</label>
                                 <label><input type="checkbox" id="searchGoogle" checked> Google Images</label>
                             </div>
                         </div>
@@ -2786,27 +2776,23 @@ function searchVideoThumbnails() {
     console.log('searchVideoThumbnails called, currentVideoThumbnailId:', currentVideoThumbnailId);
     
     const youtubeCheckbox = document.getElementById('searchYoutube');
-    const imvdbCheckbox = document.getElementById('searchImvdb');
     const googleCheckbox = document.getElementById('searchGoogle');
-    
+
     console.log('YouTube checkbox element:', youtubeCheckbox);
-    console.log('IMVDb checkbox element:', imvdbCheckbox);
     console.log('Google checkbox element:', googleCheckbox);
-    
-    if (!youtubeCheckbox || !imvdbCheckbox || !googleCheckbox) {
+
+    if (!youtubeCheckbox || !googleCheckbox) {
         showError('Search checkboxes not found');
         return;
     }
-    
+
     const includeYoutube = youtubeCheckbox.checked;
-    const includeImvdb = imvdbCheckbox.checked;
     const includeGoogle = googleCheckbox.checked;
-    
-    console.log('YouTube checked:', includeYoutube, 'IMVDb checked:', includeImvdb, 'Google checked:', includeGoogle);
-    
+
+    console.log('YouTube checked:', includeYoutube, 'Google checked:', includeGoogle);
+
     const sources = [];
     if (includeYoutube) sources.push('youtube');
-    if (includeImvdb) sources.push('imvdb');
     if (includeGoogle) sources.push('google');
     
     if (sources.length === 0) {
@@ -3671,7 +3657,7 @@ function bulkRefreshMetadata() {
         return;
     }
     
-    const confirmed = confirm(`Refresh enhanced metadata for ${videoIds.length} selected video(s)? This will use comprehensive sources including IMVDb, lyrics, FFmpeg analysis, and genre fallback.`);
+    const confirmed = confirm(`Refresh enhanced metadata for ${videoIds.length} selected video(s)? This will use comprehensive sources including lyrics, FFmpeg analysis, and genre fallback.`);
     
     if (confirmed) {
         showBulkProgress('Refreshing enhanced metadata...');
@@ -5509,7 +5495,7 @@ function showDuplicateVideoDialog(duplicateData, originalContent, videoCard) {
         <div class="modal-content duplicate-modal-content">
             <span class="close" onclick="hideDuplicateVideoModal()">&times;</span>
             <h2>🔀 Duplicate Video Found</h2>
-            <p><strong>A video with the same IMVDb ID already exists!</strong> Choose which to keep as primary:</p>
+            <p><strong>A duplicate of this video already exists!</strong> Choose which to keep as primary:</p>
             
             <div class="duplicate-video-comparison-compact">
                 <div class="video-option-compact">
