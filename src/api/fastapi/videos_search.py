@@ -136,76 +136,12 @@ async def universal_search(
         # External search results
         external_results = []
 
-        # IMVDb Search
-        try:
-            from src.services.imvdb_service import imvdb_service
-
-            imvdb_limit = 8 if extended else 3
-
-            if imvdb_service:
-                imvdb_search_result = await asyncio.to_thread(
-                    imvdb_service.search_artist_videos, query, imvdb_limit
-                )
-
-                if imvdb_search_result and imvdb_search_result.get("videos"):
-                    imvdb_results = []
-                    logger.debug(
-                        f"Sample IMVDb video data: {imvdb_search_result['videos'][0] if imvdb_search_result['videos'] else 'No videos'}"
-                    )
-                    for video in imvdb_search_result["videos"][:imvdb_limit]:
-                        # Extract artist name from nested structure with multiple fallbacks
-                        artist_name = ""
-                        artist_data = video.get("artist")
-
-                        if isinstance(artist_data, dict):
-                            # Try common artist name fields
-                            artist_name = (
-                                artist_data.get("name")
-                                or artist_data.get("artist_name")
-                                or artist_data.get("entity_name")
-                                or ""
-                            )
-                        elif isinstance(artist_data, str):
-                            artist_name = artist_data
-
-                        # Additional fallbacks
-                        if not artist_name:
-                            artist_name = (
-                                video.get("artist_name", "")
-                                or video.get("entity_name", "")
-                                or video.get("band_name", "")
-                                or query.title()  # Use the search query as artist name
-                            )
-
-                        imvdb_results.append(
-                            {
-                                "source": "IMVDb",
-                                "id": str(video.get("id", "")),
-                                "title": video.get("song_title", ""),
-                                "artist": artist_name,
-                                "year": video.get("year", None),
-                                "thumbnail": (
-                                    video.get("image", {}).get("o", "")
-                                    if video.get("image")
-                                    else ""
-                                ),
-                                "action": "add_to_library",
-                                "video_id": str(video.get("id", "")),
-                                "imvdb_url": (
-                                    f"https://imvdb.com/video/{video.get('id', '')}"
-                                    if video.get("id")
-                                    else ""
-                                ),
-                            }
-                        )
-                    external_results.extend(imvdb_results)
-                    logger.info(
-                        f"Found {len(imvdb_results)} IMVDb results for: {query}"
-                    )
-                else:
-                    logger.info(f"No IMVDb results found for: {query}")
-        except Exception as e:
-            logger.warning(f"IMVDb search failed: {e}")
+        # Note: a bulk free-text IMVDb search used to run here. It had no
+        # MusicBrainz equivalent -- find_official_video() needs a known
+        # artist+track pair to verify a video against, not a free-text
+        # query -- same gap already found at other bulk-discovery call
+        # sites throughout #524/#525. YouTube search below is now the sole
+        # external source.
 
         # YouTube Search
         try:
