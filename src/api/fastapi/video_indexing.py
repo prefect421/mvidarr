@@ -13,13 +13,13 @@ from sqlalchemy.orm import Session
 
 from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
-from src.services.imvdb_service import imvdb_service
 from src.services.job_queue import (
     BackgroundJob,
     JobPriority,
     JobType,
     get_job_queue,
 )
+from src.services.musicbrainz_service import musicbrainz_service
 from src.services.thumbnail_service import thumbnail_service
 from src.services.video_indexing_service import video_indexing_service
 
@@ -126,12 +126,6 @@ class IndexingPreview(BaseModel):
     can_index: bool
     imvdb_preview: Optional[Dict[str, Any]] = None
 
-
-class ConnectionTestResponse(BaseModel):
-    """Connection test response"""
-
-    status: str
-    message: Optional[str] = None
     error: Optional[str] = None
 
 
@@ -366,7 +360,7 @@ async def search_metadata(
     current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
-    """Search IMVDb for metadata"""
+    """Search for an official video match via MusicBrainz"""
     try:
         user_id = current_user.get("user_id", 1)
 
@@ -375,26 +369,29 @@ async def search_metadata(
         )
 
         if search_request.title:
-            # Search for specific video
-            metadata = imvdb_service.find_best_video_match(
+            # Search for a specific video
+            video_match = musicbrainz_service.find_official_video(
                 search_request.artist, search_request.title
             )
-            if metadata:
+            if video_match:
                 return MetadataSearchResponse(
-                    success=True, metadata=imvdb_service.extract_metadata(metadata)
+                    success=True,
+                    metadata={
+                        "youtube_url": video_match.get("video_url"),
+                        "musicbrainz_recording_id": video_match.get("recording_id"),
+                        "title": video_match.get("recording_title"),
+                    },
                 )
             else:
                 return MetadataSearchResponse(
                     success=False, message="No matching video found"
                 )
         else:
-            # Search for videos by artist
-            videos = imvdb_service.search_videos(search_request.artist)
-            metadata_list = [imvdb_service.extract_metadata(video) for video in videos]
-
-            return MetadataSearchResponse(
-                success=True, videos=metadata_list, count=len(metadata_list)
-            )
+            # Bulk artist-level video search has no MusicBrainz equivalent --
+            # find_official_video() needs a known track name to verify a
+            # video against (same gap already found for other bulk-discovery
+            # call sites in #524/#525).
+            return MetadataSearchResponse(success=True, videos=[], count=0)
 
     except Exception as e:
         logger.error(f"Failed to search metadata: {e}")
@@ -457,38 +454,6 @@ async def get_thumbnail_stats(
     except Exception as e:
         logger.error(f"Failed to get thumbnail stats: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# ========================================================================================
-# INTEGRATION TESTING ENDPOINTS
-# ========================================================================================
-
-
-@router.get("/imvdb/test", response_model=ConnectionTestResponse)
-async def test_imvdb_connection(
-    current_user: dict = Depends(require_authentication),
-    session: Session = Depends(get_db_session),
-):
-    """Test IMVDb API connection"""
-    try:
-        user_id = current_user.get("user_id", 1)
-
-        logger.info(f"Testing IMVDb connection for user {current_user.get('username')}")
-
-        result = imvdb_service.test_connection()
-
-        if result["status"] != "success":
-            raise HTTPException(status_code=503, detail=result)
-
-        return ConnectionTestResponse(**result)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"IMVDb connection test failed: {e}")
-        raise HTTPException(
-            status_code=503, detail={"status": "error", "error": str(e)}
-        )
 
 
 @router.post("/bulk-automatch-artists")
