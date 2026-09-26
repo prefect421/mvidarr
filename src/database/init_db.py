@@ -41,7 +41,6 @@ def init_default_settings():
         ("thumbnails_path", "data/thumbnails", "Thumbnails directory path"),
         ("metube_host", "localhost", "MeTube host"),
         ("metube_port", "8081", "MeTube port"),
-        ("imvdb_api_key", "", "IMVDB API key"),
         ("youtube_api_key", "", "YouTube API key"),
         (
             "auto_organize_downloads",
