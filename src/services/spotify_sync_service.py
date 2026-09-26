@@ -11,7 +11,6 @@ from sqlalchemy import and_, or_
 
 from src.database.connection import get_db
 from src.database.models import Artist, Playlist, PlaylistEntry, Video
-from src.services.imvdb_service import imvdb_service
 from src.services.settings_service import settings
 from src.services.spotify_service import spotify_service
 from src.utils.logger import get_logger
@@ -41,7 +40,6 @@ class SpotifySyncService:
 
     def __init__(self):
         self.spotify = spotify_service
-        self.imvdb = imvdb_service
 
         # Configuration
         self.auto_sync_enabled = settings.get_bool("spotify_auto_sync", True)

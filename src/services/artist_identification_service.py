@@ -10,7 +10,6 @@ import re
 from typing import Dict, List
 
 from src.database.models import Artist, Video
-from src.services.imvdb_service import imvdb_service
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.artist_identification")
@@ -20,7 +19,6 @@ class ArtistIdentificationService:
     """Service for identifying artists based on song titles"""
 
     def __init__(self):
-        self.imvdb_service = imvdb_service
         self.confidence_threshold = 0.7  # Minimum confidence for automatic assignment
 
     def identify_artist_from_title(self, song_title: str) -> List[Dict]:
@@ -35,15 +33,11 @@ class ArtistIdentificationService:
         """
         candidates = []
 
-        # Method 1: IMVDb search
-        imvdb_candidates = self._search_imvdb_by_title(song_title)
-        candidates.extend(imvdb_candidates)
-
-        # Method 2: Parse title for artist clues
+        # Method 1: Parse title for artist clues
         parsed_candidates = self._parse_title_for_artist_clues(song_title)
         candidates.extend(parsed_candidates)
 
-        # Method 3: Search existing artists in database
+        # Method 2: Search existing artists in database
         db_candidates = self._search_existing_artists(song_title)
         candidates.extend(db_candidates)
 
@@ -54,49 +48,6 @@ class ArtistIdentificationService:
         final_candidates.sort(key=lambda x: x["confidence"], reverse=True)
 
         return final_candidates[:5]  # Return top 5 candidates
-
-    def _search_imvdb_by_title(self, song_title: str) -> List[Dict]:
-        """Search IMVDb for songs with this title"""
-        candidates = []
-
-        try:
-            # Check if IMVDb is configured
-            if not self.imvdb_service.api_key:
-                logger.debug("IMVDb API key not configured, skipping IMVDb search")
-                return candidates
-
-            # Search for videos with this title
-            videos = self.imvdb_service.search_videos("", song_title)
-
-            if not videos:
-                logger.debug(f"No IMVDb results for '{song_title}'")
-                return candidates
-
-            for video in videos:
-                metadata = self.imvdb_service.extract_metadata(video)
-
-                if metadata["artist_name"] and metadata["title"]:
-                    # Calculate title similarity
-                    title_similarity = self._calculate_similarity(
-                        song_title.lower(), metadata["title"].lower()
-                    )
-
-                    if title_similarity > 0.5:  # Minimum similarity threshold
-                        candidates.append(
-                            {
-                                "artist_name": metadata["artist_name"],
-                                "source": "imvdb",
-                                "confidence": title_similarity
-                                * 0.9,  # Slightly reduce for API uncertainty
-                                "metadata": metadata,
-                                "match_reason": f"IMVDb title match: {metadata['title']}",
-                            }
-                        )
-
-        except Exception as e:
-            logger.warning(f"IMVDb search failed for '{song_title}': {e}")
-
-        return candidates
 
     def _parse_title_for_artist_clues(self, song_title: str) -> List[Dict]:
         """Parse song title for embedded artist information"""

@@ -29,6 +29,7 @@ from src.database.models import (
     VideoBlacklist,
     VideoStatus,
 )
+from src.services.musicbrainz_service import musicbrainz_service
 from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.services.import_operations")
@@ -319,78 +320,55 @@ def import_videos(
                 )
 
                 if not has_url:
-                    # Try to find URL via IMVDB before rejecting the video
+                    # Try to find the official video URL via MusicBrainz before rejecting
                     try:
-                        from src.services.imvdb_service import IMVDbService
-
-                        imvdb_service = IMVDbService()
-
-                        # Get artist name for IMVDB search
+                        # Get artist name for MusicBrainz search
                         artist_name = (
                             artist.name
                             if artist
                             else f"Unknown Artist {video_data.artist_id}"
                         )
                         logger.info(
-                            f"Video import: No URL found for '{artist_name} - {video_data.title}', checking IMVDB"
+                            f"Video import: No URL found for '{artist_name} - {video_data.title}', checking MusicBrainz"
                         )
 
-                        search_results = imvdb_service.search_videos(
+                        video_match = musicbrainz_service.find_official_video(
                             artist_name, video_data.title
                         )
+                        youtube_url = video_match["video_url"] if video_match else None
 
-                        if search_results and len(search_results) > 0:
-                            # Get the first result
-                            imvdb_video = search_results[0]
+                        if youtube_url:
+                            logger.info(
+                                f"✅ Found YouTube URL from MusicBrainz during import: {youtube_url}"
+                            )
 
-                            # Extract YouTube URL if available
-                            youtube_url = None
-                            if "sources" in imvdb_video:
-                                for source in imvdb_video["sources"]:
-                                    if source.get("source") == "youtube" and source.get(
-                                        "source_data"
-                                    ):
-                                        youtube_url = source["source_data"]
-                                        break
+                            # Update video_data with found URL
+                            video_data.url = youtube_url
+                            video_data.youtube_url = youtube_url
 
-                            if youtube_url:
-                                logger.info(
-                                    f"✅ Found YouTube URL from IMVDB during import: {youtube_url}"
-                                )
+                            # Extract YouTube ID from URL
+                            if "watch?v=" in youtube_url:
+                                video_data.youtube_id = youtube_url.split("watch?v=")[
+                                    1
+                                ].split("&")[0]
+                            elif "youtu.be/" in youtube_url:
+                                video_data.youtube_id = youtube_url.split("youtu.be/")[
+                                    1
+                                ].split("?")[0]
 
-                                # Update video_data with found URL
-                                video_data.url = youtube_url
-                                video_data.youtube_url = youtube_url
+                            has_url = True
+                            logger.info(
+                                f"✅ Updated video import data with MusicBrainz URL"
+                            )
 
-                                # Extract YouTube ID from URL
-                                if "watch?v=" in youtube_url:
-                                    video_data.youtube_id = youtube_url.split(
-                                        "watch?v="
-                                    )[1].split("&")[0]
-                                elif "youtu.be/" in youtube_url:
-                                    video_data.youtube_id = youtube_url.split(
-                                        "youtu.be/"
-                                    )[1].split("?")[0]
-
-                                # Also update IMVDB metadata if available
-                                if "id" in imvdb_video:
-                                    video_data.imvdb_id = str(imvdb_video["id"])
-                                if imvdb_video:
-                                    video_data.imvdb_metadata = imvdb_video
-
-                                has_url = True
-                                logger.info(
-                                    f"✅ Updated video import data with IMVDB URL"
-                                )
-
-                    except Exception as imvdb_error:
+                    except Exception as musicbrainz_error:
                         logger.warning(
-                            f"IMVDB search failed during import for '{video_data.title}': {imvdb_error}"
+                            f"MusicBrainz search failed during import for '{video_data.title}': {musicbrainz_error}"
                         )
 
                 if not has_url:
                     logger.warning(
-                        f"Skipping video import '{video_data.title}': No URL found (not in IMVDB or provided data)"
+                        f"Skipping video import '{video_data.title}': No URL found (not in MusicBrainz or provided data)"
                     )
                     results["videos_skipped"] += 1
                     continue
