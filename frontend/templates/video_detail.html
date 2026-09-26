@@ -114,11 +114,6 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="videoImvdbId">IMVDb ID:</label>
-                    <input type="number" id="videoImvdbId" name="imvdb_id" placeholder="Leave blank if unknown">
-                </div>
-                
-                <div class="form-group">
                     <label for="videoGenres">Genres:</label>
                     <input type="text" id="videoGenres" name="genres" placeholder="Enter genres separated by commas (e.g., Rock, Pop, Alternative)">
                     <small class="help-text">Separate multiple genres with commas</small>
@@ -262,7 +257,6 @@
                             <label>Search Sources:</label>
                             <div class="checkbox-group">
                                 <label><input type="checkbox" id="searchYoutube" checked> YouTube</label>
-                                <label><input type="checkbox" id="searchImvdb" checked> IMVDb</label>
                                 <label><input type="checkbox" id="searchGoogle" checked> Google</label>
                             </div>
                         </div>
@@ -565,25 +559,21 @@ function searchVideoThumbnails() {
     console.log('searchVideoThumbnails called, currentVideoThumbnailId:', currentVideoThumbnailId);
     
     const youtubeCheckbox = document.getElementById('searchYoutube');
-    const imvdbCheckbox = document.getElementById('searchImvdb');
     const googleCheckbox = document.getElementById('searchGoogle');
-    
+
     console.log('YouTube checkbox element:', youtubeCheckbox);
-    console.log('IMVDb checkbox element:', imvdbCheckbox);
     console.log('Google checkbox element:', googleCheckbox);
-    
-    if (!youtubeCheckbox || !imvdbCheckbox || !googleCheckbox) {
+
+    if (!youtubeCheckbox || !googleCheckbox) {
         showError('Search checkboxes not found');
         return;
     }
-    
+
     const includeYoutube = youtubeCheckbox.checked;
-    const includeImvdb = imvdbCheckbox.checked;
     const includeGoogle = googleCheckbox.checked;
-    
+
     const sources = [];
     if (includeYoutube) sources.push('youtube');
-    if (includeImvdb) sources.push('imvdb');
     if (includeGoogle) sources.push('google');
     
     console.log('Sources array:', sources);
@@ -1384,8 +1374,7 @@ function editVideo() {
     document.getElementById('videoUrl').value = currentVideo.video_url || '';
     document.getElementById('videoThumbnailUrl').value = currentVideo.thumbnail_url || '';
     document.getElementById('videoDuration').value = currentVideo.duration || '';
-    document.getElementById('videoImvdbId').value = currentVideo.imvdb_id || '';
-    
+
     // Handle enhanced metadata fields with proper checks
     const genresField = document.getElementById('videoGenres');
     if (genresField) {
@@ -1786,7 +1775,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 video_url: formData.get('video_url'),
                 thumbnail_url: formData.get('thumbnail_url'),
                 duration: formData.get('duration') ? parseInt(formData.get('duration')) : null,
-                imvdb_id: formData.get('imvdb_id') ? parseInt(formData.get('imvdb_id')) : null,
                 genres: formData.get('genres') ? formData.get('genres').split(',').map(g => g.trim()).filter(g => g) : [],
                 album: formData.get('album') || null,
                 move_file: formData.get('move_file') === 'on'

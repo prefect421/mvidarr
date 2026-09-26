@@ -239,13 +239,6 @@
             </div>
         </div>
     </div>
-
-    <div style="margin-top: 1.5rem;">
-        <label style="color: var(--text-secondary, #ccc); font-weight: 600; margin-bottom: 0.5rem; display: block;">IMVDB Connection:</label>
-        <div id="imvdb-status">
-            <span id="imvdb-loading">Checking...</span>
-        </div>
-    </div>
 </div>
 
 <!-- Indexing Actions Section -->
@@ -258,10 +251,6 @@
     </div>
 
     <div class="indexing-actions">
-        <button onclick="testImvdbConnection()" class="btn btn-info">
-            <iconify-icon icon="tabler:plug"></iconify-icon>
-            Test IMVDB Connection
-        </button>
         <button onclick="indexAllVideos()" class="btn btn-primary">
             <iconify-icon icon="tabler:database-import"></iconify-icon>
             Index All Videos
@@ -344,33 +333,8 @@ function loadIndexingStats() {
         });
 }
 
-function testImvdbConnection() {
-    document.getElementById('imvdb-status').innerHTML = '<span id="imvdb-loading">Testing connection...</span>';
-
-    fetch('/api/health/imvdb')
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'healthy') {
-                document.getElementById('imvdb-status').innerHTML =
-                    '<span class="status-indicator success">✓ Connected</span> <span style="color: var(--text-secondary, #ccc);">' +
-                    (data.message || 'IMVDB API is accessible') + '</span>';
-            } else {
-                document.getElementById('imvdb-status').innerHTML =
-                    '<span class="status-indicator error">✗ Error</span> <span class="error">' +
-                    (data.error || data.detail || 'Connection failed') + '</span>';
-            }
-        })
-        .catch(error => {
-            console.error('Error testing IMVDB:', error);
-            document.getElementById('imvdb-status').innerHTML =
-                '<span class="status-indicator error">✗ Error</span> <span class="error">' +
-                error.message + '</span>';
-        });
-}
-
 function refreshStats() {
     loadIndexingStats();
-    testImvdbConnection();
 }
 
 function showProgress(message) {
@@ -453,7 +417,7 @@ function scanVideoFiles() {
 }
 
 function indexAllVideos() {
-    const message = 'This will index all videos in your music videos directory with IMVDb metadata. This may take a while. Continue?';
+    const message = 'This will index all videos in your music videos directory with metadata. This may take a while. Continue?';
 
     if (typeof toastConfirm === 'function') {
         toastConfirm(message, () => {
@@ -570,7 +534,7 @@ function startIndexing(fetchMetadata) {
 }
 
 function populateArtistThumbnails() {
-    if (!confirm('Populate artist thumbnails from IMVDB? This may take a while.')) {
+    if (!confirm('Populate artist thumbnails? This may take a while.')) {
         return;
     }
 
@@ -669,7 +633,7 @@ function bulkAutomatchAllArtists() {
 }
 
 function bulkEnrichAllArtists() {
-    if (!confirm('Enrich all artist metadata from IMVDB? This may take a while.')) {
+    if (!confirm('Enrich all artist metadata? This may take a while.')) {
         return;
     }
 
@@ -714,7 +678,7 @@ function bulkEnrichAllArtists() {
 }
 
 function fixMissingVideos() {
-    if (!confirm('Attempt to fix videos with missing metadata? This will re-index videos without artist or IMVDB IDs.')) {
+    if (!confirm('Attempt to fix videos with missing metadata? This will re-index videos without an artist match.')) {
         return;
     }
 
