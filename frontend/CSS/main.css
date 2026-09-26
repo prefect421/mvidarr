@@ -4115,82 +4115,6 @@ body {
     color: #ccc;
 }
 
-/* Enhanced Add Artist Search Results */
-.search-results-section {
-    margin-bottom: 2rem;
-}
-
-.search-results-header {
-    padding: 1rem;
-    border-radius: 8px 8px 0 0;
-    margin-bottom: 1rem;
-}
-
-.search-results-header.existing {
-    background: linear-gradient(135deg, #1e5828, #2d7a3a);
-    border-left: 4px solid #4caf50;
-}
-
-.search-results-header.imvdb {
-    background: linear-gradient(135deg, #1e3d5c, #2a5490);
-    border-left: 4px solid #2196f3;
-}
-
-.search-results-header.info {
-    background: linear-gradient(135deg, #4a4a4a, #666);
-    border-left: 4px solid #ffc107;
-}
-
-.search-results-header.no-results {
-    background: linear-gradient(135deg, #5c1e1e, #8b2a2a);
-    border-left: 4px solid #f44336;
-}
-
-.search-results-header h4 {
-    margin: 0 0 0.5rem 0;
-    color: #fff;
-    font-size: 1.1rem;
-}
-
-.search-results-header p {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 0.9rem;
-}
-
-.search-result-card {
-    background: #2d2d2d;
-    border-radius: 8px;
-    padding: 1rem;
-    border: 1px solid #444;
-    transition: all 0.3s ease;
-}
-
-.search-result-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.search-result-card.existing {
-    border-left: 4px solid #4caf50;
-}
-
-.search-result-card.imvdb {
-    border-left: 4px solid #2196f3;
-}
-
-.search-result-card .imvdb-linked {
-    color: #4caf50;
-    font-size: 0.8rem;
-    margin: 0.25rem 0;
-}
-
-.search-result-card .no-imvdb {
-    color: #ff9800;
-    font-size: 0.8rem;
-    margin: 0.25rem 0;
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
     .search-header {
@@ -4322,11 +4246,6 @@ body {
 
 .header-stat.auto-download {
     background-color: #007bff;
-    color: white;
-}
-
-.header-stat.has-imvdb {
-    background-color: #fd7e14;
     color: white;
 }
 
