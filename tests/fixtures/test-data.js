@@ -22,19 +22,16 @@ const testUsers = {
 const testArtists = {
   taylorSwift: {
     name: 'Taylor Swift',
-    imvdb_id: 'test_taylor_swift',
     genres: ['Pop', 'Country'],
     auto_download: true
   },
   beatles: {
     name: 'The Beatles',
-    imvdb_id: 'test_beatles',
     genres: ['Rock', 'Pop'],
     auto_download: false
   },
   eminem: {
     name: 'Eminem',
-    imvdb_id: 'test_eminem',
     genres: ['Hip-Hop', 'Rap'],
     auto_download: true
   }
@@ -46,22 +43,19 @@ const testVideos = {
     title: 'Bad Blood',
     artist: 'Taylor Swift',
     year: 2015,
-    url: 'https://youtube.com/watch?v=QcIy9NiNbmo',
-    imvdb_id: 'test_bad_blood'
+    url: 'https://youtube.com/watch?v=QcIy9NiNbmo'
   },
   heyJude: {
     title: 'Hey Jude',
     artist: 'The Beatles',
     year: 1968,
-    url: 'https://youtube.com/watch?v=A_MjCqQoLLA',
-    imvdb_id: 'test_hey_jude'
+    url: 'https://youtube.com/watch?v=A_MjCqQoLLA'
   },
   loseYourself: {
     title: 'Lose Yourself',
     artist: 'Eminem',
     year: 2002,
-    url: 'https://youtube.com/watch?v=_Yhyp-_hX2s',
-    imvdb_id: 'test_lose_yourself'
+    url: 'https://youtube.com/watch?v=_Yhyp-_hX2s'
   }
 };
 
@@ -81,46 +75,6 @@ const testPlaylists = {
 
 // Mock API responses
 const mockResponses = {
-  imvdbArtistSearch: {
-    success: true,
-    results: [
-      {
-        id: 'mock_artist_1',
-        name: 'Test Artist 1',
-        thumbnail: 'https://example.com/thumb1.jpg',
-        video_count: 15
-      },
-      {
-        id: 'mock_artist_2', 
-        name: 'Test Artist 2',
-        thumbnail: 'https://example.com/thumb2.jpg',
-        video_count: 8
-      }
-    ],
-    total: 2
-  },
-  
-  imvdbVideoSearch: {
-    success: true,
-    results: [
-      {
-        id: 'mock_video_1',
-        title: 'Test Video 1',
-        artist: 'Test Artist',
-        year: 2023,
-        thumbnail: 'https://example.com/video1.jpg'
-      },
-      {
-        id: 'mock_video_2',
-        title: 'Test Video 2', 
-        artist: 'Test Artist',
-        year: 2023,
-        thumbnail: 'https://example.com/video2.jpg'
-      }
-    ],
-    total: 2
-  },
-
   dashboardStats: {
     artists_count: 25,
     videos_count: 150,

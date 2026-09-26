@@ -93,10 +93,10 @@ Test data is managed in `fixtures/test-data.js`:
 testUsers.user = { username: 'testuser', password: 'testpass' }
 
 // Test artists  
-testArtists.taylorSwift = { name: 'Taylor Swift', imvdb_id: 'test_taylor_swift' }
+testArtists.taylorSwift = { name: 'Taylor Swift', genres: ['Pop', 'Country'] }
 
 // Mock API responses for isolated testing
-mockResponses.imvdbArtistSearch = { success: true, results: [...] }
+mockResponses.dashboardStats = { artists_count: 25, videos_count: 150, ... }
 ```
 
 ## Helper Functions

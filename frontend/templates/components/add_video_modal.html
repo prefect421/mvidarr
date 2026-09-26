@@ -462,12 +462,9 @@ function searchForVideos() {
     resultsDiv.style.display = 'block';
     resultsList.innerHTML = '<div class="loading">🔍 Searching for videos...</div>';
     
-    // Search both IMVDb and YouTube
-    Promise.all([
-        searchIMVDb(searchQuery, artistName, songTitle),
-        searchYouTube(searchQuery, artistName, songTitle)
-    ]).then(([imvdbResults, youtubeResults]) => {
-        displayModalSearchResults([...imvdbResults, ...youtubeResults]);
+    // Search YouTube
+    searchYouTube(searchQuery, artistName, songTitle).then(youtubeResults => {
+        displayModalSearchResults(youtubeResults);
     }).catch(error => {
         console.error('❌ Error searching for videos:', error);
         resultsList.innerHTML = '<div class="error">❌ Error searching for videos. Please try again.</div>';
@@ -475,85 +472,6 @@ function searchForVideos() {
 }
 
 // Search Provider Functions
-async function searchIMVDb(searchQuery, artistName, songTitle) {
-    try {
-        
-        let imvdbArtistId = null;
-        if (artistName) {
-            const artistUrl = `/api/imvdb/search-artist?q=${encodeURIComponent(artistName)}`;
-            const artistResponse = await fetch(artistUrl);
-            
-            if (artistResponse.ok) {
-                const artistData = await artistResponse.json();
-                if (artistData.results && artistData.results.length > 0) {
-                    imvdbArtistId = artistData.results[0].id;
-                }
-            }
-        }
-        
-        // Search for videos
-        let videoUrl;
-        if (imvdbArtistId) {
-            videoUrl = `/api/imvdb/search-videos?artist_id=${imvdbArtistId}&q=${encodeURIComponent(songTitle)}`;
-        } else {
-            videoUrl = `/api/imvdb/search-videos?q=${encodeURIComponent(searchQuery)}`;
-        }
-        
-        const videoResponse = await fetch(videoUrl);
-        if (!videoResponse.ok) {
-            console.warn('⚠️ IMVDb search failed:', await videoResponse.text());
-            return [];
-        }
-        
-        const videoData = await videoResponse.json();
-        const videos = videoData.results || [];
-        console.log('🎬 IMVDb videos array:', videos);
-        
-        return videos.map(video => {
-            // IMVDb has nested structure: video.artists[0].name for artist name
-            // and video.image.o for original thumbnail, video.image.thumbnail for smaller
-            let artistName = 'Unknown Artist';
-            if (video.artists && video.artists.length > 0) {
-                artistName = video.artists[0].name;
-            } else if (video.artist_name) {
-                artistName = video.artist_name;
-            } else if (video.artist) {
-                artistName = video.artist;
-            }
-            
-            // IMVDb thumbnail structure: video.image.o (original) or video.image.thumbnail
-            let thumbnailUrl = '';
-            if (video.image) {
-                thumbnailUrl = video.image.o || video.image.thumbnail || video.image.url || '';
-            } else if (video.thumbnail) {
-                thumbnailUrl = video.thumbnail;
-            }
-            
-            console.log('🎬 IMVDb video processed:', {
-                id: video.id,
-                title: video.song_title || video.title,
-                artist: artistName,
-                thumbnail: thumbnailUrl,
-                rawVideo: video
-            });
-            
-            return {
-                id: video.id,
-                title: video.song_title || video.title,
-                artist: artistName,
-                source: 'IMVDb',
-                sourceIcon: '🎬',
-                thumbnail: thumbnailUrl,
-                year: video.year,
-                url: video.permalink || video.url || ''
-            };
-        });
-    } catch (error) {
-        console.error('❌ IMVDb search error:', error);
-        return [];
-    }
-}
-
 async function searchYouTube(searchQuery, artistName, songTitle) {
     try {
         console.log('📺 Searching YouTube...', { searchQuery, artistName, songTitle });
@@ -703,16 +621,8 @@ async function addVideoToLibrary(source, videoId, title, artist, url) {
         console.log('🔧 addVideoToLibrary called with:', {source, videoId, title, artist, url});
         
         let endpoint, payload;
-        
-        if (source === 'IMVDb') {
-            endpoint = '/api/videos/import-from-imvdb';
-            payload = {
-                imvdb_id: videoId,
-                artist: artist,
-                title: title,
-                auto_download: true
-            };
-        } else if (source === 'YouTube') {
+
+        if (source === 'YouTube') {
             endpoint = '/api/videos/import-from-youtube';
             payload = {
                 youtube_id: videoId,

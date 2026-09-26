@@ -1403,7 +1403,7 @@
                     <div class="universal-search-more" id="searchMoreSection" style="display: none;">
                         <button class="universal-search-more-button" id="searchMoreButton">
                             <iconify-icon icon="tabler:world-search"></iconify-icon>
-                            <span>Search IMVDb & YouTube for more results</span>
+                            <span>Search YouTube for more results</span>
                         </button>
                     </div>
                 </div>
@@ -2245,19 +2245,16 @@
                         await addVideoToLibrary(source, videoId, title, artist, url);
                     } else {
                         // Fallback to direct API call
-                        const endpoint = source === 'YouTube' ? '/api/videos/import-from-youtube' : '/api/videos/import-from-imvdb';
-                        
-                        const payload = source === 'YouTube' ? {
+                        const endpoint = '/api/videos/import-from-youtube';
+
+                        const payload = {
                             youtube_id: videoId,
                             url: url,
                             title: title,
                             artist: artist,
                             auto_download: true
-                        } : {
-                            imvdb_id: videoId,
-                            auto_download: true
                         };
-                        
+
                         const response = await fetch(endpoint, {
                             method: 'POST',
                             headers: {
@@ -2335,7 +2332,7 @@
                 this.isSearching = true;
                 this.searchMoreButton.innerHTML = `
                     <img src="{{ url_for('static', filename='MVidarr.png') }}" alt="MVidarr" class="spinning mvidarr-logo-spinner" style="width: 24px; height: 24px;">
-                    <span>Searching IMVDb & YouTube...</span>
+                    <span>Searching YouTube...</span>
                 `;
                 this.searchMoreButton.disabled = true;
                 
@@ -2353,9 +2350,9 @@
                     if (data.external && data.external.length > 0) {
                         this.displayExternal(data.external);
                         this.externalSection.style.display = 'block';
-                        showToast(`Found ${data.external.length} additional results from IMVDb & YouTube!`, 'success');
+                        showToast(`Found ${data.external.length} additional results from YouTube!`, 'success');
                     } else {
-                        showToast('No additional results found on IMVDb & YouTube', 'info');
+                        showToast('No additional results found on YouTube', 'info');
                     }
                     
                 } catch (error) {
@@ -2365,7 +2362,7 @@
                     this.isSearching = false;
                     this.searchMoreButton.innerHTML = `
                         <iconify-icon icon="tabler:world-search"></iconify-icon>
-                        <span>Search IMVDb & YouTube for more results</span>
+                        <span>Search YouTube for more results</span>
                     `;
                     this.searchMoreButton.disabled = false;
                 }

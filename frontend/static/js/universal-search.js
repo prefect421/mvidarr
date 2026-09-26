@@ -288,19 +288,16 @@ class UniversalSearch {
                 await addVideoToLibrary(source, videoId, title, artist, url);
             } else {
                 // Fallback to direct API call
-                const endpoint = source === 'YouTube' ? '/api/videos/import-from-youtube' : '/api/videos/import-from-imvdb';
-                
-                const payload = source === 'YouTube' ? {
+                const endpoint = '/api/videos/import-from-youtube';
+
+                const payload = {
                     youtube_id: videoId,
                     url: url,
                     title: title,
                     artist: artist,
                     auto_download: true
-                } : {
-                    imvdb_id: videoId,
-                    auto_download: true
                 };
-                
+
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
