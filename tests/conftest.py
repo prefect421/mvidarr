@@ -6,7 +6,7 @@ Core pytest configuration and shared fixtures for the MVidarr test suite.
 This file provides:
 - Test database setup and teardown
 - Authentication fixtures
-- Mock service fixtures  
+- Mock service fixtures
 - Test configuration management
 - Shared test utilities
 
@@ -93,8 +93,7 @@ def test_db():
     try:
         # Initialize basic SQLite database (since we don't have MySQL schema)
         conn = sqlite3.connect(db_path)
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 username TEXT UNIQUE,
@@ -103,10 +102,8 @@ def test_db():
                 is_admin BOOLEAN DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """
-        )
-        conn.execute(
-            """
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS artists (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
@@ -114,10 +111,8 @@ def test_db():
                 folder_path TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """
-        )
-        conn.execute(
-            """
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS videos (
                 id INTEGER PRIMARY KEY,
                 title TEXT,
@@ -127,8 +122,7 @@ def test_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (artist_id) REFERENCES artists (id)
             )
-        """
-        )
+        """)
         conn.commit()
         conn.close()
 
@@ -328,33 +322,6 @@ def mock_youtube_service():
         "view_count": 1000000,
         "upload_date": "20250812",
     }
-    return mock
-
-
-@pytest.fixture(scope="function")
-def mock_imvdb_service():
-    """
-    Mock IMVDb service fixture.
-    Provides mocked IMVDb API responses.
-    """
-    mock = Mock()
-    mock.search_artist.return_value = [
-        {
-            "id": 12345,
-            "name": "Test Artist",
-            "url": "https://imvdb.com/artist/12345",
-            "video_count": 10,
-        }
-    ]
-    mock.get_artist_videos.return_value = [
-        {
-            "id": 67890,
-            "title": "Test Video",
-            "artist": "Test Artist",
-            "year": 2025,
-            "directors": ["Test Director"],
-        }
-    ]
     return mock
 
 
