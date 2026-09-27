@@ -9,8 +9,8 @@ MVidarr is built with a modern, fully-async **FastAPI** architecture (the earlie
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    External APIs                            │
-│  YouTube │ IMVDb │ Spotify │ Last.fm │ Plex/Jellyfin/Emby   │
-│                    Lidarr │ Discord/Apprise                  │
+│  YouTube │ MusicBrainz │ Spotify │ Last.fm                  │
+│      Plex/Jellyfin/Emby │ Lidarr │ Discord/Apprise          │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
@@ -130,7 +130,7 @@ Services in `src/services/` follow a consistent shape: a class wrapping one area
 
 Representative service groups:
 - **Discovery & downloads**: `video_discovery_service`, `youtube_download_engine`, `ytdlp_download_manager`, `video_quality_service`
-- **Metadata & thumbnails**: `imvdb_discovery_service`, `imvdb_analytics_service`, `thumbnail_service`
+- **Metadata & thumbnails**: `musicbrainz_service`, `metadata_enrichment_service`, `thumbnail_service`
 - **External integrations**: `async_spotify_service`, `spotify_sync_service`, `lastfm_service`, `plex_service`, `jellyfin_service`, `emby_service`
 - **Notifications**: `discord_notification_formatter`, `apprise_notification_service`, `webhook_service`
 - **Auth & security**: `auth_service`, `oauth_service`, `two_factor_service`

@@ -17,7 +17,7 @@ MVidarr is a music video collection and management system built for the home sel
 - Per-artist video-type filtering and monitoring controls
 
 ### 🔍 Video Discovery & Download
-- Dual-source discovery (IMVDb + YouTube)
+- Dual-source discovery (MusicBrainz + YouTube)
 - yt-dlp-based downloading with quality preferences and automatic retry
 - Duplicate detection at the database level
 - Scheduler V2 for automated, prioritized discovery/download runs

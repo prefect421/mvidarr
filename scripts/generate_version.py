@@ -71,7 +71,7 @@ def generate_version_json(output_path: str):
             "🎬 Reliable video import system (no duplicates)",
             "✅ API validation before configuration",
             "📁 Directory validation and auto-configuration",
-            "🔌 IMVDb and YouTube cookie setup",
+            "🔌 MusicBrainz and YouTube cookie setup",
             "📊 Real-time import progress tracking",
             "🚀 Production-ready onboarding experience",
         ],

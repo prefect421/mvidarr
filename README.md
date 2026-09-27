@@ -7,7 +7,7 @@
 ## ✨ Key Features
 
 - **🎯 Advanced Artist Management** - Multi-criteria search and bulk operations
-- **🔍 Comprehensive Video Discovery** - Dual-source integration (IMVDb + YouTube)  
+- **🔍 Comprehensive Video Discovery** - Dual-source integration (MusicBrainz + YouTube)  
 - **🖼️ Advanced Thumbnail Management** - Multi-source search and cropping
 - **📁 Intelligent Organization** - Automatic folder creation and cleanup
 - **🔎 Advanced Search System** - Real-time suggestions and filtering
@@ -171,7 +171,6 @@ MYSQL_ROOT_PASSWORD=secure_root_password
 SECRET_KEY=your-secret-key
 
 # External APIs (optional — can also be set later via the Settings UI)
-IMVDB_API_KEY=your-imvdb-key
 YOUTUBE_API_KEY=your-youtube-key
 
 # Redis auth (optional; Celery/Redis URLs are derived from this automatically)
@@ -225,7 +224,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **yt-dlp** - Video download and processing
-- **IMVDb** - Music video metadata database
+- **MusicBrainz** - Music video metadata database
 - **YouTube API** - Video discovery and streaming
 - **FastAPI** - Web framework
 - **MariaDB** - Database engine

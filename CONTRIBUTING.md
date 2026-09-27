@@ -388,7 +388,7 @@ def discover_videos_for_artist(self, artist_id: int) -> List[Video]:
     """
     Discover new videos for a specific artist.
     
-    This method searches external services (IMVDB, YouTube) to find
+    This method searches external services (MusicBrainz, YouTube) to find
     music videos associated with the given artist. It filters out
     duplicates and videos that already exist in the database.
     
