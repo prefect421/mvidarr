@@ -18,7 +18,6 @@
     padding: 0 5px 5px 5px !important;
 }
 
-/* IMVDb ID management styles */
 .input-group {
     display: flex;
     align-items: center;
@@ -415,36 +414,6 @@
     background: var(--btn-primary-hover, #0056b3);
 }
 
-.imvdb-search-results {
-    max-height: 400px;
-    overflow-y: auto;
-    border-radius: 6px;
-    border: 1px solid var(--border-secondary, #333);
-    background: var(--bg-primary, #1a1a1a);
-}
-
-.imvdb-result-item {
-    padding: 16px;
-    border-bottom: 1px solid var(--border-secondary, #333);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: var(--bg-secondary, #222);
-    margin-bottom: 2px;
-    border-radius: 4px;
-    color: var(--text-secondary, #e0e0e0);
-}
-
-.imvdb-result-item:hover {
-    background: var(--bg-hover, #2a2a2a);
-    border-color: var(--text-accent, #00d4ff);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px var(--accent-shadow, rgba(0, 212, 255, 0.1));
-}
-
-.imvdb-result-item:last-child {
-    border-bottom: none;
-}
-
 .result-info {
     display: flex;
     justify-content: space-between;
@@ -502,7 +471,6 @@
     text-decoration: underline;
 }
 
-/* IMVDb Match Modal Styles */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -515,18 +483,6 @@
     align-items: center;
     z-index: 10000;
     overflow-y: auto;
-}
-
-.imvdb-match-modal {
-    background: var(--bg-secondary, #2a2a2a);
-    border-radius: 10px;
-    max-width: 90%;
-    max-height: 85vh;
-    width: 800px;
-    display: flex;
-    flex-direction: column;
-    margin: 10px;
-    overflow: hidden;
 }
 
 .modal-header {
@@ -565,82 +521,6 @@
     flex: 1;
     overflow-y: auto;
     min-height: 0; /* Allow flexbox to shrink */
-}
-
-.imvdb-matches-table-container {
-    max-height: 60vh;
-    overflow-y: auto;
-    border: 1px solid var(--border-primary, #444);
-    border-radius: 8px;
-    margin-top: 15px;
-    background: var(--bg-secondary, #2a2a2a);
-    box-shadow: 0 4px 8px var(--shadow, rgba(0, 0, 0, 0.3));
-}
-
-.imvdb-matches-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-.imvdb-matches-table th {
-    background: linear-gradient(135deg, var(--bg-tertiary, #444) 0%, var(--bg-quaternary, #555) 100%);
-    color: var(--text-primary, #fff);
-    padding: 14px 12px;
-    text-align: left;
-    font-weight: bold;
-    border-bottom: 2px solid var(--border-secondary, #666);
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.imvdb-matches-table td {
-    padding: 14px 12px;
-    border-bottom: 1px solid var(--border-primary, #444);
-    border-right: 1px solid var(--border-secondary, #3a3a3a);
-    vertical-align: top;
-    background: inherit;
-    color: var(--text-secondary, #ddd);
-}
-
-.imvdb-match-row {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid transparent;
-}
-
-.imvdb-match-row:nth-child(even) {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.imvdb-match-row:hover {
-    background: rgba(0, 212, 255, 0.15) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 212, 255, 0.2);
-}
-
-.imvdb-match-row.high {
-    background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(76, 175, 80, 0.2)) !important;
-    border-left: 5px solid #4CAF50 !important;
-    border-right: 2px solid rgba(76, 175, 80, 0.3) !important;
-}
-
-.imvdb-match-row.medium {
-    background: linear-gradient(135deg, rgba(255, 152, 0, 0.25), rgba(255, 152, 0, 0.15)) !important;
-    border-left: 4px solid #FF9800 !important;
-    border-right: 1px solid rgba(255, 152, 0, 0.3) !important;
-}
-
-.imvdb-match-row.low {
-    background: linear-gradient(135deg, rgba(108, 117, 125, 0.2), rgba(108, 117, 125, 0.1)) !important;
-    border-left: 3px solid #6c757d !important;
-    opacity: 0.85;
 }
 
 .match-confidence {
@@ -702,18 +582,6 @@
     margin: 0 0 8px 0;
     color: var(--text-accent, #00d4ff);
     font-size: 16px;
-}
-
-.imvdb-match-card.high .match-info h4 {
-    color: var(--success, #4CAF50);
-}
-
-.imvdb-match-card.medium .match-info h4 {
-    color: var(--warning, #FF9800);
-}
-
-.imvdb-match-card.low .match-info h4 {
-    color: #adb5bd;
 }
 
 .match-info p {
@@ -793,7 +661,7 @@
     opacity: 0.8;
 }
 
-/* Source badge styles for YouTube and IMVDb videos */
+/* Source badge styles for YouTube videos */
 .source-badge {
     display: inline-block;
     padding: 2px 6px;
@@ -811,19 +679,9 @@
     box-shadow: 0 1px 2px rgba(255, 0, 0, 0.3);
 }
 
-.source-badge.source-imvdb {
-    background: #2196F3;
-    color: white;
-    box-shadow: 0 1px 2px rgba(33, 150, 243, 0.3);
-}
-
 /* Enhanced discovered video card styles for different sources */
 .discovered-video-card.youtube {
     border-left: 4px solid #ff0000;
-}
-
-.discovered-video-card.imvdb {
-    border-left: 4px solid #2196F3;
 }
 
 .modal-footer {
@@ -3036,22 +2894,6 @@ div.artist-header-actions button.btn iconify-icon {
                                 <small class="field-hint">Comma-separated music genres</small>
                             </div>
                             
-                            <div class="setting-group">
-                                <label for="imvdbIdSetting">IMVDb ID:</label>
-                                <div class="input-group">
-                                    <input type="number" id="imvdbIdSetting" name="imvdb_id" placeholder="Enter IMVDb ID or leave empty">
-                                    <button type="button" id="clearImvdbId" class="btn-clear" title="Clear IMVDb ID">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                    <button type="button" id="searchImvdbId" class="btn-search" title="Search for correct IMVDb ID">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-                                </div>
-                                <small class="field-hint">
-                                    Manually enter the correct IMVDb ID, search for it, or clear if incorrect. 
-                                    <a href="https://imvdb.com" target="_blank" rel="noopener">Find ID on IMVDb</a>
-                                </small>
-                            </div>
                         </div>
                     </div>
                     
@@ -3479,7 +3321,7 @@ div.artist-header-actions button.btn iconify-icon {
                             <button onclick="searchAllProviders()" class="btn btn-primary provider-btn">
                                 🔍 Search All Sources
                             </button>
-                            <p class="search-info">Searches IMVDb, Wikipedia, and Google Images</p>
+                            <p class="search-info">Searches Wikipedia and Google Images</p>
                         </div>
                         <div class="search-results" id="searchResults" style="display: none;">
                             <h5>Search Results:</h5>
@@ -3614,27 +3456,6 @@ div.artist-header-actions button.btn iconify-icon {
     </div>
 </div>
 
-<!-- Merge Artists Modal -->
-<div id="mergeArtistModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="hideMergePrompt()">&times;</span>
-        <h2>🔄 Merge Artists Required</h2>
-        <div class="merge-explanation">
-            <p><strong>Duplicate IMVDb ID Detected!</strong></p>
-            <p>The IMVDb ID <span id="conflictImvdbId"></span> is already assigned to another artist. This usually means these artists should be merged.</p>
-        </div>
-        <div class="merge-content">
-            <div class="merge-artists-info" id="mergeArtistsInfo">
-                <!-- Artist info will be populated here -->
-            </div>
-        </div>
-        <div class="modal-actions">
-            <button onclick="proceedWithMerge()" class="btn btn-warning" id="mergeBtn">Merge Artists</button>
-            <button onclick="hideMergePrompt()" class="btn btn-secondary">Cancel</button>
-        </div>
-    </div>
-</div>
-
 <!-- Playlist Selection Modal -->
 <div id="playlistModal" class="modal">
     <div class="modal-content">
@@ -3728,9 +3549,6 @@ function setupEventListeners() {
     const previewCloseBtn = previewModal.querySelector('.close');
     previewCloseBtn.onclick = hideVideoPreviewModal;
     
-    // Merge artist modal
-    const mergeModal = document.getElementById('mergeArtistModal');
-    
     // Playlist modal
     const playlistModal = document.getElementById('playlistModal');
     const playlistCloseBtn = playlistModal.querySelector('.close');
@@ -3748,9 +3566,6 @@ function setupEventListeners() {
         }
         if (event.target === previewModal) {
             hideVideoPreviewModal();
-        }
-        if (event.target === mergeModal) {
-            hideMergePrompt();
         }
         if (event.target === playlistModal) {
             hidePlaylistModal();
@@ -4529,14 +4344,6 @@ function renderExternalServices(artist, metadata) {
             serviceId: artist.lastfm_name || extractLastFmNameFromBiography(artist, metadata) || 'Not Linked'
         },
         {
-            id: 'imvdb',
-            name: 'IMVDb',
-            searchFunction: 'showImvdbIdentifyModal',
-            syncFunction: 'syncFromImvdb',
-            connected: !!artist.imvdb_id,
-            serviceId: artist.imvdb_id
-        },
-        {
             id: 'allmusic',
             name: 'AllMusic',
             searchFunction: 'searchAllMusic',
@@ -4582,11 +4389,6 @@ function renderExternalServices(artist, metadata) {
     
     document.getElementById('externalServicesQuality').className = 'data-quality-badge ' + quality;
     document.getElementById('externalServicesQuality').textContent = `${connectedServices}/${totalServices} Connected`;
-}
-
-function showImvdbIdentifyModal() {
-    // Use the proper search function instead of opening external site
-    searchImvdb();
 }
 
 async function refreshAllMetadataProviders() {
@@ -4790,7 +4592,7 @@ function calculateDataCompleteness(artist) {
     });
     
     // Extended fields (30% weight)
-    const extendedFields = ['formed_year', 'origin_country', 'genres', 'imvdb_id'];
+    const extendedFields = ['formed_year', 'origin_country', 'genres'];
     extendedFields.forEach(field => {
         total += 3;
         if (artist[field] || metadata[field]) score += 3;
@@ -4829,14 +4631,13 @@ function calculateSectionQuality(section, artist, metadata) {
             
         case 'external':
             const externalScore = [
-                artist.imvdb_id,
                 artist.spotify_id,
                 artist.lastfm_name,
                 metadata.allmusic_id || (metadata.imvdb_metadata && metadata.imvdb_metadata.allmusic_id),
                 artist.website_url
             ].filter(Boolean).length;
-            return externalScore >= 4 ? 'excellent' : externalScore >= 3 ? 'good' : externalScore >= 1 ? 'fair' : 'none';
-            
+            return externalScore >= 3 ? 'excellent' : externalScore >= 2 ? 'good' : externalScore >= 1 ? 'fair' : 'none';
+
         default:
             return 'none';
     }
@@ -4891,7 +4692,6 @@ function calculateEnhancedMetadataQuality(artist, metadata) {
     
     // External Links Analysis
     const externalFields = {
-        imvdb_id: { weight: 10, present: !!artist.imvdb_id },
         spotify_id: { weight: 8, present: !!artist.spotify_id },
         lastfm_name: { weight: 6, present: !!artist.lastfm_name },
         allmusic_id: { weight: 5, present: !!(metadata.allmusic_id || (metadata.imvdb_metadata && metadata.imvdb_metadata.allmusic_id)) },
@@ -4971,15 +4771,6 @@ function generateQualityImprovementSuggestions(analysis, artist, metadata) {
     const suggestions = [];
     
     // Priority suggestions based on missing high-impact fields
-    if (!artist.imvdb_id) {
-        suggestions.push({
-            priority: 'high',
-            action: 'Connect to IMVDb',
-            description: 'Link this artist to IMVDb for video discovery and metadata enhancement',
-            benefit: 'Enables automatic video discovery and rich metadata'
-        });
-    }
-    
     if (!artist.spotify_id) {
         suggestions.push({
             priority: 'high',
@@ -5259,7 +5050,6 @@ function cleanMetadataText(text) {
 
 function getSourceIcon(source) {
     const icons = {
-        'IMVDB': 'database',
         'AllMusic': 'music',
         'Spotify': 'brand-spotify',
         'MusicBrainz': 'vinyl',
@@ -5321,7 +5111,7 @@ function showMetadataHistory() {
 
 function renderVideosTab(videos) {
     if (!videos || videos.length === 0) {
-        document.getElementById('videosGrid').innerHTML = '<div class="no-results">No videos found. Try discovering videos from IMVDb.</div>';
+        document.getElementById('videosGrid').innerHTML = '<div class="no-results">No videos found. Try discovering videos from YouTube.</div>';
         return;
     }
     
@@ -5520,65 +5310,28 @@ function renderDiscoverResults(data) {
     
     // Videos
     if (data.discovered_videos && data.discovered_videos.length > 0) {
-        // Debug: Log video data structure to understand IMVDb ID issue
-        const imvdbVideos = data.discovered_videos.filter(v => v.source === 'imvdb').slice(0, 3);
-        const youtubeVideos = data.discovered_videos.filter(v => v.source === 'youtube_search').slice(0, 1);
-        
-        console.log('🔍 DEBUG: First 3 IMVDb videos field analysis:', imvdbVideos.map(v => ({
-            title: v.title,
-            source: v.source,
-            imvdb_id: v.imvdb_id,  // This should be a string
-            id: v.id,              // This is the original number
-            video_id: v.video_id,  // Check if this exists
-            imvdb_id_type: typeof v.imvdb_id,
-            id_type: typeof v.id,
-            original_keys: Object.keys(v)
-        })));
-        
-        // Also log the full objects separately for detailed inspection
-        imvdbVideos.forEach((video, index) => {
-            console.log(`🔍 DEBUG: IMVDb video ${index + 1} complete object:`, video);
-            console.log(`🔍 DEBUG: IMVDb video ${index + 1} ID fields:`, {
-                id: video.id,
-                imvdb_id: video.imvdb_id,
-                has_imvdb_id: 'imvdb_id' in video,
-                imvdb_id_value: video['imvdb_id'],
-                all_video_keys: Object.keys(video)
-            });
-        });
-        
-        console.log('🔍 DEBUG: First YouTube video for comparison:', youtubeVideos.map(v => ({
-            title: v.title,
-            source: v.source,
-            youtube_id: v.youtube_id,
-            imvdb_id: v.imvdb_id,
-            id: v.id
-        })));
-        
         const videosHtml = data.discovered_videos.map(video => `
-            <div class="discovered-video-card enhanced ${video.already_exists ? 'already-exists' : ''} ${video.imported ? 'imported' : ''} ${video.source || 'imvdb'}" 
-                 data-imvdb-id="${video.imvdb_id || ''}" 
+            <div class="discovered-video-card enhanced ${video.already_exists ? 'already-exists' : ''} ${video.imported ? 'imported' : ''} ${video.source || 'youtube'}"
                  data-youtube-id="${video.youtube_id || ''}"
-                 data-source="${video.source || 'imvdb'}"
-                 data-existing="${video.already_exists}" 
+                 data-source="${video.source || 'youtube'}"
+                 data-existing="${video.already_exists}"
                  data-year="${video.year || 0}"
                  data-quality="${getVideoQuality(video)}"
                  data-selectable="${!video.already_exists && !video.imported}">
-                
+
                 ${!video.already_exists && !video.imported ? `
                     <div class="batch-select-overlay">
-                        <input type="checkbox" class="video-batch-select" 
-                               onchange="updateBatchSelection()" 
-                               data-imvdb-id="${video.imvdb_id || ''}"
+                        <input type="checkbox" class="video-batch-select"
+                               onchange="updateBatchSelection()"
                                data-youtube-id="${video.youtube_id || ''}"
-                               data-source="${video.source || 'imvdb'}">
+                               data-source="${video.source || 'youtube'}">
                     </div>
                 ` : ''}
-                
+
                 <div class="discovered-video-thumbnail">
                     <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" data-fallback-src="/static/placeholder-video.png">
                     <div class="video-badges">
-                        <div class="source-badge source-${video.source || 'imvdb'}">${(video.source || 'imvdb').toUpperCase()}</div>
+                        <div class="source-badge source-${video.source || 'youtube'}">${(video.source || 'youtube').toUpperCase()}</div>
                         ${video.already_exists ? `<div class="exists-badge">Exists (${video.existing_status || 'Unknown'})</div>` : ''}
                         ${video.imported ? '<div class="imported-badge">Imported</div>' : ''}
                         <div class="quality-badge quality-${getVideoQuality(video).toLowerCase()}">
@@ -5611,16 +5364,13 @@ function renderDiscoverResults(data) {
                     
                     <div class="discovered-video-actions">
                         ${!video.already_exists && !video.imported ? `
-                            <button onclick="importSingleVideo('${video.youtube_id || video.imvdb_id}', '${video.youtube_id ? 'youtube' : 'imvdb'}', this)" class="btn btn-small btn-primary" data-video-data="${btoa(unescape(encodeURIComponent(JSON.stringify(video))))}" data-debug-source="${video.source || 'imvdb'}" data-debug-youtube="${video.youtube_id || 'none'}" data-debug-imvdb="${video.imvdb_id || 'none'}">🚀 Import</button>
+                            <button onclick="importSingleVideo('${video.youtube_id}', 'youtube', this)" class="btn btn-small btn-primary" data-video-data="${btoa(unescape(encodeURIComponent(JSON.stringify(video))))}" data-debug-source="${video.source || 'youtube'}" data-debug-youtube="${video.youtube_id || 'none'}">🚀 Import</button>
                         ` : ''}
                         ${video.already_exists && video.existing_video_id ? `
                             <button onclick="viewVideoDetails(${video.existing_video_id})" class="btn btn-small btn-info">🔍 View Details</button>
                         ` : ''}
                         ${video.source === 'youtube' && video.youtube_url ? `
                             <button onclick="window.open('${video.youtube_url}', '_blank')" class="btn btn-small btn-secondary">▶️ YouTube</button>
-                        ` : ''}
-                        ${video.source === 'imvdb' && video.imvdb_url ? `
-                            <button onclick="window.open('${video.imvdb_url}', '_blank')" class="btn btn-small btn-secondary">🌐 IMVDb</button>
                         ` : ''}
                     </div>
                 </div>
@@ -6716,17 +6466,17 @@ function bulkUpdateStatus() {
     showStatusUpdateModal();
 }
 
-function importSingleVideo(videoId, source = 'imvdb', buttonElement = null) {
+function importSingleVideo(videoId, source = 'youtube', buttonElement = null) {
     if (!videoId) {
         showError('Invalid video ID');
         return;
     }
-    
+
     if (!currentArtistId) {
         showError('Artist ID not available');
         return;
     }
-    
+
     // Get video data from button element if available
     let videoData = null;
     if (buttonElement && buttonElement.dataset && buttonElement.dataset.videoData) {
@@ -6736,52 +6486,23 @@ function importSingleVideo(videoId, source = 'imvdb', buttonElement = null) {
             console.error('Failed to parse video data:', e);
         }
     }
-    
-    // Auto-detect source based on videoId format if source is incorrect
-    if (videoData) {
-        if (videoData.youtube_id && videoData.youtube_id === videoId) {
-            source = 'youtube';
-        } else if (videoData.imvdb_id && videoData.imvdb_id === videoId) {
-            source = 'imvdb';
-        }
-    }
-    
-    // Additional safeguard: YouTube IDs are typically 11 characters
-    if (videoId && videoId.length === 11 && !videoId.match(/^\d+$/)) {
-        source = 'youtube';
-    }
-    
-    // Debug logging
-    
-    // Debug button attributes
-    if (buttonElement) {
-        console.log('Debug button attributes:', {
-            debugSource: buttonElement.dataset.debugSource,
-            debugYoutube: buttonElement.dataset.debugYoutube,
-            debugImvdb: buttonElement.dataset.debugImvdb
-        });
-    }
-    
+
     // Show loading state
     const importBtn = buttonElement || event.target;
     const originalText = importBtn.textContent;
     importBtn.disabled = true;
     importBtn.textContent = 'Importing...';
-    
-    // Choose the appropriate endpoint based on source
-    const endpoint = source === 'youtube' ? '/api/videos/import-from-youtube' : '/api/videos/import-from-imvdb';
-    const bodyKey = source === 'youtube' ? 'youtube_id' : 'imvdb_id';
-    
-    // Debug logging
-    
+
+    const endpoint = '/api/videos/import-from-youtube';
+
     // Prepare request body
     const requestBody = {
-        [bodyKey]: videoId,
+        youtube_id: videoId,
         artist_id: currentArtistId
     };
-    
-    // For YouTube videos, include additional metadata if available
-    if (source === 'youtube' && videoData) {
+
+    // Include additional metadata if available
+    if (videoData) {
         requestBody.title = videoData.title || `YouTube Video ${videoId}`;
         requestBody.description = videoData.description || '';
         requestBody.thumbnail_url = videoData.thumbnail_url || '';
@@ -6791,8 +6512,8 @@ function importSingleVideo(videoId, source = 'imvdb', buttonElement = null) {
         requestBody.published_at = videoData.published_at;
         requestBody.channel_title = videoData.channel_title || '';
     }
-    
-    
+
+
     fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -7056,8 +6777,7 @@ function populateSettings(artist) {
     document.getElementById('twitterUrlSetting').value = artist.twitter_url || metadata.twitter_url || '';
     document.getElementById('facebookUrlSetting').value = artist.facebook_url || metadata.facebook_url || '';
     document.getElementById('instagramUrlSetting').value = artist.instagram_url || metadata.instagram_url || '';
-    document.getElementById('imvdbIdSetting').value = artist.imvdb_id || '';
-    
+
     // Settings
     document.getElementById('monitoredSetting').checked = artist.monitored || false;
     document.getElementById('autoDownloadSetting').checked = artist.auto_download || false;
@@ -7115,8 +6835,7 @@ function saveArtistSettings() {
         twitter_url: formData.get('twitter_url'),
         facebook_url: formData.get('facebook_url'),
         instagram_url: formData.get('instagram_url'),
-        imvdb_id: formData.get('imvdb_id') || null,
-        
+
         // Settings
         monitored: formData.get('monitored') === 'on',
         auto_download: formData.get('auto_download') === 'on',
@@ -7142,19 +6861,7 @@ function saveArtistSettings() {
         },
         body: JSON.stringify(settings)
     })
-    .then(response => {
-        if (response.ok) {
-            return response.json();
-        } else if (response.status === 409) {
-            // Conflict - handle duplicate IMVDb ID
-            return response.json().then(conflictData => {
-                showMergeDialog(conflictData);
-                throw new Error('Conflict handled'); // Prevent normal error handling
-            });
-        } else {
-            return response.json();
-        }
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
             showSuccess(data.message);
@@ -7165,14 +6872,12 @@ function saveArtistSettings() {
             // Refresh the settings form with saved values
             populateSettings(currentArtistData.artist);
         } else {
-            showError('Error: ' + data.error);
+            showError('Error: ' + (data.error || data.detail));
         }
     })
     .catch(error => {
-        if (error.message !== 'Conflict handled') {
-            console.error('Error saving artist settings:', error);
-            showError('Error saving artist settings');
-        }
+        console.error('Error saving artist settings:', error);
+        showError('Error saving artist settings');
     });
 }
 
@@ -7182,147 +6887,16 @@ function resetSettings() {
     }
 }
 
-// IMVDb ID management functions
-function clearImvdbId() {
-    document.getElementById('imvdbIdSetting').value = '';
-    showInfo('IMVDb ID cleared. Save settings to apply changes.');
-}
-
-function searchImvdbId() {
-    const artistName = (currentArtistData && currentArtistData.name) || document.getElementById('nameSetting').value;
-    
-    if (!artistName) {
-        showError('Artist name is required to search for IMVDb ID');
-        return;
-    }
-    
-    showInfo('Searching for IMVDb ID...');
-    
-    fetch('/api/artists/search/imvdb', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: artistName })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.artists && data.artists.length > 0) {
-            showImvdbSearchResults(data.artists);
-        } else {
-            showError('No IMVDb artists found for "' + artistName + '"');
-        }
-    })
-    .catch(error => {
-        console.error('Error searching IMVDb:', error);
-        showError('Error searching for IMVDb ID');
-    });
-}
-
-function showImvdbSearchResults(artists) {
-    // Create modal with search results
-    const modal = document.createElement('div');
-    modal.className = 'modal active';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Select Correct IMVDb Artist</h3>
-                <button type="button" class="modal-close" onclick="closeModal(this)">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="imvdb-search-results">
-                    ${artists.map((artist, index) => `
-                        <div class="imvdb-result-item" onclick="selectImvdbId('${artist.id}', '${artist.name || 'Unknown Artist'}')">
-                            <div class="result-info">
-                                <strong>${artist.name || 'Unknown Artist'}</strong>
-                                <span class="result-id">ID: ${artist.id}</span>
-                            </div>
-                            ${artist.description ? `<div class="result-description">${artist.description}</div>` : ''}
-                            <div class="result-meta">
-                                <span class="result-number">#${index + 1}</span>
-                                ${artist.url ? `<a href="${artist.url}" target="_blank" rel="noopener" class="result-link" onclick="event.stopPropagation()">View on IMVDb</a>` : ''}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal(this)">Cancel</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-}
-
-function selectImvdbId(imvdbId, artistName) {
-    document.getElementById('imvdbIdSetting').value = imvdbId;
-    showSuccess(`Selected IMVDb ID ${imvdbId} for "${artistName}". Save settings to apply changes.`);
-    
-    // Close the modal
-    const modal = document.querySelector('.modal.active');
-    if (modal) {
-        modal.remove();
-    }
-}
-
-function closeModal(button) {
-    const modal = button.closest('.modal');
-    if (modal) {
-        modal.remove();
-    }
-}
-
 // Enhanced metadata editing functions
 // switchMetadataTab function removed - no longer needed for single-page design
-
-function importFromImvdb() {
-    if (!currentArtistId || !(currentArtistData && currentArtistData.imvdb_id)) {
-        showError('No IMVDb ID found for this artist');
-        return;
-    }
-    
-    if (!confirm('Import metadata from IMVDb? This will overwrite existing data.')) {
-        return;
-    }
-    
-    const btn = event.target;
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = '📥 Importing...';
-    
-    fetch(`/api/artists/${currentArtistId}/import-metadata`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess('Metadata imported successfully from IMVDb');
-            currentArtistData = { ...currentArtistData, artist: data.artist };
-            populateSettings(currentArtistData.artist);
-        } else {
-            showError('Failed to import metadata: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Import error:', error);
-        showError('Failed to import metadata from IMVDb');
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.textContent = originalText;
-    });
-}
-
 
 async function enrichMetadataAllSources(event) {
     if (!currentArtistId) {
         showError('No artist selected');
         return;
     }
-    
-    if (!confirm('Enrich metadata from all available sources (IMVDb, AllMusic, MusicBrainz, Last.fm, Spotify)? This will complement existing data with information from multiple providers.')) {
+
+    if (!confirm('Enrich metadata from all available sources (AllMusic, MusicBrainz, Last.fm, Spotify)? This will complement existing data with information from multiple providers.')) {
         return;
     }
     
@@ -7402,7 +6976,6 @@ function showEnrichmentProgressModal() {
                         <div class="progress-text" id="enrichmentProgressText">Initializing...</div>
                     </div>
                     <div class="sources-progress" id="sourcesProgress">
-                        <div class="source-item" data-source="IMVDb"><iconify-icon icon="tabler:database"></iconify-icon> IMVDb</div>
                         <div class="source-item" data-source="AllMusic"><iconify-icon icon="tabler:music"></iconify-icon> AllMusic</div>
                         <div class="source-item" data-source="MusicBrainz"><iconify-icon icon="tabler:vinyl"></iconify-icon> MusicBrainz</div>
                         <div class="source-item" data-source="Last.fm"><iconify-icon icon="tabler:brand-lastfm"></iconify-icon> Last.fm</div>
@@ -7424,7 +6997,7 @@ function updateEnrichmentProgress(current, total, message) {
     if (progressText) progressText.textContent = message;
     
     // Update source indicators
-    const sources = ['IMVDb', 'AllMusic', 'MusicBrainz', 'Last.fm', 'Spotify'];
+    const sources = ['AllMusic', 'MusicBrainz', 'Last.fm', 'Spotify'];
     if (current <= sources.length) {
         const sourceElement = document.querySelector(`[data-source="${sources[current - 1]}"]`);
         if (sourceElement) {
@@ -7443,8 +7016,7 @@ function hideEnrichmentProgressModal() {
 function getSourceIcon(source) {
     const icons = {
         'lastfm': 'brand-lastfm',
-        'spotify': 'brand-spotify', 
-        'imvdb': 'database',
+        'spotify': 'brand-spotify',
         'musicbrainz': 'vinyl',
         'allmusic': 'music',
         'wikipedia': 'book'
@@ -8329,355 +7901,6 @@ function updateThumbnailPreview(thumbnailUrl) {
     }
 }
 
-function updateMetadataFromImvdb() {
-    toastConfirm('Search for IMVDb matches? This will show you potential matches to choose from.', () => {
-        searchImvdbMatches();
-    });
-}
-
-function searchImvdbMatches() {
-    const updateBtn = document.querySelector('button[onclick="updateMetadataFromImvdb()"]');
-    const statusDiv = document.getElementById('metadataStatus');
-    
-    if (updateBtn) {
-        updateBtn.disabled = true;
-        updateBtn.textContent = 'Searching...';
-    }
-    
-    if (statusDiv) {
-        statusDiv.innerHTML = '<div class="loading-placeholder">Searching for matches...</div>';
-    }
-    
-    fetch(`/api/artists/${currentArtistId}/metadata/search`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => {
-        console.log('API Response status:', response.status);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.text().then(text => {
-            console.log('Raw API response:', text);
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                console.error('JSON parse error:', e);
-                console.error('Response text:', text);
-                throw new Error('Invalid JSON response from server');
-            }
-        });
-    })
-    .then(data => {
-        if (data.error) {
-            showError(data.message || data.error);
-            if (statusDiv) {
-                statusDiv.innerHTML = `<div class="error-message">${data.message || data.error}</div>`;
-            }
-        } else if (data.matches && data.matches.length > 0) {
-            showImvdbMatchModal(data.matches);
-            if (statusDiv) {
-                statusDiv.innerHTML = `<div class="info-message">Found ${data.matches.length} potential matches</div>`;
-            }
-        } else {
-            showWarning('No matches found on IMVDb');
-            if (statusDiv) {
-                statusDiv.innerHTML = '<div class="error-message">No matches found</div>';
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error searching IMVDb matches:', error);
-        
-        // Provide user-friendly error messages
-        let userMessage = 'Artist not found on IMVDb';
-        let statusMessage = 'Artist not found on IMVDb';
-        
-        // Check for specific error types
-        if (error.message && error.message.includes('404')) {
-            userMessage = 'Artist not found on IMVDb';
-            statusMessage = 'Artist not found on IMVDb';
-        } else if (error.message && error.message.includes('400')) {
-            userMessage = 'Artist not found on IMVDb';
-            statusMessage = 'Artist not found on IMVDb';
-        } else if (error.message && error.message.includes('401')) {
-            userMessage = 'IMVDb API key not configured. Please check Settings > External Services';
-            statusMessage = 'API key required';
-        } else if (error.message && error.message.includes('403')) {
-            userMessage = 'IMVDb API access denied. Please check your API key';
-            statusMessage = 'API access denied';
-        } else if (error.message && error.message.includes('429')) {
-            userMessage = 'IMVDb rate limit exceeded. Please try again later';
-            statusMessage = 'Rate limit exceeded';
-        } else if (error.message && (error.message.includes('network') || error.message.includes('Connection'))) {
-            userMessage = 'Network error. Please check your internet connection';
-            statusMessage = 'Network error';
-        } else if (error.message && error.message.includes('timeout')) {
-            userMessage = 'Request timed out. Please try again';
-            statusMessage = 'Request timed out';
-        }
-        
-        showWarning(userMessage);
-        if (statusDiv) {
-            statusDiv.innerHTML = `<div class="warning-message">${statusMessage}</div>`;
-        }
-    })
-    .finally(() => {
-        if (updateBtn) {
-            updateBtn.disabled = false;
-            updateBtn.textContent = 'Update from IMVDb';
-        }
-    });
-}
-
-function showImvdbMatchModal(matches) {
-    // Remove any existing IMVDb modal first
-    const existingModal = document.getElementById('imvdbSearchModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    console.log(`Creating modal with ${matches.length} matches`);
-    
-    // Create a modal with proper background styling
-    const modal = document.createElement('div');
-    modal.id = 'imvdbSearchModal';
-    
-    // Use solid colors with CSS variable fallbacks for proper background
-    modal.setAttribute('style', `
-        position: fixed !important;
-        top: 50px !important;
-        left: 50px !important;
-        right: 50px !important;
-        bottom: 50px !important;
-        background: #2a2a2a !important;
-        border: 3px solid #444 !important;
-        border-radius: 10px !important;
-        z-index: 999999 !important;
-        padding: 20px !important;
-        overflow: auto !important;
-        box-shadow: 0 0 50px rgba(0, 0, 0, 0.8) !important;
-        display: block !important;
-        color: #fff !important;
-    `);
-    
-    // Create HTML content with solid background colors
-    modal.innerHTML = `
-        <div style="margin-bottom: 20px; border-bottom: 2px solid #444; padding-bottom: 10px;">
-            <h2 style="margin: 0; color: #fff;">🎵 Select IMVDb Match</h2>
-            <button onclick="closeImvdbMatchModal()" style="position: absolute; top: 15px; right: 20px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 18px;" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">&times;</button>
-        </div>
-        <div style="margin-bottom: 20px;">
-            <p style="color: #fff;"><strong>Select the correct match for "${(currentArtistData && currentArtistData.name) || 'this artist'}" (${matches.length} results found):</strong></p>
-        </div>
-        <div style="max-height: 400px; overflow-y: auto; border: 1px solid #444; border-radius: 5px; background: #333;">
-            ${matches.map(match => `
-                <div onclick="selectImvdbMatch(${match.id})" style="padding: 15px; border-bottom: 1px solid #444; cursor: pointer; background: #3a3a3a; margin: 2px; border-radius: 3px; color: #fff;" onmouseover="this.style.background='#4a4a4a'" onmouseout="this.style.background='#3a3a3a'">
-                    <div style="font-weight: bold; font-size: 16px; color: #00d4ff; margin-bottom: 5px;">
-                        ${match.name || 'Unknown Artist'}
-                        <span style="background: ${match.confidence === 'high' ? '#28a745' : '#ffc107'}; color: ${match.confidence === 'high' ? 'white' : 'black'}; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 10px;">
-                            ${match.confidence}
-                        </span>
-                    </div>
-                    <div style="font-size: 14px; color: #ccc;">
-                        ${match.origin ? `📍 ${match.origin}` : ''} 
-                        ${match.genres && match.genres.length ? `🎵 ${match.genres.join(', ')}` : ''}
-                        ${match.birth_date ? `📅 ${match.birth_date}` : ''}
-                    </div>
-                    ${match.bio ? `<div style="font-size: 12px; color: #999; margin-top: 5px;">${match.bio.substring(0, 100)}...</div>` : ''}
-                </div>
-            `).join('')}
-        </div>
-        <div style="margin-top: 20px; text-align: right;">
-            <button onclick="closeImvdbMatchModal()" style="background: #6c757d; color: #fff; border: 1px solid #5a6268; padding: 10px 20px; border-radius: 5px; cursor: pointer;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">Cancel</button>
-        </div>
-    `;
-    
-    // Add modal to DOM
-    document.body.appendChild(modal);
-    
-    console.log('IMVDb modal created and displayed with proper background');
-}
-
-function closeImvdbMatchModal() {
-    const modal = document.getElementById('imvdbSearchModal');
-    if (modal) {
-        console.log('Closing modal:', modal);
-        modal.remove();
-    } else {
-        console.log('Modal not found for closing');
-    }
-}
-
-function selectImvdbMatch(imvdbId) {
-    const modal = document.querySelector('.modal-overlay');
-    if (modal) {
-        modal.remove();
-    }
-    
-    // Update metadata using the selected match
-    updateMetadataFromMatch(imvdbId);
-}
-
-function updateMetadataFromMatch(imvdbId) {
-    const updateBtn = document.querySelector('button[onclick="updateMetadataFromImvdb()"]');
-    const statusDiv = document.getElementById('metadataStatus');
-    
-    if (updateBtn) {
-        updateBtn.disabled = true;
-        updateBtn.textContent = 'Updating...';
-    }
-    
-    if (statusDiv) {
-        statusDiv.innerHTML = '<div class="loading-placeholder">Updating metadata...</div>';
-    }
-    
-    fetch(`/api/artists/${currentArtistId}/metadata/update-from-match`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            imvdb_id: imvdbId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess(data.message);
-            
-            // Show updated fields
-            if (data.updated_fields && data.updated_fields.length > 0) {
-                const fieldsText = data.updated_fields.join(', ');
-                statusDiv.innerHTML = `<div class="success-message">Successfully updated: ${fieldsText}</div>`;
-            } else {
-                statusDiv.innerHTML = '<div class="info-message">No updates needed - metadata is already current</div>';
-            }
-            
-            // Update artist data and refresh UI
-            if (data.artist_data) {
-                currentArtistData = { ...currentArtistData, artist: data.artist_data };
-                populateSettings(currentArtistData.artist);
-                
-                // Update thumbnail if it was changed
-                if (data.updated_fields.includes('thumbnail')) {
-                    updateThumbnailPreview(data.artist_data.thumbnail_url);
-                }
-            }
-        } else {
-            showError('Error: ' + data.error);
-            if (statusDiv) {
-                statusDiv.innerHTML = `<div class="error-message">Update failed: ${data.error}</div>`;
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error updating metadata:', error);
-        let errorMessage = 'Error updating metadata from IMVDb';
-        if (error.message) {
-            errorMessage += ': ' + error.message;
-        }
-        showError(errorMessage);
-        if (statusDiv) {
-            statusDiv.innerHTML = `<div class="error-message">Update failed: ${error.message || 'Unknown error'}</div>`;
-        }
-    })
-    .finally(() => {
-        if (updateBtn) {
-            updateBtn.disabled = false;
-            updateBtn.textContent = 'Update from IMVDb';
-        }
-    });
-}
-
-function proceedUpdateMetadata() {
-    console.log('proceedUpdateMetadata called'); // Debug log
-    
-    const updateBtn = document.querySelector('button[onclick="updateMetadataFromImvdb()"]');
-    const statusDiv = document.getElementById('metadataStatus');
-    let loadingDiv = null; // Declare at function scope for .finally() access
-    
-    
-    if (statusDiv) {
-        loadingDiv = statusDiv.querySelector('.loading-placeholder');
-        
-        // Fallback: create loading indicator if it doesn't exist
-        if (!loadingDiv) {
-            loadingDiv = document.createElement('div');
-            loadingDiv.className = 'loading-placeholder';
-            loadingDiv.textContent = 'Updating metadata...';
-            loadingDiv.style.display = 'none';
-            statusDiv.appendChild(loadingDiv);
-        }
-    }
-    
-    if (updateBtn) {
-        updateBtn.disabled = true;
-        updateBtn.textContent = 'Updating...';
-    }
-    
-    if (loadingDiv) {
-        loadingDiv.style.display = 'block';
-    }
-    
-    fetch(`/api/artists/${currentArtistId}/metadata/update`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess(data.message);
-            
-            // Show updated fields
-            if (data.updated_fields && data.updated_fields.length > 0) {
-                const fieldsText = data.updated_fields.join(', ');
-                statusDiv.innerHTML = `<div class="success-message">Successfully updated: ${fieldsText}</div>`;
-            } else {
-                statusDiv.innerHTML = '<div class="info-message">No updates needed - metadata is already current</div>';
-            }
-            
-            // Update thumbnail preview if thumbnail was updated
-            if (data.updated_fields.includes('thumbnail')) {
-                updateThumbnailPreview(data.artist.thumbnail_url);
-            }
-            
-            // Refresh artist details to show updated metadata
-            loadArtistDetails();
-        } else {
-            // Handle duplicate IMVDb ID error specially
-            if (data.error === 'duplicate_imvdb_id') {
-                showMergePrompt(data);
-            } else {
-                showError('Error: ' + data.error);
-                statusDiv.innerHTML = `<div class="error-message">Update failed: ${data.error}</div>`;
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error updating metadata:', error);
-        let errorMessage = 'Error updating metadata from IMVDb';
-        if (error.message) {
-            errorMessage += ': ' + error.message;
-        }
-        showError(errorMessage);
-        statusDiv.innerHTML = `<div class="error-message">Update failed: ${error.message || 'Unknown error'}</div>`;
-    })
-    .finally(() => {
-        if (updateBtn) {
-            updateBtn.disabled = false;
-            updateBtn.textContent = 'Update from IMVDb';
-        }
-        if (loadingDiv) {
-            loadingDiv.style.display = 'none';
-        }
-    });
-}
-
 // Simple Artist Deletion
 function confirmDeleteArtist() {
     if (!currentArtistId || !currentArtistData) {
@@ -8885,104 +8108,6 @@ function cancelDeletion() {
     document.getElementById('confirmDeleteBtn').disabled = true;
 }
 
-
-// Merge Artists Functions
-let mergeConflictData = null;
-
-function showMergePrompt(conflictData) {
-    mergeConflictData = conflictData;
-    
-    // Populate the conflict info
-    document.getElementById('conflictImvdbId').textContent = conflictData.imvdb_id;
-    
-    // Show artist information
-    const mergeInfoHtml = `
-        <div class="merge-artists-comparison">
-            <div class="merge-artist-card current">
-                <h4>Current Artist (Will be kept)</h4>
-                <div class="artist-info">
-                    <p><strong>Name:</strong> ${conflictData.current_artist.name}</p>
-                    <p><strong>ID:</strong> ${conflictData.current_artist.id}</p>
-                    <p><strong>Status:</strong> This artist's metadata update was blocked</p>
-                </div>
-            </div>
-            
-            <div class="merge-arrow">→</div>
-            
-            <div class="merge-artist-card conflicting">
-                <h4>Conflicting Artist (Will be merged into current)</h4>
-                <div class="artist-info">
-                    <p><strong>Name:</strong> ${conflictData.conflicting_artist.name}</p>
-                    <p><strong>ID:</strong> ${conflictData.conflicting_artist.id}</p>
-                    <p><strong>IMVDb ID:</strong> ${conflictData.imvdb_id}</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="merge-explanation-details">
-            <h4>What will happen:</h4>
-            <ul>
-                <li>All videos from "${conflictData.conflicting_artist.name}" will be transferred to "${conflictData.current_artist.name}"</li>
-                <li>All downloads will be transferred</li>
-                <li>Settings and metadata will be merged (best values kept)</li>
-                <li>"${conflictData.conflicting_artist.name}" will be deleted</li>
-                <li>The metadata update for "${conflictData.current_artist.name}" will complete</li>
-            </ul>
-            <p class="merge-warning"><strong>⚠️ This action cannot be undone!</strong></p>
-        </div>
-    `;
-    
-    document.getElementById('mergeArtistsInfo').innerHTML = mergeInfoHtml;
-    document.getElementById('mergeArtistModal').style.display = 'block';
-}
-
-function hideMergePrompt() {
-    document.getElementById('mergeArtistModal').style.display = 'none';
-    mergeConflictData = null;
-}
-
-function proceedWithMerge() {
-    if (!mergeConflictData) {
-        showError('No merge data available');
-        return;
-    }
-    
-    const mergeBtn = document.getElementById('mergeBtn');
-    mergeBtn.disabled = true;
-    mergeBtn.textContent = 'Merging...';
-    
-    // Perform the merge: merge conflicting artist into current artist
-    fetch('/api/artists/merge', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            primary_artist_id: mergeConflictData.current_artist.id,
-            secondary_artist_ids: [mergeConflictData.conflicting_artist.id]
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess(`Artists merged successfully! Merged "${mergeConflictData.conflicting_artist.name}" into "${mergeConflictData.current_artist.name}"`);
-            hideMergePrompt();
-            
-            // Now retry the metadata update
-            updateMetadataFromImvdb();
-        } else {
-            showError('Merge failed: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error merging artists:', error);
-        showError('Error merging artists: ' + error.message);
-    })
-    .finally(() => {
-        mergeBtn.disabled = false;
-        mergeBtn.textContent = 'Merge Artists';
-    });
-}
 
 // Artist Navigation Functions
 function loadArtistNavigation() {
@@ -9562,19 +8687,15 @@ function updateBatchSelection() {
     
     checkboxes.forEach(checkbox => {
         if (checkbox.checked) {
-            // Store both ID and source type for proper routing
             const youtubeId = checkbox.dataset.youtubeId;
-            const imvdbId = checkbox.dataset.imvdbId;
-            const source = youtubeId && youtubeId !== '' ? 'youtube' : 'imvdb';
-            const videoId = youtubeId || imvdbId;
-            
-            console.log('Checkbox checked:', { youtubeId, imvdbId, videoId, source });
-            
-            if (videoId && videoId !== '') {
+
+            console.log('Checkbox checked:', { youtubeId });
+
+            if (youtubeId && youtubeId !== '') {
                 // Store video data as string that we can parse later (Sets don't work well with objects)
                 const videoData = JSON.stringify({
-                    id: videoId,
-                    source: source
+                    id: youtubeId,
+                    source: 'youtube'
                 });
                 selectedForImport.add(videoData);
             }
@@ -9763,59 +8884,36 @@ async function processBatchImport(videoData, options) {
 }
 
 async function importVideoWithOptions(videoId, source, options) {
-    // Choose the correct endpoint and body key based on source
-    const endpoint = source === 'youtube' ? '/api/videos/import-from-youtube' : '/api/videos/import-from-imvdb';
-    const bodyKey = source === 'youtube' ? 'youtube_id' : 'imvdb_id';
-    
+    const endpoint = '/api/videos/import-from-youtube';
+
     console.log(`Importing ${source} video:`, videoId, 'via', endpoint);
-    
+
     // Build request body
     const requestBody = {
-        [bodyKey]: videoId,
+        youtube_id: videoId,
         artist_id: currentArtistId,
         auto_download: options.auto_download,
         skip_existing: options.skip_existing,
         priority: options.high_priority ? 1 : 5
     };
-    
-    // For YouTube imports, include the required URL field and other metadata
-    if (source === 'youtube') {
-        // Find the video data to get the YouTube URL and other details
-        const videoData = discoveredVideosData.find(v => v.youtube_id === videoId);
-        if (videoData && videoData.youtube_url) {
-            requestBody.url = videoData.youtube_url;
-            requestBody.title = videoData.title || `YouTube Video ${videoId}`;
-            requestBody.artist = videoData.channel_title || (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
-        } else {
-            // Fallback: construct URL from YouTube ID
-            requestBody.url = `https://www.youtube.com/watch?v=${videoId}`;
-            requestBody.title = `YouTube Video ${videoId}`;
-            requestBody.artist = (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
-        }
-        console.log(`YouTube import with URL: ${requestBody.url}, title: ${requestBody.title}, artist: ${requestBody.artist}`);
-        
-        // Remove artist_id field since endpoint expects artist name, not ID
-        delete requestBody.artist_id;
+
+    // Find the video data to get the YouTube URL and other details
+    const videoData = discoveredVideosData.find(v => v.youtube_id === videoId);
+    if (videoData && videoData.youtube_url) {
+        requestBody.url = videoData.youtube_url;
+        requestBody.title = videoData.title || `YouTube Video ${videoId}`;
+        requestBody.artist = videoData.channel_title || (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
+    } else {
+        // Fallback: construct URL from YouTube ID
+        requestBody.url = `https://www.youtube.com/watch?v=${videoId}`;
+        requestBody.title = `YouTube Video ${videoId}`;
+        requestBody.artist = (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
     }
-    
-    // For IMVDb imports, include the required title and artist metadata
-    if (source === 'imvdb') {
-        // Find the video data to get IMVDb details
-        const videoData = discoveredVideosData.find(v => v.imvdb_id === videoId);
-        if (videoData) {
-            requestBody.title = videoData.title || videoData.song_title || `IMVDb Video ${videoId}`;
-            requestBody.artist = videoData.artist_name || (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
-        } else {
-            // Fallback
-            requestBody.title = `IMVDb Video ${videoId}`;
-            requestBody.artist = (currentArtistData && currentArtistData.artist && currentArtistData.artist.name) || 'Unknown Artist';
-        }
-        console.log(`IMVDb import with title: ${requestBody.title}, artist: ${requestBody.artist}`);
-        
-        // Remove artist_id field since endpoint expects artist name, not ID
-        delete requestBody.artist_id;
-    }
-    
+    console.log(`YouTube import with URL: ${requestBody.url}, title: ${requestBody.title}, artist: ${requestBody.artist}`);
+
+    // Remove artist_id field since endpoint expects artist name, not ID
+    delete requestBody.artist_id;
+
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -9831,8 +8929,8 @@ function displayBatchImportResults(results) {
     const resultDetails = document.getElementById('resultDetails');
     
     const resultsHtml = results.map(result => {
-        const video = discoveredVideosData.find(v => v.imvdb_id === result.imvdbId);
-        const videoTitle = video ? video.title : `Video ${result.imvdbId}`;
+        const video = discoveredVideosData.find(v => v.youtube_id === result.videoId);
+        const videoTitle = video ? video.title : `Video ${result.videoId}`;
         
         let statusIcon, statusClass;
         switch (result.status) {
@@ -10320,11 +9418,11 @@ function searchAllProviders() {
     const gridDiv = document.getElementById('searchGrid');
 
     resultsDiv.style.display = 'block';
-    gridDiv.innerHTML = '<div class="loading-placeholder">Searching IMVDb, Wikipedia, and Google Images...</div>';
+    gridDiv.innerHTML = '<div class="loading-placeholder">Searching Wikipedia and Google Images...</div>';
 
     // Search all providers simultaneously
     const searchPromises = [
-        // IMVDb and Wikipedia search
+        // Wikipedia search
         fetch(`/api/artists/${currentArtistId}/thumbnail/search`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -10343,7 +9441,7 @@ function searchAllProviders() {
         console.log('Search results:', results); // Debug logging
         const allResults = [];
         
-        // Process IMVDb/Wikipedia/YouTube results
+        // Process Wikipedia results
         if (results[0].status === 'fulfilled' && results[0].value.thumbnails && results[0].value.thumbnails.length > 0) {
             // Current API format returns thumbnails array
             allResults.push(...results[0].value.thumbnails.map(thumb => ({
@@ -10360,7 +9458,7 @@ function searchAllProviders() {
             // Backward compatibility: old API format with single result
             allResults.push({
                 url: results[0].value.thumbnail_url,
-                source: results[0].value.source || 'IMVDb/Wikipedia',
+                source: results[0].value.source || 'Wikipedia',
                 quality: 'high'
             });
             console.log('Added single result:', results[0].value);
@@ -10685,160 +9783,7 @@ document.addEventListener('keydown', function(event) {
         event.preventDefault();
         navigateToNextArtist();
     }
-    
-    // Add event listeners for IMVDb ID controls
-    const clearImvdbBtn = document.getElementById('clearImvdbId');
-    const searchImvdbBtn = document.getElementById('searchImvdbId');
-    
-    if (clearImvdbBtn) {
-        clearImvdbBtn.addEventListener('click', clearImvdbId);
-    }
-    
-    if (searchImvdbBtn) {
-        searchImvdbBtn.addEventListener('click', searchImvdbId);
-    }
 });
-
-// Artist merge dialog function
-function showMergeDialog(conflictData) {
-    const existingArtist = conflictData.existing_artist;
-    const currentArtist = conflictData.current_artist;
-    
-    // Create modal for merge confirmation
-    const modal = document.createElement('div');
-    modal.className = 'modal active';
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header">
-                <h3>IMVDb ID Conflict - Merge Artists?</h3>
-                <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="conflict-warning">
-                    <p><strong>⚠️ IMVDb ID ${existingArtist.imvdb_id} is already assigned to another artist.</strong></p>
-                    <p>You can merge these artists or cancel the operation:</p>
-                </div>
-                
-                <div class="artist-comparison">
-                    <div class="artist-column">
-                        <h4>Current Artist (Will be kept)</h4>
-                        <div class="artist-info">
-                            <strong>Name:</strong> ${currentArtist.name}<br>
-                            <strong>ID:</strong> ${currentArtist.id}<br>
-                            <strong>Videos:</strong> ${currentArtist.video_count || 0}<br>
-                            <strong>Downloads:</strong> ${currentArtist.download_count || 0}
-                        </div>
-                    </div>
-                    
-                    <div class="merge-arrow">→</div>
-                    
-                    <div class="artist-column existing">
-                        <h4>Existing Artist (Will be merged into current)</h4>
-                        <div class="artist-info">
-                            <strong>Name:</strong> ${existingArtist.name}<br>
-                            <strong>ID:</strong> ${existingArtist.id}<br>
-                            <strong>IMVDb ID:</strong> ${existingArtist.imvdb_id}<br>
-                            <strong>Videos:</strong> ${existingArtist.video_count || 0}<br>
-                            <strong>Downloads:</strong> ${existingArtist.download_count || 0}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="merge-details">
-                    <h4>What will happen during the merge:</h4>
-                    <ul>
-                        <li>All videos from "${existingArtist.name}" will be transferred to "${currentArtist.name}"</li>
-                        <li>All downloads will be transferred</li>
-                        <li>The IMVDb ID ${existingArtist.imvdb_id} will be assigned to "${currentArtist.name}"</li>
-                        <li>Artist "${existingArtist.name}" will be deleted</li>
-                        <li>Duplicate video titles will be handled intelligently</li>
-                    </ul>
-                </div>
-                
-                <div class="conflict-options">
-                    <label>
-                        <input type="radio" name="mergeOption" value="merge" checked>
-                        <strong>Merge artists</strong> - Transfer all content and delete duplicate artist
-                    </label>
-                    <br><br>
-                    <label>
-                        <input type="radio" name="mergeOption" value="cancel">
-                        <strong>Cancel</strong> - Don't change IMVDb ID, keep artists separate
-                    </label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancel</button>
-                <button class="btn btn-danger" onclick="executeMerge(${existingArtist.id}, ${currentArtist.id})">
-                    🔀 Merge Artists
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Add CSS for the merge dialog
-    const style = document.createElement('style');
-    style.textContent = `
-        .artist-comparison {
-            display: flex;
-            gap: 20px;
-            margin: 20px 0;
-            align-items: center;
-        }
-        
-        .artist-column {
-            flex: 1;
-            padding: 15px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            background: #f9f9f9;
-        }
-        
-        .artist-column.existing {
-            border-color: #dc3545;
-            background: #fff5f5;
-        }
-        
-        .merge-arrow {
-            font-size: 24px;
-            font-weight: bold;
-            color: #007bff;
-        }
-        
-        .conflict-warning {
-            padding: 15px;
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-        
-        .merge-details {
-            margin: 20px 0;
-            padding: 15px;
-            background: #e7f3ff;
-            border-radius: 6px;
-        }
-        
-        .conflict-options {
-            margin: 20px 0;
-        }
-        
-        .conflict-options label {
-            display: block;
-            margin: 10px 0;
-            cursor: pointer;
-        }
-        
-        .artist-info {
-            font-size: 14px;
-            line-height: 1.5;
-        }
-    `;
-    document.head.appendChild(style);
-}
 
 // Bulk action functions for artist videos - removed duplicate definitions
 // The correct selectAllVideos() and deselectAllVideos() functions are defined earlier in the file
@@ -10982,62 +9927,6 @@ function updateSelectionUI() {
             selectionInfo.style.display = 'none';
         }
     }
-}
-
-
-function executeMerge(sourceArtistId, targetArtistId) {
-    const selectedOption = document.querySelector('input[name="mergeOption"]:checked').value;
-    
-    if (selectedOption !== 'merge') {
-        // User chose to cancel
-        document.querySelector('.modal').remove();
-        showInfo('IMVDb ID update cancelled');
-        return;
-    }
-    
-    // Show loading state
-    const mergeBtn = event.target;
-    const originalText = mergeBtn.textContent;
-    mergeBtn.disabled = true;
-    mergeBtn.textContent = '🔄 Merging...';
-    
-    // Perform the merge
-    fetch('/api/artists/merge', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            source_artist_id: sourceArtistId,
-            target_artist_id: targetArtistId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess(`Successfully merged artists! ${data.transferred_videos} videos and ${data.transferred_downloads} downloads transferred.`);
-            
-            // Close modal and refresh page
-            document.querySelector('.modal').remove();
-            
-            // Update current artist data with the merged data
-            currentArtistData = { ...currentArtistData, artist: data.updated_artist };
-            
-            // Refresh the entire page to show updated data
-            loadArtistDetails();
-            populateSettings(currentArtistData.artist);
-        } else {
-            showError('Merge failed: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error merging artists:', error);
-        showError('Error merging artists: ' + error.message);
-    })
-    .finally(() => {
-        mergeBtn.disabled = false;
-        mergeBtn.textContent = originalText;
-    });
 }
 
 // ===================================================================

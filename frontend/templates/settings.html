@@ -587,10 +587,6 @@ input:checked + .slider:before {
         <div class="settings-section">
             <h2>Core Services</h2>
             <div class="form-group">
-                <label for="imvdb_api_key">IMVDB API Key:</label>
-                <input type="password" id="imvdb_api_key" name="imvdb_api_key">
-            </div>
-            <div class="form-group">
                 <label for="youtube_api_key">YouTube API Key:</label>
                 <input type="password" id="youtube_api_key" name="youtube_api_key">
             </div>
@@ -1412,7 +1408,7 @@ input:checked + .slider:before {
                             <label for="upload-import-type">Import Type:</label>
                             <select id="upload-import-type" style="max-width: 300px;">
                                 <option value="quick">Quick Import (no metadata fetch)</option>
-                                <option value="full">Full Import (with IMVDb metadata)</option>
+                                <option value="full">Full Import (with MusicBrainz metadata)</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -1479,7 +1475,7 @@ input:checked + .slider:before {
                             <label for="server-import-type">Import Type:</label>
                             <select id="server-import-type" style="max-width: 300px;">
                                 <option value="quick">Quick Import (no metadata fetch)</option>
-                                <option value="full">Full Import (with IMVDb metadata)</option>
+                                <option value="full">Full Import (with MusicBrainz metadata)</option>
                             </select>
                         </div>
                         <div class="form-group">

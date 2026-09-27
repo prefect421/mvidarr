@@ -144,12 +144,6 @@ async function loadWizardState() {
 
                 // Pre-populate API fields from config_data (e.g., from environment variables)
                 if (data.config_data.apis) {
-                    const imvdbInput = document.getElementById('imvdbApiKey');
-                    if (imvdbInput && data.config_data.apis.imvdb) {
-                        imvdbInput.value = data.config_data.apis.imvdb;
-                        console.log('✅ Pre-populated IMVDB API key from environment');
-                    }
-
                     // YouTube API key (if we add a field for it later)
                     if (data.config_data.apis.youtube_api_key) {
                         console.log('✅ YouTube API key available from environment');
@@ -444,77 +438,11 @@ async function handleCookieFileUpload(fileInput) {
     }
 }
 
-async function testIMVDb() {
-    const apiKeyInput = document.getElementById('imvdbApiKey');
-    const apiKey = apiKeyInput.value.trim();
-    const testBtn = document.getElementById('testIMVDbBtn');
-    const validationDiv = document.getElementById('imvdbValidation');
-
-    if (!apiKey) {
-        showError('imvdbError', 'Please enter an API key');
-        return;
-    }
-
-    // Clear previous validation
-    clearError('imvdbError');
-    validationDiv.innerHTML = '';
-
-    // Disable button and show loading
-    testBtn.disabled = true;
-    testBtn.innerHTML = '<span class="spinner"></span> Testing...';
-
-    try {
-        const response = await fetch('/api/wizard/test-api', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                api_type: 'imvdb',
-                api_key: apiKey
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            // Show success
-            validationDiv.innerHTML = `
-                <div class="validation-badge success">
-                    <iconify-icon icon="mdi:check-circle"></iconify-icon>
-                    ${data.message}
-                </div>
-            `;
-            wizardState.config.apis.imvdb = apiKey;
-        } else {
-            // Show error
-            validationDiv.innerHTML = `
-                <div class="validation-badge error">
-                    <iconify-icon icon="mdi:alert-circle"></iconify-icon>
-                    ${data.message}
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error('Error testing IMVDb API:', error);
-        validationDiv.innerHTML = `
-            <div class="validation-badge error">
-                <iconify-icon icon="mdi:alert-circle"></iconify-icon>
-                Connection test failed
-            </div>
-        `;
-    } finally {
-        // Re-enable button
-        testBtn.disabled = false;
-        testBtn.innerHTML = '<iconify-icon icon="mdi:test-tube"></iconify-icon> Test Connection';
-    }
-}
-
 async function submitAPIs() {
-    const imvdbKey = document.getElementById('imvdbApiKey').value.trim();
     const youtubeCookies = document.getElementById('youtubeCookies').value.trim();
 
-    // Save API configuration (both optional)
+    // Save API configuration (optional)
     wizardState.config.apis = {
-        imvdb: imvdbKey || null,
         youtube: youtubeCookies || null
     };
 
@@ -717,7 +645,7 @@ async function completeImport() {
 
 function updateCompletionSummary() {
     // Update API summary
-    const hasAPIs = wizardState.config.apis.imvdb || wizardState.config.apis.youtube;
+    const hasAPIs = wizardState.config.apis.youtube;
     if (!hasAPIs) {
         document.getElementById('summaryAPIs').innerHTML = `
             <iconify-icon icon="mdi:information" style="color: var(--wizard-warning);"></iconify-icon>

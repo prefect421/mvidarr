@@ -141,7 +141,7 @@
                             <input type="checkbox" id="comprehensiveEnrichment" checked />
                             <strong>Comprehensive enrichment (all services)</strong>
                         </label>
-                        <p class="option-description">Uses IMVDb, AllMusic, MusicBrainz, Last.fm, and Spotify for complete metadata</p>
+                        <p class="option-description">Uses AllMusic, MusicBrainz, Last.fm, and Spotify for complete metadata</p>
                     </div>
                     <div class="option-group">
                         <label>
@@ -155,7 +155,7 @@
                             <input type="checkbox" id="missingExternalIds" checked />
                             Focus on missing external IDs
                         </label>
-                        <p class="option-description">Prioritizes artists missing Spotify, Last.fm, or IMVDb IDs</p>
+                        <p class="option-description">Prioritizes artists missing Spotify or Last.fm IDs</p>
                     </div>
                     <div class="option-group">
                         <label>
@@ -967,7 +967,7 @@ function renderStats(stats) {
         <div class="stat-card">
             <span class="stat-number">${stats.external_id_coverage?.toFixed(1) || '0.0'}%</span>
             <span class="stat-label">External ID Coverage</span>
-            <div class="stat-description">Spotify, Last.fm, IMVDb</div>
+            <div class="stat-description">Spotify, Last.fm, MusicBrainz</div>
         </div>
     `;
     
@@ -1464,7 +1464,7 @@ async function executeBatchEnrichment() {
         showEnhancedProgressModal();
         
         // Enhanced progress tracking for comprehensive enrichment
-        const services = ['IMVDb', 'AllMusic', 'MusicBrainz', 'Last.fm', 'Spotify'];
+        const services = ['AllMusic', 'MusicBrainz', 'Last.fm', 'Spotify'];
         let currentStep = 0;
         
         const progressInterval = setInterval(() => {
@@ -1596,7 +1596,7 @@ async function enrichSingleArtist(artistId) {
 }
 
 async function runComprehensiveEnrichment() {
-    if (!confirm('Enrich all candidates from all available services (IMVDb, AllMusic, MusicBrainz, Last.fm, Spotify)? This will comprehensively update metadata for all artists needing enrichment.')) {
+    if (!confirm('Enrich all candidates from all available services (AllMusic, MusicBrainz, Last.fm, Spotify)? This will comprehensively update metadata for all artists needing enrichment.')) {
         return;
     }
     
@@ -1614,7 +1614,7 @@ async function runComprehensiveEnrichment() {
             return;
         }
         
-        const services = ['IMVDb', 'AllMusic', 'MusicBrainz', 'Last.fm', 'Spotify'];
+        const services = ['AllMusic', 'MusicBrainz', 'Last.fm', 'Spotify'];
         let currentStep = 0;
         
         // Enhanced progress tracking
@@ -1920,13 +1920,13 @@ async function loadArtistStatsForMerge(artist1Id, artist2Id) {
             document.getElementById('primaryArtistStats').innerHTML = `
                 <div class="stat-item">Videos: ${artist1.statistics?.total_videos || 0}</div>
                 <div class="stat-item">Downloads: ${artist1.statistics?.downloaded_videos || 0}</div>
-                <div class="stat-item">External IDs: ${[artist1.spotify_id, artist1.lastfm_name, artist1.imvdb_id].filter(Boolean).length}/3</div>
+                <div class="stat-item">External IDs: ${[artist1.spotify_id, artist1.lastfm_name].filter(Boolean).length}/2</div>
             `;
             
             document.getElementById('duplicateArtistStats').innerHTML = `
                 <div class="stat-item">Videos: ${artist2.statistics?.total_videos || 0}</div>
                 <div class="stat-item">Downloads: ${artist2.statistics?.downloaded_videos || 0}</div>
-                <div class="stat-item">External IDs: ${[artist2.spotify_id, artist2.lastfm_name, artist2.imvdb_id].filter(Boolean).length}/3</div>
+                <div class="stat-item">External IDs: ${[artist2.spotify_id, artist2.lastfm_name].filter(Boolean).length}/2</div>
             `;
         }
     } catch (error) {

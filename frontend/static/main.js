@@ -1057,53 +1057,6 @@ function closeSpotifyResults() {
     }
 }
 
-async function syncFromImvdb() {
-    const artistId = getCurrentArtistId();
-    if (!artistId) {
-        showError('No artist ID found');
-        return;
-    }
-    
-    showLoading('Syncing from IMVDb...');
-    try {
-        // This would call existing IMVDb sync functionality
-        showInfo('IMVDb sync completed. Use the Discover tab to find new videos.');
-        showSuccess('IMVDb sync completed');
-    } catch (error) {
-        showError('IMVDb sync failed: ' + error.message);
-    }
-}
-
-async function clearImvdbId() {
-    const artistId = getCurrentArtistId();
-    if (!artistId) {
-        showError('No artist ID found');
-        return;
-    }
-    
-    if (!confirm('Are you sure you want to clear the IMVDb ID for this artist?')) {
-        return;
-    }
-    
-    try {
-        const response = await apiRequest(`/api/artists/${artistId}`, {
-            method: 'PUT',
-            body: JSON.stringify({
-                imvdb_id: null
-            })
-        });
-        
-        if (response.success) {
-            showSuccess('IMVDb ID cleared');
-            // Refresh the page to update the display
-            setTimeout(() => window.location.reload(), 1500);
-        } else {
-            showError('Failed to clear IMVDb ID');
-        }
-    } catch (error) {
-        showError('Failed to clear IMVDb ID: ' + error.message);
-    }
-}
 async function searchMusicBrainz() {
     const artistName = document.getElementById('artistNameSetting')?.value || getCurrentArtistName();
     if (!artistName) {
@@ -1391,7 +1344,7 @@ async function autoMatchServices() {
         return;
     }
     
-    if (!confirm(`Auto-match ${artistName} across all connected services? This will attempt to find and link corresponding profiles on IMVDb, MusicBrainz, Spotify, and other services.`)) {
+    if (!confirm(`Auto-match ${artistName} across all connected services? This will attempt to find and link corresponding profiles on MusicBrainz, Spotify, and other services.`)) {
         return;
     }
     
@@ -1650,9 +1603,6 @@ async function linkSelectedResult(service, result) {
             case 'musicbrainz':
                 await linkMusicBrainzResult(artistId, result);
                 break;
-            case 'imvdb':
-                await linkImvdbResult(artistId, result);
-                break;
             default:
                 showWarning(`Linking not implemented for ${service}`);
                 return;
@@ -1727,51 +1677,10 @@ async function linkMusicBrainzResult(artistId, result) {
     return response;
 }
 
-async function linkImvdbResult(artistId, result) {
-    // Update the artist's imvdb_id and metadata
-    const response = await apiRequest(`/api/artists/${artistId}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-            imvdb_id: result.id,
-            imvdb_metadata: result
-        })
-    });
-    return response;
-}
-
 function displayEnrichmentHistory(history) {
     // This would show a modal with enrichment history
     console.log('Enrichment history:', history);
     showInfo(`Found ${history.length} enrichment records`);
-}
-
-async function searchImvdb() {
-    const artistName = getCurrentArtistName();
-    if (!artistName) {
-        showWarning('Please enter an artist name first');
-        return;
-    }
-    
-    showLoading('Searching IMVDb...');
-    try {
-        const response = await apiRequest(`/api/metadata-enrichment/search/imvdb?artist=${encodeURIComponent(artistName)}`);
-        
-        // Handle authentication message
-        if (response.authentication_required && response.message) {
-            showWarning(response.message);
-            return;
-        }
-        
-        displayMetadataSearchResults('imvdb', response.results || []);
-        
-        if (response.results && response.results.length > 0) {
-            showSuccess('IMVDb search completed');
-        } else {
-            showInfo('No IMVDb results found');
-        }
-    } catch (error) {
-        showError('IMVDb search failed: ' + error.message);
-    }
 }
 
 // Settings page metadata service functions
@@ -1779,7 +1688,6 @@ async function testMetadataServices() {
     showLoading('Testing metadata service connections...');
     try {
         const services = [
-            { name: 'IMVDb', endpoint: '/api/video-indexing/imvdb/test' },
             { name: 'Discogs', endpoint: '/api/discogs/test' },
             { name: 'MusicBrainz', endpoint: '/api/musicbrainz/test' },
             { name: 'Spotify', endpoint: '/api/spotify/test', method: 'POST' },
@@ -1974,7 +1882,6 @@ window.MVidarr = {
     searchWikipedia,
     enrichFromWikipedia,
     clearWikipedia,
-    searchImvdb,
     enrichFromAllServices,
     autoMatchServices,
     viewEnrichmentHistory,
@@ -1990,8 +1897,6 @@ window.MVidarr = {
     searchSpotify,
     linkSpotifyArtist,
     syncFromSpotify,
-    syncFromImvdb,
-    clearImvdbId,
     // Background job management
     get backgroundJobManager() {
         return window.backgroundJobs;

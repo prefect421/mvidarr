@@ -236,10 +236,13 @@ class MetadataEnrichmentService:
                     .count()
                 )
 
-                # Calculate overall external ID coverage (average across all services)
+                # Calculate overall external ID coverage (average across all services).
+                # imvdb excluded: it's never populated again (#527), so including it
+                # here would permanently deflate every artist's coverage score by
+                # counting an unfillable field in the denominator.
                 overall_coverage = (
-                    (with_spotify + with_lastfm + with_imvdb + with_musicbrainz)
-                    / (total_artists * 4)  # Updated to include MusicBrainz
+                    (with_spotify + with_lastfm + with_musicbrainz)
+                    / (total_artists * 3)
                     * 100
                     if total_artists > 0
                     else 0

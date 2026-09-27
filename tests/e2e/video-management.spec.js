@@ -14,8 +14,8 @@ test.describe('Video Management', () => {
     await logout(page);
   });
 
-  test('should search for videos using IMVDb', async ({ page }) => {
-    console.log('🧪 Testing: Video search via IMVDb');
+  test('should search for videos', async ({ page }) => {
+    console.log('🧪 Testing: Video search via the Add Video modal');
     
     await page.goto('/');
     
