@@ -260,7 +260,7 @@ app = FastAPI(
         },
         {
             "name": "artists",
-            "description": "Artist management with metadata enrichment, IMVDb integration, and video associations",
+            "description": "Artist management with metadata enrichment, MusicBrainz integration, and video associations",
         },
         {
             "name": "playlists",

@@ -70,22 +70,6 @@ async def gather_all_sources_metadata(
             f"Last.fm integration disabled or not configured, skipping for {artist_data['name']}"
         )
 
-    # IMVDb metadata - DEEMPHASIZED (low priority fallback)
-    # IMVDb is used as a fallback source when primary sources (Spotify, Last.fm) fail
-    if progress_callback:
-        progress_callback(58, "Fetching IMVDb metadata...")
-    try:
-        imvdb_metadata = await get_imvdb_metadata(service, artist_data)
-        if imvdb_metadata:
-            # Set lower confidence for IMVDb to deemphasize it in aggregation
-            imvdb_metadata.confidence = max(0.3, imvdb_metadata.confidence * 0.5)
-            metadata_sources["imvdb"] = imvdb_metadata
-            logger.debug(
-                f"Successfully gathered IMVDb metadata for {artist_data['name']} (deemphasized)"
-            )
-    except Exception as e:
-        logger.warning(f"Failed to get IMVDb metadata for {artist_data['name']}: {e}")
-
     # MusicBrainz metadata - check if enabled
     if progress_callback:
         progress_callback(64, "Fetching MusicBrainz metadata...")
@@ -451,40 +435,6 @@ async def get_lastfm_metadata(service, artist_data: Dict) -> Optional[ArtistMeta
 
     except Exception as e:
         logger.error(f"Error getting Last.fm metadata: {e}")
-        return None
-
-
-async def get_imvdb_metadata(service, artist_data: Dict) -> Optional[ArtistMetadata]:
-    """Get enhanced metadata from IMVDb"""
-    try:
-        # Use existing IMVDb integration
-        if artist_data.get("imvdb_id"):
-            # Get fresh artist data by ID
-            imvdb_artist_data = service.imvdb.get_artist(artist_data["imvdb_id"])
-        else:
-            # Search for artist
-            search_results = service.imvdb.search_artist(artist_data["name"])
-            if not search_results or not search_results.get("results"):
-                return None
-            imvdb_artist_data = search_results["results"][0]
-
-        if not imvdb_artist_data:
-            return None
-
-        metadata = ArtistMetadata(
-            name=imvdb_artist_data.get("name", artist_data["name"]),
-            source="imvdb",
-            confidence=service._calculate_name_similarity(
-                artist_data["name"], imvdb_artist_data.get("name", "")
-            ),
-            imvdb_id=str(imvdb_artist_data.get("id")),
-            raw_data=imvdb_artist_data,
-        )
-
-        return metadata
-
-    except Exception as e:
-        logger.error(f"Error getting IMVDb metadata: {e}")
         return None
 
 
