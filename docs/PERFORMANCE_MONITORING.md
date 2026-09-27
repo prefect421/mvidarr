@@ -38,7 +38,7 @@ Metrics for `/`, `/endpoints`, and `/trends` are backed by `src/services/perform
 
 ## Instrumenting New Code
 
-`src/utils/performance_monitor.py` provides a `@monitor_performance(name)` decorator that records timing into an in-process, thread-safe rolling window (last 100 calls per name). It's currently applied at the **service layer**, not on API route handlers — see `src/services/video_quality_service.py`, `src/services/dynamic_playlist_service.py`, `src/services/imvdb_discovery_service.py`, and `src/services/imvdb_analytics_service.py` for real examples:
+`src/utils/performance_monitor.py` provides a `@monitor_performance(name)` decorator that records timing into an in-process, thread-safe rolling window (last 100 calls per name). It's currently applied at the **service layer**, not on API route handlers — see `src/services/video_quality_service.py` and `src/services/dynamic_playlist_service.py` for real examples:
 
 ```python
 from src.utils.performance_monitor import monitor_performance

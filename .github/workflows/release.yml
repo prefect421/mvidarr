@@ -50,7 +50,7 @@ jobs:
           echo "### 📋 Initial Release Features:" >> release_notes.md
           echo "" >> release_notes.md
           echo "- 🎯 Advanced Artist Management with multi-criteria search and bulk operations" >> release_notes.md
-          echo "- 📺 Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)" >> release_notes.md
+          echo "- 📺 Comprehensive Video Discovery with dual-source integration (MusicBrainz + YouTube)" >> release_notes.md
           echo "- 🖼️ Professional Thumbnail Management with multi-source search and cropping" >> release_notes.md
           echo "- 📁 Intelligent Organization with automatic folder creation and cleanup" >> release_notes.md
           echo "- 🔍 Advanced Search System with real-time suggestions and filtering" >> release_notes.md

@@ -19,8 +19,7 @@ This guide provides step-by-step workflows for common MVidarr tasks, helping use
    - Set Downloads Path: `/path/to/downloads`
    - Set Music Videos Path: `/path/to/organized/videos`
    - Set Thumbnails Path: `/path/to/thumbnails`
-4. **Add API Keys** (Essential for full functionality)
-   - Settings → Services → IMVDB API Key
+4. **Add API Keys** (optional, improves discovery)
    - Settings → Services → YouTube API Key (optional but recommended)
 
 #### Initial Library Setup
@@ -57,7 +56,7 @@ This guide provides step-by-step workflows for common MVidarr tasks, helping use
    - Enter artist name exactly as it appears on music services
    - Click "Add Artist"
 3. **Wait for Discovery**
-   - System automatically searches IMVDB and YouTube
+   - System automatically searches MusicBrainz and YouTube
    - Progress shown via toast notifications
    - Discovered videos appear in artist's video list
 
@@ -105,7 +104,7 @@ This guide provides step-by-step workflows for common MVidarr tasks, helping use
 2. **Manual Video Search**
    - Videos page → "Add Video" button
    - Search by song title and artist
-   - Select from IMVDB or YouTube results
+   - Select from YouTube search results
    - Add to library
 
 #### Manual Video Addition
@@ -372,7 +371,7 @@ This guide provides step-by-step workflows for common MVidarr tasks, helping use
    - Clear browser cache
 2. **Failed Downloads**
    - Verify internet connection
-   - Check YouTube/IMVDB service status
+   - Check YouTube/MusicBrainz service status
    - Review error logs
 
 #### Connection Issues

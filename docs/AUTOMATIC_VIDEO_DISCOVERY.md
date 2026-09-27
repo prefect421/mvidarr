@@ -1,7 +1,7 @@
 # Automatic Video Discovery
 
 ## Overview
-MVidarr now supports automatic discovery of new music videos for artists marked as "monitored" through the enhanced scheduler service. The scheduler can be configured to search for and discover new videos from IMVDb (and future YouTube integration) at regular intervals.
+MVidarr now supports automatic discovery of new music videos for artists marked as "monitored" through the enhanced scheduler service. The scheduler can be configured to search for and discover new videos from MusicBrainz and YouTube at regular intervals.
 
 ## How It Works
 
@@ -14,7 +14,7 @@ MVidarr now supports automatic discovery of new music videos for artists marked 
 1. **Scheduled Check**: At the configured interval, scheduler triggers discovery check
 2. **Artist Query**: System queries database for artists with `monitored = true`
 3. **Time-based Filtering**: Only processes artists that haven't been checked recently (based on `last_discovery`)
-4. **Video Discovery**: Searches IMVDb for new videos for each qualifying artist
+4. **Video Discovery**: Searches MusicBrainz for new videos for each qualifying artist
 5. **Duplicate Prevention**: Compares discovered videos against existing video URLs
 6. **Video Storage**: New videos are stored with `WANTED` status for potential download
 7. **Timestamp Update**: Updates `last_discovery` timestamp for processed artists
@@ -153,7 +153,7 @@ The existing manual discovery endpoints continue to work:
 
 ### Error Handling
 ```bash
-[ERROR] Scheduled discovery failed: IMVDb API rate limit exceeded
+[ERROR] Scheduled discovery failed: MusicBrainz API rate limit exceeded
 [ERROR] Error running scheduled discovery: Database connection timeout
 ```
 
@@ -254,8 +254,8 @@ PUT /api/artists/{id}/settings
 4. **Review Logs**: Check for discovery-related error messages
 
 ### No Videos Discovered
-1. **API Connectivity**: Verify IMVDb service is accessible
-2. **Artist Names**: Ensure artist names match IMVDb database
+1. **API Connectivity**: Verify MusicBrainz service is accessible
+2. **Artist Names**: Ensure artist names match MusicBrainz database
 3. **Recent Discovery**: Check if artists were recently processed (`last_discovery`)
 4. **Manual Test**: Try manual discovery via API to test connectivity
 
@@ -270,7 +270,7 @@ PUT /api/artists/{id}/settings
 [WARN] No monitored artists found for video discovery
 
 # API issues  
-[ERROR] IMVDb search failed for artist Example Artist: API rate limit
+[ERROR] MusicBrainz search failed for artist Example Artist: API rate limit
 [ERROR] Failed to store discovered video: Database constraint violation
 ```
 

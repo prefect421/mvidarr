@@ -14,7 +14,7 @@
 ✨ Optimized for Unraid 7.2.0+ ✨
 
 Features:
-- Automatic metadata enrichment from IMVDb and YouTube
+- Automatic metadata enrichment from MusicBrainz and YouTube
 - Smart playlist generation and management
 - Thumbnail generation and artist artwork
 - Modern, responsive web interface
@@ -59,7 +59,6 @@ Requirements:
   <Config Name="DB_NAME" Target="DB_NAME" Default="mvidarr" Mode="" Description="Database name - must match the database created in MariaDB" Type="Variable" Display="advanced" Required="true" Mask="false">mvidarr</Config>
   <Config Name="SECRET_KEY" Target="SECRET_KEY" Default="" Mode="" Description="Secret key for session encryption - generate with: openssl rand -base64 32 (minimum 32 characters)" Type="Variable" Display="always" Required="true" Mask="true"/>
   <Config Name="MVIDARR_SECRET_KEY" Target="MVIDARR_SECRET_KEY" Default="" Mode="" Description="MVidarr secret key - should match SECRET_KEY for consistency" Type="Variable" Display="advanced" Required="false" Mask="true"/>
-  <Config Name="IMVDB_API_KEY" Target="IMVDB_API_KEY" Default="" Mode="" Description="IMVDb API key for music video metadata enrichment - get free key at https://imvdb.com/developers" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="YOUTUBE_API_KEY" Target="YOUTUBE_API_KEY" Default="" Mode="" Description="YouTube Data API v3 key for metadata enrichment - get from Google Cloud Console" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="Timezone for logs and scheduled tasks (e.g., America/New_York, Europe/London, Asia/Tokyo)" Type="Variable" Display="always" Required="false" Mask="false">America/New_York</Config>
   <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID for file permissions - Unraid default is 99 (nobody). Run 'id username' to find yours" Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>

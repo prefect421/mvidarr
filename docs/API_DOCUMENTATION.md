@@ -57,7 +57,7 @@ Rate Limiting: Enforced (src/middleware/rate_limiting_middleware.py) -
   "thumbnail_url": "https://example.com/thumb.jpg",
   "auto_download": true,
   "monitored": true,
-  "source": "imvdb|spotify_import|lastfm_import|plex_sync|manual",
+  "source": "musicbrainz|spotify_import|lastfm_import|plex_sync|manual",
   "keywords": ["pop", "country"],
   "created_at": "2023-01-01T00:00:00Z"
 }
@@ -118,7 +118,7 @@ Rate Limiting: Enforced (src/middleware/rate_limiting_middleware.py) -
   "services": {
     "database": {"status": "connected", "latency": 5},
     "metube": {"status": "available", "version": "2023.10.04"},
-    "imvdb": {"status": "accessible", "rate_limit": "ok"},
+    "musicbrainz": {"status": "accessible", "rate_limit": "ok"},
     "filesystem": {"status": "writable", "free_space": "500GB"}
   }
 }

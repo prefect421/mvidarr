@@ -214,17 +214,24 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.0.4 - Released
+### Current Phase: v1.1.0 - Released
 
-#### Versioning Policy (Updated 2026-09-19)
-- **Current Version**: 1.0.4 (Released 2026-09-19)
-- **Next Version**: 1.0.5 (Planning)
+#### Versioning Policy (Updated 2026-09-27)
+- **Current Version**: 1.1.0 (Released 2026-09-27)
+- **Next Version**: TBD (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
   - **0.x.y**: Pre-production development (past phase)
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **v1.1.0** (2026-09-27): IMVDb Removal & MusicBrainz Video Discovery (milestone [v1.1.0](https://github.com/prefect421/mvidarr/milestone/21), issues #520-528)
+  - ✅ **Removed**: IMVDb integration entirely — `IMVDbClient`/`imvdb_service`/`imvdb_discovery_service`/`imvdb_analytics_service`, the `/api/imvdb/*` router, the `IMVDB_API_KEY` setting, and every "Search IMVDb"/"Link to IMVDb" UI affordance across templates, static JS/CSS, and e2e tests. Trigger: #520 found IMVDb's search API permanently broken on IMVDb's own infrastructure (confirmed via their own sandbox); #522 scoped the removal (20 live files) and decided 2026-09-22 on full removal over a patch, since IMVDb's infra looks generally unmaintained (changelog silent since 2013, ~2018-era nginx on edge)
+  - ✅ **Replacement**: `MusicBrainzService.find_official_video()` (#523) — MusicBrainz's curated `music video`/`free streaming` recording relationships, the same signal IMVDb provided. No API key required, self-throttled to MusicBrainz's 1 req/sec public-API limit
+  - ✅ **Kept**: `Artist.imvdb_id`/`Video.imvdb_id` DB columns and the `imvdb_metadata` JSON blob — real historical data, no destructive migration, just no longer populated by new activity
+  - ✅ Landed across #523 (foundation, +2 follow-up fixes in #530/#531) → #524+#525 (migrate services/routes) → #526 (delete client/service/settings) → #527 (frontend/e2e cleanup) → #528 (this release: docs, changelog, version bump)
+  - ✅ Real bugs caught along the way: `artist_detail.html`'s data-quality scoring permanently capped by an unfillable `imvdb_id` field; `video_detail.html`'s save handler silently nulling historical `imvdb_id` data on every save; `metadata_enrichment_service.py`'s coverage score permanently deflated by a frozen `imvdb` denominator (75% shown instead of 100%); `scripts/index_videos.py` crashing on *every* invocation from a top-level import of the deleted `imvdb_service` module; `metadata_source_fetchers.py` silently failing (logged warning) on every single artist enrichment run via a dead `get_imvdb_metadata()` call
+  - ✅ Full `README.md`/`CLAUDE.md`/`docs/` sweep for stale IMVDb references — historical entries in `CHANGELOG.md` and `docs/archive/` left untouched (they describe a past state, not current behavior)
 - **v1.0.4** (2026-09-19): Issue/PR Sweep — Playlist Read Access, Celery Mingle Fix, Dependency Sweep
   - ✅ Fix (#509): playlist list/read endpoints leaked every user's playlists — `get_playlists` now filters to own + public (admin/manager see all) and `get_playlist` applies `can_access_playlist()`, returning 404 (not 403) so private IDs can't be probed. Completes the read-side half of #500. 7 new tests in `tests/unit/test_playlists_read_access.py`, 3 confirmed failing against the old code
   - ✅ Fix (#517): Celery worker crash-looped (`ContentDisallowed: application/x-signed-pickle`) when the Redis broker was shared with another app — worker now starts with `--without-mingle`. New `CELERY_WORKER_EXTRA_ARGS` env var is expanded by supervisor as `%(ENV_CELERY_WORKER_EXTRA_ARGS)s`, which **errors if undefined**, so it has an empty default in both Dockerfiles *and* is exported by `entrypoint.sh`
@@ -525,9 +532,9 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.0.4 (Playlist Read Access, Celery Mingle Fix, Dependency Sweep)
+- **Current Version**: v1.1.0 (IMVDb Removal & MusicBrainz Video Discovery)
 - **Development Focus**: Stability, security
-- **Next Version**: v1.0.5
+- **Next Version**: TBD
 
 ### Code Development Process
 1. Create feature branch from `dev` branch
@@ -625,19 +632,11 @@ All issues should be planned with the following attributes (fields on the [MVida
 Note: there is no separate "Release Slot" field — the board never got one built; `Milestone` is what actually designates the release window.
 
 ### Release Management
-- **Current Release**: Version 1.0.4 (2026-09-19)
-- **Next Release**: Version 1.0.5 (Planning)
+- **Current Release**: Version 1.1.0 (2026-09-27) — see Version History above for details
+- **Next Release**: TBD (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
 - Releases are now utilized for version management and deployment
-
-### v1.1.0 (Planned, after v1.0.5) — IMVDb Removal & MusicBrainz Video Discovery
-- **Why**: #520 found IMVDb's `search/videos`/`search/entities` endpoints are broken on IMVDb's own infrastructure (confirmed via IMVDb's own official API sandbox — not an mvidarr bug, not fixable from mvidarr's side). #522 scoped the dependency (20 live files) and researched replacements. Decided 2026-09-22: full removal of IMVDb, not just the broken search path — their infrastructure looks generally unmaintained (API changelog silent since their 2013 beta, edge running ~2018-era nginx), so even the still-working `video/{id}` lookups aren't worth keeping long-term.
-- **Replacement**: MusicBrainz already models "which video is the official one for this track" via its `music video` and `free streaming` (`video` attribute) recording relationship types — the same curated signal IMVDb provided, on infrastructure mvidarr already depends on and that's actively maintained.
-- **Plan**: `docs/superpowers/plans/2026-09-22-imvdb-removal-musicbrainz-migration.md`
-- **Milestone**: [v1.1.0](https://github.com/prefect421/mvidarr/milestone/21) — bumped from the originally-planned v1.0.6 to a minor version: removing an entire external integration and its DB-driven UI surface is a bigger change than the patch-release pattern used for the security/bugfix sweeps above.
-- **Issues** (in dependency order): #523 (MusicBrainz `find_official_video()` foundation) → #524 (migrate `src/services/`) + #525 (migrate `src/api/fastapi/` routes, parallel to #524) → #526 (delete IMVDb client/service/settings) → #527 (frontend + e2e cleanup, can run anytime but ships after #526) → #528 (docs, changelog, version bump)
-- **Keep**: the `imvdb_id` columns on `Artist`/`Video` (real historical data, no destructive migration) — just stop populating them.
 
 ## Security Implementation
 

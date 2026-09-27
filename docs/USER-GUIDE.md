@@ -41,25 +41,19 @@ The welcome screen provides:
 
 ### Step 2: API Configuration
 ![API Setup](screenshots/api-setup.png)
-*API configuration section showing IMVDb and YouTube API key input fields with status indicators*
+*API configuration section showing the YouTube API key input field with status indicator*
 
-**Required Setup:**
-1. **IMVDb API Key**
-   - Visit https://imvdb.com/developers/api
-   - Register for an account
-   - Generate your API key
-   - Paste it in the IMVDb API Key field
-
-2. **YouTube API Key** (Recommended)
+**Optional Setup:**
+1. **YouTube API Key** (Recommended)
    - Go to https://console.developers.google.com
    - Create a new project or select existing
    - Enable YouTube Data API v3
    - Generate an API key
    - Add it to the YouTube API Key field
 
-**Why these APIs matter:**
-- **IMVDb**: Provides rich metadata, official video information, and artist details
+**Why this API matters:**
 - **YouTube**: Enables video discovery, thumbnails, and enhanced search capabilities
+- **MusicBrainz**: Provides official-video metadata and artist details — no API key required, works out of the box
 
 ### Step 3: Storage Configuration
 ![Storage Setup](screenshots/storage-setup.png)
@@ -126,7 +120,7 @@ The dashboard provides instant access to:
 ![System Health](screenshots/system-health-overview.png)
 Real-time status of all system components:
 - **Database**: Connection and performance
-- **APIs**: IMVDb and YouTube connectivity
+- **APIs**: MusicBrainz and YouTube connectivity
 - **Storage**: Available space and write permissions
 - **Downloads**: Active download processes
 
@@ -148,7 +142,7 @@ Real-time status of all system components:
 
 #### Step 1: Search for Artist
 ![Add Artist Search](screenshots/add-artist-search.png)
-*Search for artists using the IMVDb database for accurate results*
+*Add an artist by name, then let MVidarr discover their videos*
 
 1. Click **"Add Artist"** button
 2. Enter artist name in search field
@@ -178,7 +172,7 @@ Real-time status of all system components:
 *First-time discovery of existing videos for the artist*
 
 After adding an artist, MVidarr will:
-1. **Search IMVDb** for official artist videos
+1. **Search MusicBrainz** for official artist videos
 2. **Query YouTube** for additional content
 3. **Display results** for your review
 4. **Allow selection** of videos to add to library
@@ -229,7 +223,7 @@ The artist detail page includes:
 
 **Discovery Features:**
 - **Manual search** for new videos
-- **Source selection** (IMVDb, YouTube, Both)
+- **Source selection** (MusicBrainz, YouTube, Both)
 - **Filter options** (Official, Live, Covers, etc.)
 - **Bulk import** with preview
 
@@ -249,7 +243,7 @@ The artist detail page includes:
 
 **Available Bulk Operations:**
 1. **Enable/Disable Monitoring**: Toggle monitoring for selected artists
-2. **Update Metadata**: Refresh information from IMVDb
+2. **Update Metadata**: Refresh information from MusicBrainz
 3. **Discovery Search**: Search for new videos for all selected artists
 4. **Quality Settings**: Apply quality preferences to multiple artists
 5. **Delete Artists**: Remove artists and optionally their videos
@@ -293,7 +287,7 @@ The video library provides:
 
 **Manual Discovery Steps:**
 1. **Select Artist(s)**: Choose specific artists or search all
-2. **Choose Sources**: IMVDb, YouTube, or both
+2. **Choose Sources**: MusicBrainz, YouTube, or both
 3. **Set Filters**: Official videos, live performances, covers, etc.
 4. **Run Discovery**: Execute search with selected parameters
 5. **Review Results**: Preview discovered videos before adding
@@ -305,7 +299,7 @@ The video library provides:
 **Result Information:**
 - **Thumbnail preview** with play button
 - **Video title and artist**
-- **Source indicator** (IMVDb/YouTube)
+- **Source indicator** (MusicBrainz/YouTube)
 - **Duration and quality**
 - **Release date and view count**
 
@@ -583,9 +577,9 @@ The download manager provides:
 *Beautiful, high-quality thumbnails from multiple sources*
 
 MVidarr automatically manages thumbnails from:
-- **IMVDb**: Official music video artwork
+- **Spotify / Last.fm**: Artist photos (checked first)
 - **YouTube**: Video thumbnails and channel art
-- **Wikipedia**: Artist photos and album covers
+- **Wikipedia**: Artist photos and album covers (fallback)
 - **Manual Upload**: Your own custom images
 
 ### Automatic Thumbnail Discovery
@@ -593,7 +587,7 @@ MVidarr automatically manages thumbnails from:
 *Automatic thumbnail discovery and optimization*
 
 **Discovery Process:**
-1. **Primary Source**: IMVDb official artwork (highest quality)
+1. **Primary Source**: Spotify / Last.fm artist photo (highest quality)
 2. **Secondary Source**: YouTube thumbnail (good quality)
 3. **Fallback**: Wikipedia artist image (backup option)
 4. **Optimization**: Automatic WebP conversion for smaller file sizes
@@ -605,7 +599,7 @@ MVidarr automatically manages thumbnails from:
 *Search for better thumbnails from multiple sources*
 
 **Search Features:**
-- **Multi-source search**: Query IMVDb, YouTube, Wikipedia simultaneously
+- **Multi-source search**: Query Spotify, Last.fm, YouTube, Wikipedia simultaneously
 - **Quality filtering**: Show only high-resolution images
 - **Relevance sorting**: Best matches first
 - **Preview mode**: See images before selecting
@@ -679,17 +673,14 @@ The settings interface provides:
 *Configure your external service API credentials*
 
 **Required APIs:**
-1. **IMVDb API Key**
-   - **Purpose**: Video metadata, artist information, official video discovery
-   - **How to get**: Register at https://imvdb.com/developers/api
-   - **Rate Limits**: 1000 requests/day (free tier)
-   - **Status Check**: Green = working, Red = invalid/expired
-
-2. **YouTube Data API v3**
+1. **YouTube Data API v3** (optional, recommended)
    - **Purpose**: Video discovery, thumbnails, metadata enhancement
    - **How to get**: Google Cloud Console → Enable YouTube Data API → Create credentials
    - **Rate Limits**: 10,000 quota units/day (free tier)
    - **Status Check**: Automatic validation with test query
+
+**No key required:**
+- **MusicBrainz**: Official-video metadata and artist details — public API, works out of the box
 
 #### Service Health Monitoring
 ![Service Health](screenshots/service-health.png)
@@ -902,7 +893,7 @@ The advanced search provides:
    - Last watched
 
 4. **Source Filters**
-   - IMVDb sourced videos
+   - MusicBrainz sourced videos
    - YouTube sourced videos
    - Manually added content
    - Imported from files
@@ -1112,16 +1103,10 @@ MVidarr provides a complete mobile experience:
 ![API Troubleshooting](screenshots/troubleshoot-api.png)
 *Diagnose and fix API connectivity problems*
 
-**IMVDb API Issues:**
-1. **Invalid API Key**
-   - Verify key at https://imvdb.com/developers/api
-   - Check for extra spaces or characters
-   - Ensure key has not expired
-
-2. **Rate Limiting**
-   - Free tier: 1000 requests/day
-   - Spread operations over time
-   - Consider API key upgrade if needed
+**MusicBrainz API Issues:**
+1. **Rate Limiting**
+   - MusicBrainz's public API enforces a shared rate limit (~1 request/second)
+   - Spread operations over time; retries are handled automatically
 
 **YouTube API Issues:**
 1. **Quota Exceeded**

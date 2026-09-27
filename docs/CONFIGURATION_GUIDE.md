@@ -144,18 +144,13 @@ The remote-address column is a hex-encoded, byte-reversed IPv4 address (e.g. `01
 
 ## 🌐 External Service Integration
 
-### IMVDB Integration
+### MusicBrainz Integration
 
-#### API Key Configuration
-```bash
-# Get API key from https://imvdb.com/developers
-imvdb_api_key="your_imvdb_api_key"
-```
+MusicBrainz uses a public API and requires no API key or configuration — it works out of the box, rate-limited to 1 request/second automatically.
 
 **Features Enabled:**
 - Artist metadata enrichment
-- Music video discovery
-- Album artwork and biographies
+- Official music video discovery
 - Video metadata validation
 
 ### YouTube Integration
@@ -429,7 +424,7 @@ nano .env
 | `DATABASE_PATH` | `./data/database` | Host path for MVidarr's own DB backup/export files — **not** MariaDB's live data, which lives in the separate `mariadb_data` named Docker volume (back that up with `mysqldump`, not this path) |
 | `LOGS_PATH` | `./data/logs` | Host path for application logs |
 | `CACHE_PATH` | `./data/cache` | Host path for temp/cache files |
-| `IMVDB_API_KEY`, `YOUTUBE_API_KEY` | *(empty)* | Metadata enrichment — can also be set later via the Settings UI |
+| `YOUTUBE_API_KEY` | *(empty)* | Metadata enrichment — can also be set later via the Settings UI |
 | `TZ` | `America/New_York` | Container timezone |
 | `PUID`, `PGID` | `1000` | User/group IDs the app writes files as — match your host user |
 | `CORS_ALLOWED_ORIGINS`, `TRUSTED_PROXY_HOSTS` | *(project defaults)* | See [Reverse Proxy Setup](#sslhttps-configuration) above if you're behind one |
@@ -498,7 +493,7 @@ CREATE INDEX idx_downloads_status ON downloads(status);
 curl http://localhost:5000/api/settings/
 
 # Get specific setting
-curl http://localhost:5000/api/settings/imvdb_api_key
+curl http://localhost:5000/api/settings/youtube_api_key
 
 # Update setting
 curl -X PUT http://localhost:5000/api/settings/max_concurrent_downloads \
@@ -509,7 +504,7 @@ curl -X PUT http://localhost:5000/api/settings/max_concurrent_downloads \
 curl -X PUT http://localhost:5000/api/settings/bulk \
   -H "Content-Type: application/json" \
   -d '{
-    "imvdb_api_key": "new-key",
+    "youtube_api_key": "new-key",
     "max_concurrent_downloads": "3",
     "video_quality_preference": "720p"
   }'
@@ -548,7 +543,6 @@ curl -X PUT http://localhost:5000/api/settings/bulk \
 ```bash
 # Secure environment file (.env)
 # Never commit this to version control
-IMVDB_API_KEY=abc123def456
 YOUTUBE_API_KEY=xyz789uvw012
 DB_PASSWORD=secure-random-password
 ```
@@ -570,7 +564,6 @@ sudo ufw deny 5000/tcp   # Block direct access (use reverse proxy)
 - [ ] Configure file system paths
 - [ ] Set up database connection
 - [ ] Configure authentication (if required)
-- [ ] Add IMVDB API key
 - [ ] Add YouTube API key (if using)
 - [ ] Configure MeTube connection
 - [ ] Set video quality preferences

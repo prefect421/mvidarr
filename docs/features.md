@@ -16,7 +16,7 @@ permalink: /features/
 
 ## 🔍 Video Discovery & Download
 
-- **Dual-Source Discovery**: IMVDb + YouTube, with quota-aware search batching
+- **Dual-Source Discovery**: MusicBrainz + YouTube, with quota-aware search batching
 - **Scheduler V2**: Prioritized, automated discovery/download runs with exponential/linear/fixed retry strategies
 - **Duplicate Detection**: DB-level unique constraints on `youtube_id`/`imvdb_id` close race conditions between concurrent imports
 - **Quality Control**: Configurable min/max/default quality, format sorting, automatic quality upgrades

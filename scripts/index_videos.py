@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Video indexing script for MVidarr
-Scans existing videos and adds them to database with IMVDb metadata
+Scans existing videos and adds them to database with metadata
 """
 
 import sys
@@ -17,7 +17,6 @@ sys.path.insert(0, str(project_root / 'src'))
 from src.config.config import Config
 from src.database.connection import init_db
 from src.services.video_indexing_service import video_indexing_service
-from src.services.imvdb_service import imvdb_service
 from src.services.thumbnail_service import thumbnail_service
 from src.utils.logger import get_logger
 
@@ -55,7 +54,7 @@ def index_all_videos(fetch_metadata=True, max_files=None):
     
     try:
         print(f"\n🎬 Video Indexing Process 🎬")
-        print(f"Fetch IMVDb metadata: {'Yes' if fetch_metadata else 'No'}")
+        print(f"Fetch metadata: {'Yes' if fetch_metadata else 'No'}")
         if max_files:
             print(f"Max files to process: {max_files}")
         print("-" * 60)
@@ -73,7 +72,7 @@ def index_all_videos(fetch_metadata=True, max_files=None):
         print(f"Artists created: {result['artists_created']}")
         print(f"Videos created: {result['videos_created']}")
         print(f"Downloads created: {result['downloads_created']}")
-        print(f"IMVDb metadata found: {result['imvdb_metadata_found']}")
+        print(f"Metadata found: {result['imvdb_metadata_found']}")
         print(f"Thumbnails downloaded: {result['thumbnails_downloaded']}")
         
         if result['successful'] > 0:
@@ -122,7 +121,7 @@ def index_single_file(file_path, fetch_metadata=True):
             else:
                 print(f"✅ Successfully indexed: {result['artist_name']} - {result['video_title']}")
                 if result['imvdb_metadata_found']:
-                    print(f"   📋 IMVDb metadata found")
+                    print(f"   📋 Metadata found")
                 if result['thumbnail_downloaded']:
                     print(f"   🖼️  Thumbnail downloaded")
             return True
@@ -148,8 +147,8 @@ def show_indexing_stats():
         print(f"Total downloads:         {stats['total_downloads']}")
         print(f"Downloaded videos:       {stats['downloaded_videos']}")
         print(f"Videos with files:       {stats['videos_with_files']}")
-        print(f"Videos with IMVDb data:  {stats['videos_with_imvdb']}")
-        print(f"IMVDb coverage:          {stats['imvdb_coverage']}%")
+        print(f"Videos with metadata:    {stats['videos_with_imvdb']}")
+        print(f"Metadata coverage:       {stats['imvdb_coverage']}%")
         print("-" * 50)
         print(f"Thumbnail files:         {thumbnail_stats['total_files']}")
         print(f"Thumbnail storage:       {thumbnail_stats['total_size_mb']} MB")
@@ -198,39 +197,6 @@ def scan_video_files(directory=None):
         print(f"❌ Failed to scan video files: {e}")
         return False
 
-def test_imvdb_connection():
-    """Test IMVDb API connection"""
-    try:
-        print(f"\n🔗 Testing IMVDb Connection 🔗")
-        print("-" * 40)
-        
-        result = imvdb_service.test_connection()
-        
-        if result['status'] == 'success':
-            print(f"✅ {result['message']}")
-            
-            # Test a sample search
-            print("Testing sample search...")
-            videos = imvdb_service.search_videos("Taylor Swift", "Anti-Hero")
-            if videos:
-                print(f"✅ Sample search returned {len(videos)} results")
-                if videos[0]:
-                    metadata = imvdb_service.extract_metadata(videos[0])
-                    print(f"   Sample: {metadata['artist_name']} - {metadata['title']}")
-            else:
-                print("⚠️  Sample search returned no results")
-        else:
-            print(f"❌ {result['message']}")
-            if result['status'] == 'error' and 'api key' in result['message'].lower():
-                print("   💡 Make sure to configure your IMVDb API key in settings")
-        
-        return result['status'] == 'success'
-        
-    except Exception as e:
-        logger.error(f"IMVDb connection test failed: {e}")
-        print(f"❌ IMVDb connection test failed: {e}")
-        return False
-
 def preview_file_indexing(file_path):
     """Preview what would be indexed for a file"""
     try:
@@ -249,23 +215,23 @@ def preview_file_indexing(file_path):
         if file_metadata['extracted_artist'] and file_metadata['extracted_title']:
             print(f"✅ Can be indexed")
             
-            # Try to get IMVDb preview
-            print("\nSearching IMVDb for metadata...")
+            # Try to get a metadata preview
+            print("\nSearching for metadata...")
             try:
                 imvdb_metadata = video_indexing_service.fetch_imvdb_metadata(
                     file_metadata['extracted_artist'],
                     file_metadata['extracted_title']
                 )
                 if imvdb_metadata:
-                    print(f"✅ IMVDb metadata found:")
+                    print(f"✅ Metadata found:")
                     print(f"   Title: {imvdb_metadata['title']}")
                     print(f"   Artist: {imvdb_metadata['artist_name']}")
                     print(f"   Year: {imvdb_metadata['year'] or 'Unknown'}")
                     print(f"   Thumbnail: {'Available' if imvdb_metadata['thumbnail_url'] else 'None'}")
                 else:
-                    print(f"❌ No IMVDb metadata found")
+                    print(f"❌ No metadata found")
             except Exception as e:
-                print(f"⚠️  IMVDb search failed: {e}")
+                print(f"⚠️  Metadata search failed: {e}")
         else:
             print(f"❌ Cannot be indexed - missing artist or title")
         
@@ -279,7 +245,7 @@ def preview_file_indexing(file_path):
 def main():
     """Main script entry point"""
     parser = argparse.ArgumentParser(
-        description='Index existing music videos to database with IMVDb metadata',
+        description='Index existing music videos to database with metadata',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -290,7 +256,6 @@ Examples:
   %(prog)s --scan                        # Scan for video files
   %(prog)s --scan --directory /path      # Scan specific directory
   %(prog)s --stats                       # Show indexing statistics
-  %(prog)s --test-imvdb                  # Test IMVDb connection
   %(prog)s --preview "video.mp4"         # Preview file indexing
         """
     )
@@ -305,12 +270,10 @@ Examples:
                        help='Directory to scan (for --scan)')
     parser.add_argument('--stats', action='store_true',
                        help='Show current indexing statistics')
-    parser.add_argument('--test-imvdb', action='store_true',
-                       help='Test IMVDb API connection')
     parser.add_argument('--preview', metavar='FILE_PATH',
                        help='Preview what would be indexed for a file')
     parser.add_argument('--no-metadata', action='store_true',
-                       help='Skip fetching IMVDb metadata')
+                       help='Skip fetching metadata')
     parser.add_argument('--max-files', type=int, metavar='N',
                        help='Maximum number of files to process (for testing)')
     parser.add_argument('--verbose', '-v', action='store_true',
@@ -323,13 +286,7 @@ Examples:
         parser.print_help()
         return 0
     
-    # Test mode and stats don't require database
-    if args.test_imvdb:
-        if not initialize_environment():
-            print("❌ Failed to initialize environment")
-            return 1
-        return 0 if test_imvdb_connection() else 1
-    
+    # Stats mode doesn't require database
     if args.stats:
         if not initialize_environment():
             print("❌ Failed to initialize environment")
