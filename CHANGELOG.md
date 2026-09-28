@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **bgutil-ytdlp-pot-provider 1.3.1/1.3.2 → 2.0.0** (Dependabot #536): 2.0.0 fixes an RCE in the PO-token *server* ([GHSA-qpv9-8xfj-xx9m](https://github.com/Brainicism/bgutil-ytdlp-pot-provider/security/advisories/GHSA-qpv9-8xfj-xx9m)) and binds it to localhost instead of 0.0.0.0. Not a plain requirements bump: both `Dockerfile` and `Dockerfile.production` build the server from a pinned, SHA256-verified source tarball (previously 1.3.2), so both were moved to the 2.0.0 tarball and the Python plugin is now pinned exactly (`==2.0.0`, was `>=`) so the client and server cannot drift apart. The app reaches the server at `127.0.0.1:4416` inside the same container, so the localhost-only bind is compatible; Node 22.23.2 satisfies the new `engines` floor (`>=22`).
+
+### Dependencies
+- lxml 6.1.1 → 6.1.3 (#535), schedule 1.2.0 → 1.2.2 (#538), pip-audit 2.10.0 → 2.10.1 (#533), bandit 1.7.5 → 1.9.4 (#534, dev), ruby/setup-ruby 1.322.0 → 1.325.0 (#537, Pages workflow). Consolidated into one change; Dependabot #533–#538 closed as superseded.
+
 ### Fixed
 - **Fix (#545)**: universal search didn't search what was typed. (1) The search box dropped any query typed while an earlier request was still in flight (`if (this.isSearching) return;`), so results were for a truncated query like `led zepp` instead of the full text — it now cancels the in-flight request and always searches the latest input, ignoring stale responses. (2) Local search matched the whole query as one substring against video title *or* artist name, so multi-word queries spanning both (`artist song`) found nothing — every term must now match the title or artist name, and punctuation-only tokens (the `-` in `Artist - Song`) are ignored. (3) `%`/`_` typed by the user acted as SQL wildcards — now escaped. (4) The query was lowercased before being forwarded to YouTube — now sent as typed. (5) The YouTube half also appended `official music video`/`live acoustic concert official` to the query, filtered to the Music category and re-ranked by an artist-name heuristic (built for artist discovery), so searching for an artist didn't return what was typed — universal search now uses a new `YouTubeSearchService.search_videos_as_typed()`: one call, exact query, no category filter, YouTube's own relevance order (also halves the quota cost, 100 units instead of 200). Artist discovery is unchanged.
 
