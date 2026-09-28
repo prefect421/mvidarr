@@ -62,6 +62,19 @@ def _safe_parse_genres(genres: Union[str, List[str], None]) -> List[str]:
     return []
 
 
+def _search_terms(query: str) -> List[str]:
+    """Split a search query into terms, dropping punctuation-only tokens
+    (e.g. the "-" in "Artist - Song") that no title or artist would match."""
+    return [t for t in query.split() if any(c.isalnum() for c in t)]
+
+
+def _like_contains(term: str) -> str:
+    """Build a LIKE pattern for `term` with %, _ and the escape char
+    treated literally (pair with escape="\\")."""
+    escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 # ========================================================================================
 # SEARCH ENDPOINTS
 # ========================================================================================
@@ -76,19 +89,26 @@ async def universal_search(
 ):
     """Universal search endpoint that searches across videos, artists, IMVDb, and YouTube"""
     try:
-        query = q.lower()
+        query = q.strip()
+        terms = _search_terms(query)
 
         # Local database search (skip if extended mode)
         video_results = []
         artist_results = []
 
-        if not extended:
-            # Search local videos
+        if not extended and terms:
+            # Search local videos: every term must match the title or the
+            # artist name, so "artist song" finds a video whose artist and
+            # title each contain part of the query.
             videos = (
                 session.query(Video)
                 .join(Artist)
                 .filter(
-                    Video.title.ilike(f"%{query}%") | Artist.name.ilike(f"%{query}%")
+                    *[
+                        Video.title.ilike(_like_contains(t), escape="\\")
+                        | Artist.name.ilike(_like_contains(t), escape="\\")
+                        for t in terms
+                    ]
                 )
                 .limit(5)
                 .all()
@@ -116,7 +136,9 @@ async def universal_search(
             # Search local artists
             artists = (
                 session.query(Artist)
-                .filter(Artist.name.ilike(f"%{query}%"))
+                .filter(
+                    *[Artist.name.ilike(_like_contains(t), escape="\\") for t in terms]
+                )
                 .limit(5)
                 .all()
             )
@@ -151,7 +173,7 @@ async def universal_search(
 
             if youtube_search_service and youtube_search_service.api_key:
                 youtube_search_result = await asyncio.to_thread(
-                    youtube_search_service.search_artist_videos, query, youtube_limit
+                    youtube_search_service.search_videos_as_typed, query, youtube_limit
                 )
 
                 if youtube_search_result and youtube_search_result.get("videos"):
