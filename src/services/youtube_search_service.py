@@ -161,6 +161,43 @@ class YouTubeSearchService:
                 "error": f"YouTube search failed: {error_msg}",
             }
 
+    def search_videos_as_typed(self, query: str, limit: int = 5) -> Dict:
+        """Search YouTube for exactly what the user typed.
+
+        Unlike search_artist_videos() (built for artist discovery), this adds
+        no terms to the query, applies no category filter, and keeps YouTube's
+        own relevance order -- so a search for an artist name returns that
+        artist's videos, not whatever an "official music video" suffix and an
+        artist-name heuristic prefer. One API call (100 quota units).
+        """
+        if not self.api_key:
+            return {
+                "videos": [],
+                "total_results": 0,
+                "error": "YouTube API key not configured",
+            }
+
+        cache_params = {"query": query, "limit": limit, "mode": "as_typed"}
+        cached_result = self._cache.get("search", cache_params)
+        if cached_result is not None:
+            return cached_result
+
+        if not self._quota_tracker.has_budget(100):
+            logger.warning(f"YouTube API quota exhausted — skipping search: {query!r}")
+            return {
+                "videos": [],
+                "total_results": 0,
+                "error": "YouTube API quota exhausted for today",
+            }
+
+        result = self._search_youtube_api(
+            query=query, limit=limit, use_music_category=False
+        )
+        # Don't cache empty/error results (likely quota or a transient error)
+        if result.get("videos"):
+            self._cache.set("search", cache_params, result)
+        return result
+
     def _search_youtube_api(
         self, query: str, limit: int, use_music_category: bool = True
     ) -> Dict:

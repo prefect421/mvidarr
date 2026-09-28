@@ -173,7 +173,7 @@ async def universal_search(
 
             if youtube_search_service and youtube_search_service.api_key:
                 youtube_search_result = await asyncio.to_thread(
-                    youtube_search_service.search_artist_videos, query, youtube_limit
+                    youtube_search_service.search_videos_as_typed, query, youtube_limit
                 )
 
                 if youtube_search_result and youtube_search_result.get("videos"):

@@ -35,7 +35,7 @@ class TestUniversalSearchImvdbRemoved:
             "src.services.youtube_search_service.youtube_search_service"
         ) as mock_youtube:
             mock_youtube.api_key = "fake-key"
-            mock_youtube.search_artist_videos.return_value = youtube_response
+            mock_youtube.search_videos_as_typed.return_value = youtube_response
 
             result = await universal_search(
                 q="ghost",

@@ -118,7 +118,7 @@ class TestQueryForwardedAsTyped:
             "src.services.youtube_search_service.youtube_search_service"
         ) as mock_youtube:
             mock_youtube.api_key = "fake-key"
-            mock_youtube.search_artist_videos.return_value = {"videos": []}
+            mock_youtube.search_videos_as_typed.return_value = {"videos": []}
 
             await universal_search(
                 q="AC/DC Back In Black",
@@ -127,6 +127,6 @@ class TestQueryForwardedAsTyped:
                 session=session,
             )
 
-        assert mock_youtube.search_artist_videos.call_args.args[0] == (
+        assert mock_youtube.search_videos_as_typed.call_args.args[0] == (
             "AC/DC Back In Black"
         )
