@@ -26,7 +26,8 @@ class UniversalSearch {
         this.externalCount = document.getElementById('externalCount');
         
         this.searchTimeout = null;
-        this.isSearching = false;
+        this.requestSeq = 0; // id of the newest search; older responses are stale
+        this.activeController = null;
         this.currentQuery = '';
         this.cache = new Map(); // Simple result caching
         
@@ -51,6 +52,7 @@ class UniversalSearch {
         const query = e.target.value.trim();
         
         if (query.length === 0) {
+            this.cancelInFlight();
             this.clearResults();
             this.clearButton.style.display = 'none';
             return;
@@ -59,6 +61,7 @@ class UniversalSearch {
         this.clearButton.style.display = 'block';
         
         if (query.length < 2) {
+            this.cancelInFlight();
             this.clearResults();
             return;
         }
@@ -71,6 +74,7 @@ class UniversalSearch {
     }
     
     handleClear() {
+        this.cancelInFlight();
         this.searchInput.value = '';
         this.clearResults();
         this.clearButton.style.display = 'none';
@@ -104,8 +108,21 @@ class UniversalSearch {
         }
     }
     
+    // Invalidate any in-flight search so its response can't be displayed.
+    cancelInFlight() {
+        this.requestSeq++;
+        if (this.activeController) {
+            this.activeController.abort();
+            this.activeController = null;
+        }
+    }
+    
     async performSearch(query) {
-        if (this.isSearching) return;
+        // The latest query always wins: cancel whatever is in flight rather
+        // than dropping this one, otherwise words typed during a slow search
+        // are never searched.
+        this.cancelInFlight();
+        this.currentQuery = query;
         
         // Check cache first
         if (this.cache.has(query)) {
@@ -113,20 +130,18 @@ class UniversalSearch {
             return;
         }
         
-        this.isSearching = true;
-        this.currentQuery = query;
+        const requestId = this.requestSeq;
+        const controller = new AbortController();
+        this.activeController = controller;
         this.showLoading();
         
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-            
             const response = await fetch(
                 `/api/videos/universal-search?q=${encodeURIComponent(query)}`,
                 { signal: controller.signal }
             );
-            
-            clearTimeout(timeoutId);
             
             if (!response.ok) {
                 throw new Error(`Search failed: ${response.statusText}`);
@@ -138,9 +153,11 @@ class UniversalSearch {
             this.cache.set(query, data);
             setTimeout(() => this.cache.delete(query), 300000);
             
+            if (requestId !== this.requestSeq) return; // superseded while in flight
             this.displayResults(data);
             
         } catch (error) {
+            if (requestId !== this.requestSeq) return; // superseded: abort was ours
             if (error.name === 'AbortError') {
                 this.showError('Search timed out. Please try again.');
             } else {
@@ -148,8 +165,11 @@ class UniversalSearch {
                 this.showError('Search failed. Please try again.');
             }
         } finally {
-            this.isSearching = false;
-            this.hideLoading();
+            clearTimeout(timeoutId);
+            if (requestId === this.requestSeq) {
+                this.activeController = null;
+                this.hideLoading();
+            }
         }
     }
     
