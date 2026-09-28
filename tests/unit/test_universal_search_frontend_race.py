@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-JS_DIR = Path(__file__).parent / "js"
+JS_TEST = Path(__file__).parent / "js" / "universal_search_race.test.js"
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 def test_universal_search_always_searches_latest_query():
     result = subprocess.run(
-        ["node", "--test", str(JS_DIR)],
+        ["node", "--test", str(JS_TEST)],
         capture_output=True,
         text=True,
         timeout=60,
