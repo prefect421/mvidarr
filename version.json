@@ -1,8 +1,8 @@
 {
   "version": "1.1.1",
-  "build_date": "2026-09-27T01:50:59.009466",
-  "git_commit": "7c8385a2",
-  "git_branch": "dev",
+  "build_date": "2026-09-29T15:09:35.155518",
+  "git_commit": "a89151f6",
+  "git_branch": "main",
   "release_name": "v1.1.1 - Search & YouTube Quota Fixes (incl. v1.1.0 IMVDb Removal)",
   "features": [
     "Universal search now shows a warning when YouTube fails (quota exhausted, missing key) instead of an empty \"No results found\"; the search box searches on Enter instead of per keystroke to conserve YouTube API quota (#548)",
