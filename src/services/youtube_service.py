@@ -8,8 +8,13 @@ from typing import Any, Dict, Optional
 import requests
 
 from src.utils.logger import get_logger
+from src.utils.youtube_quota_tracker import get_quota_tracker, is_daily_quota_error
 
 logger = get_logger(__name__)
+
+QUOTA_EXHAUSTED_MESSAGE = (
+    "YouTube API daily quota exhausted; it resets at midnight Pacific time."
+)
 
 
 class YouTubeService:
@@ -40,6 +45,11 @@ class YouTubeService:
                 "results": [],
             }
 
+        tracker = get_quota_tracker()
+        if not tracker.has_budget(100):
+            logger.warning(f"YouTube API quota exhausted — skipping search: {query!r}")
+            return {"success": False, "error": QUOTA_EXHAUSTED_MESSAGE, "results": []}
+
         try:
             # Prepare search parameters
             params = {
@@ -57,7 +67,16 @@ class YouTubeService:
             url = f"{self.base_url}/search"
             response = requests.get(url, params=params, timeout=30)
 
+            if is_daily_quota_error(response.status_code, response.text):
+                tracker.mark_exhausted()
+                return {
+                    "success": False,
+                    "error": QUOTA_EXHAUSTED_MESSAGE,
+                    "results": [],
+                }
+
             if response.status_code == 200:
+                tracker.consume("search")
                 data = response.json()
 
                 if "items" in data:
@@ -143,6 +162,10 @@ class YouTubeService:
         if not api_key:
             return {"success": False, "error": "YouTube API key not configured"}
 
+        tracker = get_quota_tracker()
+        if not tracker.has_budget(1):
+            return {"success": False, "error": QUOTA_EXHAUSTED_MESSAGE}
+
         try:
             params = {
                 "part": "snippet,contentDetails,statistics",
@@ -153,7 +176,12 @@ class YouTubeService:
             url = f"{self.base_url}/videos"
             response = requests.get(url, params=params, timeout=30)
 
+            if is_daily_quota_error(response.status_code, response.text):
+                tracker.mark_exhausted()
+                return {"success": False, "error": QUOTA_EXHAUSTED_MESSAGE}
+
             if response.status_code == 200:
+                tracker.consume("video_details")
                 data = response.json()
 
                 if "items" in data and data["items"]:
@@ -185,9 +213,16 @@ class YouTubeService:
         if not api_key:
             return {"success": False, "message": "YouTube API: No API key configured"}
 
+        if get_quota_tracker().is_exhausted():
+            return {
+                "success": False,
+                "message": f"YouTube API: {QUOTA_EXHAUSTED_MESSAGE}",
+            }
+
         try:
-            # Test with a simple search
-            result = self.search_videos("test", 1)
+            # A videos.list lookup (1 unit) validates the key; a search would
+            # spend 100 units on every click of "Test connection"
+            result = self.get_video_details("dQw4w9WgXcQ")
 
             if result["success"]:
                 return {

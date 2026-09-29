@@ -161,6 +161,43 @@ class YouTubeSearchService:
                 "error": f"YouTube search failed: {error_msg}",
             }
 
+    def search_videos_as_typed(self, query: str, limit: int = 5) -> Dict:
+        """Search YouTube for exactly what the user typed.
+
+        Unlike search_artist_videos() (built for artist discovery), this adds
+        no terms to the query, applies no category filter, and keeps YouTube's
+        own relevance order -- so a search for an artist name returns that
+        artist's videos, not whatever an "official music video" suffix and an
+        artist-name heuristic prefer. One API call (100 quota units).
+        """
+        if not self.api_key:
+            return {
+                "videos": [],
+                "total_results": 0,
+                "error": "YouTube API key not configured",
+            }
+
+        cache_params = {"query": query, "limit": limit, "mode": "as_typed"}
+        cached_result = self._cache.get("search", cache_params)
+        if cached_result is not None:
+            return cached_result
+
+        if not self._quota_tracker.has_budget(100):
+            logger.warning(f"YouTube API quota exhausted — skipping search: {query!r}")
+            return {
+                "videos": [],
+                "total_results": 0,
+                "error": "YouTube API quota exhausted for today",
+            }
+
+        result = self._search_youtube_api(
+            query=query, limit=limit, use_music_category=False
+        )
+        # Don't cache empty/error results (likely quota or a transient error)
+        if result.get("videos"):
+            self._cache.set("search", cache_params, result)
+        return result
+
     def _search_youtube_api(
         self, query: str, limit: int, use_music_category: bool = True
     ) -> Dict:
@@ -203,13 +240,21 @@ class YouTubeSearchService:
             data = response.json()
             videos = []
 
+            # type=video should only return videos, but skip any item without
+            # an id.videoId rather than failing the whole search
+            items = [
+                item
+                for item in data.get("items", [])
+                if isinstance(item.get("id"), dict) and item["id"].get("videoId")
+            ]
+
             # Get video IDs for detailed info
-            video_ids = [item["id"]["videoId"] for item in data.get("items", [])]
+            video_ids = [item["id"]["videoId"] for item in items]
             video_details = self._get_video_details(video_ids) if video_ids else {}
 
-            for item in data.get("items", []):
+            for item in items:
                 video_id = item["id"]["videoId"]
-                snippet = item["snippet"]
+                snippet = item.get("snippet", {})
                 details = video_details.get(video_id, {})
 
                 video_info = {
@@ -245,6 +290,7 @@ class YouTubeSearchService:
             }
 
         except requests.RequestException as e:
+            self._quota_tracker.note_http_error(e)
             error_msg = str(e)
             if self.api_key and self.api_key in error_msg:
                 error_msg = error_msg.replace(self.api_key, "***API_KEY***")
@@ -325,6 +371,7 @@ class YouTubeSearchService:
             return video_details
 
         except Exception as e:
+            self._quota_tracker.note_http_error(e)
             logger.error(f"Failed to get video details: {e}")
             return video_details  # Return cached videos even if API call fails
 
@@ -423,6 +470,16 @@ class YouTubeSearchService:
             logger.debug(f"Using cached search results for title: {title}")
             return cached_result
 
+        if not self._quota_tracker.has_budget(100):
+            logger.warning(
+                f"YouTube API quota exhausted — skipping title search: {title!r}"
+            )
+            return {
+                "videos": [],
+                "total_results": 0,
+                "error": "YouTube API quota exhausted for today",
+            }
+
         try:
             # Construct search query
             search_query = title
@@ -449,13 +506,18 @@ class YouTubeSearchService:
             data = response.json()
             videos = []
 
-            # Get video IDs for detailed info
-            video_ids = [item["id"]["videoId"] for item in data.get("items", [])]
+            # Skip any item without an id.videoId rather than failing the search
+            items = [
+                item
+                for item in data.get("items", [])
+                if isinstance(item.get("id"), dict) and item["id"].get("videoId")
+            ]
+            video_ids = [item["id"]["videoId"] for item in items]
             video_details = self._get_video_details(video_ids) if video_ids else {}
 
-            for item in data.get("items", []):
+            for item in items:
                 video_id = item["id"]["videoId"]
-                snippet = item["snippet"]
+                snippet = item.get("snippet", {})
                 details = video_details.get(video_id, {})
 
                 video_info = {
@@ -496,6 +558,7 @@ class YouTubeSearchService:
             return result
 
         except Exception as e:
+            self._quota_tracker.note_http_error(e)
             logger.error(f"YouTube title search failed: {e}")
             return {
                 "videos": [],
@@ -573,6 +636,12 @@ class YouTubeSearchService:
                     "key": self.api_key,
                 }
 
+                if not self._quota_tracker.has_budget(100):
+                    logger.warning(
+                        f"YouTube API quota exhausted — skipping channel search: {artist_name!r}"
+                    )
+                    return None
+
                 response = requests.get(url, params=params, timeout=30)
                 response.raise_for_status()
 
@@ -622,6 +691,7 @@ class YouTubeSearchService:
             return None
 
         except requests.RequestException as e:
+            self._quota_tracker.note_http_error(e)
             logger.error(f"YouTube channel search API request failed: {e}")
             return None
         except Exception as e:

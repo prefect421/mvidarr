@@ -212,8 +212,9 @@ openssl rand -base64 32
 
 | Setting | Description | Get From |
 |---------|-------------|----------|
-| **IMVDB_API_KEY** | Music video metadata | https://imvdb.com/developers |
 | **YOUTUBE_API_KEY** | YouTube metadata | Google Cloud Console |
+
+MusicBrainz metadata requires no API key — it works out of the box.
 
 #### **Other Settings**:
 

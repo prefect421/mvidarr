@@ -71,32 +71,12 @@
             <span class="close" onclick="hideAddArtistModal()" aria-label="Close modal">&times;</span>
         </div>
         <div class="modal-body">
-            <!-- Search Section -->
-            <div style="margin-bottom: 2rem;">
-                <h4 style="margin-bottom: 1rem;">Search IMVDb</h4>
-                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-                    <input type="text" id="addArtistSearchInput" placeholder="Search for artists on IMVDb..." 
-                           style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);"
-                           onkeyup="searchImvdbForAdd(event)">
-                    <button onclick="searchImvdbForAdd()" class="btn btn-primary">Search</button>
-                </div>
-                <div id="addArtistSearchResults" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); padding: 1rem; background: var(--bg-secondary);">
-                    <p>Enter a search term to find artists from IMVDb</p>
-                </div>
-            </div>
-            
             <!-- Manual Entry Section -->
             <div>
-                <h4 style="margin-bottom: 1rem;">Or Add Manually</h4>
                 <form id="addArtistForm">
                     <div style="margin-bottom: 1rem;">
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">Artist Name:</label>
-                        <input type="text" id="artistName" name="name" required 
-                               style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
-                    </div>
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">IMVDB ID (optional):</label>
-                        <input type="text" id="imvdbId" name="imvdb_id" 
+                        <input type="text" id="artistName" name="name" required
                                style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-primary); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
                     </div>
                     <div style="margin-bottom: 1rem;">
@@ -587,62 +567,12 @@ function hideAddArtistModal() {
     
     // Reset form content
     document.getElementById('addArtistForm').reset();
-    document.getElementById('addArtistSearchInput').value = '';
-    document.getElementById('addArtistSearchResults').innerHTML = '<p>Enter a search term to find artists from IMVDb</p>';
-}
-
-function searchImvdbForAdd(event) {
-    // Handle Enter key press
-    if (event && event.key && event.key !== 'Enter') {
-        return;
-    }
-    
-    const searchTerm = document.getElementById('addArtistSearchInput').value.trim();
-    if (!searchTerm) {
-        return;
-    }
-    
-    const resultsDiv = document.getElementById('addArtistSearchResults');
-    resultsDiv.innerHTML = '<p>Searching database and IMVDb...</p>';
-    
-    // Search IMVDb
-    fetch(`/api/metadata-enrichment/search/imvdb?artist=${encodeURIComponent(searchTerm)}`)
-        .then(response => response.json())
-        .then(result => {
-            if (result.results && result.results.length > 0) {
-                resultsDiv.innerHTML = `
-                    <div style="margin-bottom: 1rem;">
-                        <h5>Found ${result.results.length} artists on IMVDb:</h5>
-                    </div>
-                    ${result.results.map(artist => `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border: 1px solid #333; margin-bottom: 0.5rem; border-radius: 4px; background: #1a1a1a;">
-                            <div>
-                                <strong style="color: #fff;">${artist.name}</strong>
-                                ${artist.artist_video_count ? `<div style="font-size: 0.875rem; color: #ccc;">${artist.artist_video_count} videos on IMVDb</div>` : ''}
-                                ${artist.byline ? `<div style="font-size: 0.8rem; color: #999;">${artist.byline}</div>` : ''}
-                            </div>
-                            <button onclick="addArtistFromImvdb('${artist.id}', '${artist.name.replace(/'/g, '\\\'')}')" 
-                                    class="btn btn-primary btn-sm">
-                                Add This Artist
-                            </button>
-                        </div>
-                    `).join('')}
-                `;
-            } else {
-                resultsDiv.innerHTML = '<p style="color: #ccc;">No artists found on IMVDb. Try a different search term or add manually.</p>';
-            }
-        })
-        .catch(error => {
-            console.error('Error searching IMVDb:', error);
-            resultsDiv.innerHTML = '<p style="color: #ff6b6b;">Error searching IMVDb. Try adding manually instead.</p>';
-        });
 }
 
 function addArtist() {
     const formData = new FormData(document.getElementById('addArtistForm'));
     const data = {
         name: formData.get('name'),
-        imvdb_id: formData.get('imvdb_id'),
         auto_download: formData.get('auto_download') === 'on',
         monitored: formData.get('monitored') === 'on'
     };
@@ -683,46 +613,6 @@ function addArtist() {
         console.error('Error adding artist:', error);
         showError('Error adding artist');
     });
-}
-
-function addArtistFromImvdb(imvdbId, artistName) {
-    if (confirm(`Add "${artistName}" from IMVDb?`)) {
-        fetch('/api/artists/import-from-imvdb', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                imvdb_id: parseInt(imvdbId),
-                monitored: true,
-                auto_download: false
-            })
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.error) {
-                showError('Error: ' + result.error);
-            } else {
-                const artistName = result.name || result.artist_name || 'Artist';
-                showSuccess(`Artist "${artistName}" added successfully!`);
-                hideAddArtistModal();
-                
-                // Refresh artist count
-                loadDashboardStats();
-                
-                // Optionally redirect to artists page after a delay
-                setTimeout(() => {
-                    if (confirm('Would you like to view the artists page to see your new artist?')) {
-                        window.location.href = '/artists';
-                    }
-                }, 1500);
-            }
-        })
-        .catch(error => {
-            console.error('Error importing artist:', error);
-            showError('Error importing artist from IMVDb');
-        });
-    }
 }
 
 // Close modal when clicking outside or pressing Escape

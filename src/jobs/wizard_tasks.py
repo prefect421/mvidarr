@@ -348,9 +348,7 @@ def process_artists_batch_task(
                 artists = (
                     session.query(Artist)
                     .filter(
-                        (Artist.imvdb_id.is_(None))
-                        | (Artist.spotify_id.is_(None))
-                        | (Artist.lastfm_name.is_(None))
+                        (Artist.spotify_id.is_(None)) | (Artist.lastfm_name.is_(None))
                     )
                     .all()
                 )

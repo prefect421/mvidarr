@@ -10,8 +10,7 @@ from typing import Dict, List
 import requests
 
 from src.database.connection import get_db
-from src.database.models import Artist, Video, VideoStatus
-from src.services.imvdb_service import imvdb_service
+from src.database.models import Artist
 from src.services.settings_service import SettingsService
 from src.utils.logger import get_logger
 
@@ -551,65 +550,9 @@ class LastFmService:
                             session.add(new_artist)
                             session.flush()  # Get the ID
 
-                            # Try to find videos via IMVDB
-                            try:
-                                imvdb_results = imvdb_service.search_artist(artist_name)
-                                if imvdb_results and imvdb_results.get("results"):
-                                    # Use first match
-                                    artist_match = imvdb_results["results"][0]
-                                    new_artist.imvdb_id = str(artist_match["id"])
-                                    new_artist.imvdb_metadata = artist_match
-
-                                    # Get videos for this artist
-                                    videos = imvdb_service.get_artist_videos(
-                                        artist_match["id"]
-                                    )
-                                    if videos:
-                                        for video_data in videos[
-                                            :10
-                                        ]:  # Limit to first 10
-                                            existing_video = (
-                                                session.query(Video)
-                                                .filter(
-                                                    Video.imvdb_id
-                                                    == str(video_data["id"])
-                                                )
-                                                .first()
-                                            )
-
-                                            if not existing_video:
-                                                new_video = Video(
-                                                    title=video_data["song_title"],
-                                                    artist_id=new_artist.id,
-                                                    imvdb_id=str(video_data["id"]),
-                                                    url=video_data.get("url"),
-                                                    thumbnail_url=video_data.get(
-                                                        "image", {}
-                                                    ).get("o"),
-                                                    year=video_data.get("year"),
-                                                    directors=video_data.get(
-                                                        "directors", []
-                                                    ),
-                                                    producers=video_data.get(
-                                                        "producers", []
-                                                    ),
-                                                    status=(
-                                                        VideoStatus.WANTED
-                                                        if new_artist.auto_download
-                                                        else VideoStatus.MONITORED
-                                                    ),
-                                                    source="lastfm_import",
-                                                    imvdb_metadata=video_data,
-                                                    created_at=datetime.now(),
-                                                )
-                                                session.add(new_video)
-                                                results["videos_found"] += 1
-
-                            except Exception as e:
-                                logger.warning(
-                                    f"Failed to get IMVDB data for {artist_name}: {e}"
-                                )
-
+                            # Video discovery for newly-imported artists happens
+                            # via video_discovery_service once the artist is
+                            # monitored -- not performed inline here.
                             results["imported_artists"] += 1
 
                     except Exception as e:
@@ -682,62 +625,9 @@ class LastFmService:
                             if not artist.lastfm_name:
                                 artist.lastfm_name = artist_name
 
-                        # Try to find videos for loved tracks
-                        try:
-                            if not artist.imvdb_id:
-                                imvdb_results = imvdb_service.search_artist(artist_name)
-                                if imvdb_results and imvdb_results.get("results"):
-                                    artist_match = imvdb_results["results"][0]
-                                    artist.imvdb_id = str(artist_match["id"])
-                                    artist.imvdb_metadata = artist_match
-
-                            if artist.imvdb_id:
-                                videos = imvdb_service.get_artist_videos(
-                                    int(artist.imvdb_id)
-                                )
-                                if videos:
-                                    for video_data in videos[:5]:  # Limit to first 5
-                                        existing_video = (
-                                            session.query(Video)
-                                            .filter(
-                                                Video.imvdb_id == str(video_data["id"])
-                                            )
-                                            .first()
-                                        )
-
-                                        if not existing_video:
-                                            new_video = Video(
-                                                title=video_data["song_title"],
-                                                artist_id=artist.id,
-                                                imvdb_id=str(video_data["id"]),
-                                                url=video_data.get("url"),
-                                                thumbnail_url=video_data.get(
-                                                    "image", {}
-                                                ).get("o"),
-                                                year=video_data.get("year"),
-                                                directors=video_data.get(
-                                                    "directors", []
-                                                ),
-                                                producers=video_data.get(
-                                                    "producers", []
-                                                ),
-                                                status=(
-                                                    VideoStatus.WANTED
-                                                    if artist.auto_download
-                                                    else VideoStatus.MONITORED
-                                                ),
-                                                source="lastfm_loved",
-                                                imvdb_metadata=video_data,
-                                                created_at=datetime.now(),
-                                            )
-                                            session.add(new_video)
-                                            results["videos_found"] += 1
-
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to get videos for {artist_name}: {e}"
-                            )
-
+                        # Video discovery for these artists happens via
+                        # video_discovery_service once the artist is
+                        # monitored -- not performed inline here.
                         results["artists_processed"] += 1
 
                     except Exception as e:

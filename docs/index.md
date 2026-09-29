@@ -10,7 +10,7 @@ title: Home
 ## ✨ Key Features
 
 - **🎯 Advanced Artist Management** - Multi-criteria search and bulk operations
-- **🔍 Comprehensive Video Discovery** - Dual-source integration (IMVDb + YouTube)  
+- **🔍 Comprehensive Video Discovery** - Dual-source integration (MusicBrainz + YouTube)  
 - **🖼️ Advanced Thumbnail Management** - Multi-source search and cropping
 - **📁 Intelligent Organization** - Automatic folder creation and cleanup
 - **🔎 Advanced Search System** - Real-time suggestions and filtering

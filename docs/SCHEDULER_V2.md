@@ -413,7 +413,7 @@ Content-Type: application/json
 2. Review Celery worker logs
 3. Verify database connectivity
 4. Check artist/video data integrity
-5. Ensure external APIs (IMVDb, YouTube) are accessible
+5. Ensure external APIs (MusicBrainz, YouTube) are accessible
 
 ### High Job Failure Rate
 

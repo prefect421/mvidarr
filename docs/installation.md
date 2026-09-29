@@ -52,7 +52,6 @@ MUSIC_VIDEOS_PATH=/path/to/your/music/videos
 **Optional settings** — sensible defaults are already built into `docker-compose.yml`:
 ```bash
 # API Keys for metadata enrichment (can also be set later via the Settings UI)
-IMVDB_API_KEY=your_imvdb_api_key
 YOUTUBE_API_KEY=your_youtube_api_key
 
 # Port configuration (host side only — the app always listens on 5000 in-container)

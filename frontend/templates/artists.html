@@ -270,7 +270,7 @@
                         <button onclick="bulkRefreshMetadata()" class="btn btn-secondary">
                             🔄 Refresh Metadata
                         </button>
-                        <p class="operation-hint">Update metadata from IMVDb</p>
+                        <p class="operation-hint">Update metadata from MusicBrainz, Spotify, and Last.fm</p>
                     </div>
                 </div>
             </div>
@@ -292,13 +292,6 @@
                             <span>Add Genres</span>
                         </label>
                         <input type="text" id="bulkGenresValue" placeholder="Enter genres (comma-separated)">
-                    </div>
-                    
-                    <div class="bulk-operation">
-                        <button onclick="bulkIMVDbLink()" class="btn btn-info">
-                            🔗 Link to IMVDb
-                        </button>
-                        <p class="operation-hint">Auto-link artists to IMVDb profiles</p>
                     </div>
                     
                     <div class="bulk-operation">
@@ -441,30 +434,13 @@
     <div class="modal-content large-modal">
         <span class="close">&times;</span>
         <h2>Add New Artist</h2>
-        
-        <!-- Search Section -->
-        <div class="add-artist-search-section">
-            <h3>Search IMVDb</h3>
-            <div class="search-container">
-                <input type="text" id="addArtistSearchInput" placeholder="Search for artists on IMVDb..." onkeyup="searchImvdbForAdd(event)">
-                <button onclick="searchImvdbForAdd()" class="btn btn-primary">Search</button>
-            </div>
-            <div id="addArtistSearchResults" class="search-results">
-                <p>Enter a search term to find artists from IMVDb</p>
-            </div>
-        </div>
-        
+
         <!-- Manual Entry Section -->
         <div class="add-artist-manual-section">
-            <h3>Or Add Manually</h3>
             <form id="addArtistForm">
                 <div class="form-group">
                     <label for="artistName">Artist Name:</label>
                     <input type="text" id="artistName" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label for="imvdbId">IMVDB ID (optional):</label>
-                    <input type="text" id="imvdbId" name="imvdb_id">
                 </div>
                 <div class="form-group">
                     <label>
@@ -483,21 +459,6 @@
                     <button type="button" onclick="hideAddArtistModal()" class="btn btn-secondary">Cancel</button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<!-- IMVDb Discovery Modal -->
-<div id="discoveryModal" class="modal">
-    <div class="modal-content large-modal">
-        <span class="close">&times;</span>
-        <h2>Discover Artists from IMVDb</h2>
-        <div class="discovery-search">
-            <input type="text" id="discoverySearchInput" placeholder="Search for artists on IMVDb...">
-            <button onclick="discoverArtists()" class="btn btn-primary">Search</button>
-        </div>
-        <div id="discoveryResults" class="discovery-results">
-            <p>Enter a search term to discover artists from IMVDb</p>
         </div>
     </div>
 </div>
@@ -793,33 +754,19 @@ function createPaginationControls(data) {
 function setupModal() {
     const addModal = document.getElementById('addArtistModal');
     const addCloseBtn = addModal.querySelector('.close');
-    
-    const discoveryModal = document.getElementById('discoveryModal');
-    const discoveryCloseBtn = discoveryModal.querySelector('.close');
-    
+
     addCloseBtn.onclick = hideAddArtistModal;
-    discoveryCloseBtn.onclick = hideDiscoveryModal;
-    
+
     window.onclick = function(event) {
         if (event.target === addModal) {
             hideAddArtistModal();
         }
-        if (event.target === discoveryModal) {
-            hideDiscoveryModal();
-        }
     };
-    
+
     document.getElementById('addArtistForm').onsubmit = function(e) {
         e.preventDefault();
         addArtist();
     };
-    
-    // Handle Enter key in discovery search
-    document.getElementById('discoverySearchInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            discoverArtists();
-        }
-    });
 }
 
 function showAddArtistModal() {
@@ -909,8 +856,6 @@ function hideAddArtistModal() {
     
     // Reset form content
     document.getElementById('addArtistForm').reset();
-    document.getElementById('addArtistSearchInput').value = '';
-    document.getElementById('addArtistSearchResults').innerHTML = '<p>Enter a search term to find artists from IMVDb</p>';
 }
 
 async function searchThumbnailForArtist(artistId) {
@@ -978,11 +923,10 @@ function addArtist() {
     const formData = new FormData(document.getElementById('addArtistForm'));
     const data = {
         name: formData.get('name'),
-        imvdb_id: formData.get('imvdb_id'),
         auto_download: formData.get('auto_download') === 'on',
         monitored: formData.get('monitored') === 'on'
     };
-    
+
     fetch('/api/artists/', {
         method: 'POST',
         headers: {
@@ -1029,7 +973,7 @@ function sortArtists() {
 }
 
 function scanMissingThumbnails() {
-    toastConfirm('This will scan all artists missing thumbnails and attempt to find images from IMVDb and Wikipedia. This may take a while. Continue?', () => {
+    toastConfirm('This will scan all artists missing thumbnails and attempt to find images from Wikipedia and Google Images. This may take a while. Continue?', () => {
         proceedScanMissingThumbnails();
     });
 }
@@ -1253,406 +1197,6 @@ function saveSearchPreset() {
     // For now, just show a placeholder alert
     // This could be expanded to save presets in localStorage or backend
     showInfo('Search preset functionality coming soon!');
-}
-
-function searchImvdbForAdd(event) {
-    // Handle Enter key press
-    if (event && event.key && event.key !== 'Enter') {
-        return;
-    }
-    
-    const searchTerm = document.getElementById('addArtistSearchInput').value.trim();
-    if (!searchTerm) {
-        return;
-    }
-    
-    const resultsDiv = document.getElementById('addArtistSearchResults');
-    resultsDiv.innerHTML = '<p>Searching database and IMVDb...</p>';
-    
-    // Enhanced search: First check existing database, then IMVDb
-    Promise.all([
-        // Search existing database
-        fetch(`/api/artists/search/advanced?search=${encodeURIComponent(searchTerm)}&limit=25`)
-            .then(response => response.json())
-            .catch(error => {
-                console.error('Error searching database:', error);
-                return { artists: [] };
-            }),
-        // Search IMVDb
-        fetch(`/api/artists/discover?q=${encodeURIComponent(searchTerm)}&limit=50`)
-            .then(response => response.json())
-            .catch(error => {
-                console.error('Error searching IMVDb:', error);
-                return { artists: [] };
-            })
-    ])
-    .then(([dbResults, imvdbResults]) => {
-        let resultsHtml = '';
-        
-        // Show existing database artists first
-        if (dbResults.artists && dbResults.artists.length > 0) {
-            resultsHtml += `
-                <div class="search-results-section">
-                    <div class="search-results-header existing">
-                        <h4>📍 Existing Artists (${dbResults.artists.length} found)</h4>
-                        <p>These artists are already in your database</p>
-                    </div>
-                    <div class="search-results-grid">
-                        ${dbResults.artists.map(artist => `
-                            <div class="search-result-card existing">
-                                <div class="search-result-thumbnail">
-                                    ${artist.thumbnail_url ? `<img src="${artist.thumbnail_url}" alt="${artist.name}" onerror="handleThumbnailError(this)">` : '<div class="no-image">No Image</div>'}
-                                </div>
-                                <div class="search-result-info">
-                                    <h5>${artist.name}</h5>
-                                    <p>${artist.video_count || 0} videos</p>
-                                    ${artist.imvdb_id ? '<p class="imvdb-linked">🔗 IMVDb Linked</p>' : '<p class="no-imvdb">⚠️ No IMVDb Link</p>'}
-                                </div>
-                                <div class="search-result-actions">
-                                    <button onclick="viewArtist(${artist.id})" class="btn btn-info btn-small">View Artist</button>
-                                    ${!artist.imvdb_id ? `<button onclick="linkToImvdb(${artist.id}, '${artist.name.replace(/'/g, '\\\'')}')" class="btn btn-secondary btn-small">Link to IMVDb</button>` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Show IMVDb results that can be added
-        if (imvdbResults.artists && imvdbResults.artists.length > 0) {
-            // Filter out artists that already exist in database
-            const existingNames = dbResults.artists ? dbResults.artists.map(a => a.name.toLowerCase()) : [];
-            const newArtists = imvdbResults.artists.filter(artist => 
-                !existingNames.includes(artist.name.toLowerCase())
-            );
-            
-            if (newArtists.length > 0) {
-                resultsHtml += `
-                    <div class="search-results-section">
-                        <div class="search-results-header imvdb">
-                            <h4>🌐 Available from IMVDb (${newArtists.length} found)</h4>
-                            <p>These artists can be added to your database</p>
-                        </div>
-                        <div class="search-results-grid">
-                            ${newArtists.map(artist => `
-                                <div class="search-result-card imvdb">
-                                    <div class="search-result-thumbnail">
-                                        ${artist.image ? `<img src="${getImageUrl(artist.image)}" alt="${artist.name}" onerror="handleThumbnailError(this)">` : '<div class="no-image">No Image</div>'}
-                                    </div>
-                                    <div class="search-result-info">
-                                        <h5>${artist.name}</h5>
-                                        ${artist.video_count ? `<p>${artist.video_count} videos on IMVDb</p>` : ''}
-                                        ${artist.byline ? `<p class="byline">${artist.byline}</p>` : ''}
-                                    </div>
-                                    <div class="search-result-actions">
-                                        <button onclick="addArtistFromImvdb('${artist.imvdb_id}', '${artist.name.replace(/'/g, '\\\'')}')" class="btn btn-primary btn-small">Add This Artist</button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            } else if (dbResults.artists && dbResults.artists.length > 0) {
-                resultsHtml += `
-                    <div class="search-results-section">
-                        <div class="search-results-header info">
-                            <h4>ℹ️ All matching artists already exist</h4>
-                            <p>No new artists found on IMVDb for "${searchTerm}"</p>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-        
-        // If no results from either source
-        if (!resultsHtml) {
-            resultsHtml = `
-                <div class="search-results-section">
-                    <div class="search-results-header no-results">
-                        <h4>❌ No artists found</h4>
-                        <p>No results found for "${searchTerm}" in database or IMVDb</p>
-                        <p>Try a different search term or check spelling</p>
-                    </div>
-                </div>
-            `;
-        }
-        
-        resultsDiv.innerHTML = resultsHtml;
-    })
-    .catch(error => {
-        console.error('Error in enhanced search:', error);
-        resultsDiv.innerHTML = '<p>Error performing search. Please try again.</p>';
-    });
-}
-
-function linkToImvdb(artistId, artistName) {
-    if (typeof toastConfirm === 'function') {
-        toastConfirm(`Link "${artistName}" to IMVDb? This will search for the artist and link their profile.`, () => {
-            proceedLinkToImvdb(artistId, artistName);
-        });
-    } else {
-        if (confirm(`Link "${artistName}" to IMVDb? This will search for the artist and link their profile.`)) {
-            proceedLinkToImvdb(artistId, artistName);
-        }
-    }
-}
-
-function proceedLinkToImvdb(artistId, artistName) {
-    // For now, just show that this feature would link the artist
-    if (typeof showInfo === 'function') {
-        showInfo(`IMVDb linking for "${artistName}" coming soon! This will automatically find and link their IMVDb profile.`);
-    } else {
-        alert(`IMVDb linking for "${artistName}" coming soon!`);
-    }
-    
-    // TODO: Implement actual IMVDb linking functionality
-    // This would involve:
-    // 1. Search IMVDb for the artist
-    // 2. Present matching options to user
-    // 3. Update artist record with IMVDb ID
-}
-
-function addArtistFromImvdb(imvdbId, artistName) {
-    if (typeof toastConfirm === 'function') {
-        toastConfirm(`Add "${artistName}" from IMVDb?`, () => {
-            proceedAddArtistFromImvdb(imvdbId, artistName);
-        });
-    } else {
-        if (confirm(`Add "${artistName}" from IMVDb?`)) {
-            proceedAddArtistFromImvdb(imvdbId, artistName);
-        }
-    }
-}
-
-function proceedAddArtistFromImvdb(imvdbId, artistName) {
-    fetch('/api/artists/import-from-imvdb', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            imvdb_id: parseInt(imvdbId),
-            monitored: true,
-            auto_download: false
-        })
-    })
-    .then(response => response.json())
-    .then(async result => {
-        if (result.error) {
-            if (typeof showError === 'function') {
-                showError('Error: ' + result.error);
-            } else {
-                alert('Error: ' + result.error);
-            }
-        } else {
-            const artistName = result.name || result.artist_name || 'Artist';
-            if (typeof showSuccess === 'function') {
-                showSuccess(`Artist "${artistName}" added successfully!`);
-            } else {
-                alert(`Artist "${artistName}" added successfully!`);
-            }
-            // Search for thumbnail and run full enrichment for the newly imported artist
-            if (result.id) {
-                try {
-                    // Search for thumbnail
-                    console.log(`🔍 Searching thumbnail for imported artist ${result.id}: ${result.name}`);
-                    const thumbnailSuccess = await searchThumbnailForArtist(result.id);
-                    if (thumbnailSuccess) {
-                        console.log(`🔍 Found thumbnail for "${result.name}"`);
-                    }
-                    
-                    // Run full metadata enrichment
-                    if (typeof showInfo === 'function') {
-                        showInfo(`Enriching metadata for "${result.name}" from all sources...`);
-                    }
-                    const enrichResponse = await fetch(`/api/metadata-enrichment/enrich/${result.id}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ force_refresh: true })
-                    });
-                    
-                    console.log(`🔍 Enrichment response status:`, enrichResponse.status);
-                    const enrichData = await enrichResponse.json();
-                    console.log(`🔍 Enrichment response data:`, enrichData);
-                    
-                    if (enrichResponse.ok && enrichData.success) {
-                        const sourcesUsed = enrichData.sources_used || [];
-                        const enrichedFields = enrichData.enriched_fields || [];
-                        console.log(`🔍 Sources used:`, sourcesUsed);
-                        console.log(`🔍 Fields enriched:`, enrichedFields);
-                        
-                        if (sourcesUsed.length > 0) {
-                            if (typeof showSuccess === 'function') {
-                                showSuccess(`"${result.name}" enriched from ${sourcesUsed.join(', ')}`);
-                            }
-                        } else {
-                            console.log(`⚠️ No sources returned data for ${result.name}`);
-                            if (typeof showWarning === 'function') {
-                                showWarning(`No additional metadata found for "${result.name}"`);
-                            }
-                        }
-                    } else {
-                        console.error(`❌ Enrichment failed for ${result.name}:`, enrichData);
-                        if (typeof showError === 'function') {
-                            showError(`Failed to enrich "${result.name}": ${enrichData.error || 'Unknown error'}`);
-                        }
-                    }
-                } catch (error) {
-                    console.log(`🔍 Enrichment failed for ${result.name}:`, error);
-                }
-            }
-            hideAddArtistModal();
-            loadArtists(currentPage); // Refresh the artists list
-        }
-    })
-    .catch(error => {
-        console.error('Error adding artist:', error);
-        if (typeof showError === 'function') {
-            showError('Error adding artist');
-        } else {
-            alert('Error adding artist');
-        }
-    });
-}
-
-function showDiscoveryModal() {
-    document.getElementById('discoveryModal').classList.add('show');
-}
-
-function hideDiscoveryModal() {
-    document.getElementById('discoveryModal').classList.remove('show');
-    document.getElementById('discoverySearchInput').value = '';
-    document.getElementById('discoveryResults').innerHTML = '<p>Enter a search term to discover artists from IMVDb</p>';
-}
-
-function discoverArtists() {
-    const searchTerm = document.getElementById('discoverySearchInput').value.trim();
-    if (!searchTerm) {
-        showWarning('Please enter a search term');
-        return;
-    }
-    
-    const resultsDiv = document.getElementById('discoveryResults');
-    resultsDiv.innerHTML = '<p>Searching IMVDb...</p>';
-    
-    fetch(`/api/artists/discover?q=${encodeURIComponent(searchTerm)}&limit=50`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.artists && data.artists.length > 0) {
-                resultsDiv.innerHTML = `
-                    <div class="discovery-header">
-                        <h3>Found ${data.count} artists for "${data.search_term}"</h3>
-                    </div>
-                    <div class="discovery-grid">
-                        ${data.artists.map(artist => `
-                            <div class="discovery-card">
-                                <div class="discovery-thumbnail">
-                                    ${artist.image ? `<img src="${getImageUrl(artist.image)}" alt="${artist.name}" onerror="handleThumbnailError(this)">` : '<div class="no-image">No Image</div>'}
-                                </div>
-                                <div class="discovery-info">
-                                    <h4>${artist.name}</h4>
-                                    ${artist.biography ? `<p class="biography">${artist.biography.substring(0, 100)}...</p>` : ''}
-                                    ${artist.formed_year ? `<p>Formed: ${artist.formed_year}</p>` : ''}
-                                    ${artist.origin_country ? `<p>Origin: ${artist.origin_country}</p>` : ''}
-                                </div>
-                                <div class="discovery-actions">
-                                    <button onclick="importArtist('${artist.imvdb_id}', '${artist.name}')" class="btn btn-primary btn-small">Import Artist</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } else {
-                resultsDiv.innerHTML = `<p>No artists found for "${data.search_term}". Try a different search term.</p>`;
-            }
-        })
-        .catch(error => {
-            console.error('Error discovering artists:', error);
-            resultsDiv.innerHTML = '<p>Error searching IMVDb. Please try again.</p>';
-        });
-}
-
-function getImageUrl(imageData) {
-    if (typeof imageData === 'string') {
-        return imageData;
-    } else if (typeof imageData === 'object') {
-        // Try different sizes: l (large), m (medium), s (small)
-        return imageData.l || imageData.m || imageData.s || '/static/placeholder-artist.png';
-    }
-    return '/static/placeholder-artist.png';
-}
-
-function importArtist(imvdbId, artistName) {
-    toastConfirm(`Import "${artistName}" from IMVDb?`, () => {
-        fetch('/api/artists/import-from-imvdb', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                imvdb_id: parseInt(imvdbId),
-                monitored: true,
-                auto_download: false
-            })
-        })
-        .then(response => response.json())
-        .then(async result => {
-            if (result.error) {
-                showError('Error: ' + result.error);
-            } else {
-                showSuccess(`Artist "${result.name}" imported successfully!`);
-                hideDiscoveryModal();
-                loadArtists(currentPage); // Refresh the artists list
-                
-                // Search for thumbnail and run full enrichment
-                if (result.artist_id) {
-                    try {
-                        // Search for thumbnail
-                        const thumbnailSuccess = await searchThumbnailForArtist(result.artist_id);
-                        if (thumbnailSuccess) {
-                            console.log(`🔍 Found thumbnail for "${result.name}"`);
-                        }
-                        
-                        // Run full metadata enrichment
-                        showInfo(`Enriching metadata for "${result.name}" from all sources...`);
-                        const enrichResponse = await fetch(`/api/metadata-enrichment/enrich/${result.artist_id}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ force_refresh: true })
-                        });
-                        
-                        console.log(`🔍 Enrichment response status:`, enrichResponse.status);
-                        const enrichData = await enrichResponse.json();
-                        console.log(`🔍 Enrichment response data:`, enrichData);
-                        
-                        if (enrichResponse.ok && enrichData.success) {
-                            const sourcesUsed = enrichData.sources_used || [];
-                            const enrichedFields = enrichData.enriched_fields || [];
-                            console.log(`🔍 Sources used:`, sourcesUsed);
-                            console.log(`🔍 Fields enriched:`, enrichedFields);
-                            
-                            if (sourcesUsed.length > 0) {
-                                showSuccess(`"${result.name}" enriched from ${sourcesUsed.join(', ')}`);
-                            } else {
-                                console.log(`⚠️ No sources returned data for ${result.name}`);
-                                showWarning(`No additional metadata found for "${result.name}"`);
-                            }
-                        } else {
-                            console.error(`❌ Enrichment failed for ${result.name}:`, enrichData);
-                            showError(`Failed to enrich "${result.name}": ${enrichData.error || 'Unknown error'}`);
-                        }
-                    } catch (error) {
-                        console.log(`🔍 Enrichment failed for ${result.name}:`, error);
-                    }
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error importing artist:', error);
-            showError('Error importing artist');
-        });
-    });
 }
 
 function viewArtist(id) {
@@ -2517,56 +2061,6 @@ function executeBulkMetadata() {
     .finally(() => {
         btn.textContent = originalText;
         btn.disabled = false;
-    });
-}
-
-function bulkIMVDbLink() {
-    if (selectedArtists.size === 0) {
-        showWarning('No artists selected');
-        return;
-    }
-    
-    const artistIds = Array.from(selectedArtists);
-    showBulkProgress(`Linking ${artistIds.length} artists to IMVDb...`, 0);
-    
-    fetch('/api/artists/bulk-imvdb-link', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            artist_ids: artistIds
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            if (response.status === 404) {
-                throw new Error('IMVDb linking feature is not available (endpoint not found)');
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            return response.json();
-        } else {
-            return response.text().then(text => {
-                throw new Error(`Expected JSON but received: ${text.substring(0, 200)}...`);
-            });
-        }
-    })
-    .then(result => {
-        hideBulkProgress();
-        if (result.error) {
-            showError('Error: ' + result.error);
-        } else {
-            showSuccess(`Successfully linked ${result.linked_count} artist${result.linked_count > 1 ? 's' : ''} to IMVDb`);
-            loadArtists(currentPage);
-        }
-    })
-    .catch(error => {
-        hideBulkProgress();
-        console.error('Error linking to IMVDb:', error);
-        showError('Error linking to IMVDb: ' + error.message);
     });
 }
 

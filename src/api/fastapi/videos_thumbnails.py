@@ -35,7 +35,6 @@ from src.api.fastapi.videos_models import ThumbnailSearchRequest
 from src.config.config import Config
 from src.database.connection import get_db_session
 from src.database.models import Video
-from src.services.imvdb_service import imvdb_service
 from src.services.youtube_service import youtube_service
 from src.utils.logger import get_logger
 
@@ -256,7 +255,7 @@ async def search_thumbnail(
     current_user: dict = Depends(require_authentication),
     session: Session = Depends(get_db_session),
 ):
-    """Search for video thumbnails using various sources (YouTube, IMVDb, Google)"""
+    """Search for video thumbnails using various sources (YouTube, Google)"""
     try:
         video = (
             session.query(Video)
@@ -279,7 +278,7 @@ async def search_thumbnail(
         if not search_query:
             search_query = f"{artist_name} {video_title}"
 
-        sources = getattr(search_request, "sources", ["youtube", "imvdb", "google"])
+        sources = getattr(search_request, "sources", ["youtube", "google"])
         results = []
 
         # 1. YouTube thumbnails
@@ -350,59 +349,7 @@ async def search_thumbnail(
                     f"Failed to create YouTube thumbnails for video {video_id}: {e}"
                 )
 
-        # 2. IMVDb thumbnails
-        if "imvdb" in sources:
-            try:
-                video_details = None
-
-                # First try to get by existing IMVDb ID
-                if video_imvdb_id:
-                    video_details = imvdb_service.get_video_by_id(video_imvdb_id)
-                    logger.debug(f"Retrieved IMVDb data using ID: {video_imvdb_id}")
-
-                # If no ID or no details found, try searching
-                if not video_details:
-                    logger.info(f"No IMVDb ID found, searching for: {search_query}")
-                    try:
-                        search_result = imvdb_service.find_best_video_match(
-                            artist_name, video_title
-                        )
-                        if search_result:
-                            video_details = search_result
-                            logger.info(f"Found IMVDb video via search")
-                    except Exception as search_e:
-                        logger.debug(f"IMVDb search failed: {search_e}")
-
-                if video_details:
-                    # Extract thumbnail metadata using existing extract_metadata method
-                    metadata = imvdb_service.extract_metadata(video_details)
-                    thumbnail_url = metadata.get("thumbnail_url")
-
-                    if thumbnail_url:
-                        imvdb_thumbnails = [
-                            {
-                                "url": thumbnail_url,
-                                "source": "imvdb",
-                                "quality": "original",
-                                "title": f"{video_title} - IMVDb Original",
-                            }
-                        ]
-                        results.extend(imvdb_thumbnails)
-                        logger.info(
-                            f"Found IMVDb thumbnail for video {video_id}: {thumbnail_url}"
-                        )
-                    else:
-                        logger.debug(
-                            f"No thumbnail URL found in IMVDb data for video {video_id}"
-                        )
-                else:
-                    logger.info(f"No IMVDb thumbnails found for: {search_query}")
-            except Exception as e:
-                logger.warning(
-                    f"Failed to get IMVDb thumbnails for video {video_id}: {e}"
-                )
-
-        # 3. Google Images thumbnails
+        # 2. Google Images thumbnails
         if "google" in sources:
             try:
                 from urllib.parse import quote

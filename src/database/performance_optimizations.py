@@ -196,8 +196,6 @@ class DatabasePerformanceOptimizer:
         if filters.get("source"):
             if filters["source"] == "youtube":
                 query = query.filter(Video.youtube_id.isnot(None))
-            elif filters["source"] == "imvdb":
-                query = query.filter(Video.imvdb_id.isnot(None))
             elif filters["source"] == "manual":
                 query = query.filter(
                     and_(Video.youtube_id.is_(None), Video.imvdb_id.is_(None))

@@ -62,6 +62,31 @@ def _safe_parse_genres(genres: Union[str, List[str], None]) -> List[str]:
     return []
 
 
+def _search_terms(query: str) -> List[str]:
+    """Split a search query into terms, dropping punctuation-only tokens
+    (e.g. the "-" in "Artist - Song") that no title or artist would match."""
+    return [t for t in query.split() if any(c.isalnum() for c in t)]
+
+
+def _like_contains(term: str) -> str:
+    """Build a LIKE pattern for `term` with %, _ and the escape char
+    treated literally (pair with escape="\\")."""
+    escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+def _youtube_warning(error: str) -> str:
+    """Turn a raw YouTube search error into a user-facing warning (the raw
+    text can contain request URLs, so it is only logged, never returned)."""
+    lowered = error.lower()
+    if "quota" in lowered or "429" in lowered:
+        return (
+            "YouTube daily search quota is used up; YouTube results return "
+            "after it resets (midnight Pacific)."
+        )
+    return "YouTube search failed; see server logs."
+
+
 # ========================================================================================
 # SEARCH ENDPOINTS
 # ========================================================================================
@@ -76,19 +101,26 @@ async def universal_search(
 ):
     """Universal search endpoint that searches across videos, artists, IMVDb, and YouTube"""
     try:
-        query = q.lower()
+        query = q.strip()
+        terms = _search_terms(query)
 
         # Local database search (skip if extended mode)
         video_results = []
         artist_results = []
 
-        if not extended:
-            # Search local videos
+        if not extended and terms:
+            # Search local videos: every term must match the title or the
+            # artist name, so "artist song" finds a video whose artist and
+            # title each contain part of the query.
             videos = (
                 session.query(Video)
                 .join(Artist)
                 .filter(
-                    Video.title.ilike(f"%{query}%") | Artist.name.ilike(f"%{query}%")
+                    *[
+                        Video.title.ilike(_like_contains(t), escape="\\")
+                        | Artist.name.ilike(_like_contains(t), escape="\\")
+                        for t in terms
+                    ]
                 )
                 .limit(5)
                 .all()
@@ -116,7 +148,9 @@ async def universal_search(
             # Search local artists
             artists = (
                 session.query(Artist)
-                .filter(Artist.name.ilike(f"%{query}%"))
+                .filter(
+                    *[Artist.name.ilike(_like_contains(t), escape="\\") for t in terms]
+                )
                 .limit(5)
                 .all()
             )
@@ -135,77 +169,14 @@ async def universal_search(
 
         # External search results
         external_results = []
+        warnings: List[str] = []
 
-        # IMVDb Search
-        try:
-            from src.services.imvdb_service import imvdb_service
-
-            imvdb_limit = 8 if extended else 3
-
-            if imvdb_service:
-                imvdb_search_result = await asyncio.to_thread(
-                    imvdb_service.search_artist_videos, query, imvdb_limit
-                )
-
-                if imvdb_search_result and imvdb_search_result.get("videos"):
-                    imvdb_results = []
-                    logger.debug(
-                        f"Sample IMVDb video data: {imvdb_search_result['videos'][0] if imvdb_search_result['videos'] else 'No videos'}"
-                    )
-                    for video in imvdb_search_result["videos"][:imvdb_limit]:
-                        # Extract artist name from nested structure with multiple fallbacks
-                        artist_name = ""
-                        artist_data = video.get("artist")
-
-                        if isinstance(artist_data, dict):
-                            # Try common artist name fields
-                            artist_name = (
-                                artist_data.get("name")
-                                or artist_data.get("artist_name")
-                                or artist_data.get("entity_name")
-                                or ""
-                            )
-                        elif isinstance(artist_data, str):
-                            artist_name = artist_data
-
-                        # Additional fallbacks
-                        if not artist_name:
-                            artist_name = (
-                                video.get("artist_name", "")
-                                or video.get("entity_name", "")
-                                or video.get("band_name", "")
-                                or query.title()  # Use the search query as artist name
-                            )
-
-                        imvdb_results.append(
-                            {
-                                "source": "IMVDb",
-                                "id": str(video.get("id", "")),
-                                "title": video.get("song_title", ""),
-                                "artist": artist_name,
-                                "year": video.get("year", None),
-                                "thumbnail": (
-                                    video.get("image", {}).get("o", "")
-                                    if video.get("image")
-                                    else ""
-                                ),
-                                "action": "add_to_library",
-                                "video_id": str(video.get("id", "")),
-                                "imvdb_url": (
-                                    f"https://imvdb.com/video/{video.get('id', '')}"
-                                    if video.get("id")
-                                    else ""
-                                ),
-                            }
-                        )
-                    external_results.extend(imvdb_results)
-                    logger.info(
-                        f"Found {len(imvdb_results)} IMVDb results for: {query}"
-                    )
-                else:
-                    logger.info(f"No IMVDb results found for: {query}")
-        except Exception as e:
-            logger.warning(f"IMVDb search failed: {e}")
+        # Note: a bulk free-text IMVDb search used to run here. It had no
+        # MusicBrainz equivalent -- find_official_video() needs a known
+        # artist+track pair to verify a video against, not a free-text
+        # query -- same gap already found at other bulk-discovery call
+        # sites throughout #524/#525. YouTube search below is now the sole
+        # external source.
 
         # YouTube Search
         try:
@@ -215,7 +186,7 @@ async def universal_search(
 
             if youtube_search_service and youtube_search_service.api_key:
                 youtube_search_result = await asyncio.to_thread(
-                    youtube_search_service.search_artist_videos, query, youtube_limit
+                    youtube_search_service.search_videos_as_typed, query, youtube_limit
                 )
 
                 if youtube_search_result and youtube_search_result.get("videos"):
@@ -257,14 +228,19 @@ async def universal_search(
                         logger.warning(
                             f"YouTube search returned 0 results with error: {yt_error}"
                         )
+                        warnings.append(_youtube_warning(yt_error))
                     else:
                         logger.info(f"No YouTube results found for: {query}")
             else:
                 logger.warning(
                     "YouTube API key not configured, skipping YouTube search"
                 )
+                warnings.append(
+                    "YouTube API key not configured; set it in Settings > API Keys."
+                )
         except Exception as e:
             logger.warning(f"YouTube search failed: {e}")
+            warnings.append("YouTube search failed; see server logs.")
 
         # Structured response matching Flask format
         response = {
@@ -272,6 +248,7 @@ async def universal_search(
             "artists": artist_results,
             "external": external_results,
             "total": len(video_results) + len(artist_results) + len(external_results),
+            "warnings": warnings,
         }
 
         return response

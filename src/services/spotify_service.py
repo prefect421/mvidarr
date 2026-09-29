@@ -13,8 +13,8 @@ import requests
 from sqlalchemy import or_
 
 from src.database.connection import get_db
-from src.database.models import Artist, Video, VideoStatus
-from src.services.imvdb_service import imvdb_service
+from src.database.models import Artist, Video
+from src.services.musicbrainz_service import musicbrainz_service
 from src.services.settings_service import settings
 from src.utils.logger import get_logger
 
@@ -666,103 +666,32 @@ class SpotifyService:
                             logger.info(f"Artist already exists: {artist_data['name']}")
                             continue
 
-                        # Search for artist on IMVDb
-                        imvdb_results = imvdb_service.search_artist(artist_data["name"])
+                        # Video discovery for imported artists happens via
+                        # video_discovery_service once the artist is
+                        # monitored -- the old IMVDb bulk artist-video
+                        # search (search_artist + get_artist_videos) has no
+                        # MusicBrainz equivalent (find_official_video()
+                        # needs a specific track name, not a bare artist).
+                        from src.utils.filename_cleanup import FilenameCleanup
 
-                        if imvdb_results and imvdb_results.get("results"):
-                            # Use the first (most relevant) result
-                            imvdb_artist = imvdb_results["results"][0]
+                        folder_path = FilenameCleanup.sanitize_folder_name(
+                            artist_data["name"]
+                        )
 
-                            # Create new artist
-                            from src.utils.filename_cleanup import FilenameCleanup
+                        new_artist = Artist(
+                            name=artist_data["name"],
+                            spotify_id=spotify_id,
+                            monitored=True,
+                            auto_download=False,
+                            source="spotify_import",
+                            folder_path=folder_path,
+                        )
 
-                            folder_path = FilenameCleanup.sanitize_folder_name(
-                                artist_data["name"]
-                            )
+                        session.add(new_artist)
+                        session.commit()
 
-                            new_artist = Artist(
-                                name=artist_data["name"],
-                                imvdb_id=imvdb_artist.get("id"),
-                                spotify_id=spotify_id,
-                                monitored=True,
-                                auto_download=False,
-                                source="spotify_import",
-                                folder_path=folder_path,
-                            )
-
-                            session.add(new_artist)
-                            session.commit()
-
-                            results["imported_artists"] += 1
-
-                            # Search for music videos
-                            video_results = imvdb_service.get_artist_videos(
-                                imvdb_artist.get("id")
-                            )
-
-                            if video_results and video_results.get("results"):
-                                for video_data in video_results["results"]:
-                                    # Check if video already exists
-                                    existing_video = (
-                                        session.query(Video)
-                                        .filter(Video.imvdb_id == video_data.get("id"))
-                                        .first()
-                                    )
-
-                                    if existing_video:
-                                        continue
-
-                                    # Create new video
-                                    new_video = Video(
-                                        title=video_data.get("song_title", "Unknown"),
-                                        artist_id=new_artist.id,
-                                        imvdb_id=video_data.get("id"),
-                                        video_url=video_data.get("image", {}).get("o"),
-                                        thumbnail_url=video_data.get("image", {}).get(
-                                            "l"
-                                        ),
-                                        year=video_data.get("year"),
-                                        status=(
-                                            VideoStatus.WANTED
-                                            if new_artist.auto_download
-                                            else VideoStatus.MONITORED
-                                        ),
-                                        source="spotify_import",
-                                    )
-
-                                    session.add(new_video)
-                                    results["found_videos"] += 1
-
-                                session.commit()
-
-                            logger.info(
-                                f"Imported artist: {artist_data['name']} with {len(video_results.get('results', []))} videos"
-                            )
-
-                        else:
-                            # Create artist without IMVDb data
-                            from src.utils.filename_cleanup import FilenameCleanup
-
-                            folder_path = FilenameCleanup.sanitize_folder_name(
-                                artist_data["name"]
-                            )
-
-                            new_artist = Artist(
-                                name=artist_data["name"],
-                                spotify_id=spotify_id,
-                                monitored=True,
-                                auto_download=False,
-                                source="spotify_import",
-                                folder_path=folder_path,
-                            )
-
-                            session.add(new_artist)
-                            session.commit()
-
-                            results["imported_artists"] += 1
-                            logger.info(
-                                f"Imported artist without IMVDb data: {artist_data['name']}"
-                            )
+                        results["imported_artists"] += 1
+                        logger.info(f"Imported artist: {artist_data['name']}")
 
                     except Exception as e:
                         error_msg = (
@@ -819,71 +748,28 @@ class SpotifyService:
                                 session.commit()
                             continue
 
-                        # Search for artist on IMVDb
-                        imvdb_results = imvdb_service.search_artist(artist_name)
+                        # Video discovery for followed artists happens via
+                        # video_discovery_service once the artist is
+                        # monitored -- see import_playlist_artists() above
+                        # for why the old IMVDb bulk artist-video search has
+                        # no MusicBrainz equivalent.
+                        from src.utils.filename_cleanup import FilenameCleanup
 
-                        if imvdb_results and imvdb_results.get("results"):
-                            imvdb_artist = imvdb_results["results"][0]
+                        folder_path = FilenameCleanup.sanitize_folder_name(artist_name)
 
-                            # Create new artist
-                            from src.utils.filename_cleanup import FilenameCleanup
+                        new_artist = Artist(
+                            name=artist_name,
+                            spotify_id=spotify_id,
+                            monitored=True,
+                            auto_download=False,
+                            source="spotify_followed",
+                            folder_path=folder_path,
+                        )
 
-                            folder_path = FilenameCleanup.sanitize_folder_name(
-                                artist_name
-                            )
+                        session.add(new_artist)
+                        session.commit()
 
-                            new_artist = Artist(
-                                name=artist_name,
-                                imvdb_id=imvdb_artist.get("id"),
-                                spotify_id=spotify_id,
-                                monitored=True,
-                                auto_download=False,
-                                source="spotify_followed",
-                                folder_path=folder_path,
-                            )
-
-                            session.add(new_artist)
-                            session.commit()
-
-                            results["imported_artists"] += 1
-
-                            # Find music videos
-                            video_results = imvdb_service.get_artist_videos(
-                                imvdb_artist.get("id")
-                            )
-
-                            if video_results and video_results.get("results"):
-                                for video_data in video_results["results"]:
-                                    existing_video = (
-                                        session.query(Video)
-                                        .filter(Video.imvdb_id == video_data.get("id"))
-                                        .first()
-                                    )
-
-                                    if existing_video:
-                                        continue
-
-                                    new_video = Video(
-                                        title=video_data.get("song_title", "Unknown"),
-                                        artist_id=new_artist.id,
-                                        imvdb_id=video_data.get("id"),
-                                        video_url=video_data.get("image", {}).get("o"),
-                                        thumbnail_url=video_data.get("image", {}).get(
-                                            "l"
-                                        ),
-                                        year=video_data.get("year"),
-                                        status=(
-                                            VideoStatus.WANTED
-                                            if new_artist.auto_download
-                                            else VideoStatus.MONITORED
-                                        ),
-                                        source="spotify_followed",
-                                    )
-
-                                    session.add(new_video)
-                                    results["found_videos"] += 1
-
-                                session.commit()
+                        results["imported_artists"] += 1
 
                     except Exception as e:
                         error_msg = (
@@ -1016,6 +902,15 @@ class SpotifyService:
     ) -> Dict:
         """
         Discover music videos based on user's Spotify listening history
+
+        Uses MusicBrainz's curated official-video relationships
+        (musicbrainz_service.find_official_video()) per track, replacing
+        the old IMVDb approach of bulk-fetching an artist's whole video
+        catalog and fuzzy-matching it against the track (calculate_metadata_
+        similarity/enhanced_metadata_matching, still available for other
+        uses but no longer called here). Every MusicBrainz match is a
+        verified official video, so all matches are "high" confidence --
+        there's no fuzzy "potential" match tier anymore.
         """
         logger.info(
             f"Discovering music videos from Spotify listening history (timerange: {time_range})"
@@ -1042,52 +937,42 @@ class SpotifyService:
                             continue
 
                         primary_artist = artists[0].get("name")
+                        track_name = track.get("name")
+                        if not track_name:
+                            continue
 
-                        # Search for videos by this artist
-                        imvdb_results = imvdb_service.search_artist(primary_artist)
+                        video_match = musicbrainz_service.find_official_video(
+                            primary_artist, track_name
+                        )
 
-                        if imvdb_results and imvdb_results.get("results"):
-                            # Get artist videos
-                            imvdb_artist = imvdb_results["results"][0]
-                            video_results = imvdb_service.get_artist_videos(
-                                imvdb_artist.get("id")
+                        if video_match:
+                            # Check if video already exists
+                            existing_video = (
+                                session.query(Video)
+                                .filter(Video.url == video_match["video_url"])
+                                .first()
                             )
 
-                            if video_results and video_results.get("results"):
-                                # Enhanced metadata matching
-                                matches = self.enhanced_metadata_matching(
-                                    [track], video_results["results"], threshold=0.85
-                                )
+                            if existing_video:
+                                continue
 
-                                for spotify_track, video_data, similarity in matches:
-                                    # Check if video already exists
-                                    existing_video = (
-                                        session.query(Video)
-                                        .filter(Video.imvdb_id == video_data.get("id"))
-                                        .first()
-                                    )
+                            results["high_confidence_matches"] += 1
 
-                                    if existing_video:
-                                        continue
-
-                                    # Categorize match confidence
-                                    if similarity >= 0.9:
-                                        results["high_confidence_matches"] += 1
-                                        confidence = "high"
-                                    else:
-                                        results["potential_matches"] += 1
-                                        confidence = "medium"
-
-                                    results["discovered_videos"].append(
-                                        {
-                                            "video_data": video_data,
-                                            "spotify_track": spotify_track,
-                                            "similarity_score": similarity,
-                                            "confidence": confidence,
-                                            "artist": primary_artist,
-                                            "recommendation_source": "listening_history",
-                                        }
-                                    )
+                            results["discovered_videos"].append(
+                                {
+                                    "video_data": {
+                                        "url": video_match["video_url"],
+                                        "song_title": video_match.get(
+                                            "recording_title", track_name
+                                        ),
+                                    },
+                                    "spotify_track": track,
+                                    "similarity_score": 1.0,
+                                    "confidence": "high",
+                                    "artist": primary_artist,
+                                    "recommendation_source": "listening_history",
+                                }
+                            )
 
                     except Exception as e:
                         error_msg = f"Error processing track {track.get('name', 'Unknown')}: {str(e)}"

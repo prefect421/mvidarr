@@ -163,34 +163,6 @@ async def check_database(
         )
 
 
-@health_router.get("/imvdb", response_model=ServiceHealthResponse)
-async def check_imvdb(current_user: dict = Depends(require_authentication)):
-    """Check IMVDB API connectivity with async HTTP client"""
-    try:
-        from src.services.imvdb_service import imvdb_service
-
-        # If the service has async methods, use them; otherwise wrap in async
-        result = await asyncio.create_task(
-            asyncio.to_thread(imvdb_service.test_connection)
-        )
-
-        if result["status"] == "success":
-            return ServiceHealthResponse(
-                status="healthy", service="imvdb", message=result.get("message")
-            )
-        else:
-            raise HTTPException(status_code=503, detail=result)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"IMVDB health check failed: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail={"status": "unhealthy", "service": "imvdb", "error": str(e)},
-        )
-
-
 @health_router.get("/metube", response_model=ServiceHealthResponse)
 async def check_metube(current_user: dict = Depends(require_authentication)):
     """Check yt-dlp Web UI connectivity with async HTTP client"""

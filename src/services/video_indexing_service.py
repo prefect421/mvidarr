@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.database.connection import get_db
 from src.database.models import Artist, Download, Video, VideoStatus
-from src.services.imvdb_service import imvdb_service
+from src.services.musicbrainz_service import musicbrainz_service
 from src.services.thumbnail_service import thumbnail_service
 from src.services.video_organization_service import video_organizer
 from src.utils.filename_cleanup import FilenameCleanup
@@ -320,27 +320,50 @@ class VideoIndexingService:
 
     def fetch_imvdb_metadata(self, artist_name: str, title: str) -> Optional[Dict]:
         """
-        Fetch metadata from IMVDb for a video
+        Find an official video match for a video via MusicBrainz.
+
+        Name kept for compatibility with the existing FastAPI route caller
+        (src/api/fastapi/video_indexing.py, migrated separately in #525) --
+        the lookup itself no longer touches IMVDb. Unlike the old IMVDb
+        match, MusicBrainzService.find_official_video() only yields a video
+        URL, not year/directors/producers/thumbnail -- callers get
+        youtube_id/youtube_url instead and derive a thumbnail from that.
 
         Args:
             artist_name: Name of the artist
             title: Video title
 
         Returns:
-            IMVDb metadata dictionary or None
+            Dict with youtube_id/youtube_url/title/musicbrainz_recording_id,
+            or None if no official video match was found
         """
         try:
-            video_data = imvdb_service.find_best_video_match(artist_name, title)
-            if video_data:
-                metadata = imvdb_service.extract_metadata(video_data)
-                logger.info(f"Retrieved IMVDb metadata for: {artist_name} - {title}")
-                return metadata
-            else:
-                logger.debug(f"No IMVDb metadata found for: {artist_name} - {title}")
+            video_match = musicbrainz_service.find_official_video(artist_name, title)
+            if not video_match or not video_match.get("video_url"):
+                logger.debug(
+                    f"No official video match found for: {artist_name} - {title}"
+                )
                 return None
+
+            video_url = video_match["video_url"]
+            youtube_id = None
+            if "watch?v=" in video_url:
+                youtube_id = video_url.split("watch?v=")[1].split("&")[0]
+            elif "youtu.be/" in video_url:
+                youtube_id = video_url.split("youtu.be/")[1].split("?")[0]
+
+            logger.info(
+                f"Retrieved MusicBrainz video match for: {artist_name} - {title}"
+            )
+            return {
+                "youtube_id": youtube_id,
+                "youtube_url": video_url,
+                "title": video_match.get("recording_title"),
+                "musicbrainz_recording_id": video_match.get("recording_id"),
+            }
         except Exception as e:
             logger.error(
-                f"Failed to fetch IMVDb metadata for {artist_name} - {title}: {e}"
+                f"Failed to fetch official video match for {artist_name} - {title}: {e}"
             )
             return None
 
@@ -360,7 +383,7 @@ class VideoIndexingService:
             artist_id: Artist ID
             artist_name: Artist name
             file_metadata: File metadata dictionary
-            imvdb_metadata: Optional IMVDb metadata
+            imvdb_metadata: Optional official video match (from fetch_imvdb_metadata)
             ffmpeg_metadata: Optional FFmpeg technical metadata
             session: Database session
 
@@ -398,20 +421,16 @@ class VideoIndexingService:
                 f"Added FFmpeg metadata: duration={video.duration}s, quality={video.quality}"
             )
 
-        # Add IMVDb metadata if available
+        # Add MusicBrainz-matched official video info, if available
         if imvdb_metadata:
-            video.imvdb_id = imvdb_metadata.get("imvdb_id")
-            video.year = imvdb_metadata.get("year")
-            video.directors = imvdb_metadata.get("directors")
-            video.producers = imvdb_metadata.get("producers")
-            video.thumbnail_url = imvdb_metadata.get("thumbnail_url")
-            video.imvdb_metadata = imvdb_metadata.get("raw_metadata")
+            video.youtube_id = imvdb_metadata.get("youtube_id")
+            video.youtube_url = imvdb_metadata.get("youtube_url")
 
-            # Use IMVDb title if it's more accurate
+            # Use the matched recording's title if it's more accurate
             if imvdb_metadata.get("title"):
                 video.title = imvdb_metadata["title"]
 
-        # Fallback: Extract year from YouTube upload_date if not set by IMVDb
+        # Fallback: Extract year from YouTube upload_date if not set
         if not video.year and video.video_metadata:
             upload_date = video.video_metadata.get("upload_date")
             if upload_date:
@@ -427,11 +446,12 @@ class VideoIndexingService:
                         f"Could not extract year from upload_date '{upload_date}': {e}"
                     )
 
-        # Download thumbnail if available
-        if imvdb_metadata and imvdb_metadata.get("thumbnail_url"):
+        # Download a thumbnail from YouTube if we found a matching video
+        if imvdb_metadata and imvdb_metadata.get("youtube_id"):
             try:
+                thumbnail_url = f"https://img.youtube.com/vi/{imvdb_metadata['youtube_id']}/maxresdefault.jpg"
                 thumbnail_path = thumbnail_service.download_video_thumbnail(
-                    artist_name, video.title, imvdb_metadata["thumbnail_url"]
+                    artist_name, video.title, thumbnail_url
                 )
                 if thumbnail_path:
                     video.thumbnail_path = thumbnail_path
@@ -609,27 +629,24 @@ class VideoIndexingService:
                             f"Updated existing video with FFmpeg metadata: duration={video.duration}s, quality={video.quality}"
                         )
 
-                    # Update with IMVDb metadata if found
-                    if imvdb_metadata and not video.imvdb_id:
-                        video.imvdb_id = imvdb_metadata.get("imvdb_id")
-                        video.year = imvdb_metadata.get("year")
-                        video.directors = imvdb_metadata.get("directors")
-                        video.producers = imvdb_metadata.get("producers")
-                        video.thumbnail_url = imvdb_metadata.get("thumbnail_url")
-                        video.imvdb_metadata = imvdb_metadata.get("raw_metadata")
+                    # Update with a MusicBrainz-matched official video, if found
+                    if imvdb_metadata and not video.youtube_id:
+                        video.youtube_id = imvdb_metadata.get("youtube_id")
+                        video.youtube_url = imvdb_metadata.get("youtube_url")
                         video.updated_at = datetime.utcnow()
 
                         # Download thumbnail if not already present
                         if (
-                            imvdb_metadata.get("thumbnail_url")
+                            imvdb_metadata.get("youtube_id")
                             and not video.thumbnail_path
                         ):
                             try:
+                                thumbnail_url = f"https://img.youtube.com/vi/{imvdb_metadata['youtube_id']}/maxresdefault.jpg"
                                 thumbnail_path = (
                                     thumbnail_service.download_video_thumbnail(
                                         artist_name,
                                         video.title,
-                                        imvdb_metadata["thumbnail_url"],
+                                        thumbnail_url,
                                     )
                                 )
                                 if thumbnail_path:
@@ -652,7 +669,7 @@ class VideoIndexingService:
                         session,
                     )
                     result["video_created"] = True
-                    if imvdb_metadata and imvdb_metadata.get("thumbnail_url"):
+                    if imvdb_metadata and imvdb_metadata.get("youtube_id"):
                         result["thumbnail_downloaded"] = True
 
                 # Create download record

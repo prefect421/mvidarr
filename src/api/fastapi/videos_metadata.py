@@ -84,7 +84,6 @@ async def bulk_refresh_metadata(
                 if request.refresh_imvdb:
                     # Simulate IMVDb metadata refresh
                     video_updates["updates"].append("IMVDb metadata refreshed")
-                    # video.imvdb_metadata = await imvdb_service.get_video_metadata(video.id)
 
                 if request.refresh_youtube and video.youtube_id:
                     # Simulate YouTube metadata refresh

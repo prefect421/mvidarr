@@ -44,13 +44,13 @@ RUN curl -fsSL https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-x64.tar.xz -
 # requirements.txt -- it was the client half only; this is its companion
 # HTTP server. Run by supervisord below, reachable at the plugin's default
 # http://127.0.0.1:4416 with zero yt-dlp invocation changes needed. Pinned
-# to the same 1.3.2 release as the installed Python plugin. SHA256 pinned
+# to the same 2.0.0 release as the installed Python plugin. SHA256 pinned
 # below (GitHub's tag archive is otherwise a mutable ref, not an immutable
 # release asset) -- recompute with `curl -fsSL <url> | sha256sum` when
 # bumping the version; a mismatch fails the build.
 RUN mkdir -p /app/vendor/bgutil-ytdlp-pot-provider \
-    && curl -fsSL https://github.com/Brainicism/bgutil-ytdlp-pot-provider/archive/refs/tags/1.3.2.tar.gz -o /tmp/pot-provider.tar.gz \
-    && echo "3545ac7ffc0869498755cb3b4760a72fa2f176689d0890a6f5b898d163012ba2  /tmp/pot-provider.tar.gz" | sha256sum -c - \
+    && curl -fsSL https://github.com/Brainicism/bgutil-ytdlp-pot-provider/archive/refs/tags/2.0.0.tar.gz -o /tmp/pot-provider.tar.gz \
+    && echo "47038f7e0556a3d689044460f1b6d78381212e1bd04723a27358e1a42279f866  /tmp/pot-provider.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/pot-provider.tar.gz -C /app/vendor/bgutil-ytdlp-pot-provider --strip-components=1 \
     && rm /tmp/pot-provider.tar.gz \
     && cd /app/vendor/bgutil-ytdlp-pot-provider/server \

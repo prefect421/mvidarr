@@ -10,8 +10,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from src.services.imvdb_service import imvdb_service
 from src.services.media_cache_manager import CacheType, get_media_cache_manager
+from src.services.musicbrainz_service import musicbrainz_service
 from src.services.performance_monitor import track_media_processing_time
 from src.services.vevo_service import get_vevo_service
 from src.services.vimeo_service import get_vimeo_service
@@ -260,7 +260,7 @@ class CrossPlatformVideoIntelligence:
             elif platform == Platform.VIMEO:
                 task = self._search_vimeo(artist, title)
             elif platform == Platform.IMVDB:
-                task = self._search_imvdb(artist, title)
+                task = self._search_musicbrainz(artist, title)
             else:
                 continue  # Skip unsupported platforms
 
@@ -363,35 +363,37 @@ class CrossPlatformVideoIntelligence:
             logger.error(f"Vimeo search failed: {e}")
             return []
 
-    async def _search_imvdb(self, artist: str, title: str) -> List[Dict[str, Any]]:
-        """Search IMVDb for music video metadata"""
+    async def _search_musicbrainz(
+        self, artist: str, title: str
+    ) -> List[Dict[str, Any]]:
+        """Search MusicBrainz for the official music video relationship"""
         try:
-            # Use existing IMVDb service
-            results = await asyncio.to_thread(
-                imvdb_service.search_videos, artist, title
+            # Use MusicBrainz's official video lookup (music video /
+            # free streaming recording relationships)
+            match = await asyncio.to_thread(
+                musicbrainz_service.find_official_video, artist, title
             )
 
-            # Format results
-            formatted_results = []
-            for result in results[: self.config["max_videos_per_platform"]]:
-                formatted_results.append(
-                    {
-                        "imvdb_id": result.get("id", ""),
-                        "title": result.get("song_title", ""),
-                        "artist": result.get("artist_name", artist),
-                        "url": result.get("url", ""),
-                        "thumbnail_url": result.get("image", {}).get("l", ""),
-                        "year": result.get("year", ""),
-                        "directors": result.get("directors", []),
-                        "platform": Platform.IMVDB.value,
-                        "metadata_source": True,
-                    }
-                )
+            if not match:
+                return []
 
-            return formatted_results
+            # find_official_video() returns at most one match, and doesn't
+            # carry thumbnail/year/director metadata the way IMVDb did -
+            # downstream consumers already handle missing fields via .get()
+            return [
+                {
+                    "title": match.get("recording_title", title),
+                    "artist": artist,
+                    "url": match.get("video_url", ""),
+                    "platform": Platform.IMVDB.value,
+                    "metadata_source": True,
+                    "relationship_type": match.get("relationship_type", ""),
+                    "match_score": match.get("score", 0),
+                }
+            ]
 
         except Exception as e:
-            logger.error(f"IMVDb search failed: {e}")
+            logger.error(f"MusicBrainz search failed: {e}")
             return []
 
     async def _correlate_platform_results(

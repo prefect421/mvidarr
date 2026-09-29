@@ -99,11 +99,11 @@ If a video already exists, it shows:
 Shows real-time progress:
 ```
 🎬 Video Indexing Process 🎬
-Fetch IMVDb metadata: Yes
+Fetch metadata: Yes
 ------------------------------------------------------------
 Processing: [1/100] Artist Name - Video Title
 ✅ Successfully indexed: Artist Name - Video Title
-   📋 IMVDb metadata found
+   📋 Metadata found
    🖼️  Thumbnail downloaded
 ```
 
@@ -116,7 +116,7 @@ Already indexed: 215
 Failed to index: 0
 Artists created: 0
 Videos created: 2
-IMVDb metadata found: 2
+Metadata found: 2
 Thumbnails downloaded: 2
 ```
 
@@ -132,11 +132,6 @@ python3 scripts/index_videos.py --preview "/app/data/musicvideos/Artist/Video.mp
 ### Index a Single File
 ```bash
 python3 scripts/index_videos.py --index "/app/data/musicvideos/Artist/Video.mp4"
-```
-
-### Test IMVDb Connection
-```bash
-python3 scripts/index_videos.py --test-imvdb
 ```
 
 ### Show Current Stats
@@ -195,10 +190,6 @@ python3 scripts/index_videos.py --stats
 ### "No video files found"
 - Check the path: `/app/data/musicvideos/`
 - Verify videos are mounted correctly in Docker
-
-### "IMVDb connection failed"
-- Set IMVDb API key in Settings first
-- Or use `--no-metadata` flag
 
 ---
 

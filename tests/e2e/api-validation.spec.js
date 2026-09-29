@@ -46,7 +46,6 @@ test.describe('API Endpoint Validation', () => {
       { method: 'GET', url: '/api/artists/', description: 'List artists' },
       { method: 'GET', url: '/api/artists/search?q=test', description: 'Search artists' },
       { method: 'GET', url: '/api/artists/stats', description: 'Artist statistics' },
-      { method: 'GET', url: '/api/imvdb/search-artists?query=test', description: 'IMVDb artist search' },
       { method: 'POST', url: '/api/artists/bulk-delete', description: 'Bulk delete artists' },
       { method: 'POST', url: '/api/artists/discovery', description: 'Artist discovery' }
     ];
@@ -79,7 +78,6 @@ test.describe('API Endpoint Validation', () => {
     const videoEndpoints = [
       { method: 'GET', url: '/api/videos/', description: 'List videos' },
       { method: 'GET', url: '/api/videos/search?q=test', description: 'Search videos' },
-      { method: 'GET', url: '/api/imvdb/search-videos?q=test', description: 'IMVDb video search' },
       { method: 'POST', url: '/api/videos/add', description: 'Add video' },
       { method: 'GET', url: '/api/video-quality/formats', description: 'Video quality formats' },
       { method: 'POST', url: '/api/videos/bulk-delete', description: 'Bulk delete videos' }

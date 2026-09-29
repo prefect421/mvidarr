@@ -80,7 +80,6 @@ jobs:
         DB_NAME=mvidarr_test
         SECRET_KEY=test_secret_key_for_ci
         DEBUG=true
-        IMVDB_API_KEY=test_key
         YOUTUBE_API_KEY=test_key
         EOF
     

@@ -63,7 +63,6 @@ DEBUG=false
 SECRET_KEY={secret_key}
 
 # External services
-IMVDB_API_KEY=
 YOUTUBE_API_KEY=
 METUBE_HOST=localhost
 METUBE_PORT=8081
@@ -127,10 +126,6 @@ DB_POOL_TIMEOUT=30
             self.DB_MAX_OVERFLOW = SettingsService.get_int("db_max_overflow", 20)
             self.DB_POOL_TIMEOUT = SettingsService.get_int("db_pool_timeout", 30)
 
-            # External service defaults
-            self.IMVDB_API_URL = "https://imvdb.com/api/v1"
-            self.IMVDB_API_KEY = SettingsService.get("imvdb_api_key", "")
-
             self.METUBE_HOST = SettingsService.get("metube_host", "localhost")
             self.METUBE_PORT = SettingsService.get_int("metube_port", 8081)
 
@@ -177,10 +172,6 @@ DB_POOL_TIMEOUT=30
         self.DB_POOL_SIZE = int(os.environ.get("DB_POOL_SIZE", 10))
         self.DB_MAX_OVERFLOW = int(os.environ.get("DB_MAX_OVERFLOW", 20))
         self.DB_POOL_TIMEOUT = int(os.environ.get("DB_POOL_TIMEOUT", 30))
-
-        # External service defaults
-        self.IMVDB_API_URL = "https://imvdb.com/api/v1"
-        self.IMVDB_API_KEY = os.environ.get("IMVDB_API_KEY", "")
 
         self.METUBE_HOST = os.environ.get("METUBE_HOST", "localhost")
         self.METUBE_PORT = int(os.environ.get("METUBE_PORT", 8081))

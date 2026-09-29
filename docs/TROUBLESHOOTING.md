@@ -53,6 +53,14 @@ docker compose --env-file .env up -d --force-recreate mvidarr
 
 **If you still see it / want extra worker options:** `CELERY_WORKER_EXTRA_ARGS` in `.env` (or your container template) is appended to the worker command. Better long-term fix: give MVidarr its own Redis DB number or instance so other apps' messages never reach it.
 
+### Changes Fail With "still using the default admin password" (HTTP 403)
+
+**Symptom:** saving settings, adding artists, starting downloads etc. fail with a 403 saying the instance is still using the default admin password; browsing and playback still work.
+
+**Cause:** the install is still on the bootstrap `admin` / `mvidarr` credential. Until it's changed, MVidarr refuses state-changing API calls (#510).
+
+**Fix:** change the password (the yellow banner links to the credentials form, or `POST /api/auth/credentials` as an admin). It takes effect within seconds. To knowingly keep the default, set `ALLOW_DEFAULT_PASSWORD=true` in `.env` and recreate the container.
+
 ### Login Issues
 
 #### Problem: Can't login with correct credentials
@@ -79,19 +87,18 @@ mysql -u mvidarr -p mvidarr -e "SELECT username, is_active FROM users;"
 **Diagnostic Steps:**
 ```bash
 # Check API keys
-curl http://localhost:5000/api/settings/imvdb_api_key
 curl http://localhost:5000/api/settings/youtube_api_key
 
 # Test API connectivity
-curl -I https://imvdb.com/api/v1/
+curl -I https://musicbrainz.org/ws/2/
 curl -I https://www.googleapis.com/youtube/v3/
 ```
 
 **Solutions:**
-1. **Missing API keys**: Add IMVDB and YouTube API keys in Settings
-2. **Invalid API keys**: Verify keys are correct and active
+1. **Missing API key**: Add a YouTube API key in Settings (MusicBrainz needs no key)
+2. **Invalid API key**: Verify the YouTube key is correct and active
 3. **Network issues**: Check firewall and proxy settings
-4. **Service outage**: Check IMVDB/YouTube service status
+4. **Service outage**: Check MusicBrainz/YouTube service status
 
 ### Download Failures
 
@@ -288,15 +295,10 @@ ps aux | grep mvidarr
 
 #### External API Failures
 
-**IMVDB API Issues:**
+**MusicBrainz API Issues:**
 ```bash
-# Test IMVDB connectivity
-curl -H "Authorization: Bearer YOUR_API_KEY" \
-  "https://imvdb.com/api/v1/search/videos?q=test"
-
-# Check API quota
-curl -H "Authorization: Bearer YOUR_API_KEY" \
-  "https://imvdb.com/api/v1/account"
+# Test MusicBrainz connectivity (no API key required)
+curl "https://musicbrainz.org/ws/2/recording/?query=test&fmt=json"
 ```
 
 **YouTube API Issues:**
@@ -375,13 +377,10 @@ A: Yes, MVidarr can download various formats. Set quality preference in Settings
 ### Setup and Configuration
 
 **Q: What API keys do I need?**
-A: IMVDB API key is essential. YouTube API key is optional but recommended for better discovery
+A: None are required — MusicBrainz needs no key. A YouTube API key is optional but recommended for better discovery
 
-**Q: How do I get an IMVDB API key?**
-A: Visit https://imvdb.com/developers and request an API key
-
-**Q: Can I use MVidarr without API keys?**
-A: Limited functionality. You can manually add videos by URL but won't have automatic discovery
+**Q: Can I use MVidarr without any API keys?**
+A: Yes — MusicBrainz discovery works out of the box. Without a YouTube API key, YouTube-based discovery and search are unavailable, but you can still manually add videos by URL
 
 **Q: How do I set up HTTPS/SSL?**
 A: Settings → Security → SSL Settings, or use reverse proxy (see Configuration Guide)
@@ -488,9 +487,9 @@ WARNING: connection timeout
 
 **API Issues:**
 ```
-ERROR: IMVDB API request failed
+ERROR: MusicBrainz API request failed
 WARNING: YouTube quota exceeded
-ERROR: connection refused to api.imvdb.com
+ERROR: connection refused to musicbrainz.org
 ```
 
 **File System Issues:**
@@ -616,7 +615,7 @@ curl http://localhost:5000/api/settings/validate
 2. **Configuration Details:**
    ```bash
    # Sanitized settings (remove API keys)
-   curl http://localhost:5000/api/settings/ | jq 'del(.imvdb_api_key, .youtube_api_key)'
+   curl http://localhost:5000/api/settings/ | jq 'del(.youtube_api_key)'
    ```
 
 3. **Error Logs:**

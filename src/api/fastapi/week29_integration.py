@@ -211,7 +211,7 @@ async def search_youtube_videos(
                 return {
                     "success": False,
                     "error": "YouTube API key not configured",
-                    "results": [],
+                    "items": [],
                 }
 
             # Call real YouTube search
@@ -223,31 +223,41 @@ async def search_youtube_videos(
                 return {
                     "success": False,
                     "error": search_result["error"],
-                    "results": [],
+                    "items": [],
                 }
 
-            # Format results for frontend
-            formatted_results = []
+            # Every current frontend consumer of this endpoint
+            # (search_results.html, discover.html, add_video_modal.html)
+            # parses the raw YouTube Data API v3 shape --
+            # items[].id.videoId, items[].snippet.{title,channelTitle,
+            # publishedAt,thumbnails} -- not a custom flattened shape, so
+            # build that shape from youtube_search_service's video dicts
+            # (keyed "youtube_id", not "id").
+            items = []
             for video in search_result.get("videos", []):
-                formatted_results.append(
+                thumbnail_url = video.get("thumbnail_url", "")
+                items.append(
                     {
-                        "videoId": video.get("id"),
-                        "title": video.get("title"),
-                        "channelTitle": video.get("channel_title"),
-                        "thumbnails": {
-                            "default": {"url": video.get("thumbnail_url", "")}
+                        "id": {"videoId": video.get("youtube_id")},
+                        "snippet": {
+                            "title": video.get("title"),
+                            "channelTitle": video.get("channel_title"),
+                            "publishedAt": video.get(
+                                "published_at", "2024-01-01T00:00:00Z"
+                            ),
+                            "thumbnails": {
+                                "default": {"url": thumbnail_url},
+                                "medium": {"url": thumbnail_url},
+                            },
                         },
                         "duration": video.get("duration", "PT3M30S"),
-                        "publishedAt": video.get(
-                            "published_at", "2024-01-01T00:00:00Z"
-                        ),
                     }
                 )
 
             return {
                 "success": True,
-                "results": formatted_results,
-                "total": len(formatted_results),
+                "items": items,
+                "total": len(items),
             }
 
         except Exception as e:
@@ -255,12 +265,12 @@ async def search_youtube_videos(
             return {
                 "success": False,
                 "error": f"YouTube search failed: {str(e)}",
-                "results": [],
+                "items": [],
             }
 
     except Exception as e:
         logger.error(f"YouTube search error: {e}")
-        return {"success": False, "error": str(e), "results": []}
+        return {"success": False, "error": str(e), "items": []}
 
 
 @youtube_router.get("/status")

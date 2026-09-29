@@ -10,7 +10,6 @@ from typing import Dict, List
 
 from src.database.connection import get_db
 from src.database.models import Artist, Video, VideoStatus
-from src.services.imvdb_service import imvdb_service
 from src.services.settings_service import SettingsService
 from src.services.thumbnail_service import thumbnail_service
 from src.services.video_batch_service import get_ytdlp_path
@@ -95,38 +94,7 @@ class VideoDiscoveryService:
                             )
                     time.sleep(self.rate_limit_delay)
 
-                # Search IMVDb for additional videos
-                imvdb_results = self._search_imvdb_for_artist(artist_name, limit)
-                logger.info(
-                    f"IMVDb returned {len(imvdb_results)} videos for {artist_name}"
-                )
-
-                for video_data in imvdb_results:
-                    if video_data.get("url"):
-                        if video_data["url"] not in existing_urls:
-                            # Check if already found via YouTube
-                            if not any(
-                                v["url"] == video_data["url"] for v in discovered_videos
-                            ):
-                                discovered_videos.append(video_data)
-                                logger.info(
-                                    f"Added new IMVDb video: {video_data['title']}"
-                                )
-                            else:
-                                logger.info(
-                                    f"Video already in discovered list: {video_data['title']}"
-                                )
-                        else:
-                            logger.info(
-                                f"Video URL already exists: {video_data['title']} - {video_data['url']}"
-                            )
-                    else:
-                        logger.info(
-                            f"Video has no URL: {video_data.get('title', 'Unknown')}"
-                        )
-                    time.sleep(self.rate_limit_delay)
-
-                # Merge duplicates: IMVDb base + YouTube overlay
+                # Merge duplicates (e.g. same video surfaced more than once)
                 merged_videos = self._merge_duplicate_videos(discovered_videos)
                 unified_videos = merged_videos[:limit]
 
@@ -256,56 +224,6 @@ class VideoDiscoveryService:
     #     """Search YouTube for artist videos (TODO: implement)"""
     #     logger.info(f"YouTube search not yet implemented for {artist.name}")
     #     return []
-
-    def _search_imvdb_for_artist(self, artist_name: str, limit: int) -> List[Dict]:
-        """Search IMVDb for artist videos"""
-        try:
-            results = imvdb_service.search_artist_videos(artist_name, limit=limit)
-
-            if not results or "videos" not in results:
-                return []
-
-            video_list = []
-            for video in results["videos"]:
-                # Ensure song_title is always a string (fix for integer title issue)
-                song_title = (
-                    str(video.get("song_title", "Unknown"))
-                    if video.get("song_title") is not None
-                    else "Unknown"
-                )
-                video_data = {
-                    "title": f"{artist_name} - {song_title}",
-                    "song_title": song_title,
-                    "year": video.get("year"),
-                    "directors": video.get("directors", []),
-                    "imvdb_id": video.get("id"),
-                    "thumbnail_url": (
-                        video.get("image", {}).get("l") if video.get("image") else None
-                    ),
-                }
-
-                # Try to get YouTube URL from IMVDb
-                youtube_url = video.get("sources", {}).get("youtube")
-                if youtube_url:
-                    video_data["url"] = youtube_url
-                else:
-                    # If no YouTube URL, create a placeholder URL based on IMVDb ID
-                    video_data["url"] = f"https://imvdb.com/video/{video.get('id')}"
-                    logger.debug(
-                        f"No YouTube URL for {video.get('song_title')}, using IMVDb URL"
-                    )
-
-                video_list.append(video_data)
-                logger.info(
-                    f"Added video: {video_data['title']} - URL: {video_data['url']}"
-                )
-
-            logger.info(f"Found {len(video_list)} IMVDb videos for {artist_name}")
-            return video_list
-
-        except Exception as e:
-            logger.error(f"IMVDb search failed for artist {artist_name}: {e}")
-            return []
 
     def _search_youtube_for_artist(self, artist_name: str, limit: int) -> List[Dict]:
         """
@@ -486,80 +404,28 @@ class VideoDiscoveryService:
 
     def _merge_duplicate_videos(self, discovered_videos: List[Dict]) -> List[Dict]:
         """
-        Merge duplicate videos found in multiple sources
+        Deduplicate videos by URL
 
-        Strategy: IMVDb metadata as base, overlay YouTube-specific fields
+        Only one discovery source (YouTube) feeds this list now, so
+        "merging" just means keeping the first occurrence of each URL --
+        no cross-source field overlay is needed anymore.
 
         Args:
             discovered_videos: List of video_data dicts from all sources
 
         Returns:
-            Deduplicated list with merged metadata
+            Deduplicated list, first occurrence per URL wins
         """
-        # Group by URL
-        url_map = {}
+        seen_urls = set()
+        merged = []
 
         for video in discovered_videos:
             url = video.get("url")
-            if not url:
+            if not url or url in seen_urls:
                 continue
 
-            if url not in url_map:
-                url_map[url] = []
-            url_map[url].append(video)
-
-        # Merge duplicates
-        merged = []
-
-        for url, video_list in url_map.items():
-            if len(video_list) == 1:
-                # No duplicates, use as-is
-                merged.append(video_list[0])
-            else:
-                # Multiple sources found same video - merge
-                imvdb_data = next(
-                    (v for v in video_list if v["source"] == "imvdb"), None
-                )
-                youtube_data = next(
-                    (
-                        v
-                        for v in video_list
-                        if v["source"] in ["youtube", "youtube_ytdlp"]
-                    ),
-                    None,
-                )
-
-                if imvdb_data and youtube_data:
-                    # Merge: IMVDb base + YouTube overlay
-                    merged_video = {**imvdb_data}  # Start with IMVDb
-
-                    # Overlay YouTube-specific fields
-                    merged_video["youtube_id"] = youtube_data.get("youtube_id")
-                    merged_video["youtube_url"] = youtube_data.get("youtube_url")
-                    merged_video["view_count"] = youtube_data.get("view_count", 0)
-                    merged_video["like_count"] = youtube_data.get("like_count", 0)
-                    merged_video["tags"] = youtube_data.get("tags", [])
-                    merged_video["search_score"] = youtube_data.get("search_score", 0.0)
-
-                    # Fill missing IMVDb fields with YouTube data
-                    if not merged_video.get("duration"):
-                        merged_video["duration"] = youtube_data.get("duration")
-                    if not merged_video.get("published_date"):
-                        merged_video["published_date"] = youtube_data.get(
-                            "published_date"
-                        )
-                    if not merged_video.get("description"):
-                        merged_video["description"] = youtube_data.get("description")
-
-                    merged_video["source"] = "imvdb+youtube"  # Mark as merged
-
-                    logger.info(
-                        f"Merged duplicate: {merged_video['title']} (IMVDb + YouTube)"
-                    )
-                    merged.append(merged_video)
-                else:
-                    # Shouldn't happen, but fallback to first result
-                    merged.append(video_list[0])
+            seen_urls.add(url)
+            merged.append(video)
 
         return merged
 

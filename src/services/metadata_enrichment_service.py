@@ -22,7 +22,6 @@ from sqlalchemy import or_
 from src.database.connection import get_db
 from src.database.models import Artist
 from src.services.allmusic_service import allmusic_service
-from src.services.imvdb_service import imvdb_service
 from src.services.lastfm_service import lastfm_service
 
 # Import refactored modules
@@ -54,7 +53,6 @@ class MetadataEnrichmentService:
         # Service integrations
         self.spotify = spotify_service
         self.lastfm = lastfm_service
-        self.imvdb = imvdb_service
         self.musicbrainz = musicbrainz_service
         self.allmusic = allmusic_service
         self.wikipedia = WikipediaService()
@@ -233,17 +231,18 @@ class MetadataEnrichmentService:
                             Artist.spotify_id == "",
                             Artist.lastfm_name.is_(None),
                             Artist.lastfm_name == "",
-                            Artist.imvdb_id.is_(None),
-                            Artist.imvdb_id == "",
                         )
                     )
                     .count()
                 )
 
-                # Calculate overall external ID coverage (average across all services)
+                # Calculate overall external ID coverage (average across all services).
+                # imvdb excluded: it's never populated again (#527), so including it
+                # here would permanently deflate every artist's coverage score by
+                # counting an unfillable field in the denominator.
                 overall_coverage = (
-                    (with_spotify + with_lastfm + with_imvdb + with_musicbrainz)
-                    / (total_artists * 4)  # Updated to include MusicBrainz
+                    (with_spotify + with_lastfm + with_musicbrainz)
+                    / (total_artists * 3)
                     * 100
                     if total_artists > 0
                     else 0

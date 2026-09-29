@@ -52,12 +52,6 @@ except ImportError:
     logger.warning("Wikipedia service not available")
     wikipedia_service = None
 
-try:
-    from src.services.imvdb_service import imvdb_service
-except ImportError:
-    logger.warning("IMVDb service not available")
-    imvdb_service = None
-
 
 @router.get("/stats")
 async def get_enrichment_stats(current_user: dict = Depends(require_authentication)):
@@ -81,7 +75,6 @@ async def get_services_status(current_user: dict = Depends(require_authenticatio
         "musicbrainz": musicbrainz_service is not None,
         "allmusic": allmusic_service is not None,
         "wikipedia": wikipedia_service is not None,
-        "imvdb": imvdb_service is not None,
     }
 
     return {
@@ -118,8 +111,6 @@ async def get_enrichment_candidates(
                 | (Artist.spotify_id == "")
                 | (Artist.lastfm_name.is_(None))
                 | (Artist.lastfm_name == "")
-                | (Artist.imvdb_id.is_(None))
-                | (Artist.imvdb_id == "")
             )
 
         # Get total count
@@ -140,10 +131,6 @@ async def get_enrichment_candidates(
                 isinstance(artist.lastfm_name, str) and not artist.lastfm_name.strip()
             ):
                 missing_ids.append("lastfm_name")
-            if not artist.imvdb_id or (
-                isinstance(artist.imvdb_id, str) and not artist.imvdb_id.strip()
-            ):
-                missing_ids.append("imvdb_id")
 
             # Check for musicbrainz_id in imvdb_metadata
             musicbrainz_id = None
@@ -268,7 +255,6 @@ async def enrich_single_artist(
             "spotify": False,
             "lastfm": False,
             "musicbrainz": False,
-            "imvdb": False,
         }
 
         # Spotify enrichment
@@ -341,29 +327,6 @@ async def enrich_single_artist(
                             )
             except Exception as e:
                 logger.warning(f"MusicBrainz enrichment failed for {artist.name}: {e}")
-
-        # IMVDb enrichment
-        if not artist.imvdb_id or (
-            isinstance(artist.imvdb_id, str) and not artist.imvdb_id.strip()
-        ):
-            try:
-                if imvdb_service:
-                    imvdb_result = await asyncio.to_thread(
-                        imvdb_service.search_artist, artist.name
-                    )
-                    if imvdb_result and isinstance(imvdb_result, dict):
-                        imvdb_id = imvdb_result.get("id") or imvdb_result.get(
-                            "imvdb_id"
-                        )
-                        if imvdb_id:
-                            artist.imvdb_id = str(imvdb_id)
-                            matches_found["imvdb"] = True
-                            updated_fields.append("imvdb_id")
-                            logger.info(
-                                f"Found IMVDb match for {artist.name}: {imvdb_id}"
-                            )
-            except Exception as e:
-                logger.warning(f"IMVDb enrichment failed for {artist.name}: {e}")
 
         # Update the artist record if any fields were updated
         if updated_fields:

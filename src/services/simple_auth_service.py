@@ -58,6 +58,9 @@ class SimpleAuthService:
             # Store in settings
             SettingsService.set("simple_auth_username", username)
             SettingsService.set("simple_auth_password", password_hash)
+            from src.middleware.default_password_gate import invalidate_cache
+
+            invalidate_cache()
 
             logger.info(f"Credentials updated for user: {username}")
             return True, "Credentials updated successfully"
@@ -173,6 +176,31 @@ class SimpleAuthService:
 
         except Exception:
             return True
+
+    @staticmethod
+    def is_bootstrap_password_active() -> bool:
+        """Strict variant of is_default_password() for enforcement (#510).
+
+        is_default_password() answers True when no hash is stored or on any
+        error, which is right for a nag banner but would wrongly lock writes
+        on installs with no simple-auth password (e.g. OAuth-only) or on a
+        transient settings/DB failure. This returns True only when a stored
+        hash positively matches the shipped default, and fails open.
+        """
+        try:
+            stored_password_hash = SettingsService.get("simple_auth_password")
+            if not stored_password_hash:
+                return False
+
+            import bcrypt
+
+            if _is_bcrypt_hash(stored_password_hash):
+                return bcrypt.checkpw(b"mvidarr", stored_password_hash.encode())
+            if _is_sha256_hash(stored_password_hash):
+                return hashlib.sha256(b"mvidarr").hexdigest() == stored_password_hash
+            return False
+        except Exception:
+            return False
 
     @staticmethod
     def initialize_default_credentials() -> Tuple[bool, str, str, str]:

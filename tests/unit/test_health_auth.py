@@ -10,7 +10,7 @@ unauthenticated too.
 Tier split:
 - public (no Depends at all): health_check, readiness_check, liveness_check
 - require_authentication (basic status, low sensitivity): get_health_status,
-  check_database, check_imvdb, check_metube, get_version_info,
+  check_database, check_metube, get_version_info,
   get_performance_stats, get_background_jobs_health
 - require_admin (real operational detail: host resource metrics, backup
   file paths/sizes, migration revision, DB error messages, service
@@ -42,7 +42,6 @@ EXPECTED_TIER = {
     "liveness_check": "public",
     "get_health_status": "auth",
     "check_database": "auth",
-    "check_imvdb": "auth",
     "check_metube": "auth",
     "get_version_info": "auth",
     "get_performance_stats": "auth",

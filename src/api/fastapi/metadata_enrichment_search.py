@@ -49,12 +49,6 @@ except ImportError:
     logger.warning("Wikipedia service not available")
     wikipedia_service = None
 
-try:
-    from src.services.imvdb_service import imvdb_service
-except ImportError:
-    logger.warning("IMVDb service not available")
-    imvdb_service = None
-
 
 @router.get("/search/lastfm")
 async def search_lastfm(
@@ -202,30 +196,3 @@ async def search_wikipedia(
         raise HTTPException(
             status_code=500, detail=f"Wikipedia search failed: {str(e)}"
         )
-
-
-@router.get("/search/imvdb")
-async def search_imvdb(
-    artist: str = Query(..., description="Artist name to search"),
-    current_user: dict = Depends(require_authentication),
-):
-    """Search IMVDb for artist information"""
-    try:
-        if not imvdb_service:
-            raise HTTPException(status_code=503, detail="IMVDb service not available")
-
-        logger.info(f"Searching IMVDb for artist: {artist}")
-        result = await asyncio.to_thread(imvdb_service.search_artist, artist)
-
-        if not result:
-            return {"results": [], "total": 0}
-
-        return {
-            "results": result if isinstance(result, list) else [result],
-            "total": len(result) if isinstance(result, list) else 1,
-            "service": "imvdb",
-        }
-
-    except Exception as e:
-        logger.error(f"IMVDb search error for '{artist}': {e}")
-        raise HTTPException(status_code=500, detail=f"IMVDb search failed: {str(e)}")

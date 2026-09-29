@@ -33,7 +33,7 @@ cat > version.json.tmp << EOF
   "release_name": "$CURRENT_RELEASE_NAME",
   "features": [
     "Advanced Artist Management with multi-criteria search and bulk operations",
-    "Comprehensive Video Discovery with dual-source integration (IMVDb + YouTube)",
+    "Comprehensive Video Discovery with dual-source integration (MusicBrainz + YouTube)",
     "Professional Thumbnail Management with multi-source search and cropping",
     "Intelligent Organization with automatic folder creation and cleanup",
     "Advanced Search System with real-time suggestions and filtering",

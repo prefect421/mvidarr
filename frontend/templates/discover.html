@@ -460,19 +460,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const localArtists = data.artists || [];
             const externalResults = data.external || [];
             
-            // Separate IMVDb and YouTube from external results
-            const imvdbResults = externalResults.filter(item => item.source === 'IMVDb');
             const youtubeResults = externalResults.filter(item => item.source === 'YouTube');
             const localResults = [...localVideos, ...localArtists];
-            
+
             console.log('📺 YouTube results:', youtubeResults.length);
-            console.log('🎵 IMVDb results:', imvdbResults.length);
             console.log('🏠 Local results:', localResults.length);
 
-            const totalResults = youtubeResults.length + imvdbResults.length + localResults.length;
-            
+            const totalResults = youtubeResults.length + localResults.length;
+
             if (totalResults > 0) {
-                displayResults(query, imvdbResults, youtubeResults, localResults);
+                displayResults(query, youtubeResults, localResults);
             } else {
                 showNoResults();
             }
@@ -523,19 +520,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function displayResults(query, imvdbData, youtubeData, localResults) {
-        imvdbData = imvdbData || [];
+    function displayResults(query, youtubeData, localResults) {
         youtubeData = youtubeData || [];
         localResults = localResults || [];
-        
-        const totalResults = imvdbData.length + youtubeData.length + localResults.length;
-        
+
+        const totalResults = youtubeData.length + localResults.length;
+
         resultsTitle.textContent = `Search Results for "${query}"`;
-        resultsCount.textContent = `Found ${totalResults} results (IMVDb: ${imvdbData.length}, YouTube: ${youtubeData.length}, Local: ${localResults.length})`;
-        
-        // Combine all external results (IMVDb and YouTube) for display
-        const allExternalResults = [...imvdbData, ...youtubeData];
-        
+        resultsCount.textContent = `Found ${totalResults} results (YouTube: ${youtubeData.length}, Local: ${localResults.length})`;
+
+        const allExternalResults = [...youtubeData];
+
         // Display external results
         if (allExternalResults.length > 0) {
             youtubeResultsList.innerHTML = allExternalResults.map(video => createResultCard(video)).join('');
@@ -555,11 +550,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const escapedArtist = escapeHtml(video.artist || video.channel || 'Unknown Artist');
         
         // Generate source icon based on source
-        const sourceIcon = video.source === 'YouTube' ? '📺' : 
-                          video.source === 'IMVDb' ? '🎵' : '🎬';
-        
+        const sourceIcon = video.source === 'YouTube' ? '📺' : '🎬';
+
         // Handle different URL field names
-        const videoUrl = video.youtube_url || video.imvdb_url || video.url || '';
+        const videoUrl = video.youtube_url || video.url || '';
         
         return `
             <div class="result-card">

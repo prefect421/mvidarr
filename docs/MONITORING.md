@@ -347,7 +347,7 @@ iostat -x 1 5
 curl "http://localhost:5001/api/performance/slow?threshold=1000"
 
 # Check network latency
-ping -c 10 api.imvdb.com
+ping -c 10 musicbrainz.org
 ```
 
 ### High Disk Usage

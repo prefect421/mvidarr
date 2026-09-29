@@ -220,11 +220,11 @@ docker-compose up -d
 #### External API Access Problems
 ```bash
 # Test connectivity from within container
-docker exec mvidarr ping -c 3 api.imvdb.com
-docker exec mvidarr curl -I https://api.imvdb.com
+docker exec mvidarr ping -c 3 musicbrainz.org
+docker exec mvidarr curl -I https://musicbrainz.org/ws/2/
 
 # Check DNS resolution
-docker exec mvidarr nslookup api.imvdb.com
+docker exec mvidarr nslookup musicbrainz.org
 
 # Test YouTube API connectivity
 docker exec mvidarr curl -I https://www.googleapis.com/youtube/v3/
