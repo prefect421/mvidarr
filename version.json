@@ -1,10 +1,14 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "build_date": "2026-09-27T01:50:59.009466",
   "git_commit": "7c8385a2",
   "git_branch": "dev",
-  "release_name": "v1.1.0 - IMVDb Removal & MusicBrainz Video Discovery",
+  "release_name": "v1.1.1 - Search & YouTube Quota Fixes (incl. v1.1.0 IMVDb Removal)",
   "features": [
+    "Universal search now shows a warning when YouTube fails (quota exhausted, missing key) instead of an empty \"No results found\"; the search box searches on Enter instead of per keystroke to conserve YouTube API quota (#548)",
+    "YouTube quota tracking: once Google reports the daily quota exceeded, all YouTube calls stop until the Pacific-time reset; previously-untracked callers now feed the tracker (#549)",
+    "Universal search searches exactly what was typed, matching across artist and title (#545)",
+    "Dependency sweep, including bgutil PO-token server 2.0.0 (RCE fix)",
     "IMVDb integration removed entirely (client, settings, UI, docs) - its search API was permanently broken on IMVDb's own infrastructure (#520-522)",
     "Official-video discovery now powered by MusicBrainz's curated music-video relationship data - no API key required (#523)",
     "Several real bugs found and fixed along the way: a permanently-deflated data-quality/coverage score, a save handler that silently wiped historical imvdb_id data, and a broken CLI script that crashed on every invocation",

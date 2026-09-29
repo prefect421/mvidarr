@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-29
+
+Universal search fixes and YouTube quota handling, plus a dependency/security sweep. Ships together with 1.1.0 (IMVDb removal), which was never tagged separately.
+
 ### Security
 - **bgutil-ytdlp-pot-provider 1.3.1/1.3.2 → 2.0.0** (Dependabot #536): 2.0.0 fixes an RCE in the PO-token *server* ([GHSA-qpv9-8xfj-xx9m](https://github.com/Brainicism/bgutil-ytdlp-pot-provider/security/advisories/GHSA-qpv9-8xfj-xx9m)) and binds it to localhost instead of 0.0.0.0. Not a plain requirements bump: both `Dockerfile` and `Dockerfile.production` build the server from a pinned, SHA256-verified source tarball (previously 1.3.2), so both were moved to the 2.0.0 tarball and the Python plugin is now pinned exactly (`==2.0.0`, was `>=`) so the client and server cannot drift apart. The app reaches the server at `127.0.0.1:4416` inside the same container, so the localhost-only bind is compatible; Node 22.23.2 satisfies the new `engines` floor (`>=22`).
 
