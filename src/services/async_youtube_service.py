@@ -8,8 +8,13 @@ from typing import Any, Dict, List, Optional
 from src.services.async_base_service import AsyncBaseService
 from src.utils.httpx_async_client import get_global_httpx_client
 from src.utils.logger import get_logger
+from src.utils.youtube_quota_tracker import get_quota_tracker, is_daily_quota_error
 
 logger = get_logger("mvidarr.services.async_youtube")
+
+QUOTA_EXHAUSTED_MESSAGE = (
+    "YouTube API daily quota exhausted; it resets at midnight Pacific time."
+)
 
 
 class AsyncYouTubeService(AsyncBaseService):
@@ -79,6 +84,13 @@ class AsyncYouTubeService(AsyncBaseService):
                 "results": [],
             }
 
+        tracker = get_quota_tracker()
+        if not tracker.has_budget(100):
+            self.logger.warning(
+                f"YouTube API quota exhausted — skipping search: {query!r}"
+            )
+            return {"success": False, "error": QUOTA_EXHAUSTED_MESSAGE, "results": []}
+
         try:
             # Prepare search parameters
             params = {
@@ -98,7 +110,16 @@ class AsyncYouTubeService(AsyncBaseService):
 
             response = await client.get(url, params=params, timeout=30)
 
+            if is_daily_quota_error(response.status_code, response.text):
+                tracker.mark_exhausted()
+                return {
+                    "success": False,
+                    "error": QUOTA_EXHAUSTED_MESSAGE,
+                    "results": [],
+                }
+
             if response.status_code == 200:
+                tracker.consume("search")
                 data = response.json()
 
                 if "items" in data:
@@ -177,6 +198,10 @@ class AsyncYouTubeService(AsyncBaseService):
         if not video_ids:
             return {"success": True, "results": [], "total": 0}
 
+        tracker = get_quota_tracker()
+        if not tracker.has_budget(1):
+            return {"success": False, "error": QUOTA_EXHAUSTED_MESSAGE, "results": []}
+
         try:
             # YouTube API allows up to 50 video IDs per request
             batch_size = 50
@@ -198,7 +223,16 @@ class AsyncYouTubeService(AsyncBaseService):
 
                 response = await client.get(url, params=params, timeout=30)
 
+                if is_daily_quota_error(response.status_code, response.text):
+                    tracker.mark_exhausted()
+                    return {
+                        "success": False,
+                        "error": QUOTA_EXHAUSTED_MESSAGE,
+                        "results": [],
+                    }
+
                 if response.status_code == 200:
+                    tracker.consume("video_details")
                     data = response.json()
                     if "items" in data:
                         all_results.extend(data["items"])

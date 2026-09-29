@@ -290,6 +290,7 @@ class YouTubeSearchService:
             }
 
         except requests.RequestException as e:
+            self._quota_tracker.note_http_error(e)
             error_msg = str(e)
             if self.api_key and self.api_key in error_msg:
                 error_msg = error_msg.replace(self.api_key, "***API_KEY***")
@@ -370,6 +371,7 @@ class YouTubeSearchService:
             return video_details
 
         except Exception as e:
+            self._quota_tracker.note_http_error(e)
             logger.error(f"Failed to get video details: {e}")
             return video_details  # Return cached videos even if API call fails
 
@@ -468,6 +470,16 @@ class YouTubeSearchService:
             logger.debug(f"Using cached search results for title: {title}")
             return cached_result
 
+        if not self._quota_tracker.has_budget(100):
+            logger.warning(
+                f"YouTube API quota exhausted — skipping title search: {title!r}"
+            )
+            return {
+                "videos": [],
+                "total_results": 0,
+                "error": "YouTube API quota exhausted for today",
+            }
+
         try:
             # Construct search query
             search_query = title
@@ -494,13 +506,18 @@ class YouTubeSearchService:
             data = response.json()
             videos = []
 
-            # Get video IDs for detailed info
-            video_ids = [item["id"]["videoId"] for item in data.get("items", [])]
+            # Skip any item without an id.videoId rather than failing the search
+            items = [
+                item
+                for item in data.get("items", [])
+                if isinstance(item.get("id"), dict) and item["id"].get("videoId")
+            ]
+            video_ids = [item["id"]["videoId"] for item in items]
             video_details = self._get_video_details(video_ids) if video_ids else {}
 
-            for item in data.get("items", []):
+            for item in items:
                 video_id = item["id"]["videoId"]
-                snippet = item["snippet"]
+                snippet = item.get("snippet", {})
                 details = video_details.get(video_id, {})
 
                 video_info = {
@@ -541,6 +558,7 @@ class YouTubeSearchService:
             return result
 
         except Exception as e:
+            self._quota_tracker.note_http_error(e)
             logger.error(f"YouTube title search failed: {e}")
             return {
                 "videos": [],
@@ -618,6 +636,12 @@ class YouTubeSearchService:
                     "key": self.api_key,
                 }
 
+                if not self._quota_tracker.has_budget(100):
+                    logger.warning(
+                        f"YouTube API quota exhausted — skipping channel search: {artist_name!r}"
+                    )
+                    return None
+
                 response = requests.get(url, params=params, timeout=30)
                 response.raise_for_status()
 
@@ -667,6 +691,7 @@ class YouTubeSearchService:
             return None
 
         except requests.RequestException as e:
+            self._quota_tracker.note_http_error(e)
             logger.error(f"YouTube channel search API request failed: {e}")
             return None
         except Exception as e:

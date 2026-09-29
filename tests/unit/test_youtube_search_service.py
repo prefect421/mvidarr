@@ -204,3 +204,59 @@ def test_search_skips_items_without_video_id(mock_get, tmp_path):
 
     assert "error" not in result
     assert [v["youtube_id"] for v in result["videos"]] == ["vid0", "vid1"]
+
+
+def _quota_429():
+    import requests
+
+    response = requests.Response()
+    response.status_code = 429
+    response._content = b"Quota exceeded for metric 'Search Queries' per day"
+    return response
+
+
+@patch("src.services.youtube_search_service.requests.get")
+def test_daily_quota_429_stops_all_further_calls(mock_get, tmp_path):
+    """After Google says the daily quota is gone, don't keep calling it."""
+    service, tracker = _make_service_with_tracker(tmp_path)
+    mock_get.return_value = _quota_429()
+    with patch.object(
+        YouTubeSearchService,
+        "api_key",
+        new_callable=PropertyMock,
+        return_value="fakekey",
+    ):
+        first = service.search_videos_as_typed("alien ant farm")
+        second = service.search_videos_as_typed("alien ant farm again")
+
+    assert tracker.is_exhausted() is True
+    assert mock_get.call_count == 1, "second search must not reach the API"
+    assert "error" in first
+    assert "quota" in second["error"].lower()
+
+
+@patch("src.services.youtube_search_service.requests.get")
+def test_title_search_skips_items_without_video_id_and_honors_exhaustion(
+    mock_get, tmp_path
+):
+    service, tracker = _make_service_with_tracker(tmp_path)
+    payload = _fake_search_response(1)
+    payload["items"].append({"id": {"kind": "youtube#channel"}, "snippet": {}})
+    mock_get.return_value = MagicMock(
+        status_code=200, json=lambda: payload, raise_for_status=lambda: None
+    )
+    with patch.object(
+        YouTubeSearchService,
+        "api_key",
+        new_callable=PropertyMock,
+        return_value="fakekey",
+    ):
+        ok = service.search_video_by_title("Creep", "Radiohead")
+        assert [v["youtube_id"] for v in ok["videos"]] == ["vid0"]
+
+        tracker.mark_exhausted()
+        mock_get.reset_mock()
+        blocked = service.search_video_by_title("Other Song", "Radiohead")
+
+    assert mock_get.call_count == 0
+    assert "quota" in blocked["error"].lower()
