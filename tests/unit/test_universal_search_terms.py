@@ -130,3 +130,55 @@ class TestQueryForwardedAsTyped:
         assert mock_youtube.search_videos_as_typed.call_args.args[0] == (
             "AC/DC Back In Black"
         )
+
+
+class TestExternalSearchWarnings:
+    """A YouTube failure must be reported, not shown as "no results"."""
+
+    async def _search_with_youtube(self, session, youtube_result):
+        with patch(
+            "src.services.youtube_search_service.youtube_search_service"
+        ) as mock_youtube:
+            mock_youtube.api_key = "fake-key"
+            mock_youtube.search_videos_as_typed.return_value = youtube_result
+            return await universal_search(
+                q="moon", extended=False, current_user={"user_id": 1}, session=session
+            )
+
+    @pytest.mark.asyncio
+    async def test_quota_error_becomes_friendly_warning(self, session):
+        result = await self._search_with_youtube(
+            session,
+            {
+                "videos": [],
+                "error": "429 Client Error: Too Many Requests for url: https://x",
+            },
+        )
+        assert len(result["warnings"]) == 1
+        assert "quota" in result["warnings"][0].lower()
+        assert "https://" not in result["warnings"][0]
+
+    @pytest.mark.asyncio
+    async def test_quota_exhausted_message_becomes_warning(self, session):
+        result = await self._search_with_youtube(
+            session,
+            {"videos": [], "error": "YouTube API quota exhausted for today"},
+        )
+        assert "quota" in result["warnings"][0].lower()
+
+    @pytest.mark.asyncio
+    async def test_other_error_becomes_generic_warning(self, session):
+        result = await self._search_with_youtube(
+            session, {"videos": [], "error": "boom"}
+        )
+        assert result["warnings"] == ["YouTube search failed; see server logs."]
+
+    @pytest.mark.asyncio
+    async def test_missing_api_key_becomes_warning(self, session):
+        result = await _search(session, "moon")
+        assert any("api key" in w.lower() for w in result["warnings"])
+
+    @pytest.mark.asyncio
+    async def test_no_warning_when_youtube_returns_no_matches_cleanly(self, session):
+        result = await self._search_with_youtube(session, {"videos": []})
+        assert result["warnings"] == []

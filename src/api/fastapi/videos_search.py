@@ -75,6 +75,18 @@ def _like_contains(term: str) -> str:
     return f"%{escaped}%"
 
 
+def _youtube_warning(error: str) -> str:
+    """Turn a raw YouTube search error into a user-facing warning (the raw
+    text can contain request URLs, so it is only logged, never returned)."""
+    lowered = error.lower()
+    if "quota" in lowered or "429" in lowered:
+        return (
+            "YouTube daily search quota is used up; YouTube results return "
+            "after it resets (midnight Pacific)."
+        )
+    return "YouTube search failed; see server logs."
+
+
 # ========================================================================================
 # SEARCH ENDPOINTS
 # ========================================================================================
@@ -157,6 +169,7 @@ async def universal_search(
 
         # External search results
         external_results = []
+        warnings: List[str] = []
 
         # Note: a bulk free-text IMVDb search used to run here. It had no
         # MusicBrainz equivalent -- find_official_video() needs a known
@@ -215,14 +228,19 @@ async def universal_search(
                         logger.warning(
                             f"YouTube search returned 0 results with error: {yt_error}"
                         )
+                        warnings.append(_youtube_warning(yt_error))
                     else:
                         logger.info(f"No YouTube results found for: {query}")
             else:
                 logger.warning(
                     "YouTube API key not configured, skipping YouTube search"
                 )
+                warnings.append(
+                    "YouTube API key not configured; set it in Settings > API Keys."
+                )
         except Exception as e:
             logger.warning(f"YouTube search failed: {e}")
+            warnings.append("YouTube search failed; see server logs.")
 
         # Structured response matching Flask format
         response = {
@@ -230,6 +248,7 @@ async def universal_search(
             "artists": artist_results,
             "external": external_results,
             "total": len(video_results) + len(artist_results) + len(external_results),
+            "warnings": warnings,
         }
 
         return response

@@ -183,3 +183,24 @@ class TestSearchVideosAsTyped:
         mock_get.assert_not_called()
         assert result["videos"] == []
         assert "quota" in result["error"].lower()
+
+
+@patch("src.services.youtube_search_service.requests.get")
+def test_search_skips_items_without_video_id(mock_get, tmp_path):
+    """A result item lacking id.videoId must be skipped, not fail the search."""
+    service, _ = _make_service_with_tracker(tmp_path)
+    payload = _fake_search_response(2)
+    payload["items"].insert(1, {"id": {"kind": "youtube#channel"}, "snippet": {}})
+    mock_get.return_value = MagicMock(
+        status_code=200, json=lambda: payload, raise_for_status=lambda: None
+    )
+    with patch.object(
+        YouTubeSearchService,
+        "api_key",
+        new_callable=PropertyMock,
+        return_value="fakekey",
+    ):
+        result = service.search_videos_as_typed("anything", limit=5)
+
+    assert "error" not in result
+    assert [v["youtube_id"] for v in result["videos"]] == ["vid0", "vid1"]

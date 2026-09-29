@@ -1350,7 +1350,7 @@
             <div class="universal-search-container" id="universalSearchContainer">
                 <div class="universal-search-input-wrapper">
                     <iconify-icon icon="tabler:search" class="universal-search-icon"></iconify-icon>
-                    <input type="text" id="universalSearchInput" class="universal-search-input" placeholder="Search videos, artists, or discover new content..." autocomplete="off">
+                    <input type="text" id="universalSearchInput" class="universal-search-input" placeholder="Search videos, artists, or discover new content... (press Enter)" autocomplete="off">
                     <button class="universal-search-clear" id="universalSearchClear" style="display: none;">
                         <iconify-icon icon="tabler:x"></iconify-icon>
                     </button>
@@ -1396,7 +1396,7 @@
                     <!-- No Results -->
                     <div class="universal-search-no-results" id="noResultsMessage" style="display: none;">
                         <iconify-icon icon="tabler:search-off"></iconify-icon>
-                        <span>No results found</span>
+                        <span id="noResultsText">No results found</span>
                     </div>
                     
                     <!-- Search More Button -->
@@ -2007,8 +2007,7 @@
                 this.artistsCount = document.getElementById('artistsCount');
                 this.externalCount = document.getElementById('externalCount');
                 
-                this.searchTimeout = null;
-                this.isSearching = false;
+                this.requestSeq = 0;
                 this.currentQuery = '';
                 
                 this.init();
@@ -2017,11 +2016,13 @@
             init() {
                 if (!this.searchInput) return;
                 
-                // Input event listener with debouncing
+                // Searching is explicit (Enter), not per keystroke: every search
+                // also queries YouTube, which costs 100 API quota units each
                 this.searchInput.addEventListener('input', (e) => {
                     const query = e.target.value.trim();
                     
                     if (query.length === 0) {
+                        this.cancelInFlight();
                         this.clearResults();
                         this.clearButton.style.display = 'none';
                         return;
@@ -2030,15 +2031,18 @@
                     this.clearButton.style.display = 'block';
                     
                     if (query.length < 2) {
+                        this.cancelInFlight();
                         this.clearResults();
-                        return;
                     }
-                    
-                    // Debounce search
-                    clearTimeout(this.searchTimeout);
-                    this.searchTimeout = setTimeout(() => {
+                });
+                
+                this.searchInput.addEventListener('keydown', (e) => {
+                    if (e.key !== 'Enter' || e.isComposing) return;
+                    e.preventDefault();
+                    const query = this.searchInput.value.trim();
+                    if (query.length >= 2) {
                         this.performSearch(query);
-                    }, 300);
+                    }
                 });
                 
                 // Clear button
@@ -2093,10 +2097,17 @@
                 }
             }
             
+            // Invalidate any in-flight search so its response can't be displayed
+            cancelInFlight() {
+                this.requestSeq++;
+                this.hideLoading();
+            }
+            
             async performSearch(query) {
-                if (this.isSearching) return;
-                
-                this.isSearching = true;
+                // The latest search always wins: supersede whatever is in flight
+                // instead of dropping this one
+                this.cancelInFlight();
+                const requestId = this.requestSeq;
                 this.currentQuery = query;
                 this.showLoading();
                 
@@ -2108,19 +2119,32 @@
                     }
                     
                     const data = await response.json();
+                    if (requestId !== this.requestSeq) return; // superseded while in flight
                     this.displayResults(data);
                     
                 } catch (error) {
+                    if (requestId !== this.requestSeq) return;
                     console.error('Search error:', error);
                     this.showError('Search failed. Please try again.');
                 } finally {
-                    this.isSearching = false;
-                    this.hideLoading();
+                    if (requestId === this.requestSeq) this.hideLoading();
                 }
             }
             
             displayResults(data) {
                 this.clearSections();
+                
+                // An external-source failure (e.g. YouTube quota) must not look like "no matches"
+                const warnings = data.warnings || [];
+                const noResultsText = document.getElementById('noResultsText');
+                if (noResultsText) {
+                    noResultsText.textContent = warnings.length
+                        ? `No results found. ${warnings.join(' ')}`
+                        : 'No results found';
+                }
+                if (warnings.length && data.total > 0) {
+                    showToast(warnings.join(' '), 'info');
+                }
                 
                 if (data.total === 0) {
                     this.showNoResults();
@@ -2351,6 +2375,8 @@
                         this.displayExternal(data.external);
                         this.externalSection.style.display = 'block';
                         showToast(`Found ${data.external.length} additional results from YouTube!`, 'success');
+                    } else if (data.warnings && data.warnings.length) {
+                        showToast(data.warnings.join(' '), 'error');
                     } else {
                         showToast('No additional results found on YouTube', 'info');
                     }
