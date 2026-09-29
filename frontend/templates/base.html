@@ -1396,7 +1396,7 @@
                     <!-- No Results -->
                     <div class="universal-search-no-results" id="noResultsMessage" style="display: none;">
                         <iconify-icon icon="tabler:search-off"></iconify-icon>
-                        <span>No results found</span>
+                        <span id="noResultsText">No results found</span>
                     </div>
                     
                     <!-- Search More Button -->
@@ -2122,6 +2122,18 @@
             displayResults(data) {
                 this.clearSections();
                 
+                // An external-source failure (e.g. YouTube quota) must not look like "no matches"
+                const warnings = data.warnings || [];
+                const noResultsText = document.getElementById('noResultsText');
+                if (noResultsText) {
+                    noResultsText.textContent = warnings.length
+                        ? `No results found. ${warnings.join(' ')}`
+                        : 'No results found';
+                }
+                if (warnings.length && data.total > 0) {
+                    showToast(warnings.join(' '), 'info');
+                }
+                
                 if (data.total === 0) {
                     this.showNoResults();
                     this.showSearchMore();
@@ -2351,6 +2363,8 @@
                         this.displayExternal(data.external);
                         this.externalSection.style.display = 'block';
                         showToast(`Found ${data.external.length} additional results from YouTube!`, 'success');
+                    } else if (data.warnings && data.warnings.length) {
+                        showToast(data.warnings.join(' '), 'error');
                     } else {
                         showToast('No additional results found on YouTube', 'info');
                     }

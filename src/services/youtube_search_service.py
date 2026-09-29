@@ -240,13 +240,21 @@ class YouTubeSearchService:
             data = response.json()
             videos = []
 
+            # type=video should only return videos, but skip any item without
+            # an id.videoId rather than failing the whole search
+            items = [
+                item
+                for item in data.get("items", [])
+                if isinstance(item.get("id"), dict) and item["id"].get("videoId")
+            ]
+
             # Get video IDs for detailed info
-            video_ids = [item["id"]["videoId"] for item in data.get("items", [])]
+            video_ids = [item["id"]["videoId"] for item in items]
             video_details = self._get_video_details(video_ids) if video_ids else {}
 
-            for item in data.get("items", []):
+            for item in items:
                 video_id = item["id"]["videoId"]
-                snippet = item["snippet"]
+                snippet = item.get("snippet", {})
                 details = video_details.get(video_id, {})
 
                 video_info = {
