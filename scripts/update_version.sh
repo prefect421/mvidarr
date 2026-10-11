@@ -23,39 +23,21 @@ CURRENT_RELEASE_NAME=$(grep '"release_name"' version.json | sed 's/.*"release_na
 echo "📦 Keeping version: $CURRENT_VERSION"
 echo "🏷️  Release name: $CURRENT_RELEASE_NAME"
 
-# Create temporary file with updated metadata
-cat > version.json.tmp << EOF
-{
-  "version": "$CURRENT_VERSION",
-  "build_date": "$CURRENT_TIMESTAMP",
-  "git_commit": "$CURRENT_COMMIT",
-  "git_branch": "$CURRENT_BRANCH",
-  "release_name": "$CURRENT_RELEASE_NAME",
-  "features": [
-    "Advanced Artist Management with multi-criteria search and bulk operations",
-    "Comprehensive Video Discovery with dual-source integration (MusicBrainz + YouTube)",
-    "Professional Thumbnail Management with multi-source search and cropping",
-    "Intelligent Organization with automatic folder creation and cleanup",
-    "Advanced Search System with real-time suggestions and filtering",
-    "Bulk Operations with multi-select editing and batch processing",
-    "Video Streaming with built-in player and transcoding",
-    "System Health monitoring with comprehensive diagnostics",
-    "Database-Driven Settings with complete configuration management",
-    "Download Management with queue visualization and progress tracking",
-    "Multi-User Authentication with role-based access control",
-    "Advanced Security with password policies and audit logging",
-    "Modern UI with left sidebar navigation and theme system",
-    "MvTV Continuous Player with cinematic mode",
-    "Two-Factor Authentication with TOTP support",
-    "Fixed Video Search Results Display with improved CSS and field mapping",
-    "Robust CI/CD Integration with comprehensive testing and deployment",
-    "Enhanced Database Initialization with secure admin user creation"
-  ]
-}
-EOF
+# Update only the build metadata; keep version, release_name and the
+# hand-maintained features list exactly as committed
+CURRENT_TIMESTAMP="$CURRENT_TIMESTAMP" CURRENT_COMMIT="$CURRENT_COMMIT" CURRENT_BRANCH="$CURRENT_BRANCH" python3 - << 'PYEOF'
+import json
+import os
 
-# Replace the original file
-mv version.json.tmp version.json
+with open("version.json") as f:
+    data = json.load(f)
+data["build_date"] = os.environ["CURRENT_TIMESTAMP"]
+data["git_commit"] = os.environ["CURRENT_COMMIT"]
+data["git_branch"] = os.environ["CURRENT_BRANCH"]
+with open("version.json", "w") as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+    f.write("\n")
+PYEOF
 
 echo "✅ Version metadata updated successfully!"
 echo "💡 Remember to commit this change:"

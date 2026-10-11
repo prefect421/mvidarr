@@ -1,10 +1,11 @@
 {
-  "version": "1.1.1",
-  "build_date": "2026-09-29T15:09:35.155518",
-  "git_commit": "a89151f6",
-  "git_branch": "main",
-  "release_name": "v1.1.1 - Search & YouTube Quota Fixes (incl. v1.1.0 IMVDb Removal)",
+  "version": "1.1.2",
+  "build_date": "2026-10-11T22:32:51.469687",
+  "git_commit": "1851d5ee",
+  "git_branch": "dev",
+  "release_name": "v1.1.2 - Security Sweep (urllib3, werkzeug, PyJWT) & Dependency Updates",
   "features": [
+    "Security sweep: urllib3 2.8.0 (CVE-2026-97687/97688/97689), werkzeug 3.1.9 (CVE-2026-102598), PyJWT 2.15.1 (CVE-2026-101918/102275); also zeroconf, websockets, black 26.5.1",
     "Universal search now shows a warning when YouTube fails (quota exhausted, missing key) instead of an empty \"No results found\"; the search box searches on Enter instead of per keystroke to conserve YouTube API quota (#548)",
     "YouTube quota tracking: once Google reports the daily quota exceeded, all YouTube calls stop until the Pacific-time reset; previously-untracked callers now feed the tracker (#549)",
     "Universal search searches exactly what was typed, matching across artist and title (#545)",

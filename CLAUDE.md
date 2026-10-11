@@ -214,10 +214,10 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.1.0 - Released
+### Current Phase: v1.1.1 - Released
 
 #### Versioning Policy (Updated 2026-09-27)
-- **Current Version**: 1.1.0 (Released 2026-09-27)
+- **Current Version**: 1.1.1 (Released 2026-09-29; on `main`, prod not yet rebuilt)
 - **Next Version**: TBD (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
@@ -225,6 +225,13 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **v1.1.1** (2026-09-29): Universal Search & YouTube Quota Fixes (PRs #548, #549, #550, #551; also ships v1.1.0, which was never tagged separately)
+  - ✅ Universal search returns a `warnings` list and the search box shows it — a YouTube failure (quota exhausted, missing key, API error) no longer looks like "No results found"; raw API errors stay in the server log. YouTube result items without `id.videoId` are skipped instead of failing the whole search
+  - ✅ The search box now searches on **Enter**, not per keystroke: every search also queries YouTube (100 quota units), so search-as-you-type was exhausting the daily quota. The live search is the inline script in `base.html`; `static/js/universal-search.js` is never loaded (dead code, only precached), which is why the #545 race fix there had no effect until this release
+  - ✅ `YouTubeQuotaTracker`: when Google reports the daily quota exceeded, `mark_exhausted()` records it in the shared storage file and every caller (API + Celery workers) stops until the quota day rolls over. Quota day is Pacific time (Google's reset). `youtube_service.py`/`async_youtube_service.py` now feed the tracker; "Test connection" is a 1-unit lookup instead of a 100-unit search
+  - ⚠️ **Prod and dev share one YouTube API key/quota, and prod is the primary spender** — a dev "429 Search Queries per day" is expected while prod has used the budget; each instance's tracker only sees its own spend. No per-instance budget split built (decided not needed yet)
+  - ⚠️ Release pushed to `main` via admin-bypass merge of PR #551 (`main` requires 1 approval). `scripts/update_version.sh` regenerates `version.json`'s `features` from a stale hardcoded list — keep only its `build_date`/`git_commit`/`git_branch` output
+  - ⚠️ Prod not yet rebuilt as of this entry
 - **v1.1.0** (2026-09-27): IMVDb Removal & MusicBrainz Video Discovery (milestone [v1.1.0](https://github.com/prefect421/mvidarr/milestone/21), issues #520-528)
   - ✅ **Removed**: IMVDb integration entirely — `IMVDbClient`/`imvdb_service`/`imvdb_discovery_service`/`imvdb_analytics_service`, the `/api/imvdb/*` router, the `IMVDB_API_KEY` setting, and every "Search IMVDb"/"Link to IMVDb" UI affordance across templates, static JS/CSS, and e2e tests. Trigger: #520 found IMVDb's search API permanently broken on IMVDb's own infrastructure (confirmed via their own sandbox); #522 scoped the removal (20 live files) and decided 2026-09-22 on full removal over a patch, since IMVDb's infra looks generally unmaintained (changelog silent since 2013, ~2018-era nginx on edge)
   - ✅ **Replacement**: `MusicBrainzService.find_official_video()` (#523) — MusicBrainz's curated `music video`/`free streaming` recording relationships, the same signal IMVDb provided. No API key required, self-throttled to MusicBrainz's 1 req/sec public-API limit
@@ -532,7 +539,7 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.1.0 (IMVDb Removal & MusicBrainz Video Discovery)
+- **Current Version**: v1.1.1 (Search & YouTube Quota Fixes, incl. v1.1.0 IMVDb Removal)
 - **Development Focus**: Stability, security
 - **Next Version**: TBD
 
@@ -632,7 +639,7 @@ All issues should be planned with the following attributes (fields on the [MVida
 Note: there is no separate "Release Slot" field — the board never got one built; `Milestone` is what actually designates the release window.
 
 ### Release Management
-- **Current Release**: Version 1.1.0 (2026-09-27) — see Version History above for details
+- **Current Release**: Version 1.1.1 (2026-09-29) — see Version History above for details
 - **Next Release**: TBD (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
