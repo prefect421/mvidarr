@@ -1,8 +1,8 @@
 {
   "version": "1.1.2",
-  "build_date": "2026-10-11T22:32:51.469687",
-  "git_commit": "1851d5ee",
-  "git_branch": "dev",
+  "build_date": "2026-10-11T23:01:43.195623",
+  "git_commit": "a02b437b",
+  "git_branch": "main",
   "release_name": "v1.1.2 - Security Sweep (urllib3, werkzeug, PyJWT) & Dependency Updates",
   "features": [
     "Security sweep: urllib3 2.8.0 (CVE-2026-97687/97688/97689), werkzeug 3.1.9 (CVE-2026-102598), PyJWT 2.15.1 (CVE-2026-101918/102275); also zeroconf, websockets, black 26.5.1",
