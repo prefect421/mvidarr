@@ -98,7 +98,7 @@ Pending schema migrations (in `migrations/`) also run automatically on startup �
 #### Code Formatting (Required)
 ```bash
 # Install development tools (pinned to match CI - see requirements-dev.txt)
-pipx install black==26.3.1
+pipx install black==26.5.1
 pipx install isort==9.0.0
 pipx install flake8==6.1.0
 
@@ -205,7 +205,7 @@ changes
 ### Python Code Style
 
 #### Formatting Requirements
-- **Black**: Code formatting (version 26.3.1 — pinned in `requirements-dev.txt`, must match exactly or CI's `black --check` will disagree with your local run)
+- **Black**: Code formatting (version 26.5.1 — pinned in `requirements-dev.txt`, must match exactly or CI's `black --check` will disagree with your local run)
 - **isort**: Import sorting with `--profile black`
 - **Line length**: 88 characters (Black default)
 - **String quotes**: Double quotes preferred
