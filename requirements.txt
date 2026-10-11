@@ -53,7 +53,7 @@ flower==2.1.0
 werkzeug==3.1.9  # Security: CVE-2026-102598 safe_join() Windows device paths; earlier CVE-2026-21860, CVE-2026-27199
 bcrypt==5.0.0
 cryptography>=50.0.0
-PyJWT==2.15.0  # Security: CVE-2026-101918 nested-payload DoS, CVE-2026-102275 OKP key mismatch bypass; earlier CVE-2026-32597, PYSEC-2026-175..179
+PyJWT==2.15.1  # Security: CVE-2026-101918 nested-payload DoS, CVE-2026-102275 OKP key mismatch bypass; earlier CVE-2026-32597, PYSEC-2026-175..179
 passlib==1.7.4
 pyotp==2.10.0
 qrcode==7.4.2
