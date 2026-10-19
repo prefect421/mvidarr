@@ -1,10 +1,12 @@
 {
-  "version": "1.1.2",
-  "build_date": "2026-10-11T23:01:43.195623",
-  "git_commit": "a02b437b",
+  "version": "1.1.3",
+  "build_date": "2026-10-19T11:47:31.407226",
+  "git_commit": "7bfee1cc",
   "git_branch": "main",
-  "release_name": "v1.1.2 - Security Sweep (urllib3, werkzeug, PyJWT) & Dependency Updates",
+  "release_name": "v1.1.3 - Download Integrity Fix & Dependency Updates",
   "features": [
+    "Downloads are no longer marked DOWNLOADED when yt-dlp reports success but no output file exists; falls back to a same-name playable file, otherwise fails the download (#540)",
+    "Dependency updates: apprise 2.0.1, cryptography >=50.0.2, flower 2.2.0, marshmallow 4.3.1",
     "Security sweep: urllib3 2.8.0 (CVE-2026-97687/97688/97689), werkzeug 3.1.9 (CVE-2026-102598), PyJWT 2.15.1 (CVE-2026-101918/102275); also zeroconf, websockets, black 26.5.1",
     "Universal search now shows a warning when YouTube fails (quota exhausted, missing key) instead of an empty \"No results found\"; the search box searches on Enter instead of per keystroke to conserve YouTube API quota (#548)",
     "YouTube quota tracking: once Google reports the daily quota exceeded, all YouTube calls stop until the Pacific-time reset; previously-untracked callers now feed the tracker (#549)",
