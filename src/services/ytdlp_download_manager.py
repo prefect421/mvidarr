@@ -319,6 +319,22 @@ def _download_video(service_state: Dict, download_entry: Dict):
         )
 
         if result.success:
+            # yt-dlp can report success without the merged output existing
+            # (#540); never trust the reported path without checking disk.
+            resolved_path = _resolve_downloaded_file(result.file_path)
+            if resolved_path is None:
+                raise FileNotFoundError(
+                    f"Download reported success but no output file exists: "
+                    f"{result.file_path}"
+                )
+            if resolved_path != result.file_path:
+                logger.warning(
+                    f"Download {download_id}: reported file missing, "
+                    f"using {resolved_path} instead of {result.file_path}"
+                )
+                result.file_path = resolved_path
+                result.file_size = os.path.getsize(resolved_path)
+
             # Download successful
             download_entry["status"] = "completed"
             download_entry["completed_at"] = datetime.utcnow().isoformat()
@@ -484,6 +500,29 @@ def _download_video(service_state: Dict, download_entry: Dict):
         ]
 
 
+_PLAYABLE_EXTENSIONS = (".mp4", ".mkv", ".webm", ".m4v", ".mov")
+
+
+def _resolve_downloaded_file(file_path: str):
+    """Return an existing playable file for a reported download path, or None.
+
+    Falls back to a same-stem file with another playable extension (e.g. the
+    merge to .mp4 never happened but the .webm exists). Format-id fragments
+    such as ``.f251.webm`` are intermediate streams and are never returned.
+    """
+    if not file_path:
+        return None
+    if os.path.isfile(file_path):
+        return file_path
+    directory, name = os.path.split(file_path)
+    stem = os.path.splitext(name)[0]
+    for ext in _PLAYABLE_EXTENSIONS:
+        candidate = os.path.join(directory, stem + ext)
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
 def _update_video_status_in_database(
     video_id: int, status: str, file_path: str = None, file_size: int = None
 ):
@@ -499,7 +538,7 @@ def _update_video_status_in_database(
                 original_file_path = video.local_path
 
                 video.status = status
-                if file_path:
+                if file_path and (status != "DOWNLOADED" or os.path.exists(file_path)):
                     video.local_path = file_path
                 if status == "DOWNLOADED":
                     # Ensure we have the file info
