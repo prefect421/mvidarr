@@ -9,7 +9,7 @@ pytest==9.1.1  # Security: CVE-2025-71176 tmpdir vuln fix
 pytest-cov==7.1.0  # Upgraded for pytest 9 compatibility
 pytest-asyncio==1.4.0  # pytest 9 compatible (requires >=8.2,<10; 0.x series does not support pytest 9.x)
 pytest-flask==1.3.0
-pytest-mock==3.12.0
+pytest-mock==3.17.0
 
 # Code Quality and Formatting
 black==26.5.1  # Security: CVE-2026-32274 arbitrary file write fix
