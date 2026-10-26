@@ -32,7 +32,7 @@
 - **📝 Behind a reverse proxy?** After rebuilding, make sure `TRUSTED_PROXY_HOSTS` is still set for your proxy — otherwise `/videos` fails with "Blocked loading mixed active content". See [Troubleshooting](docs/TROUBLESHOOTING.md).
 - **🔒 Security scan**: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean across all requirements files
 
-📜 **[View the full changelog](CHANGELOG.md)** for v1.0.4's complete notes and every earlier release.
+📜 **[View the full changelog](CHANGELOG.md)** for v1.1.4's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 

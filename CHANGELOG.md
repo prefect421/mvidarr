@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-10-26
+
+Security sweep: Pillow 13, aiohttp 3.14.4. Clears all 30 open Dependabot alerts and 30 code-scanning alerts; pip-audit clean on `requirements.txt`, `requirements-dev.txt`, `requirements-fastapi.txt`.
+
+### Security
+- **Pillow 12.3.0 → 13.0.0**: 37 advisories, including several RCE-class heap overflows reachable from user-supplied images (TIFF encode/decode, JPEG encoder, FlashPix) plus decompression-bomb bypasses (SPIDER, MPO/DCX, EPS) and PDF/GIF/BMP/XBM DoS. Major version bump; the thumbnail/image services use no removed APIs and the full test suite passes.
+- **aiohttp 3.14.3 → 3.14.4** (#568): 8 advisories (request smuggling via ambiguous framing, multipart file-descriptor exhaustion, `Max-Age` overflow, host-only/`Secure` cookie bypasses, scheme spoofing).
+
+### Dependencies
+- uvicorn 0.52.4 → 0.54.0 (#569); black 26.5.1 → 26.10.1 (dev-only; also pinned in `ci-cd.yml`). Reformatting `src/` was a no-op.
+
+> Note: this file has no entries for 1.1.2 and 1.1.3; see `version.json` and the GitHub releases for those.
+
 ## [1.1.1] - 2026-09-29
 
 Universal search fixes and YouTube quota handling, plus a dependency/security sweep. Ships together with 1.1.0 (IMVDb removal), which was never tagged separately.
