@@ -214,10 +214,10 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.1.1 - Released
+### Current Phase: v1.1.4 - Released
 
 #### Versioning Policy (Updated 2026-09-27)
-- **Current Version**: 1.1.1 (Released 2026-09-29; on `main`, prod not yet rebuilt)
+- **Current Version**: 1.1.4 (Released 2026-10-26; on `main`, local Docker rebuilt, prod upgraded manually by the maintainer)
 - **Next Version**: TBD (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
@@ -225,6 +225,13 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **v1.1.4** (2026-10-26): Security Sweep — Pillow 13, aiohttp 3.14.4 (PRs #575, #568, #569)
+  - ✅ Security: Pillow 12.3.0 → 13.0.0 clears 30 Dependabot + 22 code-scanning alerts (37 advisories, incl. RCE-class TIFF/JPEG/FPX heap overflows); aiohttp 3.14.3 → 3.14.4 clears 8 code-scanning alerts
+  - ✅ Dependency: uvicorn 0.54.0; black 26.10.1 (dev-only, also pinned in `ci-cd.yml` — `requirements-dev.txt` and CI now agree)
+  - ✅ Verified: pip-audit + `pip check` clean, 1053 tests pass, Pillow 13 smoke test, local Docker (:5001) healthy with 207 videos intact
+  - ⚠️ Merging `dev` → `main` conflicted on the aiohttp pin line because Dependabot #568 targeted `main` directly; resolved by keeping the `dev` comment. Dependabot PRs that target `main` will keep doing this — merge them into `dev` instead or expect the conflict
+  - ⚠️ `/health` does not expose the version string; confirm a rebuild via `docker exec mvidarr-dev python3 -c "import src;print(src.__version__)"` and `pip list`
+  - ⚠️ CHANGELOG.md still has no 1.1.2/1.1.3 entries
 - **v1.1.1** (2026-09-29): Universal Search & YouTube Quota Fixes (PRs #548, #549, #550, #551; also ships v1.1.0, which was never tagged separately)
   - ✅ Universal search returns a `warnings` list and the search box shows it — a YouTube failure (quota exhausted, missing key, API error) no longer looks like "No results found"; raw API errors stay in the server log. YouTube result items without `id.videoId` are skipped instead of failing the whole search
   - ✅ The search box now searches on **Enter**, not per keystroke: every search also queries YouTube (100 quota units), so search-as-you-type was exhausting the daily quota. The live search is the inline script in `base.html`; `static/js/universal-search.js` is never loaded (dead code, only precached), which is why the #545 race fix there had no effect until this release
@@ -539,7 +546,7 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.1.1 (Search & YouTube Quota Fixes, incl. v1.1.0 IMVDb Removal)
+- **Current Version**: v1.1.4 (Security Sweep: Pillow 13, aiohttp 3.14.4)
 - **Development Focus**: Stability, security
 - **Next Version**: TBD
 
@@ -639,7 +646,7 @@ All issues should be planned with the following attributes (fields on the [MVida
 Note: there is no separate "Release Slot" field — the board never got one built; `Milestone` is what actually designates the release window.
 
 ### Release Management
-- **Current Release**: Version 1.1.1 (2026-09-29) — see Version History above for details
+- **Current Release**: Version 1.1.4 (2026-10-26) — see Version History above for details
 - **Next Release**: TBD (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
