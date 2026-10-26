@@ -9,24 +9,24 @@ pytest==9.1.1  # Security: CVE-2025-71176 tmpdir vuln fix
 pytest-cov==7.1.0  # Upgraded for pytest 9 compatibility
 pytest-asyncio==1.4.0  # pytest 9 compatible (requires >=8.2,<10; 0.x series does not support pytest 9.x)
 pytest-flask==1.3.0
-pytest-mock==3.12.0
+pytest-mock==3.17.0
 
 # Code Quality and Formatting
-black==26.5.1  # Security: CVE-2026-32274 arbitrary file write fix
+black==26.10.1  # Security: dev-tool advisory fixed in 26.10.1 (previously CVE-2026-32274 fix)
 flake8==7.3.0
 mypy==2.3.1
 bandit==1.9.4
 pip-audit==2.10.1
-isort==9.0.1  # Pinned: was unpinned and silently broke CI when 9.0.0 changed how it collapses multiple `from X import (...)` blocks from the same module vs 8.0.1
+isort==9.0.2  # Pinned: was unpinned and silently broke CI when 9.0.0 changed how it collapses multiple `from X import (...)` blocks from the same module vs 8.0.1
 
 # Documentation
 sphinx==9.1.0
 sphinx-rtd-theme==3.1.0
 
 # Visual Testing and Browser Automation
-playwright==1.62.0
+playwright==1.64.0
 pytest-playwright==0.10.0
-Pillow==12.3.0  # Security: CVE-2026-25990 PSD fix, CVE-2026-40192 FITS GZIP decompression bomb fix
+Pillow==13.0.0  # Security: 37 advisories fixed in 13.0.0 (TIFF/JPEG/FPX heap overflows, decompression-bomb bypasses, PDF DoS)
 imagehash==4.3.2
 
 # Additional Development Tools
