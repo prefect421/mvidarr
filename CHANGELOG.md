@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-11-01
+
+Maintenance sweep: consolidates five of six open Dependabot PRs (#576, #577, #578, #580, #581). No open issues, Dependabot alerts, or pip-audit findings at the time of the sweep.
+
+### Dependencies
+- **fastapi 0.141.1 → 0.162.0** (#576): audited for the release's behavior changes (omitted `bool` form fields no longer default to `False`; `extra` handling on parameter models). The app uses no `Form(...)` parameters or parameter models, so neither applies. Full test suite passes.
+- starlette floor `>=1.6.0` → `>=1.10.0` (#580); python-dotenv 1.2.3 → 1.2.4 (#577).
+- **python-dateutil 2.9.0.post0 → 3.0.0** (#578): major bump, but only `dateutil.parser.parse()` is used (`video_discovery_service.py`); the breaking changes are in `tz`/`zoneinfo`/`rrule`. Verified against the ISO-8601 timestamp forms YouTube returns.
+- CI: ruby/setup-ruby 1.331.0 → 1.335.0 (#581, Pages build).
+
+### Not taken
+- **sphinx 9.1.0 → 9.2.0** (#579) was left out: 9.2.0 requires Python >=3.13, but local dev and the CI matrix run 3.11/3.12, so `pip install -r requirements-dev.txt` fails. Dependabot's CI was green because it never installs the dev requirements. Revisit when CI moves to 3.13+.
+
+### Notes
+- The 30 open code-scanning alerts are stale Trivy results from the 2026-10-25 weekly scan (commit `931a498a`, pre-1.1.4); expected to clear on the next weekly scan.
+
 ## [1.1.4] - 2026-10-26
 
 Security sweep: Pillow 13, aiohttp 3.14.4. Clears all 30 open Dependabot alerts and 30 code-scanning alerts; pip-audit clean on `requirements.txt`, `requirements-dev.txt`, `requirements-fastapi.txt`.

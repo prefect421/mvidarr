@@ -214,10 +214,10 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.1.4 - Released
+### Current Phase: v1.1.5 - On dev
 
 #### Versioning Policy (Updated 2026-09-27)
-- **Current Version**: 1.1.4 (Released 2026-10-26; on `main`, local Docker rebuilt, prod upgraded manually by the maintainer)
+- **Current Version**: 1.1.5 (2026-11-01; on `dev` only, local Docker :5001 rebuilt and verified, NOT yet on `main`/prod). Last released to `main`: 1.1.4
 - **Next Version**: TBD (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
@@ -225,6 +225,13 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **v1.1.5** (2026-11-01): Maintenance Sweep — fastapi 0.162, starlette 1.10, dateutil 3 (dev only, `e10988d7`)
+  - ✅ Zero open issues, zero Dependabot alerts, pip-audit clean on all three requirements files — this is a maintenance release, not a security fix
+  - ✅ Consolidated Dependabot #576 (fastapi 0.141.1 → 0.162.0), #577 (python-dotenv 1.2.4), #578 (python-dateutil 3.0.0), #580 (starlette >=1.10.0), #581 (setup-ruby 1.335.0); all closed as superseded. fastapi 0.162's bool-form-field change doesn't apply: the app has no `Form(...)` parameters
+  - ✅ Verified: 1053 tests pass, `pip check` + pip-audit clean in a clean venv, local Docker :5001 healthy on 1.1.5 with 208 videos intact
+  - ⚠️ **#579 (sphinx 9.2.0) deliberately not taken and closed**: it requires Python >=3.13, but dev/CI run 3.11/3.12. Dependabot's CI was green only because it never installs `requirements-dev.txt`
+  - ⚠️ The 30 open code-scanning alerts are stale Trivy results from the 2026-10-25 scan (pre-1.1.4); check they cleared after the next weekly scan, don't re-fix
+  - ⚠️ `mysqlclient`/`netifaces` don't build in a bare local venv (missing C headers); for local test venvs install requirements minus those two — Docker builds them fine
 - **v1.1.4** (2026-10-26): Security Sweep — Pillow 13, aiohttp 3.14.4 (PRs #575, #568, #569)
   - ✅ Security: Pillow 12.3.0 → 13.0.0 clears 30 Dependabot + 22 code-scanning alerts (37 advisories, incl. RCE-class TIFF/JPEG/FPX heap overflows); aiohttp 3.14.3 → 3.14.4 clears 8 code-scanning alerts
   - ✅ Dependency: uvicorn 0.54.0; black 26.10.1 (dev-only, also pinned in `ci-cd.yml` — `requirements-dev.txt` and CI now agree)
