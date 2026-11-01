@@ -22,17 +22,15 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 6 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v1.0.4 - Playlist Read Access, Celery Worker Fix & Dependency Sweep**
+## 🚀 **LATEST: v1.1.5 - Maintenance Sweep**
 
-**Released**: September 19, 2026
+**Released**: November 1, 2026
 
-- **🔒 Playlist privacy on the read side** (#509) — the playlist list and single-playlist endpoints previously showed every user's playlists to any signed-in user. They now return only your own and public playlists (admins/managers still see all), and a private playlist you can't access returns 404.
-- **🛠️ Celery worker no longer crash-loops on a shared Redis** (#517) — the bundled worker runs with `--without-mingle`, so control messages from other apps on the same Redis DB can't kill it at startup. New optional `CELERY_WORKER_EXTRA_ARGS` env var for extra worker arguments (handy on Unraid). Giving MVidarr its own Redis DB is still the cleanest setup.
-- **📦 Dependencies**: PyJWT 2.14.0, zeroconf 0.151.3, tqdm 4.70.1, mysqlclient ≥ 2.3.0; removed the unused `python-slugify`
+- **📦 Dependencies**: FastAPI 0.162.0, Starlette ≥ 1.10.0, python-dateutil 3.0.0, python-dotenv 1.2.4
+- **🔒 Security**: no open Dependabot alerts or known vulnerabilities (pip-audit clean across all requirements files) — v1.1.4's Pillow 13 / aiohttp 3.14.4 fixes remain in place
 - **📝 Behind a reverse proxy?** After rebuilding, make sure `TRUSTED_PROXY_HOSTS` is still set for your proxy — otherwise `/videos` fails with "Blocked loading mixed active content". See [Troubleshooting](docs/TROUBLESHOOTING.md).
-- **🔒 Security scan**: zero open Dependabot alerts, zero open code-scanning alerts, pip-audit clean across all requirements files
 
-📜 **[View the full changelog](CHANGELOG.md)** for v1.1.4's complete notes and every earlier release.
+📜 **[View the full changelog](CHANGELOG.md)** for v1.1.5's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 
