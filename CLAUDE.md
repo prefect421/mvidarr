@@ -214,10 +214,10 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.1.5 - On dev
+### Current Phase: v1.1.5 - Released
 
 #### Versioning Policy (Updated 2026-09-27)
-- **Current Version**: 1.1.5 (2026-11-01; on `dev` only, local Docker :5001 rebuilt and verified, NOT yet on `main`/prod). Last released to `main`: 1.1.4
+- **Current Version**: 1.1.5 (Released 2026-11-01; on `main` as `2f072c3a`, tagged v1.1.5, local Docker :5001 rebuilt; prod to be upgraded manually by the maintainer)
 - **Next Version**: TBD (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
@@ -225,7 +225,7 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
-- **v1.1.5** (2026-11-01): Maintenance Sweep — fastapi 0.162, starlette 1.10, dateutil 3 (dev only, `e10988d7`)
+- **v1.1.5** (2026-11-01): Maintenance Sweep — fastapi 0.162, starlette 1.10, dateutil 3 (`e10988d7` on dev, released to `main` as `2f072c3a`)
   - ✅ Zero open issues, zero Dependabot alerts, pip-audit clean on all three requirements files — this is a maintenance release, not a security fix
   - ✅ Consolidated Dependabot #576 (fastapi 0.141.1 → 0.162.0), #577 (python-dotenv 1.2.4), #578 (python-dateutil 3.0.0), #580 (starlette >=1.10.0), #581 (setup-ruby 1.335.0); all closed as superseded. fastapi 0.162's bool-form-field change doesn't apply: the app has no `Form(...)` parameters
   - ✅ Verified: 1053 tests pass, `pip check` + pip-audit clean in a clean venv, local Docker :5001 healthy on 1.1.5 with 208 videos intact
@@ -553,7 +553,7 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.1.4 (Security Sweep: Pillow 13, aiohttp 3.14.4)
+- **Current Version**: v1.1.5 (Maintenance Sweep: fastapi 0.162, starlette 1.10, dateutil 3)
 - **Development Focus**: Stability, security
 - **Next Version**: TBD
 
@@ -653,7 +653,7 @@ All issues should be planned with the following attributes (fields on the [MVida
 Note: there is no separate "Release Slot" field — the board never got one built; `Milestone` is what actually designates the release window.
 
 ### Release Management
-- **Current Release**: Version 1.1.4 (2026-10-26) — see Version History above for details
+- **Current Release**: Version 1.1.5 (2026-11-01) — see Version History above for details
 - **Next Release**: TBD (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
