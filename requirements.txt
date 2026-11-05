@@ -71,7 +71,7 @@ zeroconf==0.151.5
 # Monitoring and Logging
 prometheus-client==0.26.0
 structlog==26.1.0
-sentry-sdk==2.68.1
+sentry-sdk==2.73.0
 
 # Production Server - ASGI (FastAPI)
 # uvicorn already included in fastapi dependencies above
