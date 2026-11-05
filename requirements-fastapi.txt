@@ -6,7 +6,7 @@ uvicorn[standard]==0.54.0
 
 # ASGI Server and WebSocket support
 uvicorn==0.54.0
-websockets==17.3
+websockets==17.4
 
 # Template engine (compatible with FastAPI)
 jinja2==3.1.6
