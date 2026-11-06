@@ -23,7 +23,7 @@ requests==2.34.2  # Security: CVE-2026-25645 predictable temp file creation fix
 urllib3==2.8.0  # Security: CVE-2026-97687 proxy TLS override, CVE-2026-97688 deflate loop, CVE-2026-97689 chunk parser memory DoS (2.8.0); earlier CVE-2026-44431/44432
 httpx==0.28.1
 aiohttp==3.14.4  # Security: fixes 8 advisories (request smuggling, multipart FD exhaustion, Max-Age overflow, cookie bypasses)
-apprise==2.0.1  # Notification fan-out for Discord/Slack/Telegram/ntfy/email/etc. (#315)
+apprise==2.1.0  # Notification fan-out for Discord/Slack/Telegram/ntfy/email/etc. (#315)
 
 # Image Processing
 Pillow==13.0.0  # Security: 37 advisories fixed in 13.0.0 (TIFF/JPEG/FPX heap overflows, decompression-bomb bypasses, PDF DoS)
@@ -35,7 +35,7 @@ python-ffmpeg==2.0.12
 # Data Processing
 python-dateutil==3.0.0
 python-dotenv==1.2.4  # Security: CVE-2026-28684 symlink following arbitrary file overwrite fix
-pydantic==2.13.4
+pydantic==2.14.2
 pydantic-settings==2.15.0  # Security: GHSA-4xgf-cpjx-pc3j NestedSecretsSettingsSource symlink traversal fix
 marshmallow==4.3.1
 PyYAML==6.0.3
@@ -71,7 +71,7 @@ zeroconf==0.151.5
 # Monitoring and Logging
 prometheus-client==0.26.0
 structlog==26.1.0
-sentry-sdk==2.68.1
+sentry-sdk==2.73.0
 
 # Production Server - ASGI (FastAPI)
 # uvicorn already included in fastapi dependencies above
