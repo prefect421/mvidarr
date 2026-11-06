@@ -1,13 +1,12 @@
 {
-  "version": "1.1.6",
-  "build_date": "2026-11-06T20:14:49.208639",
-  "git_commit": "1f341a4a",
+  "version": "1.1.7",
+  "build_date": "2026-11-06T22:12:50.842908",
+  "git_commit": "28417d5e",
   "git_branch": "main",
-  "release_name": "v1.1.6 - Security Sweep: wizard skip gate, pydantic 2.14.2",
+  "release_name": "v1.1.7 - Hotfix: pin packaging (v1.1.6 image crash-looped)",
   "features": [
-    "Security: anonymous POST /api/wizard/skip could reopen a finished setup (#582) — fixed, 12 new tests",
-    "pydantic 2.13.4 → 2.14.2 (2 upstream security advisories)",
-    "sentry-sdk 2.73.0, apprise 2.1.0, websockets 17.4, playwright 1.64.1 (dev)",
-    "CI: ruby/setup-ruby 1.336.0"
+    "Fix: v1.1.6 image crash-looped — kombu 5.7.0 no longer pulls in packaging, which src/ and celery import; now pinned (packaging 26.3)",
+    "Includes all v1.1.6 changes: wizard skip gate (#582), pydantic 2.14.2, sentry-sdk 2.73.0, apprise 2.1.0, websockets 17.4",
+    "Do not deploy v1.1.6 — use v1.1.7"
   ]
 }
