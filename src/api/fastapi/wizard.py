@@ -64,6 +64,12 @@ router = APIRouter(
 # post-setup feature that happens to share this router's Celery task
 # logic. Closing all five off outright would have 403'd that Settings
 # feature on every real deployment (the wizard is COMPLETED by then).
+#
+# A skipped wizard is finished too: it closes the same endpoints, and skipping
+# itself is refused once finished. Otherwise an anonymous POST /skip would turn
+# COMPLETED into SKIPPED and reopen everything above.
+
+SETUP_FINISHED = (WizardStatus.COMPLETED, WizardStatus.SKIPPED)
 
 
 async def require_wizard_incomplete(
@@ -74,7 +80,7 @@ async def require_wizard_incomplete(
     WizardStatus.COMPLETED check.
     """
     wizard_state = session.query(WizardState).first()
-    if wizard_state and wizard_state.status == WizardStatus.COMPLETED:
+    if wizard_state and wizard_state.status in SETUP_FINISHED:
         raise HTTPException(
             status_code=403,
             detail="This wizard endpoint is no longer available: setup has already completed",
@@ -94,7 +100,7 @@ async def require_wizard_incomplete_or_authenticated(
     post-setup API route in this app.
     """
     wizard_state = session.query(WizardState).first()
-    if not wizard_state or wizard_state.status != WizardStatus.COMPLETED:
+    if not wizard_state or wizard_state.status not in SETUP_FINISHED:
         return None
 
     user = await get_current_user_session(request)
@@ -353,7 +359,7 @@ async def create_admin_user(
 
         # Check if wizard is in progress
         wizard_state = session.query(WizardState).first()
-        if not wizard_state or wizard_state.status == WizardStatus.COMPLETED:
+        if not wizard_state or wizard_state.status in SETUP_FINISHED:
             raise HTTPException(
                 status_code=400,
                 detail="Cannot create admin user: wizard already completed",
@@ -560,6 +566,9 @@ async def skip_wizard(
             wizard_state = WizardState()
             session.add(wizard_state)
 
+        if wizard_state.status in SETUP_FINISHED:
+            raise HTTPException(status_code=409, detail="Setup has already finished")
+
         # Mark as skipped
         wizard_state.status = WizardStatus.SKIPPED
         wizard_state.current_step = WizardStep.COMPLETE
@@ -586,6 +595,8 @@ async def skip_wizard(
 
         return WizardStateResponse(**wizard_state.to_dict())
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error skipping wizard: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
