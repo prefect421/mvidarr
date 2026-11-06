@@ -68,6 +68,11 @@ schedule==1.2.2
 netifaces==0.11.0
 zeroconf==0.151.5
 
+# Version parsing - imported directly by src/services/api_versioning_service.py and
+# src/api/fastapi/versioning.py, and by kombu's redis transport (celery). kombu 5.7.0
+# no longer declares it, so it must be pinned here or the image crash-loops.
+packaging==26.3
+
 # Monitoring and Logging
 prometheus-client==0.26.0
 structlog==26.1.0
