@@ -22,15 +22,16 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 6 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v1.1.5 - Maintenance Sweep**
+## 🚀 **LATEST: v1.1.7 - Hotfix + Security Sweep**
 
-**Released**: November 1, 2026
+**Released**: November 6, 2026
 
-- **📦 Dependencies**: FastAPI 0.162.0, Starlette ≥ 1.10.0, python-dateutil 3.0.0, python-dotenv 1.2.4
-- **🔒 Security**: no open Dependabot alerts or known vulnerabilities (pip-audit clean across all requirements files) — v1.1.4's Pillow 13 / aiohttp 3.14.4 fixes remain in place
+- **⚠️ Skip v1.1.6**: its Docker image crash-loops on startup (missing `packaging`). v1.1.7 fixes it and includes everything from v1.1.6.
+- **🔒 Security**: anonymous `POST /api/wizard/skip` could reopen a finished setup wizard and its unauthenticated endpoints (#582) — fixed. pydantic 2.14.2 (2 upstream advisories). pip-audit clean across all requirements files
+- **📦 Dependencies**: pydantic 2.14.2, sentry-sdk 2.73.0, apprise 2.1.0, websockets 17.4, `packaging` now pinned explicitly
 - **📝 Behind a reverse proxy?** After rebuilding, make sure `TRUSTED_PROXY_HOSTS` is still set for your proxy — otherwise `/videos` fails with "Blocked loading mixed active content". See [Troubleshooting](docs/TROUBLESHOOTING.md).
 
-📜 **[View the full changelog](CHANGELOG.md)** for v1.1.5's complete notes and every earlier release.
+📜 **[View the full changelog](CHANGELOG.md)** for v1.1.7's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 

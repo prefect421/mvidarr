@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.7] - 2026-11-06
+
+Hotfix for 1.1.6, whose Docker image crash-looped on startup.
+
+### Fixed
+- `packaging` is now pinned (`26.3`) in `requirements.txt`. `kombu` 5.7.0 no longer declares it, but celery's redis transport and `src/services/api_versioning_service.py` / `src/api/fastapi/versioning.py` import it, so a fresh image build had none and fastapi/celery-worker/celery-beat all exited with status 1. The pre-merge test venv masked it because `pytest` pulls in `packaging`.
+
+## [1.1.6] - 2026-11-06 — do not deploy, use 1.1.7
+
+### Security
+- Anonymous `POST /api/wizard/skip` flipped a COMPLETED setup to SKIPPED and reopened `/import/start`, `/validate-directory` and `/test-api` without a session (#582, contributed by blurman-ai). SKIPPED now counts as finished; `/skip` returns 409 once setup is done. 12 new tests.
+
+### Dependencies
+- pydantic 2.13.4 → 2.14.2 (upstream release fixes 2 security advisories), sentry-sdk 2.73.0, apprise 2.1.0, websockets 17.4, playwright 1.64.1 (dev), CI: ruby/setup-ruby 1.336.0. Supersedes Dependabot #583–#588.
+
 ## [1.1.5] - 2026-11-01
 
 Maintenance sweep: consolidates five of six open Dependabot PRs (#576, #577, #578, #580, #581). No open issues, Dependabot alerts, or pip-audit findings at the time of the sweep.
