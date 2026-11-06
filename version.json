@@ -1,13 +1,13 @@
 {
-  "version": "1.1.5",
-  "build_date": "2026-11-01T02:17:39.598248",
-  "git_commit": "bde64505",
+  "version": "1.1.6",
+  "build_date": "2026-11-06T20:14:49.208639",
+  "git_commit": "1f341a4a",
   "git_branch": "main",
-  "release_name": "v1.1.5 - Maintenance Sweep: fastapi 0.162, starlette 1.10, dateutil 3",
+  "release_name": "v1.1.6 - Security Sweep: wizard skip gate, pydantic 2.14.2",
   "features": [
-    "fastapi 0.141.1 → 0.162.0, starlette >=1.10.0",
-    "python-dateutil 3.0.0, python-dotenv 1.2.4",
-    "CI: ruby/setup-ruby 1.335.0",
-    "No open issues or advisories at time of release"
+    "Security: anonymous POST /api/wizard/skip could reopen a finished setup (#582) — fixed, 12 new tests",
+    "pydantic 2.13.4 → 2.14.2 (2 upstream security advisories)",
+    "sentry-sdk 2.73.0, apprise 2.1.0, websockets 17.4, playwright 1.64.1 (dev)",
+    "CI: ruby/setup-ruby 1.336.0"
   ]
 }
