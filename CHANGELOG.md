@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Weekly Dependabot sweep (2026-11-16): consolidates five of seven open Dependabot PRs (#592, #593, #594, #596, #597). Zero open Dependabot/code-scanning alerts and pip-audit clean on all three requirements files before and after.
+
+### Security
+- **apprise 2.1.0 → 2.2.0** (#592): upstream release fixes GHSA-cfp4-m43r-v9q4 (medium; YAML config alias-recursion DoS). Not yet in the global advisory DB, so pip-audit doesn't flag 2.1.0. Used only by `src/services/apprise_notification_service.py`; no API changes on that path.
+
+### Dependencies
+- alembic 1.18.5 → 1.20.1 (#593): bugfixes, mostly autogenerate/PostgreSQL. In 1.19.2 the CHECK-constraint-by-name autogenerate plugin that 1.19.0 added was switched off by default again. Requires Python >=3.10, SQLAlchemy >=2.0.
+- python-multipart 0.0.32 → 0.0.33 (#597; `requirements.txt` pin and `requirements-fastapi.txt` floor): adds opt-in URL-encoded field limits and fixes upload edge cases. Its Python floor is now 3.11, which matches the CI matrix (3.11/3.12) and the image (3.14).
+- yarl floor `>=1.24.5` → `>=1.25.1` (#596): quoting/query-parsing bugfixes.
+- CI: ruby/setup-ruby 1.336.0 → 1.338.0 (#594, Pages build).
+- Verified: 1065 tests pass; a clean venv with only `requirements.txt` + `requirements-fastapi.txt` passes `pip check` and imports the celery app, kombu redis transport, `packaging`, and the bumped packages.
+
+### Not taken (left open for the maintainer)
+- **python 3.14-slim → 3.15-slim** (#591): base-image/Python major bump, not auto-promoted. Needs a full image build plus runtime check of the C-extension wheels (mysqlclient, netifaces, opencv, Pillow, moviepy) on 3.15.
+- **python-dateutil 3.0.0 → 4.0.0** (#595): major bump, not auto-promoted. Requires Python >=3.11 (OK). The only use is `dateutil.parser.parse()` in `video_discovery_service.py`; 4.0's stricter `isoparse` digit checks don't apply to `parse()`, but confirm against real YouTube `publishedAt` values before merging.
+
 ## [1.1.7] - 2026-11-06
 
 Hotfix for 1.1.6, whose Docker image crash-looped on startup.
