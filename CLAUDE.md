@@ -225,6 +225,9 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
   - **1.x.y**: Production-ready releases (current phase)
 
 #### Version History (Recent)
+- **Unreleased (on `dev`, 2026-11-16)**: weekly Dependabot sweep — apprise 2.2.0 (GHSA-cfp4-m43r-v9q4, medium), alembic 1.20.1, python-multipart 0.0.33, yarl >=1.25.1, setup-ruby 1.338.0 (supersedes #592/#593/#594/#596/#597). No version bump; see CHANGELOG `[Unreleased]`
+  - ⚠️ Left open for the maintainer: #591 (python 3.15-slim base image) and #595 (python-dateutil 4.0.0), both major bumps
+  - ⚠️ Local `~/.local/bin/black` (26.3.1) and `isort` (9.0.1) are stale against the pins (`black==26.10.1`, `isort==9.0.2`; `ci-cd.yml` still installs `isort==9.0.0`). The sweep checked formatting with the pinned versions from a venv
 - **v1.1.7** (2026-11-06): Hotfix — pin `packaging` (PR #590; merge `28417d5e`, metadata `76fdc7df` on `main`)
   - ✅ v1.1.6's Docker image crash-looped (fastapi/celery-worker/celery-beat all exit 1, supervisor respawn loop): `kombu` 5.7.0 no longer declares `packaging`, but its redis transport and `src/services/api_versioning_service.py`/`src/api/fastapi/versioning.py` import it, and `requirements.txt` never pinned it. Fixed with `packaging==26.3`
   - ⚠️ **Why it got through**: the pre-merge test venv installed `requirements-dev.txt`, and `pytest` pulls in `packaging`, so 1065 tests passed against an environment the real image doesn't have. Only the Docker rebuild caught it — after v1.1.6 was already merged to `main`, tagged and published to ghcr. **Always verify a prod-only install (`requirements.txt` + `requirements-fastapi.txt`) or the rebuilt image before merging to `main`**; the sweep skill now has this as Step 5e
