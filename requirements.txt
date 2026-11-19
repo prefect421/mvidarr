@@ -14,7 +14,7 @@ Flask-Session==0.8.0
 
 # Database
 SQLAlchemy==2.0.52
-PyMySQL==1.2.0
+PyMySQL==1.2.4
 alembic==1.20.1
 mysqlclient>=2.3.0
 
