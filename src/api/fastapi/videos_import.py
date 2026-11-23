@@ -11,6 +11,7 @@ Authentication: All endpoints require session-based authentication via the requi
 """
 
 from datetime import datetime
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -28,6 +29,25 @@ logger = get_logger("mvidarr.api.fastapi.videos_import")
 # ========================================================================================
 # IMPORT OPERATIONS
 # ========================================================================================
+
+
+_YOUTUBE_IMAGE_HOSTS = {"i.ytimg.com", "img.youtube.com", "i9.ytimg.com"}
+
+
+def resolve_import_thumbnail_url(requested, youtube_id: str) -> str:
+    """Pick the thumbnail URL for an imported YouTube video (#613).
+
+    The client's URL is only honoured for YouTube's own image hosts: the server
+    later downloads whatever is stored here, so an arbitrary URL would be an
+    SSRF vector. hqdefault exists for every video (maxresdefault does not).
+    """
+    if isinstance(requested, str) and requested.strip():
+        parsed = urlparse(requested.strip())
+        if parsed.scheme in ("http", "https") and parsed.hostname in (
+            _YOUTUBE_IMAGE_HOSTS
+        ):
+            return requested.strip()
+    return f"https://img.youtube.com/vi/{youtube_id}/hqdefault.jpg"
 
 
 @router.post("/import-from-youtube")
@@ -83,6 +103,10 @@ async def import_from_youtube(
             status=VideoStatus.WANTED if auto_download else VideoStatus.MONITORED,
             duration=None,  # Will be updated when metadata is fetched
             discovered_date=datetime.utcnow(),
+            thumbnail_url=resolve_import_thumbnail_url(
+                request.get("thumbnail_url"), youtube_id
+            ),
+            thumbnail_source="youtube",
         )
 
         # Try to find or create artist

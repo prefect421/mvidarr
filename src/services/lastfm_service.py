@@ -345,6 +345,25 @@ class LastFmService:
             logger.error(f"Error searching Last.fm for artist '{artist_name}': {e}")
             return []
 
+    def get_track_info(self, artist_name: str, track_name: str) -> Dict:
+        """Get track information via track.getInfo (#617).
+
+        Returns the raw ``track`` object (album.title, duration in ms,
+        toptags.tag, playcount, listeners, url), or ``{}`` when Last.fm has no
+        match, so callers can treat "not found" as "nothing to add".
+        """
+        try:
+            data = self._make_request(
+                "track.getInfo",
+                {"artist": artist_name, "track": track_name, "autocorrect": 1},
+            )
+        except ValueError as e:  # "Track not found" is reported as an API error
+            logger.debug(
+                f"Last.fm track.getInfo found nothing for {artist_name} - {track_name}: {e}"
+            )
+            return {}
+        return data.get("track") or {}
+
     def get_artist_info(self, artist_name: str, username: str = None) -> Dict:
         """Get artist information"""
         params = {"artist": artist_name}

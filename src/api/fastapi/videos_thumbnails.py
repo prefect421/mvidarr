@@ -48,6 +48,11 @@ router = APIRouter(
 )
 
 logger = get_logger("mvidarr.api.fastapi.videos_thumbnails")
+
+# Thumbnail URLs are stable per video, so force revalidation: unchanged images
+# come back as cheap 304s (FileResponse sends an ETag), but a placeholder can
+# never get stuck in the browser cache once a real thumbnail exists (#614).
+NO_CACHE = {"Cache-Control": "no-cache"}
 # ========================================================================================
 # THUMBNAIL OPERATIONS
 # ========================================================================================
@@ -81,7 +86,7 @@ async def get_video_thumbnail(
                 return FileResponse(
                     thumbnail_file,
                     media_type=media_type,
-                    headers={"content-disposition": "inline"},
+                    headers={"content-disposition": "inline", **NO_CACHE},
                 )
 
         # Check if video has a thumbnail_url that should be downloaded
@@ -145,7 +150,7 @@ async def get_video_thumbnail(
                 return FileResponse(
                     cached_thumbnail,
                     media_type=media_type,
-                    headers={"content-disposition": "inline"},
+                    headers={"content-disposition": "inline", **NO_CACHE},
                 )
 
             except Exception as e:
@@ -173,7 +178,7 @@ async def get_video_thumbnail(
             return FileResponse(
                 thumbnail_file,
                 media_type="image/webp",
-                headers={"content-disposition": "inline"},
+                headers={"content-disposition": "inline", **NO_CACHE},
             )
         else:
             # Return placeholder thumbnail
@@ -182,7 +187,7 @@ async def get_video_thumbnail(
                 return FileResponse(
                     placeholder_path,
                     media_type="image/png",
-                    headers={"content-disposition": "inline"},
+                    headers={"content-disposition": "inline", **NO_CACHE},
                 )
             else:
                 raise HTTPException(status_code=404, detail="Thumbnail not found")
