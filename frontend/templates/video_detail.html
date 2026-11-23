@@ -102,7 +102,7 @@
                 
                 <div class="form-group">
                     <label for="videoThumbnailUrl">Thumbnail URL:</label>
-                    <input type="text" id="videoThumbnailUrl" name="thumbnail_url" placeholder="https://... or /api/videos/123/thumbnail">
+                    <input type="text" id="videoThumbnailUrl" name="thumbnail_url" readonly title="Use Manage Thumbnail to change the thumbnail" placeholder="Use Manage Thumbnail to change it">
                     <button type="button" onclick="openVideoThumbnailManager()" class="btn btn-info btn-small" style="margin-top: 5px;">
                         🖼️ Manage Thumbnail
                     </button>
@@ -1767,7 +1767,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 release_date: formData.get('release_date') || null,
                 status: formData.get('status'),
                 video_url: formData.get('video_url'),
-                thumbnail_url: formData.get('thumbnail_url'),
+                description: formData.get('description') || null,
                 duration: formData.get('duration') ? parseInt(formData.get('duration')) : null,
                 genres: formData.get('genres') ? formData.get('genres').split(',').map(g => g.trim()).filter(g => g) : [],
                 album: formData.get('album') || null,
@@ -1790,7 +1790,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify(updateData)
             })
-            .then(response => response.json())
+            .then(async response => {
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    // FastAPI errors are {detail: ...}, not {error: ...}; a 409 (YouTube ID
+                    // already used, or the target file already exists) must not look like success
+                    throw new Error(result.detail || result.error || `HTTP ${response.status}`);
+                }
+                return result;
+            })
             .then(result => {
                 if (result.error) {
                     showError('Error updating video: ' + result.error);
@@ -1805,7 +1813,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error updating video:', error);
-                showError('Error updating video');
+                showError('Error updating video: ' + error.message);
             });
         });
     }

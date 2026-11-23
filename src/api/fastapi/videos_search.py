@@ -261,6 +261,33 @@ async def universal_search(
         )
 
 
+# Resolution ladder for the "at least this quality" filter. Stored quality labels
+# are strings ("720p", "1080p", "4K", ...), so expand the minimum to the labels at
+# or above it instead of parsing strings in SQL (#628).
+_QUALITY_LADDER = {
+    "240p": 240,
+    "360p": 360,
+    "480p": 480,
+    "720p": 720,
+    "1080p": 1080,
+    "1440p": 1440,
+    "2K": 1440,
+    "2160p": 2160,
+    "4K": 2160,
+    "4320p": 4320,
+    "8K": 4320,
+}
+
+
+def quality_labels_at_least(minimum: Optional[str]) -> set:
+    """Labels whose resolution is >= ``minimum`` ("720p" -> 720p, 1080p, ..., 8K).
+    Unknown or empty input yields an empty set (no filter)."""
+    floor = _QUALITY_LADDER.get((minimum or "").strip())
+    if floor is None:
+        return set()
+    return {label for label, height in _QUALITY_LADDER.items() if height >= floor}
+
+
 @router.get("/search")
 async def search_videos(
     query: Optional[str] = Query(None),
@@ -268,6 +295,7 @@ async def search_videos(
     status: Optional[str] = Query(None),
     year: Optional[int] = Query(None),
     genre: Optional[str] = Query(None),
+    quality: Optional[str] = Query(None, description="Minimum quality, e.g. 720p"),
     limit: int = Query(50, le=500, ge=1),
     offset: int = Query(0, ge=0),
     sort_by: str = Query("created_at"),
@@ -301,6 +329,10 @@ async def search_videos(
         if genre:
             # Search in genres JSON field
             query_builder = query_builder.filter(Video.genres.like(f'%"{genre}"%'))
+        if quality:
+            labels = quality_labels_at_least(quality)
+            if labels:
+                query_builder = query_builder.filter(Video.quality.in_(labels))
 
         # Apply sorting
         sort_column = getattr(Video, sort_by, Video.created_at)

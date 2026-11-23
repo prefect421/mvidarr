@@ -3739,57 +3739,63 @@ function applyBulkEdit() {
         showError('No videos selected');
         return;
     }
-    
-    const updates = {};
-    
-    // Collect changes
-    const artistChange = document.getElementById('bulkArtistChange').value.trim();
-    const yearChange = document.getElementById('bulkYearChange').value.trim();
-    const statusChange = document.getElementById('bulkStatusChange').value;
-    const priorityChange = document.getElementById('bulkPriorityChange').value;
-    
-    if (artistChange) updates.artist_name = artistChange;
-    if (yearChange) updates.year = parseInt(yearChange);
-    if (statusChange) updates.status = statusChange;
-    if (priorityChange) updates.priority = priorityChange;
-    
-    if (Object.keys(updates).length === 0) {
+
+    // Only the controls that exist in the bulk bar (#636): reading a missing
+    // element's .value used to throw and surface as "An unexpected error occurred".
+    const artistInput = document.getElementById('bulkArtistChange');
+    const yearInput = document.getElementById('bulkYearChange');
+    const artistChange = artistInput ? artistInput.value.trim() : '';
+    const yearChange = yearInput ? yearInput.value.trim() : '';
+
+    // The API takes the fields at the top level (there is no `updates` wrapper).
+    const payload = { video_ids: videoIds };
+    if (artistChange) payload.artist_name = artistChange;
+    if (yearChange) {
+        const year = parseInt(yearChange, 10);
+        if (Number.isNaN(year)) {
+            showError('Year must be a number');
+            return;
+        }
+        payload.year = year;
+    }
+
+    if (Object.keys(payload).length === 1) {
         showError('No changes specified');
         return;
     }
-    
+
     showBulkProgress('Applying bulk edits...');
-    
+
     fetch('/api/videos/bulk/edit', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            video_ids: videoIds,
-            updates: updates
-        })
+        body: JSON.stringify(payload)
     })
-    .then(response => response.json())
+    .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.detail || data.error || `HTTP ${response.status}`);
+        }
+        return data;
+    })
     .then(data => {
         hideBulkProgress();
-        if (data.error) {
-            showError('Error applying bulk edits: ' + data.error);
-        } else {
-            showSuccess(`Successfully updated ${data.updated_count} videos`);
-            loadVideos();
-            
-            // Clear form
-            document.getElementById('bulkArtistChange').value = '';
-            document.getElementById('bulkYearChange').value = '';
-            document.getElementById('bulkStatusChange').value = '';
-            document.getElementById('bulkPriorityChange').value = '';
+        if (data.updated_count === 0) {
+            // "Successfully updated 0 videos" is not success
+            showError(data.message || 'No videos were updated');
+            return;
         }
+        showSuccess(`Successfully updated ${data.updated_count} video${data.updated_count === 1 ? '' : 's'}`);
+        loadVideos();
+        if (artistInput) artistInput.value = '';
+        if (yearInput) yearInput.value = '';
     })
     .catch(error => {
         hideBulkProgress();
         console.error('Error:', error);
-        showError('Error applying bulk edits');
+        showError('Error applying bulk edits: ' + error.message);
     });
 }
 

@@ -918,22 +918,23 @@ class MvTVPlayer {
                 // Use regular video search for non-playlist filters
                 const params = new URLSearchParams();
                 if (filters.genre) params.set('genre', filters.genre);
-                if (filters.artist) params.set('artist', filters.artist);
+                // The artist picker holds the artist's ID; the API filters by artist_id.
+                if (filters.artist) params.set('artist_id', filters.artist);
+                // "720p+" / "1080p+" -> minimum quality (the API expands it)
                 if (filters.quality) params.set('quality', filters.quality);
-                
+
                 // Check if specific artist or genre filters are applied
                 hasSpecificFilters = filters.artist || filters.genre;
-                
-                if (hasSpecificFilters) {
-                    // When specific filters are applied, load more videos to show all matches
-                    params.set('limit', '1000');
-                } else {
-                    // When no specific filters, limit to 500 for better performance and random selection
-                    params.set('limit', '500');
-                }
-                
+
+                // The search API caps limit at 500; a larger value is rejected with 422
+                params.set('limit', '500');
+
                 response = await fetch(`/api/videos/search?${params.toString()}`);
-                data = await response.json();
+                data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    // A failed request is an error, not an empty library (#628)
+                    throw new Error(data.detail || `Search failed (HTTP ${response.status})`);
+                }
             }
             
             if (data.videos && data.videos.length > 0) {
@@ -1350,14 +1351,16 @@ async function loadFilterOptions() {
         const genresData = await genresResponse.json();
         
         const genreFilter = document.getElementById('genreFilter');
-        if (genresData.video_genres && genresData.video_genres.length > 0) {
-            genresData.video_genres.forEach(genre => {
-                const option = document.createElement('option');
-                option.value = genre;
-                option.textContent = genre;
-                genreFilter.appendChild(option);
-            });
-        }
+        // /api/genres/ returns {genres: [{genre, video_count, artist_count, ...}]}
+        const genreNames = (genresData.genres || [])
+            .filter(g => g.video_count > 0)
+            .map(g => g.genre);
+        genreNames.forEach(genre => {
+            const option = document.createElement('option');
+            option.value = genre;
+            option.textContent = genre;
+            genreFilter.appendChild(option);
+        });
         
         // Load playlists
         const playlistsResponse = await fetch('/api/playlists/');
@@ -1428,13 +1431,16 @@ async function loadFilterOptions() {
         window.allArtists = []; // Store all artists for search filtering
 
         if (artistsData.artists && artistsData.artists.length > 0) {
-            window.allArtists = artistsData.artists.map(artist => artist.name).sort();
-            window.allArtists.forEach(artistName => {
+            // Keep the ID with the name: the search API filters by artist_id
+            window.allArtists = artistsData.artists
+                .map(artist => ({ id: artist.id, name: artist.name }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+            window.allArtists.forEach(artist => {
                 const option = document.createElement('div');
                 option.className = 'artist-option';
-                option.setAttribute('data-value', artistName);
-                option.textContent = artistName;
-                option.onclick = () => selectArtist(artistName, artistName);
+                option.setAttribute('data-value', String(artist.id));
+                option.textContent = artist.name;
+                option.onclick = () => selectArtist(String(artist.id), artist.name);
                 artistDropdown.appendChild(option);
             });
         }
