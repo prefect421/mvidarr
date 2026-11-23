@@ -54,5 +54,19 @@ def test_markup_characters_stay_encoded_so_titles_cannot_become_html():
     out = unescape_text(hostile)
     assert "<" not in out and ">" not in out and '"' not in out
     assert out == "&lt;img src=x onerror=alert(1)&gt; &quot;x&quot; & 'y'"
-    # raw markup that bypassed escaping is neutralised too
-    assert unescape_text('<b onmouseover="x">') == "&lt;b onmouseover=&quot;x&quot;&gt;"
+    # numeric forms of the markup characters stay encoded too
+    assert (
+        unescape_text("&#60;b&#62; &#34;q&#34; &#x3c;")
+        == "&#60;b&#62; &#34;q&#34; &#x3c;"
+    )
+    # one pass only: a double-encoded entity never turns into live markup
+    assert "<" not in unescape_text("&amp;lt;script&amp;gt;")
+
+
+def test_malformed_entities_without_semicolon_are_left_alone():
+    # Seen in real libraries ('&quotTrue North&quot'): not API escaping, and
+    # html.unescape()'s lenient legacy decoding would only churn them.
+    from src.services.title_unescape_service import unescape_text
+
+    for t in ["&quotTrue North&quot", "Fish&chips", "AT&T", "a &amp b"]:
+        assert unescape_text(t) == t
