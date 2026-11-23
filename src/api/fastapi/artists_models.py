@@ -17,6 +17,7 @@ class ArtistResponse(BaseModel):
 
     id: int
     name: str
+    lastfm_name: Optional[str] = None  # Last.fm artist name (editable, #640)
     sort_name: Optional[str] = None
     folder_path: Optional[str] = None
     imvdb_id: Optional[int] = None
@@ -95,6 +96,9 @@ class ArtistUpdateRequest(BaseModel):
     wikipedia_url: Optional[str] = None
     musicbrainz_id: Optional[str] = None
     spotify_id: Optional[str] = None
+    # The Last.fm match is looked up by this stored name first, so a wrong one must
+    # be correctable (blank clears it; #640)
+    lastfm_name: Optional[str] = Field(None, max_length=255)
     monitored: Optional[bool] = None
     auto_download: Optional[bool] = None
     # Category 1 fields - Issue #174: Fields in database but were missing from API
