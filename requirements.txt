@@ -55,7 +55,7 @@ bcrypt==5.0.0
 cryptography>=50.0.2
 PyJWT==2.15.1  # Security: CVE-2026-101918 nested-payload DoS, CVE-2026-102275 OKP key mismatch bypass; earlier CVE-2026-32597, PYSEC-2026-175..179
 passlib==1.7.4
-pyotp==2.12.0
+pyotp==2.12.1
 qrcode==7.4.2
 defusedxml==0.7.1
 
