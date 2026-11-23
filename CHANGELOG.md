@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Weekly Dependabot sweep (2026-11-16): consolidates five of seven open Dependabot PRs (#592, #593, #594, #596, #597). Zero open Dependabot/code-scanning alerts and pip-audit clean on all three requirements files before and after.
+## [1.1.8] - 2026-11-23
+
+Bug-fix release: 13 issues reported against 1.1.7 (#604-#610, #612-#617, thanks @neononyx), plus a dependency sweep that includes an upstream PyMySQL security fix. 1125 tests pass; a clean prod-only venv (`requirements.txt` + `requirements-fastapi.txt`) passes `pip check`, and `pip-audit` is clean on all three requirements files.
+
+### Fixed
+- **Per-request database sessions (#615).** `get_db()`/`get_db_session()` used a thread-scoped `scoped_session`, so concurrent requests and nested `get_db()` blocks were handed the *same* `Session` and closed it under each other ("Packet sequence number wrong", `_connection_for_bind()` already in progress, 500s on thumbnail grids). Each caller now gets its own session.
+- **Downloads ran twice (#605).** The web endpoint downloaded in-process while the Celery poller re-dispatched the same `queued` row 30 seconds later, so two yt-dlp runs collided on one output file. The `Download` row is now claimed atomically before starting; the quality-upgrade path passes its `download_id` too. yt-dlp's per-format intermediates (`.f251.webm`) are never accepted as the final file, and a good `local_path` is never overwritten by a worse result.
+- **Batch metadata enrichment always failed (#609).** `batch_enrich_artists_task` lacked `base=CallbackTask`. Eight hand-written `update_state(state="FAILURE", meta=...)` calls were removed: they stored a result Celery could not read back (`KeyError: 'exc_type'`).
+- **Streaming a moved file returned 500 (#608).** `Video` has `local_path`, not `file_path`. Fixed in streaming, the video browser, the bulk delete worker and collection maintenance. `cleanup_broken_links()` now *reports* missing files instead of deleting the `Video` rows.
+- **New-artist auto enrichment raced the commit (#607).** The enrichment task and thumbnail lookup ran before the artist was committed, so the worker often reported "Artist with ID n not found". The artist is now committed first (all five `process_new_artist` callers).
+- **Discovery interval ignored (#616).** Monitored artists were re-searched on YouTube every 30 minutes because `last_discovery` was never recorded on the per-artist path (each search costs 100 quota units). It is now recorded on every path; the bulk path no longer crashes after the first artist and uses each artist's own *Max Videos Per Discovery*.
+- **Maximum Quality Limit and Max File Size were ignored (#604).** Downloads were always "best up to 4K". The configured maximum is now a hard height cap and the file-size limit is best-effort. *Minimum* quality is intentionally not enforced (it would make low-resolution-only videos undownloadable).
+- **Last.fm track data never used (#617).** `LastFmService.get_track_info()` did not exist; added, and enrichment searches with the cleaned title, so album, per-track genres and play counts are filled.
+- **Imported YouTube videos had no YouTube thumbnail (#613).** Imports now store it, and *Refresh Thumbnails* backfills it from the video ID instead of generating an FFmpeg frame. The thumbnail URL is always rebuilt from a validated 11-character ID and never taken from the client.
+- **Stale placeholder thumbnails (#614).** Thumbnail responses now send `Cache-Control: no-cache`, so a placeholder no longer sticks in the browser after a real thumbnail exists.
+- **HTML-escaped YouTube titles (#612).** `&amp;` / `&#39;` are decoded when API results are parsed. `&lt;` `&gt;` `&quot;` deliberately stay encoded: much of the UI renders titles as HTML. Existing data: see *Maintenance* below.
+- **Small bugs (#610).** The scheduler health check always reported "unhealthy" (`SELECT 1` without `text()`); YouTube "Test connection" returned 500 instead of its 400 and kept a stale empty key until restart.
+- **yt-dlp could not write its cache in the Docker image (#606, #611 by @neononyx).** `XDG_CACHE_HOME=/app/data/cache` is now set for the supervised programs, so the cache also survives container recreation.
+
+### Maintenance
+- **Repair existing escaped titles:** `scripts/fix_escaped_titles.py` unescapes stored titles and renames the files named after them (`.info.json`, subtitles, thumbnails). It is a **dry run by default**; add `--apply` to change anything. Renames are all-or-nothing per video, skipped on conflict, and reversed if the database update fails. Run it first, review the list, and back up the database.
+- `scripts/create_admin_user.py` was removed: it hard-coded a password and wrote to the wrong auth store. Use `scripts/reset_admin_credentials.py`.
 
 ### Security
 - **apprise 2.1.0 → 2.2.0** (#592): upstream release fixes GHSA-cfp4-m43r-v9q4 (medium; YAML config alias-recursion DoS). Not yet in the global advisory DB, so pip-audit doesn't flag 2.1.0. Used only by `src/services/apprise_notification_service.py`; no API changes on that path.
@@ -18,10 +39,16 @@ Weekly Dependabot sweep (2026-11-16): consolidates five of seven open Dependabot
 - yarl floor `>=1.24.5` → `>=1.25.1` (#596): quoting/query-parsing bugfixes.
 - CI: ruby/setup-ruby 1.336.0 → 1.338.0 (#594, Pages build).
 - Verified: 1065 tests pass; a clean venv with only `requirements.txt` + `requirements-fastapi.txt` passes `pip check` and imports the celery app, kombu redis transport, `packaging`, and the bumped packages.
+- **PyMySQL 1.2.0 → 1.2.4**: upstream marks 1.2.4 a security fix (GHSA-m75w-33c4-7v8q, not yet in the public advisory database, so pip-audit does not report it); includes server certificate checking when `ssl_verify_identity` is set.
+- fastapi 0.162.0 → 0.163.1 (drops Python 3.10 only), pyotp 2.10.0 → 2.12.0, python-dateutil 3.0.0 → 4.0.0 (needs Python >=3.11; only `parser.parse()` is used, verified on ISO `Z` timestamps).
 
-### Not taken (left open for the maintainer)
-- **python 3.14-slim → 3.15-slim** (#591): base-image/Python major bump, not auto-promoted. Needs a full image build plus runtime check of the C-extension wheels (mysqlclient, netifaces, opencv, Pillow, moviepy) on 3.15.
-- **python-dateutil 3.0.0 → 4.0.0** (#595): major bump, not auto-promoted. Requires Python >=3.11 (OK). The only use is `dateutil.parser.parse()` in `video_discovery_service.py`; 4.0's stricter `isoparse` digit checks don't apply to `parse()`, but confirm against real YouTube `publishedAt` values before merging.
+### Not taken
+- SQLAlchemy 2.1.8: major bump and CI fails on Python 3.12; revisit after the session changes in #615 have soaked.
+- Python 3.15-slim base image: compiled dependencies (mysqlclient, netifaces, opencv, Pillow) unverified on 3.15.
+
+### Known follow-ups
+- #622: about 59 frontend sites interpolate titles into HTML without `escapeHtml()` (pre-existing).
+- #623: `reset_password.py` enforces a stricter password policy than login and the setup wizard.
 
 ## [1.1.7] - 2026-11-06
 

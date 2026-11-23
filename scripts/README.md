@@ -310,6 +310,20 @@ python3 scripts/troubleshoot_database.py
 
 ### User Management
 
+#### `fix_escaped_titles.py`
+
+**Purpose**: Repair HTML-escaped video titles (`Where&#39;s`, `A &amp; B`) stored before v1.1.8, and rename the files named after them (media, `.info.json`, subtitles, thumbnails)
+
+**Usage** (dry run by default; nothing changes without `--apply`):
+```bash
+docker exec mvidarr python3 scripts/fix_escaped_titles.py          # review the list
+docker exec mvidarr python3 scripts/fix_escaped_titles.py --apply  # make the changes
+```
+
+Only well-formed entities are decoded; `&lt;` `&gt;` `&quot;` stay encoded on purpose (the UI renders titles as HTML). Renames are all-or-nothing per video, skipped on a name conflict, and reversed if the database update fails. Back up the database first.
+
+---
+
 #### `reset_admin_credentials.py`
 
 **Purpose**: Reset admin password if locked out
