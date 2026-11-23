@@ -540,6 +540,11 @@ class YouTubeDownloadStrategy(DownloadStrategy):
         cmd.extend(["-S", "res,br"])
         # Quality format
         cmd.extend(["-f", self._get_quality_format(context.quality)])
+        # Always merge into MP4. Without this yt-dlp picks the container from the
+        # chosen streams and produced MKV for H.264+Opus and VP9+AAC, which the UI
+        # flags as needing transcoding. MP4 holds every codec combination YouTube
+        # serves, so this never fails to merge (#633).
+        cmd.extend(["--merge-output-format", "mp4"])
 
         # Metadata options
         cmd.extend(["--write-info-json", "--embed-metadata", "--add-metadata"])

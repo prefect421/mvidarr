@@ -40,6 +40,8 @@ _REAL_DB_MODULES = {
     "test_title_unescape_cleanup.py",
     "test_youtube_id_repair.py",
     "test_playlist_sync_resilience.py",
+    "test_mkv_remux.py",
+    "test_import_download_folder.py",
 }
 
 

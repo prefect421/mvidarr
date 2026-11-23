@@ -3,7 +3,6 @@ YouTube Playlist Monitoring Service for tracking and downloading playlist videos
 """
 
 import json
-import os
 import re
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -29,9 +28,6 @@ class YouTubePlaylistService:
 
     def __init__(self):
         self.base_url = "https://www.googleapis.com/youtube/v3"
-        self.metube_host = os.getenv("METUBE_HOST", "localhost")
-        self.metube_port = os.getenv("METUBE_PORT", "8081")
-        self.metube_url = f"http://{self.metube_host}:{self.metube_port}"
         self._cache = get_youtube_cache()
         self._api_key = None  # Cached API key
 
@@ -400,10 +396,10 @@ class YouTubePlaylistService:
                 except:
                     keywords = []
 
+            to_download = []  # ids of new videos, dispatched after the commit
             for video_data in playlist_videos:
                 try:
                     outcome = None
-                    downloaded = False
                     # One savepoint per video: a row the database rejects (out of
                     # range value, duplicate id, ...) rolls back only itself, not
                     # the whole sync (#630). The error surfaces when the savepoint
@@ -456,6 +452,7 @@ class YouTubePlaylistService:
                                 artist_id=artist.id,
                                 youtube_id=video_id,
                                 youtube_url=f"https://www.youtube.com/watch?v={video_id}",
+                                url=f"https://www.youtube.com/watch?v={video_id}",
                                 description=video_data.get("description", ""),
                                 thumbnail_url=video_data.get("thumbnail_url"),
                                 duration=self._parse_duration(details.get("duration")),
@@ -478,29 +475,12 @@ class YouTubePlaylistService:
                                 f"(artist: {artist.name}, status: {video.status.value})"
                             )
 
-                            # Auto-download if enabled
-                            if monitor.auto_download:
-                                try:
-                                    download_result = self.download_video(
-                                        video_id, monitor.quality
-                                    )
-                                    if download_result.get("success"):
-                                        video.status = VideoStatus.DOWNLOADING
-                                        downloaded = True
-                                except Exception as e:
-                                    logger.error(
-                                        f"Failed to download video {video_id}: {e}"
-                                    )
-                                    results["errors"].append(
-                                        f"Download failed for {video_data['title']}: {str(e)}"
-                                    )
-
                     if outcome == "new":
                         results["new_videos"] += 1
+                        if monitor.auto_download:
+                            to_download.append(video.id)
                     elif outcome == "updated":
                         results["updated_videos"] += 1
-                    if downloaded:
-                        results["downloaded_videos"] += 1
 
                 except Exception as e:
                     logger.error(
@@ -513,6 +493,11 @@ class YouTubePlaylistService:
             monitor.last_video_count = len(playlist_videos)
 
             session.commit()
+
+            # Download only now: claim_video_for_download() uses its own
+            # connection, so it can only see videos that are already committed.
+            if to_download:
+                self._dispatch_downloads(session, to_download, monitor.quality, results)
 
             logger.info(f"Synced playlist {playlist_id}: {results}")
             return results
@@ -652,37 +637,58 @@ class YouTubePlaylistService:
         new_artist = session.query(Artist).filter(Artist.id == artist_id).first()
         return new_artist
 
-    def download_video(self, video_id: str, quality: str = "720p") -> Dict:
-        """Download a video using MeTube"""
-        try:
-            video_url = f"https://www.youtube.com/watch?v={video_id}"
+    def _dispatch_downloads(
+        self, session: Session, video_ids: List[int], quality: str, results: Dict
+    ) -> None:
+        """Download new playlist videos with MVidarr's own downloader (#632).
 
-            # MeTube download request
-            download_data = {"url": video_url, "format": "mp4", "quality": quality}
+        Same claim -> dispatch -> revert-on-failure sequence as the scheduled and
+        bulk download paths, at the monitor's quality and regardless of the
+        artist's own auto-download setting: ticking "Auto-download new videos"
+        on a playlist means "download these".
+        """
+        from src.services.download_service_adapter import ytdlp_service
+        from src.services.settings_service import settings
+        from src.services.video_batch_service import claim_video_for_download
 
-            response = requests.post(
-                f"{self.metube_url}/add", json=download_data, timeout=30
-            )
+        download_subtitles = settings.get_bool("download_subtitles", False)
+        subtitle_languages = settings.get("subtitle_languages", "en,en-US")
 
-            if response.status_code == 200:
-                logger.info(f"Successfully queued download for video: {video_id}")
-                return {
-                    "success": True,
-                    "message": "Video queued for download",
-                    "video_id": video_id,
-                }
-            else:
-                logger.error(
-                    f"MeTube download failed: {response.status_code} - {response.text}"
+        for vid in video_ids:
+            video = session.query(Video).filter(Video.id == vid).first()
+            if video is None:
+                continue
+            title = video.title
+            try:
+                if not claim_video_for_download(vid):
+                    continue  # another process already has it
+                # claim committed DOWNLOADING behind our back: reload
+                session.refresh(video)
+                result = ytdlp_service.add_music_video_download(
+                    artist=video.artist.name if video.artist else "Unknown Artist",
+                    title=title,
+                    url=video.url or video.youtube_url,
+                    quality=quality or "best",
+                    video_id=vid,
+                    download_subtitles=download_subtitles,
+                    subtitle_languages=subtitle_languages,
                 )
-                return {
-                    "success": False,
-                    "error": f"Download failed: {response.status_code}",
-                }
-
-        except Exception as e:
-            logger.error(f"Failed to download video {video_id}: {e}")
-            return {"success": False, "error": str(e)}
+                if result and result.get("success"):
+                    results["downloaded_videos"] += 1
+                    continue
+                error = (result or {}).get("error", "Unknown error")
+            except Exception as e:
+                logger.error(f"Failed to dispatch download for video {vid}: {e}")
+                error = str(e)
+            # Dispatch failed after the claim committed DOWNLOADING: revert, or the
+            # video would be stuck invisible to every WANTED query (#329).
+            try:
+                video.status = VideoStatus.WANTED
+                session.commit()
+            except Exception as revert_error:
+                session.rollback()
+                logger.error(f"Failed to revert video {vid} to WANTED: {revert_error}")
+            results["errors"].append(f"Download failed for {title}: {error}")
 
     def get_monitored_playlists(self) -> List[Dict]:
         """Get all monitored playlists"""
