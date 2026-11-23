@@ -34,6 +34,7 @@ from src.api.fastapi.videos_models import (
 from src.database.connection import get_db_session
 from src.database.models import Video, VideoStatus
 from src.utils.logger import get_logger
+from src.utils.youtube_urls import youtube_thumbnail_url
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_bulk")
@@ -507,17 +508,14 @@ async def refresh_video_thumbnails(
 
         backfilled = False
         for video in videos:
-            if (
-                not (video.thumbnail_url and video.thumbnail_url.strip())
-                and video.youtube_id
-            ):
+            if not (video.thumbnail_url and video.thumbnail_url.strip()):
                 # Known YouTube video with no stored thumbnail URL (e.g. imported
                 # before #613): use YouTube's thumbnail, not an FFmpeg frame.
-                video.thumbnail_url = (
-                    f"https://img.youtube.com/vi/{video.youtube_id}/hqdefault.jpg"
-                )
-                video.thumbnail_source = "youtube"
-                backfilled = True
+                yt_thumb = youtube_thumbnail_url(video.youtube_id)
+                if yt_thumb:
+                    video.thumbnail_url = yt_thumb
+                    video.thumbnail_source = "youtube"
+                    backfilled = True
             if video.thumbnail_url and video.thumbnail_url.strip():
                 # Has source thumbnail URL - prioritize downloading from source
                 url_videos.append(video)

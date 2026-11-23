@@ -1,34 +1,33 @@
-"""#613: thumbnail URL selection for imported YouTube videos (no DB needed)."""
+"""#613: thumbnail URL for imported YouTube videos is rebuilt from a validated
+ID, never taken from the client (the server later fetches it -> SSRF)."""
 
 import pytest
 
-from src.api.fastapi.videos_import import resolve_import_thumbnail_url
+from src.utils.youtube_urls import youtube_thumbnail_url
 
 
-class TestResolveImportThumbnailUrl:
-    def test_falls_back_to_standard_hqdefault(self):
-        assert (
-            resolve_import_thumbnail_url(None, "abc123")
-            == "https://img.youtube.com/vi/abc123/hqdefault.jpg"
-        )
-
-    def test_accepts_youtube_image_hosts(self):
-        url = "https://i.ytimg.com/vi/abc123/mqdefault.jpg"
-        assert resolve_import_thumbnail_url(url, "abc123") == url
-
-    @pytest.mark.parametrize(
-        "bad",
-        [
-            "http://169.254.169.254/latest/meta-data",
-            "https://evil.example/x.jpg",
-            "file:///etc/passwd",
-            "https://i.ytimg.com.evil.example/x.jpg",
-            "",
-        ],
+def test_valid_id_gives_canonical_hqdefault():
+    assert (
+        youtube_thumbnail_url("dQw4w9WgXcQ")
+        == "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
     )
-    def test_rejects_untrusted_urls_to_avoid_ssrf(self, bad):
-        # the server later downloads thumbnail_url, so never trust arbitrary hosts
-        assert (
-            resolve_import_thumbnail_url(bad, "abc123")
-            == "https://img.youtube.com/vi/abc123/hqdefault.jpg"
-        )
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        None,
+        "",
+        "short",
+        "dQw4w9WgXcQx",  # 12 chars
+        "dQw4w9WgXc/",  # path char
+        "..%2f..%2fadm",
+        "a@evil.test/x",
+        "evil.test\\@x",  # backslash host-confusion shape
+        "dQw4w9WgXc\n",
+        "dQw4w9WgXc ",
+        12345678901,
+    ],
+)
+def test_bad_ids_give_none(bad):
+    assert youtube_thumbnail_url(bad) is None

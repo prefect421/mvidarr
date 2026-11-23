@@ -28,18 +28,20 @@ def test_import_sets_youtube_thumbnail(artist_id):
         asyncio.run(
             import_from_youtube(
                 request={
-                    "youtube_id": "thumbvid01",
+                    "youtube_id": "thumbvid001",
                     "title": "Song",
                     "artist_id": artist_id,
                     "auto_download": False,
+                    # hostile client value must be ignored entirely
+                    "thumbnail_url": "http://169.254.169.254/latest/meta-data",
                 },
                 current_user={"user_id": 1},
                 session=session,
             )
         )
     with get_db() as session:
-        v = session.query(Video).filter(Video.youtube_id == "thumbvid01").one()
-        assert v.thumbnail_url == "https://img.youtube.com/vi/thumbvid01/hqdefault.jpg"
+        v = session.query(Video).filter(Video.youtube_id == "thumbvid001").one()
+        assert v.thumbnail_url == "https://img.youtube.com/vi/thumbvid001/hqdefault.jpg"
         assert v.thumbnail_source == "youtube"
 
 

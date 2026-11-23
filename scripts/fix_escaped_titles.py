@@ -5,6 +5,10 @@ Videos added before v1.1.8 may have titles such as ``Where&#39;s our love`` or
 ``A &amp; B`` (the YouTube Data API returns HTML-escaped text), and downloaded
 files and sidecars (.info.json, subtitles) carry the same escaped names.
 
+Only entities such as ``&amp;`` and ``&#39;`` are decoded. ``<``, ``>`` and ``"``
+deliberately stay encoded (``&lt;`` ``&gt;`` ``&quot;``): the web UI renders
+titles as HTML in many places, so decoding them would let a title become markup.
+
 Dry run by default. Nothing changes until you pass --apply.
 
     docker exec <container> python3 scripts/fix_escaped_titles.py

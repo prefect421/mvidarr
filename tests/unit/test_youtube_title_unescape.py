@@ -42,5 +42,17 @@ def test_search_api_unescapes_title_description_and_channel():
         out = svc._search_youtube_api("q", 5)
     v = out["videos"][0]
     assert v["title"] == "MACKLEMORE & RYAN LEWIS - Where's our love"
-    assert v["description"] == 'Tom & Jerry "live"'
+    # \" stays encoded: the frontend interpolates these into attributes/innerHTML
+    assert v["description"] == "Tom & Jerry &quot;live&quot;"
     assert v["channel_title"] == "Ben & Jerry's VEVO"
+
+
+def test_markup_characters_stay_encoded_so_titles_cannot_become_html():
+    from src.services.title_unescape_service import unescape_text
+
+    hostile = "&lt;img src=x onerror=alert(1)&gt; &quot;x&quot; &amp; &#39;y&#39;"
+    out = unescape_text(hostile)
+    assert "<" not in out and ">" not in out and '"' not in out
+    assert out == "&lt;img src=x onerror=alert(1)&gt; &quot;x&quot; & 'y'"
+    # raw markup that bypassed escaping is neutralised too
+    assert unescape_text('<b onmouseover="x">') == "&lt;b onmouseover=&quot;x&quot;&gt;"

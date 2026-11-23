@@ -23,14 +23,22 @@ logger = get_logger("mvidarr.title_unescape")
 
 
 def unescape_text(text: Optional[str]) -> Optional[str]:
-    """Unescape HTML entities once; ``None`` passes through."""
+    """Decode HTML entities, but keep ``<``, ``>`` and ``"`` encoded.
+
+    The YouTube API returns escaped text (``&amp;``, ``&#39;``). We want those
+    two readable, but much of the frontend interpolates titles straight into
+    innerHTML/attributes, and the stored-escaped form is what has been keeping
+    ``<``/``>``/``"`` inert there. Decoding them would turn an uploader-chosen
+    title into markup, so they stay encoded. ``None`` passes through.
+    """
     if text is None:
         return None
-    return html.unescape(text)
+    decoded = html.unescape(text)
+    return decoded.replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
 def _escaped(text: Optional[str]) -> bool:
-    return bool(text) and html.unescape(text) != text
+    return bool(text) and unescape_text(text) != text
 
 
 def _resolve(path_str: str) -> Optional[Path]:
@@ -52,7 +60,7 @@ def _plan_renames(real_path: Path) -> Dict[str, Any]:
     Returns ``{"moves": [(src, dst)], "conflict": str | None}``.
     """
     old_stem = real_path.stem
-    new_stem = html.unescape(old_stem)
+    new_stem = unescape_text(old_stem)
     if "/" in new_stem or "\\" in new_stem or "\0" in new_stem:
         return {"moves": [], "conflict": "unescaped name would contain a separator"}
 
@@ -121,7 +129,7 @@ def cleanup_escaped_titles(session, apply: bool = False) -> Dict[str, Any]:
         if video.thumbnail_path and _escaped(os.path.basename(video.thumbnail_path)):
             t_real = _resolve(video.thumbnail_path)
             if t_real is not None:
-                t_new = t_real.with_name(html.unescape(t_real.name))
+                t_new = t_real.with_name(unescape_text(t_real.name))
                 if "/" not in t_new.name and not t_new.exists():
                     thumb_move = (t_real, t_new)
 
@@ -144,7 +152,7 @@ def cleanup_escaped_titles(session, apply: bool = False) -> Dict[str, Any]:
                 video.title = unescape_text(video.title)
             if moves:
                 new_local = _swap_basename(
-                    old_local, html.unescape(os.path.basename(old_local))
+                    old_local, unescape_text(os.path.basename(old_local))
                 )
                 video.local_path = new_local
                 for d in session.query(Download).filter(Download.video_id == video.id):
