@@ -402,89 +402,105 @@ class YouTubePlaylistService:
 
             for video_data in playlist_videos:
                 try:
-                    video_id = video_data["video_id"]
-                    if not video_id:
-                        continue
+                    outcome = None
+                    downloaded = False
+                    # One savepoint per video: a row the database rejects (out of
+                    # range value, duplicate id, ...) rolls back only itself, not
+                    # the whole sync (#630). The error surfaces when the savepoint
+                    # is released, so counting happens afterwards.
+                    with session.begin_nested():
+                        video_id = video_data["video_id"]
+                        if not video_id:
+                            continue
 
-                    # Get additional details
-                    details = video_details.get(video_id, {})
+                        # Get additional details
+                        details = video_details.get(video_id, {})
 
-                    # Check if video matches keywords filter
-                    if keywords and not self._matches_keywords(
-                        video_data["title"], keywords
-                    ):
-                        continue
+                        # Check if video matches keywords filter
+                        if keywords and not self._matches_keywords(
+                            video_data["title"], keywords
+                        ):
+                            continue
 
-                    # Update existing video or create new one
-                    if video_id in existing_videos:
-                        video = existing_videos[video_id]
-                        logger.info(
-                            f"  Video {video_id} exists in DB (id={video.id}, "
-                            f"playlist_id={video.playlist_id}), updating metadata"
-                        )
-                        # Update metadata
-                        video.title = video_data["title"]
-                        video.description = video_data.get("description", "")
-                        video.thumbnail_url = video_data.get("thumbnail_url")
-                        video.playlist_position = video_data.get("position")
-                        video.duration = self._parse_duration(details.get("duration"))
-                        video.view_count = details.get("view_count")
-                        video.updated_at = datetime.now()
-                        # Ensure playlist association for videos added via other sources
-                        if not video.playlist_id:
-                            video.playlist_id = playlist_id
+                        # Update existing video or create new one
+                        if video_id in existing_videos:
+                            video = existing_videos[video_id]
+                            logger.info(
+                                f"  Video {video_id} exists in DB (id={video.id}, "
+                                f"playlist_id={video.playlist_id}), updating metadata"
+                            )
+                            # Update metadata
+                            video.title = video_data["title"]
+                            video.description = video_data.get("description", "")
+                            video.thumbnail_url = video_data.get("thumbnail_url")
+                            video.playlist_position = video_data.get("position")
+                            video.duration = self._parse_duration(
+                                details.get("duration")
+                            )
+                            video.view_count = details.get("view_count")
+                            video.updated_at = datetime.now()
+                            # Ensure playlist association for videos added via other sources
+                            if not video.playlist_id:
+                                video.playlist_id = playlist_id
 
-                        results["updated_videos"] += 1
-                    else:
-                        # Try to match with existing artist
-                        artist = self._find_or_create_artist(
-                            video_data["channel_title"], session
-                        )
+                            outcome = "updated"
+                        else:
+                            # Try to match with existing artist
+                            artist = self._find_or_create_artist(
+                                video_data["channel_title"], session
+                            )
 
-                        # Create new video
-                        video = Video(
-                            title=video_data["title"],
-                            artist_id=artist.id,
-                            youtube_id=video_id,
-                            youtube_url=f"https://www.youtube.com/watch?v={video_id}",
-                            description=video_data.get("description", ""),
-                            thumbnail_url=video_data.get("thumbnail_url"),
-                            duration=self._parse_duration(details.get("duration")),
-                            view_count=details.get("view_count"),
-                            playlist_id=playlist_id,
-                            playlist_position=video_data.get("position"),
-                            status=(
-                                VideoStatus.WANTED
-                                if monitor.auto_download
-                                else VideoStatus.MONITORED
-                            ),
-                            source="youtube_playlist",
-                            created_at=datetime.now(),
-                        )
+                            # Create new video
+                            video = Video(
+                                title=video_data["title"],
+                                artist_id=artist.id,
+                                youtube_id=video_id,
+                                youtube_url=f"https://www.youtube.com/watch?v={video_id}",
+                                description=video_data.get("description", ""),
+                                thumbnail_url=video_data.get("thumbnail_url"),
+                                duration=self._parse_duration(details.get("duration")),
+                                view_count=details.get("view_count"),
+                                playlist_id=playlist_id,
+                                playlist_position=video_data.get("position"),
+                                status=(
+                                    VideoStatus.WANTED
+                                    if monitor.auto_download
+                                    else VideoStatus.MONITORED
+                                ),
+                                source="youtube_playlist",
+                                created_at=datetime.now(),
+                            )
 
-                        session.add(video)
+                            session.add(video)
+                            outcome = "new"
+                            logger.info(
+                                f"  New video added: {video_id} - {video_data['title']} "
+                                f"(artist: {artist.name}, status: {video.status.value})"
+                            )
+
+                            # Auto-download if enabled
+                            if monitor.auto_download:
+                                try:
+                                    download_result = self.download_video(
+                                        video_id, monitor.quality
+                                    )
+                                    if download_result.get("success"):
+                                        video.status = VideoStatus.DOWNLOADING
+                                        downloaded = True
+                                except Exception as e:
+                                    logger.error(
+                                        f"Failed to download video {video_id}: {e}"
+                                    )
+                                    results["errors"].append(
+                                        f"Download failed for {video_data['title']}: {str(e)}"
+                                    )
+
+                    if outcome == "new":
                         results["new_videos"] += 1
-                        logger.info(
-                            f"  New video added: {video_id} - {video_data['title']} "
-                            f"(artist: {artist.name}, status: {video.status.value})"
-                        )
-
-                        # Auto-download if enabled
-                        if monitor.auto_download:
-                            try:
-                                download_result = self.download_video(
-                                    video_id, monitor.quality
-                                )
-                                if download_result.get("success"):
-                                    video.status = VideoStatus.DOWNLOADING
-                                    results["downloaded_videos"] += 1
-                            except Exception as e:
-                                logger.error(
-                                    f"Failed to download video {video_id}: {e}"
-                                )
-                                results["errors"].append(
-                                    f"Download failed for {video_data['title']}: {str(e)}"
-                                )
+                    elif outcome == "updated":
+                        results["updated_videos"] += 1
+                    if downloaded:
+                        results["downloaded_videos"] += 1
 
                 except Exception as e:
                     logger.error(

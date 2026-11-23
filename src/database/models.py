@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timedelta
 from enum import Enum
 
-from sqlalchemy import JSON, Boolean, Column, DateTime
+from sqlalchemy import JSON, BigInteger, Boolean, Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.mysql import MEDIUMTEXT
@@ -472,8 +472,9 @@ class Video(Base):
     year = Column(Integer, nullable=True)
     release_date = Column(DateTime, nullable=True)  # Video release/publish date
     description = Column(Text, nullable=True)  # Video description
-    view_count = Column(Integer, nullable=True)  # View count
-    like_count = Column(Integer, nullable=True)  # Like count from video platforms
+    # BigInteger: popular videos exceed the 32-bit INT maximum of 2,147,483,647 (#630)
+    view_count = Column(BigInteger, nullable=True)  # View count
+    like_count = Column(BigInteger, nullable=True)  # Like count from video platforms
     genres = Column(JSON, nullable=True)  # Video genres
     album = Column(String(500), nullable=True)  # Album name
     directors = Column(JSON, nullable=True)

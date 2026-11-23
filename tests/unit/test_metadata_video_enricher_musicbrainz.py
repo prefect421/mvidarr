@@ -50,6 +50,8 @@ def _make_db(video):
     db.query.return_value.options.return_value.filter.return_value.first.return_value = (
         video
     )
+    # "does another video already own this youtube_id?" -> no (#634 guard)
+    db.query.return_value.filter.return_value.first.return_value = None
     db.merge.side_effect = lambda v: v
     return db
 
