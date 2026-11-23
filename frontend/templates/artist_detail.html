@@ -4381,7 +4381,7 @@ function renderExternalServices(artist, metadata) {
                 </a>:
             </strong>
             <span class="service-id" style="margin-left: 5px; color: ${service.connected ? 'var(--success-color, #4CAF50)' : 'var(--text-muted, #888)'};">
-                ${service.connected ? (service.serviceId || 'Connected') : 'Not Linked'}
+                ${service.connected ? escapeHtml(service.serviceId || 'Connected') : 'Not Linked'}
             </span>
             <br>
         </div>

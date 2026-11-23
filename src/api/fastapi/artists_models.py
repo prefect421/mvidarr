@@ -6,10 +6,16 @@ This module contains all Pydantic models used for request/response validation
 in the Artists API endpoints.
 """
 
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+_MBID_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+_UNSAFE_NAME_RE = re.compile(r"[<>\x00-\x1f\x7f]")
 
 
 class ArtistResponse(BaseModel):
@@ -175,6 +181,23 @@ class ArtistUpdateRequest(BaseModel):
             except (ValueError, TypeError):
                 return None
         return v
+
+    @field_validator("musicbrainz_id")
+    @classmethod
+    def _musicbrainz_id_is_a_uuid(cls, value):
+        # blank is allowed: it clears the match
+        if value is None or not value.strip():
+            return value
+        if not _MBID_RE.fullmatch(value.strip()):
+            raise ValueError("musicbrainz_id must be a MusicBrainz UUID")
+        return value
+
+    @field_validator("lastfm_name")
+    @classmethod
+    def _lastfm_name_has_no_markup(cls, value):
+        if value is not None and _UNSAFE_NAME_RE.search(value):
+            raise ValueError("lastfm_name must not contain < > or control characters")
+        return value
 
 
 class ArtistSearchRequest(BaseModel):

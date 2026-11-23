@@ -101,3 +101,44 @@ def test_artist_page_has_editable_match_fields_sent_only_when_changed():
     block = html[start : start + 500]
     # only sent when the user changed it, so renaming still resets the match
     assert "!== (storedArtist[key] || '')" in block
+
+
+# --- security review of this PR: the match fields are now user-editable and are
+# rendered into the external-services panel ---
+
+
+def test_external_services_panel_escapes_the_stored_ids():
+    html = open("frontend/templates/artist_detail.html", encoding="utf-8").read()
+    line = next(l for l in html.splitlines() if "service.serviceId || 'Connected'" in l)
+    assert "escapeHtml(service.serviceId" in line, line.strip()
+
+
+@pytest.mark.parametrize(
+    "bad", ["<img src=x onerror=alert(1)>", "a\x00b", "line\nbreak", "x>y"]
+)
+def test_lastfm_name_rejects_markup_and_control_characters(bad):
+    with pytest.raises(ValueError):
+        ArtistUpdateRequest(lastfm_name=bad)
+
+
+def test_lastfm_name_still_accepts_real_names():
+    for ok in [
+        "Ghost B.C.",
+        "AC/DC",
+        "Mötley Crüe",
+        "P!nk",
+        "Sunn O)))",
+        "blink-182",
+        "Mr. Bungle",
+    ]:
+        assert ArtistUpdateRequest(lastfm_name=ok).lastfm_name == ok
+
+
+def test_musicbrainz_id_must_be_a_uuid_or_blank():
+    with pytest.raises(ValueError):
+        ArtistUpdateRequest(musicbrainz_id="<script>")
+    with pytest.raises(ValueError):
+        ArtistUpdateRequest(musicbrainz_id="not-a-uuid")
+    good = "5b11f4ce-a62d-471e-81fc-a69a8278c7da"
+    assert ArtistUpdateRequest(musicbrainz_id=good).musicbrainz_id == good
+    assert ArtistUpdateRequest(musicbrainz_id="").musicbrainz_id == ""  # blank = clear
