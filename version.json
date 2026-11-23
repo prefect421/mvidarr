@@ -1,12 +1,15 @@
 {
-  "version": "1.1.7",
+  "version": "1.1.8",
   "build_date": "2026-11-06T22:12:50.842908",
   "git_commit": "28417d5e",
   "git_branch": "main",
-  "release_name": "v1.1.7 - Hotfix: pin packaging (v1.1.6 image crash-looped)",
+  "release_name": "v1.1.8 - Bug-fix release (13 issues) + PyMySQL security fix",
   "features": [
-    "Fix: v1.1.6 image crash-looped — kombu 5.7.0 no longer pulls in packaging, which src/ and celery import; now pinned (packaging 26.3)",
-    "Includes all v1.1.6 changes: wizard skip gate (#582), pydantic 2.14.2, sentry-sdk 2.73.0, apprise 2.1.0, websockets 17.4",
-    "Do not deploy v1.1.6 — use v1.1.7"
+    "Fix: per-request database sessions (concurrent requests no longer share/close one Session) (#615)",
+    "Fix: downloads run once; no .fNNN fragments recorded as the final file (#605)",
+    "Fix: Maximum Quality Limit and Max File Size now reach yt-dlp (#604)",
+    "Fix: discovery honours its interval (YouTube quota burn), batch enrichment, new-artist enrichment race, moved-file streaming 500",
+    "Fix: YouTube thumbnails on import, thumbnail caching, Last.fm track info, HTML-escaped titles (cleanup: scripts/fix_escaped_titles.py)",
+    "Security: PyMySQL 1.2.4 (upstream security fix)"
   ]
 }
