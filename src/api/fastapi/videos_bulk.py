@@ -34,6 +34,7 @@ from src.api.fastapi.videos_models import (
 from src.database.connection import get_db_session
 from src.database.models import Video, VideoStatus
 from src.utils.logger import get_logger
+from src.utils.youtube_urls import youtube_thumbnail_url
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_bulk")
@@ -416,10 +417,7 @@ async def bulk_organize_videos(
 
                     # Update database if requested
                     if request.update_database_paths:
-                        if hasattr(video, "file_path"):
-                            video.file_path = str(target_file)
-                        else:
-                            video.local_path = str(target_file)
+                        video.local_path = str(target_file)
                         video.updated_at = datetime.utcnow()
 
                     moves.append(
@@ -508,7 +506,16 @@ async def refresh_video_thumbnails(
         ffmpeg_videos = []
         video_paths = []
 
+        backfilled = False
         for video in videos:
+            if not (video.thumbnail_url and video.thumbnail_url.strip()):
+                # Known YouTube video with no stored thumbnail URL (e.g. imported
+                # before #613): use YouTube's thumbnail, not an FFmpeg frame.
+                yt_thumb = youtube_thumbnail_url(video.youtube_id)
+                if yt_thumb:
+                    video.thumbnail_url = yt_thumb
+                    video.thumbnail_source = "youtube"
+                    backfilled = True
             if video.thumbnail_url and video.thumbnail_url.strip():
                 # Has source thumbnail URL - prioritize downloading from source
                 url_videos.append(video)
@@ -516,6 +523,9 @@ async def refresh_video_thumbnails(
                 # No thumbnail URL but has local file - use FFmpeg as fallback
                 ffmpeg_videos.append(video)
                 video_paths.append(str(video.local_path))
+
+        if backfilled:
+            session.commit()
 
         total_processable = len(url_videos) + len(ffmpeg_videos)
 

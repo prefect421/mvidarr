@@ -788,6 +788,7 @@ class VideoQualityService:
                     format_string=new_format_string,  # Pass the sophisticated format string!
                     download_subtitles=False,
                     video_id=video_id,
+                    download_id=download.id,  # claim the row so the poller can't re-run it (#605)
                     upgrade_mode=True,  # Mark as upgrade so file replacement works correctly
                 )
                 download_job_id = result.get("id", "unknown")

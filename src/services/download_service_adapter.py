@@ -202,6 +202,21 @@ class DownloadServiceAdapter:
         Maps to the new unified service while maintaining the same API
         """
         try:
+            # Claim the Download row atomically before starting anything. The
+            # web endpoints dispatch in-process and the Celery poller picks up
+            # every "pending"/"queued" row every 30s; without a claim the same
+            # row ran twice and the two yt-dlp runs collided on one output
+            # file (#605).
+            if download_id is not None and not self._claim_download(download_id):
+                logger.info(
+                    f"Download {download_id} already claimed by another dispatcher; skipping"
+                )
+                return {
+                    "success": False,
+                    "already_claimed": True,
+                    "error": f"Download {download_id} is already being processed",
+                }
+
             # Create output directory
             folder_name = FilenameCleanup.sanitize_folder_name(artist)
             output_path = os.path.join(self.music_videos_path, folder_name)
@@ -261,6 +276,27 @@ class DownloadServiceAdapter:
                 "error": str(e),
                 "message": f"Failed to queue download: {str(e)}",
             }
+
+    @staticmethod
+    def _claim_download(download_id: int) -> bool:
+        """Atomically move a Download row pending/queued -> downloading.
+
+        Returns True only for the one caller whose UPDATE matched the row.
+        """
+        from src.database.connection import get_db
+        from src.database.models import Download
+
+        with get_db() as session:
+            claimed = (
+                session.query(Download)
+                .filter(
+                    Download.id == download_id,
+                    Download.status.in_(["pending", "queued"]),
+                )
+                .update({"status": "downloading"}, synchronize_session=False)
+            )
+            session.commit()
+        return bool(claimed)
 
     def _get_anti_detection_level(self) -> AntiDetectionLevel:
         """Determine anti-detection level based on system settings and history"""
@@ -469,11 +505,11 @@ class DownloadServiceAdapter:
                             download_id=download.id,
                         )
 
+                        if result.get("already_claimed"):
+                            # Another dispatcher (the web request) owns it.
+                            continue
                         if result.get("success"):
                             processed_count += 1
-                            # Update download status to downloading
-                            download.status = "downloading"
-                            session.commit()
                         else:
                             error_msg = result.get("error", "Unknown error")
                             logger.error(

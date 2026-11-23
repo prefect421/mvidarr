@@ -310,16 +310,17 @@ python3 scripts/troubleshoot_database.py
 
 ### User Management
 
-#### `create_admin_user.py`
+#### `fix_escaped_titles.py`
 
-**Purpose**: Create a new admin user account
+**Purpose**: Repair HTML-escaped video titles (`Where&#39;s`, `A &amp; B`) stored before v1.1.8, and rename the files named after them (media, `.info.json`, subtitles, thumbnails)
 
-**Usage**:
+**Usage** (dry run by default; nothing changes without `--apply`):
 ```bash
-python3 scripts/create_admin_user.py
+docker exec mvidarr python3 scripts/fix_escaped_titles.py          # review the list
+docker exec mvidarr python3 scripts/fix_escaped_titles.py --apply  # make the changes
 ```
 
-**Interactive**: Prompts for username, password, and email
+Only well-formed entities are decoded; `&lt;` `&gt;` `&quot;` stay encoded on purpose (the UI renders titles as HTML). Renames are all-or-nothing per video, skipped on a name conflict, and reversed if the database update fails. Back up the database first.
 
 ---
 

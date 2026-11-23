@@ -409,7 +409,7 @@ class VideoBrowserService:
                 date_added=video.created_at or datetime.now(),
                 is_music_video=video.is_music_video or False,
                 confidence_score=getattr(video, "music_video_confidence", 0.0),
-                file_path=video.file_path or "",
+                file_path=video.local_path or "",
             )
 
         except Exception as e:
@@ -428,7 +428,7 @@ class VideoBrowserService:
                 date_added=video.created_at or datetime.now(),
                 is_music_video=video.is_music_video or False,
                 confidence_score=0.0,
-                file_path=video.file_path or "",
+                file_path=video.local_path or "",
             )
 
     async def _get_video_thumbnail_path(self, video_id: int) -> str:

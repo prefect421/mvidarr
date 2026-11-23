@@ -36,6 +36,8 @@ _REAL_DB_MODULES = {
     "test_discovery_savepoint_preserves_earlier_inserts.py",
     "test_retry_download_redispatches.py",
     "test_download_queue_includes_pending.py",
+    "test_import_youtube_thumbnail.py",
+    "test_title_unescape_cleanup.py",
 }
 
 
