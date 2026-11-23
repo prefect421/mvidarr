@@ -340,3 +340,31 @@ class TestIsDeadYoutubeError:
     )
     def test_does_not_flag_transient_errors(self, message):
         assert self._check(message) is False
+
+
+class TestMergeContainer:
+    """#633: with no explicit container yt-dlp merged H.264+Opus (and VP9+AAC)
+    into MKV, which the UI then flags as needing transcoding. MP4 can carry every
+    codec combination YouTube serves, so always merge into MP4."""
+
+    def _cmd(self, tmp_path, **kw):
+        strategy = _make_strategy()
+        context = _make_context(output_path=str(tmp_path))
+        mock_process = MagicMock()
+        mock_process.stdout.readline.side_effect = [""]
+        mock_process.returncode = 1
+        mock_process.wait.return_value = None
+        with patch(
+            "src.services.unified_download_service.subprocess.Popen",
+            return_value=mock_process,
+        ) as mock_popen:
+            strategy._attempt_download(context, AntiDetectionLevel.MODERATE, **kw)
+        return mock_popen.call_args[0][0]
+
+    def test_normal_download_merges_into_mp4(self, tmp_path):
+        cmd = self._cmd(tmp_path)
+        assert cmd[cmd.index("--merge-output-format") + 1] == "mp4"
+
+    def test_fallback_download_merges_into_mp4_too(self, tmp_path):
+        cmd = self._cmd(tmp_path, force_player_client="android")
+        assert cmd[cmd.index("--merge-output-format") + 1] == "mp4"
