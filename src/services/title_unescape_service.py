@@ -36,24 +36,54 @@ def _decode_entity(match: "re.Match") -> str:
     return decoded
 
 
-def unescape_text(text: Optional[str]) -> Optional[str]:
-    """Decode well-formed HTML entities, except those for ``<``, ``>`` and ``"``.
+def decode_entities(text: Optional[str]) -> Optional[str]:
+    """Decode well-formed entities only; everything else is left byte-for-byte.
 
-    The YouTube API returns escaped text (``&amp;``, ``&#39;``). We want those
-    readable, but much of the frontend interpolates titles straight into
-    innerHTML/attributes, and the stored-escaped form is what has been keeping
-    ``<``/``>``/``"`` inert there. Decoding them would turn an uploader-chosen
-    title into markup, so ``&lt;`` ``&gt;`` ``&quot;`` (and their numeric forms)
-    stay encoded. Only entities terminated by ``;`` are decoded, in a single
-    pass, so malformed text such as ``&quotTrue`` is left exactly as stored and
-    ``&amp;lt;`` can never become ``<``. ``None`` passes through.
+    Used for file names, where a literal ``"`` or ``<`` must not be rewritten.
     """
     if text is None:
         return None
     return _ENTITY_RE.sub(_decode_entity, text)
 
 
+def _neutralise_raw(fragment: str) -> str:
+    return fragment.replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def unescape_text(text: Optional[str]) -> Optional[str]:
+    """Make API/stored text readable without ever producing markup.
+
+    - Well-formed entities such as ``&amp;`` and ``&#39;`` are decoded, except
+      those for ``<``, ``>`` and ``"`` (and their numeric forms), which stay
+      encoded.
+    - Any *raw* ``<``, ``>`` or ``"`` in the input is encoded too. The YouTube
+      API always escapes them, so this only matters for hostile or malformed
+      responses, but it means the result can never contain live markup.
+    - Only ``;``-terminated entities are decoded, in a single pass, so
+      malformed text such as ``&quotTrue`` is left as stored and ``&amp;lt;``
+      can never become ``<``.
+
+    The frontend interpolates titles into innerHTML/attributes in many places
+    (#622), which is why this is deliberately conservative. ``None`` passes
+    through.
+    """
+    if text is None:
+        return None
+    out, last = [], 0
+    for m in _ENTITY_RE.finditer(text):
+        out.append(_neutralise_raw(text[last : m.start()]))
+        out.append(_decode_entity(m))
+        last = m.end()
+    out.append(_neutralise_raw(text[last:]))
+    return "".join(out)
+
+
 def _escaped(text: Optional[str]) -> bool:
+    """True if a *file name* contains a decodable entity."""
+    return bool(text) and decode_entities(text) != text
+
+
+def _title_needs_fix(text: Optional[str]) -> bool:
     return bool(text) and unescape_text(text) != text
 
 
@@ -76,7 +106,7 @@ def _plan_renames(real_path: Path) -> Dict[str, Any]:
     Returns ``{"moves": [(src, dst)], "conflict": str | None}``.
     """
     old_stem = real_path.stem
-    new_stem = unescape_text(old_stem)
+    new_stem = decode_entities(old_stem)
     if "/" in new_stem or "\\" in new_stem or "\0" in new_stem:
         return {"moves": [], "conflict": "unescaped name would contain a separator"}
 
@@ -120,7 +150,7 @@ def cleanup_escaped_titles(session, apply: bool = False) -> Dict[str, Any]:
     )
 
     for video in videos:
-        title_escaped = _escaped(video.title)
+        title_escaped = _title_needs_fix(video.title)
         path_escaped = bool(video.local_path) and _escaped(
             os.path.basename(video.local_path)
         )
@@ -145,7 +175,7 @@ def cleanup_escaped_titles(session, apply: bool = False) -> Dict[str, Any]:
         if video.thumbnail_path and _escaped(os.path.basename(video.thumbnail_path)):
             t_real = _resolve(video.thumbnail_path)
             if t_real is not None:
-                t_new = t_real.with_name(unescape_text(t_real.name))
+                t_new = t_real.with_name(decode_entities(t_real.name))
                 if "/" not in t_new.name and not t_new.exists():
                     thumb_move = (t_real, t_new)
 
@@ -168,7 +198,7 @@ def cleanup_escaped_titles(session, apply: bool = False) -> Dict[str, Any]:
                 video.title = unescape_text(video.title)
             if moves:
                 new_local = _swap_basename(
-                    old_local, unescape_text(os.path.basename(old_local))
+                    old_local, decode_entities(os.path.basename(old_local))
                 )
                 video.local_path = new_local
                 for d in session.query(Download).filter(Download.video_id == video.id):

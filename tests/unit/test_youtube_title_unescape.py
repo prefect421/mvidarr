@@ -70,3 +70,22 @@ def test_malformed_entities_without_semicolon_are_left_alone():
 
     for t in ["&quotTrue North&quot", "Fish&chips", "AT&T", "a &amp b"]:
         assert unescape_text(t) == t
+
+
+def test_raw_markup_in_input_is_neutralised_too():
+    from src.services.title_unescape_service import unescape_text
+
+    assert (
+        unescape_text('<b onmouseover="x">hi</b> &amp; <i>')
+        == "&lt;b onmouseover=&quot;x&quot;&gt;hi&lt;/b&gt; & &lt;i&gt;"
+    )
+    # idempotent: a second pass changes nothing
+    once = unescape_text('<b onmouseover="x"> &amp; &#39;')
+    assert unescape_text(once) == once
+
+
+def test_file_names_only_get_entities_decoded_not_raw_characters():
+    from src.services.title_unescape_service import decode_entities
+
+    assert decode_entities('He said "hi" &amp; <left>') == 'He said "hi" & <left>'
+    assert decode_entities("&quotTrue") == "&quotTrue"
