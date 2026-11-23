@@ -51,6 +51,7 @@ class VideoResponse(BaseModel):
     quality: Optional[str] = None
     video_metadata: Optional[Dict[str, Any]] = None
     lyrics: Optional[str] = None
+    description: Optional[str] = None
     year: Optional[int] = None
     release_date: Optional[datetime] = None
     album: Optional[str] = None
@@ -89,6 +90,12 @@ class VideoUpdateRequest(BaseModel):
     )
     album: Optional[str] = None  # Allow updating album name
     genres: Optional[List[str]] = None
+    duration: Optional[int] = None  # seconds
+    description: Optional[str] = None
+    # The edit form's "Video URL". A YouTube URL also re-derives youtube_id/youtube_url.
+    video_url: Optional[str] = None
+    # When the artist changes, move the file (and sidecars) to the new artist's folder
+    move_file: bool = False
 
 
 class VideoSearchRequest(BaseModel):
@@ -200,6 +207,9 @@ class BulkEditRequest(BulkVideoRequest):
 
     title: Optional[str] = None
     artist_id: Optional[int] = None
+    # Find-or-create by name, like the single-video PUT (the Videos page sends this)
+    artist_name: Optional[str] = None
+    year: Optional[int] = None
     url: Optional[str] = None
     youtube_url: Optional[str] = None
     status: Optional[str] = None

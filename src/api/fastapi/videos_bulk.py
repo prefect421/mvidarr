@@ -32,7 +32,7 @@ from src.api.fastapi.videos_models import (
     BulkOrganizeRequest,
 )
 from src.database.connection import get_db_session
-from src.database.models import Video, VideoStatus
+from src.database.models import Artist, Video, VideoStatus
 from src.utils.logger import get_logger
 from src.utils.youtube_urls import youtube_thumbnail_url
 
@@ -275,6 +275,20 @@ async def bulk_edit_videos(
                 "updated_count": 0,
                 "total_requested": len(request.video_ids),
             }
+
+        # artist_name: find or create ONE artist and apply it to every video, the
+        # same way the single-video PUT does (#636)
+        if "artist_name" in update_fields:
+            artist_name = (update_fields.pop("artist_name") or "").strip()
+            if artist_name:
+                artist = (
+                    session.query(Artist).filter(Artist.name == artist_name).first()
+                )
+                if artist is None:
+                    artist = Artist(name=artist_name)
+                    session.add(artist)
+                    session.flush()
+                update_fields["artist_id"] = artist.id
 
         # Handle special field processing
         if "genres" in update_fields and update_fields["genres"]:
