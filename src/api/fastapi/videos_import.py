@@ -20,6 +20,7 @@ from src.api.fastapi.auth_dependencies import require_authentication
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video, VideoStatus
 from src.utils.logger import get_logger
+from src.utils.youtube_urls import youtube_thumbnail_url
 
 router = APIRouter()
 logger = get_logger("mvidarr.api.fastapi.videos_import")
@@ -83,6 +84,8 @@ async def import_from_youtube(
             status=VideoStatus.WANTED if auto_download else VideoStatus.MONITORED,
             duration=None,  # Will be updated when metadata is fetched
             discovered_date=datetime.utcnow(),
+            thumbnail_url=youtube_thumbnail_url(youtube_id),
+            thumbnail_source="youtube" if youtube_thumbnail_url(youtube_id) else None,
         )
 
         # Try to find or create artist

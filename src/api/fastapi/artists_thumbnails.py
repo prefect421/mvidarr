@@ -50,6 +50,9 @@ router = APIRouter(
 
 # Logger setup
 logger = logging.getLogger("mvidarr.api.fastapi.artists_thumbnails")
+
+# Force revalidation so a placeholder is never stuck in the browser cache (#614).
+NO_CACHE = {"Cache-Control": "no-cache"}
 # ========================================================================================
 # HELPER FUNCTIONS
 # ========================================================================================
@@ -80,6 +83,7 @@ async def _get_artist_thumbnail_impl(
                 artist.thumbnail_path,
                 media_type="image/jpeg",
                 filename=f"artist_{artist_id}_thumbnail.jpg",
+                headers=NO_CACHE,
             )
 
         # Construct thumbnail path using actual file naming convention
@@ -100,13 +104,17 @@ async def _get_artist_thumbnail_impl(
                             thumbnail_file,
                             media_type=media_type,
                             filename=f"artist_{artist_id}_thumbnail.{ext}",
+                            headers=NO_CACHE,
                         )
 
         # Return placeholder thumbnail
         placeholder_path = Path("frontend/static/placeholder-artist.png")
         if placeholder_path.exists():
             return FileResponse(
-                placeholder_path, media_type="image/png", filename="placeholder.png"
+                placeholder_path,
+                media_type="image/png",
+                filename="placeholder.png",
+                headers=NO_CACHE,
             )
         else:
             raise HTTPException(status_code=404, detail="Thumbnail not found")

@@ -279,17 +279,6 @@ def index_videos_task(
         error_msg = f"Video indexing task failed: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
 
-        # Update task state to FAILURE
-        self.update_state(
-            task_id=task_id,
-            state="FAILURE",
-            meta={
-                "error": error_msg,
-                "traceback": traceback.format_exc(),
-                "timestamp": datetime.utcnow().isoformat(),
-            },
-        )
-
         # Re-raise to mark task as failed in Celery
         raise
 
@@ -467,17 +456,6 @@ def process_artists_batch_task(
     except Exception as e:
         error_msg = f"Batch artist processing task failed: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
-
-        # Update task state to FAILURE
-        self.update_state(
-            task_id=task_id,
-            state="FAILURE",
-            meta={
-                "error": error_msg,
-                "traceback": traceback.format_exc(),
-                "timestamp": datetime.utcnow().isoformat(),
-            },
-        )
 
         # Re-raise to mark task as failed in Celery
         raise
@@ -858,17 +836,6 @@ def import_from_custom_directory_task(
     except Exception as e:
         error_msg = f"Custom directory import task failed: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
-
-        # Update task state to FAILURE
-        self.update_state(
-            task_id=task_id,
-            state="FAILURE",
-            meta={
-                "error": error_msg,
-                "traceback": traceback.format_exc(),
-                "timestamp": datetime.utcnow().isoformat(),
-            },
-        )
 
         # Re-raise to mark task as failed in Celery
         raise

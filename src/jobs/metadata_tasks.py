@@ -396,16 +396,6 @@ def enrich_artist_metadata_task(
         error_msg = f"Metadata enrichment failed for artist {artist_id}: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
 
-        # Update task state to failed
-        self.update_state(
-            state="FAILURE",
-            meta={
-                "error": error_msg,
-                "traceback": traceback.format_exc(),
-                "timestamp": datetime.utcnow().isoformat(),
-            },
-        )
-
         # Re-raise for Celery to handle
         raise Exception(error_msg)
 
@@ -527,21 +517,11 @@ def enrich_video_metadata_task(
         error_msg = f"Video metadata enrichment failed for video {video_id}: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
 
-        # Update task state to failed
-        self.update_state(
-            state="FAILURE",
-            meta={
-                "error": error_msg,
-                "traceback": traceback.format_exc(),
-                "timestamp": datetime.utcnow().isoformat(),
-            },
-        )
-
         # Re-raise for Celery to handle
         raise Exception(error_msg)
 
 
-@celery_app.task(bind=True, name="metadata.batch_enrich_artists")
+@celery_app.task(bind=True, base=CallbackTask, name="metadata.batch_enrich_artists")
 def batch_enrich_artists_task(
     self,
     artist_ids: list[int],
@@ -630,16 +610,6 @@ def batch_enrich_artists_task(
     except Exception as e:
         error_msg = f"Batch metadata enrichment failed: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
-
-        # Update task state to failed
-        self.update_state(
-            state="FAILURE",
-            meta={
-                "error": error_msg,
-                "traceback": traceback.format_exc(),
-                "timestamp": datetime.utcnow().isoformat(),
-            },
-        )
 
         # Re-raise for Celery to handle
         raise Exception(error_msg)
@@ -1072,16 +1042,6 @@ def bulk_enrich_videos_metadata_task(
         error_msg = f"Bulk video metadata enrichment failed: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
 
-        # Update task state to failed
-        self.update_state(
-            state="FAILURE",
-            meta={
-                "error": error_msg,
-                "traceback": traceback.format_exc(),
-                "timestamp": datetime.utcnow().isoformat(),
-            },
-        )
-
         # Re-raise for Celery to handle
         raise Exception(error_msg)
 
@@ -1188,14 +1148,5 @@ def bulk_automatch_artists_task(self):
     except Exception as e:
         error_msg = f"Bulk artist auto-match failed: {str(e)}"
         logger.error(f"{error_msg}\n{traceback.format_exc()}")
-
-        self.update_state(
-            state="FAILURE",
-            meta={
-                "error": error_msg,
-                "traceback": traceback.format_exc(),
-                "timestamp": datetime.utcnow().isoformat(),
-            },
-        )
 
         raise Exception(error_msg)

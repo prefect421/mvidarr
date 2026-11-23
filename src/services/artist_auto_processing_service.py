@@ -57,6 +57,12 @@ class ArtistAutoProcessingService:
             results["auto_match"] = auto_match_results
             logger.debug(f"Auto-match completed for {artist_name}")
 
+            # Commit before queueing anything: the Celery enrichment task and
+            # the thumbnail lookup read the artist through their own sessions,
+            # and cannot see a row (or the auto-match IDs) that is still
+            # uncommitted in the caller's transaction (#607).
+            session.commit()
+
             # Run metadata enrichment
             logger.debug(
                 f"Starting metadata enrichment for {artist_name} (ID: {artist_id})"

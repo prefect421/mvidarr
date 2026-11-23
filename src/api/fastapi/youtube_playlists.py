@@ -6,6 +6,7 @@ Migrated from Flask src/api/youtube_playlists.py - YouTube playlist monitoring a
 import logging
 from typing import Any, Dict, List, Optional
 
+import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -578,8 +579,6 @@ async def test_youtube_integration(
         )
 
         # Test API connection with a simple request
-        import requests
-
         url = f"{youtube_playlist_service.base_url}/search"
         params = {
             "part": "snippet",
@@ -601,6 +600,9 @@ async def test_youtube_integration(
             "response_items": len(data.get("items", [])),
         }
 
+    except HTTPException:
+        # Intended 4xx (e.g. missing key) must not be rewrapped as a 500
+        raise
     except requests.RequestException as e:
         logger.error(f"YouTube API test failed: {e}")
         raise HTTPException(
