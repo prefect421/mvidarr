@@ -581,13 +581,13 @@ function loadArtists(page = 1, resetPage = false) {
                             <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})" ${isSelected ? 'checked' : ''}>
                         </div>
                         <div class="artist-thumbnail">
-                            <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${artist.name} details">
+                            <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${escapeHtml(artist.name)} details">
                                 <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}"
-                                     alt="${artist.name}" onerror="handleThumbnailError(this)">
+                                     alt="${escapeHtml(artist.name)}" onerror="handleThumbnailError(this)">
                             </a>
                         </div>
                         <div class="artist-info">
-                            <h3><a href="/artist/${artist.id}" class="artist-name-link" title="View ${artist.name} details">${artist.name}</a></h3>
+                            <h3><a href="/artist/${artist.id}" class="artist-name-link" title="View ${escapeHtml(artist.name)} details">${escapeHtml(artist.name)}</a></h3>
                             <div class="artist-stats">
                                 <span class="stat">Videos: ${artist.video_count || 0}</span>
                                 <span class="stat ${artist.monitored ? 'monitored' : 'not-monitored'}" title="${artist.monitored ? 'Monitored' : 'Not Monitored'}">
@@ -671,13 +671,13 @@ function loadArtists(page = 1, resetPage = false) {
                                     <input type="checkbox" class="artist-checkbox" value="${artist.id}" onchange="toggleArtistSelection(${artist.id})" ${isSelected ? 'checked' : ''}>
                                 </div>
                                 <div class="artist-thumbnail">
-                                    <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${artist.name} details">
+                                    <a href="/artist/${artist.id}" class="artist-thumbnail-link" title="View ${escapeHtml(artist.name)} details">
                                         <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}"
-                                             alt="${artist.name}" onerror="handleThumbnailError(this)">
+                                             alt="${escapeHtml(artist.name)}" onerror="handleThumbnailError(this)">
                                     </a>
                                 </div>
                                 <div class="artist-info">
-                                    <h3><a href="/artist/${artist.id}" class="artist-name-link" title="View ${artist.name} details">${artist.name}</a></h3>
+                                    <h3><a href="/artist/${artist.id}" class="artist-name-link" title="View ${escapeHtml(artist.name)} details">${escapeHtml(artist.name)}</a></h3>
                                     <div class="artist-stats">
                                         <span class="stat">Videos: N/A</span>
                                         <span class="stat ${artist.monitored ? 'monitored' : 'not-monitored'}" title="${artist.monitored ? 'Monitored' : 'Not Monitored'}">
@@ -1056,9 +1056,9 @@ function showSearchSuggestions(query) {
             
             if (data.suggestions && data.suggestions.length > 0) {
                 const suggestionsHtml = data.suggestions.map(suggestion => `
-                    <div class="suggestion-item" onclick="selectSuggestion('${suggestion.text.replace(/'/g, "\\'")}')">
+                    <div class="suggestion-item" onclick="selectSuggestion(${escapeJsArg(suggestion.text)})">
                         <span class="suggestion-text">${suggestion.text}</span>
-                        <span class="suggestion-type">${suggestion.type === 'artist_name' ? 'Artist' : 'Keyword'}</span>
+                        <span class="suggestion-type">${escapeHtml(suggestion.type === 'artist_name' ? 'Artist' : 'Keyword')}</span>
                     </div>
                 `).join('');
                 
@@ -1575,9 +1575,9 @@ function loadMergeArtists() {
                 <label>
                     <input type="radio" name="primaryArtist" value="${artist.id}" onchange="selectPrimaryArtist(${artist.id})">
                     <div class="merge-artist-info">
-                        <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" alt="${artist.name}" onerror="handleThumbnailError(this)">
+                        <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" alt="${escapeHtml(artist.name)}" onerror="handleThumbnailError(this)">
                         <div class="merge-artist-details">
-                            <h4>${artist.name}</h4>
+                            <h4>${escapeHtml(artist.name)}</h4>
                             <p>${artist.video_count || 0} videos</p>
                             ${artist.imvdb_id ? '<p>Has IMVDb data</p>' : ''}
                         </div>

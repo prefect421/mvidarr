@@ -652,8 +652,8 @@ function displayVideoThumbnailResults(results) {
         grid.innerHTML = '<p>No thumbnails found</p>';
     } else {
         grid.innerHTML = results.map(result => `
-            <div class="thumbnail-result" onclick="selectVideoThumbnailResult('${result.url}')">
-                <img src="${result.url}" alt="${result.title || 'Thumbnail'}" 
+            <div class="thumbnail-result" onclick="selectVideoThumbnailResult(${escapeJsArg(result.url)})">
+                <img src="${result.url}" alt="${escapeHtml(result.title || 'Thumbnail')}" 
                      style="max-width: 150px; max-height: 150px; cursor: pointer;"
                      onerror="this.style.display='none'">
                 <div class="result-info">
@@ -870,12 +870,6 @@ function renderProducersField(producers) {
     `;
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 function formatPersonList(data, cssClass) {
     if (!data) return '';
     
@@ -938,12 +932,12 @@ function renderVideoDetails(video) {
         <div class="video-header-content">
             <div class="video-breadcrumb">
                 <a href="/artists">Artists</a> >
-                <a href="/artist/${video.artist_id}">${video.artist_name}</a> >
-                <span>${video.title}</span>
+                <a href="/artist/${video.artist_id}">${escapeHtml(video.artist_name)}</a> >
+                <span>${escapeHtml(video.title)}</span>
             </div>
-            <h1>${video.title}</h1>
+            <h1>${escapeHtml(video.title)}</h1>
             <div class="video-metadata">
-                <span class="video-artist">by ${video.artist_name}</span>
+                <span class="video-artist">by ${escapeHtml(video.artist_name)}</span>
                 ${video.year ? `<span class="video-year">${video.year}</span>` : ''}
                 <span class="video-status status-${video.status ? video.status.toLowerCase() : 'unknown'}">${video.status || 'Unknown'}</span>
             </div>
@@ -1002,7 +996,7 @@ function renderVideoDetails(video) {
                 </video>
             ` : `
                 <div class="video-thumbnail-large">
-                    <img id="mainVideoThumbnail" src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}">
+                    <img id="mainVideoThumbnail" src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${escapeHtml(video.title)}">
                     <div class="play-overlay">
                         ${video.video_url ? `<button onclick="playExternalVideo()" class="btn btn-primary">Play on YouTube</button>` : '<span>No video available</span>'}
                     </div>
@@ -1022,11 +1016,11 @@ function renderVideoDetails(video) {
         <div class="video-details">
             <div class="detail-group">
                 <label>Title:</label>
-                <span>${video.title}</span>
+                <span>${escapeHtml(video.title)}</span>
             </div>
             <div class="detail-group">
                 <label>Artist:</label>
-                <a href="/artist/${video.artist_id}">${video.artist_name}</a>
+                <a href="/artist/${video.artist_id}">${escapeHtml(video.artist_name)}</a>
             </div>
             ${video.year ? `
                 <div class="detail-group">
@@ -1043,13 +1037,13 @@ function renderVideoDetails(video) {
             ${video.genres && Array.isArray(video.genres) && video.genres.length > 0 ? `
                 <div class="detail-group">
                     <label>Genres:</label>
-                    <span class="genre-tags">${video.genres.map(genre => `<span class="genre-tag">${genre}</span>`).join(' ')}</span>
+                    <span class="genre-tags">${video.genres.map(genre => `<span class="genre-tag">${escapeHtml(genre)}</span>`).join(' ')}</span>
                 </div>
             ` : ''}
             ${video.album ? `
                 <div class="detail-group">
                     <label>Album:</label>
-                    <span>${video.album}</span>
+                    <span>${escapeHtml(video.album)}</span>
                 </div>
             ` : ''}
             ${video.search_keywords ? `
@@ -1061,7 +1055,7 @@ function renderVideoDetails(video) {
             ${video.description ? `
                 <div class="detail-group">
                     <label>Description:</label>
-                    <div class="description-text">${video.description}</div>
+                    <div class="description-text">${escapeHtml(video.description)}</div>
                 </div>
             ` : ''}
             ${video.view_count ? `
@@ -1111,7 +1105,7 @@ function renderVideoDetails(video) {
             ${video.local_path ? `
                 <div class="detail-group">
                     <label>Local File:</label>
-                    <span>${video.local_path}</span>
+                    <span>${escapeHtml(video.local_path)}</span>
                 </div>
                 <div class="detail-group">
                     <label>Closed Captions:</label>
@@ -1292,11 +1286,11 @@ function renderRelatedVideos(videos) {
     const videosHtml = videos.map(video => `
         <div class="related-video-item" onclick="navigateToVideo(${video.id})">
             <div class="related-video-thumbnail">
-                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}">
+                <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${escapeHtml(video.title)}">
                 <div class="video-status-mini status-${video.status ? video.status.toLowerCase() : 'unknown'}">${video.status || 'Unknown'}</div>
             </div>
             <div class="related-video-info">
-                <h5>${video.title}</h5>
+                <h5>${escapeHtml(video.title)}</h5>
                 ${video.year ? `<p>${video.year}</p>` : ''}
             </div>
         </div>
@@ -1725,8 +1719,8 @@ function showArtistSuggestions(artists) {
     const suggestionsDiv = document.getElementById('artistSuggestions');
     
     const suggestionsHtml = artists.map(artist => `
-        <div class="artist-suggestion" onclick="selectArtist('${artist.name.replace(/'/g, "\\'")}')">
-            <span class="artist-name">${artist.name}</span>
+        <div class="artist-suggestion" onclick="selectArtist(${escapeJsArg(artist.name)})">
+            <span class="artist-name">${escapeHtml(artist.name)}</span>
             <span class="artist-info">${artist.video_count || 0} videos</span>
         </div>
     `).join('');

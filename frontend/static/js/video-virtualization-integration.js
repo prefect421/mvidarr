@@ -496,7 +496,7 @@ class VideoVirtualizationIntegration {
         actions.forEach(item => {
             const menuItem = document.createElement('button');
             menuItem.className = 'btn btn-ghost btn-sm context-menu-item';
-            menuItem.innerHTML = `<iconify-icon icon="${item.icon}"></iconify-icon> ${item.label}`;
+            menuItem.innerHTML = `<iconify-icon icon="${item.icon}"></iconify-icon> ${escapeHtml(item.label)}`;
             menuItem.onclick = () => {
                 this.handleVideoAction(item.action, video.id);
                 menu.remove();

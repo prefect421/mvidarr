@@ -264,7 +264,7 @@ class PlaylistManager {
             <div class="playlist-card ${isSelected ? 'selected' : ''}" id="playlist-${playlist.id}">
                 <div class="playlist-card-checkbox">
                     <input type="checkbox" class="playlist-checkbox" ${isSelected ? 'checked' : ''} 
-                           aria-label="Select playlist ${playlist.name}">
+                           aria-label="Select playlist ${escapeHtml(playlist.name)}">
                 </div>
                 
                 ${playlist.thumbnail_url ? 
@@ -1423,9 +1423,8 @@ class PlaylistManager {
     }
 
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        // Delegates to js/html-escape.js (quote-safe); see #622.
+        return window.escapeHtml(text);
     }
 }
 

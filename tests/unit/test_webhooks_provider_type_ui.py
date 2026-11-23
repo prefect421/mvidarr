@@ -95,7 +95,11 @@ class TestWebhooksHtmlEscaping:
         self.html = (TEMPLATES_DIR / "webhooks.html").read_text()
 
     def test_an_escape_html_helper_exists(self):
-        assert "function escapeHtml(" in self.html
+        # The quote-safe helper is shared (js/html-escape.js, loaded by
+        # base.html, #622); the page must not define its own weaker copy.
+        base = (TEMPLATES_DIR / "base.html").read_text()
+        assert "js/html-escape.js" in base
+        assert "function escapeHtml(" not in self.html
 
     def test_display_webhooks_escapes_url_in_visible_content(self):
         start = self.html.index("function displayWebhooks(")
@@ -109,18 +113,9 @@ class TestWebhooksHtmlEscaping:
         start = self.html.index("function displayWebhooks(")
         end = self.html.index("\nfunction ", start + 1)
         body = self.html[start:end]
-        assert "editWebhook('${escapeHtmlAttr(webhook.url)}')" in body
-        assert "deleteWebhook('${escapeHtmlAttr(webhook.url)}')" in body
-
-    def test_escape_html_attr_also_escapes_single_quotes(self):
-        # The onclick="fn('...')" case nests a single-quoted JS string
-        # literal inside a double-quoted HTML attribute -- escapeHtml
-        # alone (which only handles &, <, >, ", by delegating to
-        # textContent/innerHTML) leaves a bare `'` free to break out of
-        # that JS string literal, so the onclick-specific helper must
-        # additionally escape `'`.
-        assert "function escapeHtmlAttr(" in self.html
-        start = self.html.index("function escapeHtmlAttr(")
-        end = self.html.index("\n}", start)
-        body = self.html[start:end]
-        assert "&#39;" in body
+        # A quoted JS string inside an attribute cannot be protected by HTML
+        # escaping (the browser decodes the attribute before the JS runs), so
+        # the URL is passed as an encoded JSON argument instead (#622).
+        assert "editWebhook(${escapeJsArg(webhook.url)})" in body
+        assert "deleteWebhook(${escapeJsArg(webhook.url)})" in body
+        assert "escapeHtmlAttr" not in self.html

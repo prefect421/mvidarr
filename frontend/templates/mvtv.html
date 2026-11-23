@@ -1147,8 +1147,8 @@ class MvTVPlayer {
         queueList.innerHTML = nextVideos.map((video, i) => `
             <div class="queue-item ${i === 0 ? 'current' : ''}" onclick="mvtvPlayer.jumpToVideo(${video.index})" title="Click to play this video">
                 <div class="queue-item-content">
-                    <div class="title">${video.title}</div>
-                    <div class="artist">${video.artist_name || 'Unknown Artist'}</div>
+                    <div class="title">${escapeHtml(video.title)}</div>
+                    <div class="artist">${escapeHtml(video.artist_name || 'Unknown Artist')}</div>
                 </div>
                 <button class="remove-btn" onclick="event.stopPropagation(); mvtvPlayer.removeFromQueue(${video.index})" title="Remove from queue">×</button>
             </div>
@@ -1165,7 +1165,7 @@ class MvTVPlayer {
         playbackStatus.className = `status-indicator ${status}`;
         
         const icon = status === 'playing' ? '▶' : status === 'paused' ? '⏸' : '⏹';
-        playbackStatus.innerHTML = `<span>${icon}</span> <span>${text}</span>`;
+        playbackStatus.innerHTML = `<span>${icon}</span> <span>${escapeHtml(text)}</span>`;
     }
     
     updateControls() {
