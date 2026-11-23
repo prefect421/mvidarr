@@ -2,6 +2,7 @@
 Settings service for database-driven configuration
 """
 
+import time
 from typing import Any, Dict
 
 from src.database.connection import get_db
@@ -16,11 +17,22 @@ class SettingsService:
 
     _cache: Dict[str, str] = {}
     _cache_loaded = False
+    _loaded_at: float = 0.0
+
+    # The cache is per process. The web app, the Celery worker (and each of its
+    # forked children) and beat are separate processes, so a setting saved through
+    # the web UI was never seen by the others until they restarted (#631: schedule
+    # changes; also e.g. the quality cap for scheduled downloads, #604). Reload
+    # after this many seconds so a change reaches every process shortly.
+    CACHE_TTL_SECONDS = 30
 
     @classmethod
     def load_cache(cls):
-        """Load all settings into cache"""
-        if cls._cache_loaded:
+        """Load all settings into cache (refreshing it once it is older than the TTL)"""
+        if (
+            cls._cache_loaded
+            and time.monotonic() - cls._loaded_at < cls.CACHE_TTL_SECONDS
+        ):
             return
 
         try:
@@ -34,12 +46,18 @@ class SettingsService:
                 settings = session.query(Setting).all()
                 cls._cache = {setting.key: setting.value for setting in settings}
                 cls._cache_loaded = True
+                cls._loaded_at = time.monotonic()
                 logger.debug(f"Loaded {len(cls._cache)} settings into cache")
         except Exception as e:
             logger.error(f"Failed to load settings cache: {e}")
-            cls._cache = {}
-            # Don't set _cache_loaded = True if database is not available
-            # This allows retry when database becomes available
+            if cls._cache_loaded:
+                # A failed REFRESH must not wipe working settings: keep the last
+                # known values and try again in ~10 seconds.
+                cls._loaded_at = time.monotonic() - cls.CACHE_TTL_SECONDS + 10
+            else:
+                cls._cache = {}
+                # Don't set _cache_loaded = True if database is not available
+                # This allows retry when database becomes available
 
     @classmethod
     def get(cls, key: str, default: Any = None) -> str:

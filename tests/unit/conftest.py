@@ -21,10 +21,19 @@ from contextlib import contextmanager
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.dialects.mysql import MEDIUMTEXT
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import sessionmaker
 
 import src.database.connection as connection
-from src.database.models import Artist, Download, PlaylistMonitor, Video
+from src.database.models import Artist, Download, PlaylistMonitor, Setting, Video
+
+
+@compiles(MEDIUMTEXT, "sqlite")
+def _mediumtext_as_text_on_sqlite(type_, compiler, **kw):
+    # The real settings.value column is MySQL MEDIUMTEXT; SQLite has no such type.
+    return "TEXT"
+
 
 # Test modules that want a real (unpatched) get_db() backed by a real DB.
 _REAL_DB_MODULES = {
@@ -42,6 +51,7 @@ _REAL_DB_MODULES = {
     "test_playlist_sync_resilience.py",
     "test_mkv_remux.py",
     "test_import_download_folder.py",
+    "test_schedule_gate_db.py",
     "test_bulk_edit.py",
     "test_mvtv_filters.py",
     "test_video_file_mover.py",
@@ -66,6 +76,7 @@ def _wire_real_sqlite_db(request, monkeypatch):
             Video.__table__,
             Download.__table__,
             PlaylistMonitor.__table__,
+            Setting.__table__,
         ],
     )
     # expire_on_commit=False: the wanted_video fixture in

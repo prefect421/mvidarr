@@ -196,74 +196,37 @@ class SchedulerServiceV2:
 
     def update_schedule_from_settings(self) -> Dict[str, Any]:
         """
-        Update Celery Beat schedule from database settings
+        Report the schedules the saved settings currently describe.
 
-        This method reads scheduler settings from the database and updates
-        the Celery Beat schedule dynamically.
+        This used to rewrite ``celery.conf.beat_schedule`` in the *web* process,
+        which changed nothing: beat is a separate program that never saw it (#631).
+        Schedules now live in the saved settings and are applied by the scheduler
+        tick (src/services/schedule_gate.py), so there is nothing to push anywhere;
+        this just returns what the next tick will use.
 
         Returns:
-            Dict with updated schedules
+            Dict with the effective schedules
         """
         try:
-            logger.info("Updating Celery Beat schedule from database settings...")
+            from src.services.schedule_gate import JOBS, rule_for
 
-            updated_schedules = {}
-
-            # Get discovery schedule settings
-            discovery_enabled = SettingsService.get_bool(
-                "auto_discovery_schedule_enabled", True
-            )
-            discovery_time = SettingsService.get(
-                "auto_discovery_schedule_time", "06:00"
-            )
-            discovery_days = SettingsService.get(
-                "auto_discovery_schedule_days", "daily"
-            )
-
-            if discovery_enabled:
-                discovery_schedule = self._parse_schedule(
-                    discovery_days, discovery_time
-                )
-                if discovery_schedule:
-                    updated_schedules["scheduled-discovery"] = {
-                        "task": "src.tasks.scheduled_tasks.scheduled_discovery_task",
-                        "schedule": discovery_schedule,
-                        "options": {"queue": "scheduler"},
-                    }
-
-            # Get download schedule settings
-            download_enabled = SettingsService.get_bool(
-                "auto_download_schedule_enabled", True
-            )
-            download_time = SettingsService.get("auto_download_schedule_time", "02:00")
-            download_days = SettingsService.get("auto_download_schedule_days", "hourly")
-
-            if download_enabled:
-                download_schedule = self._parse_schedule(download_days, download_time)
-                if download_schedule:
-                    updated_schedules["scheduled-downloads"] = {
-                        "task": "src.tasks.scheduled_tasks.scheduled_downloads_task",
-                        "schedule": download_schedule,
-                        "options": {"queue": "scheduler"},
-                    }
-
-            # Update Celery Beat schedule
-            # Note: This updates the in-memory schedule. For persistent changes,
-            # Celery Beat needs to be restarted or use dynamic beat schedulers.
-            if updated_schedules:
-                self.celery.conf.beat_schedule.update(updated_schedules)
-                logger.info(
-                    f"Updated {len(updated_schedules)} schedules in Celery Beat"
-                )
-
+            schedules = {}
+            for spec in JOBS.values():
+                enabled, rule, description = rule_for(spec)
+                schedules[f"scheduled-{spec.key}"] = {
+                    "task": spec.task,
+                    "schedule": description,
+                    "enabled": bool(enabled and rule is not None),
+                }
             return {
                 "status": "updated",
-                "schedules_updated": len(updated_schedules),
-                "schedules": updated_schedules,
+                "schedules_updated": len(schedules),
+                "schedules": schedules,
+                "note": "Applied by the scheduler tick (every 5 minutes); no restart needed",
             }
 
         except Exception as e:
-            logger.error(f"Failed to update schedule from settings: {e}")
+            logger.error(f"Failed to read schedules from settings: {e}")
             return {"status": "error", "message": str(e)}
 
     def _parse_schedule(
@@ -342,21 +305,20 @@ class SchedulerServiceV2:
 
     def get_current_schedules(self) -> Dict[str, Any]:
         """
-        Get current Celery Beat schedules
+        Get the effective schedules (saved settings) plus beat's fixed entries
 
         Returns:
             Dict of current schedules
         """
         try:
-            schedules = {}
+            schedules = dict(self.update_schedule_from_settings().get("schedules", {}))
             for name, entry in self.celery.conf.beat_schedule.items():
-                if name.startswith("scheduled-") or name.startswith("artist-"):
+                if name.startswith("artist-"):
                     schedules[name] = {
                         "task": entry.get("task"),
                         "schedule": str(entry.get("schedule")),
                         "enabled": True,
                     }
-
             return schedules
 
         except Exception as e:
