@@ -1,7 +1,7 @@
 {
   "version": "1.1.8",
-  "build_date": "2026-11-06T22:12:50.842908",
-  "git_commit": "28417d5e",
+  "build_date": "2026-11-23T18:01:38.832374",
+  "git_commit": "19807557",
   "git_branch": "main",
   "release_name": "v1.1.8 - Bug-fix release (13 issues) + PyMySQL security fix",
   "features": [

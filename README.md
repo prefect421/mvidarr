@@ -22,16 +22,18 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 6 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v1.1.7 - Hotfix + Security Sweep**
+## 🚀 **LATEST: v1.1.8 - Bug Fixes + PyMySQL Security Fix**
 
-**Released**: November 6, 2026
+**Released**: November 23, 2026
 
-- **⚠️ Skip v1.1.6**: its Docker image crash-loops on startup (missing `packaging`). v1.1.7 fixes it and includes everything from v1.1.6.
-- **🔒 Security**: anonymous `POST /api/wizard/skip` could reopen a finished setup wizard and its unauthenticated endpoints (#582) — fixed. pydantic 2.14.2 (2 upstream advisories). pip-audit clean across all requirements files
-- **📦 Dependencies**: pydantic 2.14.2, sentry-sdk 2.73.0, apprise 2.1.0, websockets 17.4, `packaging` now pinned explicitly
+- **🐛 13 bug fixes** reported against 1.1.7: concurrent requests no longer share one database session (intermittent 500s on the Videos grid), downloads started from the web UI no longer run twice, discovery honours its interval (it was re-searching YouTube every 30 minutes and burning quota), batch metadata enrichment works, moved-file streaming returns 404 instead of 500, and new-artist enrichment no longer races the commit
+- **🎚️ Quality limits work**: *Maximum Quality Limit* and *Max File Size* now reach yt-dlp (downloads were always "best up to 4K")
+- **🖼️ Thumbnails & titles**: imported YouTube videos get their YouTube thumbnail, stale placeholders no longer stick in the browser, Last.fm track data (album, genres) is used, and YouTube titles are no longer stored HTML-escaped
+- **🔒 Security**: PyMySQL 1.2.4 (upstream security fix; includes server certificate checking when `ssl_verify_identity` is set). pip-audit clean across all requirements files
+- **🧹 Optional cleanup**: `scripts/fix_escaped_titles.py` repairs titles and file names already stored escaped (`Where&#39;s`). **Dry run by default**; back up your database before using `--apply`. See [scripts/README.md](scripts/README.md)
 - **📝 Behind a reverse proxy?** After rebuilding, make sure `TRUSTED_PROXY_HOSTS` is still set for your proxy — otherwise `/videos` fails with "Blocked loading mixed active content". See [Troubleshooting](docs/TROUBLESHOOTING.md).
 
-📜 **[View the full changelog](CHANGELOG.md)** for v1.1.7's complete notes and every earlier release.
+📜 **[View the full changelog](CHANGELOG.md)** for v1.1.8's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 

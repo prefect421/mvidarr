@@ -214,10 +214,10 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.1.7 - Released
+### Current Phase: v1.1.8 - Released
 
 #### Versioning Policy (Updated 2026-09-27)
-- **Current Version**: 1.1.7 (Released 2026-11-06; on `main` as `76fdc7df`, tagged v1.1.7, local Docker :5001 rebuilt and verified; prod to be upgraded manually by the maintainer — **skip v1.1.6, its image crash-loops**)
+- **Current Version**: 1.1.8 (Released 2026-11-23; on `main` as `19807557`, tagged v1.1.8, local Docker :5001 rebuilt and verified; prod to be upgraded manually by the maintainer; v1.1.6 remains a bad image, skip it)
 - **Next Version**: TBD (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
@@ -228,6 +228,15 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 - **Unreleased (on `dev`, 2026-11-16)**: weekly Dependabot sweep — apprise 2.2.0 (GHSA-cfp4-m43r-v9q4, medium), alembic 1.20.1, python-multipart 0.0.33, yarl >=1.25.1, setup-ruby 1.338.0 (supersedes #592/#593/#594/#596/#597). No version bump; see CHANGELOG `[Unreleased]`
   - ⚠️ Left open for the maintainer: #591 (python 3.15-slim base image) and #595 (python-dateutil 4.0.0), both major bumps
   - ⚠️ Local `~/.local/bin/black` (26.3.1) and `isort` (9.0.1) are stale against the pins (`black==26.10.1`, `isort==9.0.2`; `ci-cd.yml` still installs `isort==9.0.0`). The sweep checked formatting with the pinned versions from a venv
+- **v1.1.8** (2026-11-23): Bug-fix release — 13 issues (#604-#610, #612-#617) + PyMySQL security fix (PRs #618-#621, #611, #624-#626; release PR #627, merge `19807557` on `main`)
+  - ✅ Fixed: per-request DB sessions (#615, `scoped_session` shared one `Session` between concurrent requests), downloads run once (#605, atomic `Download`-row claim in `add_music_video_download`), batch enrichment (#609, `base=CallbackTask`; hand-written `state="FAILURE"` removed), moved-file streaming 500 (#608, `Video` has `local_path` not `file_path`), new-artist commit-before-queue (#607), discovery interval / YouTube quota burn (#616), quality limits reach yt-dlp (#604), Last.fm `get_track_info` (#617), import thumbnails (#613), thumbnail `Cache-Control` (#614), escaped YouTube titles (#612), health check `text()` and YouTube test endpoint (#610), yt-dlp cache dir (#606/#611, external contributor)
+  - ✅ Security: PyMySQL 1.2.4 (upstream "security fix", GHSA-m75w-33c4-7v8q, **not in the public advisory DB so pip-audit stayed clean** — keep reading Dependabot PR bodies). Two automated-review findings on my own PRs were real and fixed: (1) decoding all entities would have exposed titles to the ~59 unescaped frontend sinks (#622), so `unescape_text()` keeps `&lt; &gt; &quot;` encoded and neutralises raw `< > "`; (2) a client-supplied `thumbnail_url` was an SSRF risk, so it is ignored and rebuilt from a validated 11-char ID
+  - ✅ `scripts/fix_escaped_titles.py` (dry run by default) repairs existing titles/files. **Not yet run on :5001** (dry run: 4 titles, 3 file renames; it renames real files, so ask first)
+  - ⚠️ `html.unescape()` leniently decodes semicolon-less entities (`&quotTrue`); 9 library titles looked "escaped" but were not. Caught only by dry-running the script on the real library. Always dry-run data-rewriting scripts on the real :5001 data
+  - ⚠️ PRs stacked on a feature branch get no test CI (workflows only run for base `dev`). After the parent merges: retarget to `dev`, merge `origin/dev` into the branch and push to trigger CI
+  - ⚠️ #604: minimum quality is intentionally not enforced (would make low-res-only videos undownloadable); file-size cap is best-effort
+  - ✅ Verified: 1127 tests pass, prod-only venv `pip check`/`pip-audit` clean, local Docker :5001 healthy with no respawns and 221 videos intact; **live**: discovery skipped already-searched artists on the next beat tick (#616), health check reports healthy (#610). UI smoke tests (Videos grid hard refresh, capped 4K download) still to be done by the maintainer
+  - Not taken: SQLAlchemy 2.1.8 (CI failing on 3.12), Python 3.15-slim (unverified C-extension wheels). Open follow-ups: #622, #623
 - **v1.1.7** (2026-11-06): Hotfix — pin `packaging` (PR #590; merge `28417d5e`, metadata `76fdc7df` on `main`)
   - ✅ v1.1.6's Docker image crash-looped (fastapi/celery-worker/celery-beat all exit 1, supervisor respawn loop): `kombu` 5.7.0 no longer declares `packaging`, but its redis transport and `src/services/api_versioning_service.py`/`src/api/fastapi/versioning.py` import it, and `requirements.txt` never pinned it. Fixed with `packaging==26.3`
   - ⚠️ **Why it got through**: the pre-merge test venv installed `requirements-dev.txt`, and `pytest` pulls in `packaging`, so 1065 tests passed against an environment the real image doesn't have. Only the Docker rebuild caught it — after v1.1.6 was already merged to `main`, tagged and published to ghcr. **Always verify a prod-only install (`requirements.txt` + `requirements-fastapi.txt`) or the rebuilt image before merging to `main`**; the sweep skill now has this as Step 5e
@@ -567,7 +576,7 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.1.7 (Hotfix: pin packaging; includes v1.1.6 security sweep)
+- **Current Version**: v1.1.8 (Bug fixes + PyMySQL security fix; includes v1.1.7 hotfix)
 - **Development Focus**: Stability, security
 - **Next Version**: TBD
 
@@ -667,7 +676,7 @@ All issues should be planned with the following attributes (fields on the [MVida
 Note: there is no separate "Release Slot" field — the board never got one built; `Milestone` is what actually designates the release window.
 
 ### Release Management
-- **Current Release**: Version 1.1.7 (2026-11-06) — see Version History above for details
+- **Current Release**: Version 1.1.8 (2026-11-23) — see Version History above for details
 - **Next Release**: TBD (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
