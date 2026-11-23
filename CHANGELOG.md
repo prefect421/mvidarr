@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.9] - 2026-11-24
+
+Bug-fix and hardening release: 9 issues reported against 1.1.8 (#628-#636, thanks @neononyx) plus two follow-ups from the 1.1.8 work (#622, #623). Several of these corrupted or misplaced data, and the frontend hardening is a security fix; read **Maintenance** before upgrading a large library.
+
+### Security
+- **Stored XSS via video/artist text (#622).** Titles, artist names and descriptions come from YouTube, yt-dlp, MusicBrainz and the filesystem, and reached `innerHTML` and HTML attributes unescaped (an uploader could put `"` in a title and inject `onerror=` into an authenticated session). Every pre-existing `escapeHtml` used the `textContent`/`innerHTML` trick, which does **not** escape `"` or `'`, so even the "correct" uses were breakable in attributes. One shared, quote-safe helper (`frontend/static/js/html-escape.js`, loaded first by `base.html`, the wizard and the admin page) replaces all local copies; ~160 interpolations and ~40 inline-handler arguments were converted (the old `escapeHtmlAttr` approach cannot protect a quoted JS string inside an attribute, because the browser decodes the attribute before the JS runs: such values are now passed with `escapeJsArg`). Toasts and confirm dialogs are sanitized centrally, `highlightSearchTerms` always escapes, and a CI ratchet test fails on a new unescaped sink.
+
+### Fixed
+- **Metadata enrichment overwrote YouTube IDs (#634).** Force refresh could replace a downloaded video's `youtube_id` with a fuzzy title match, so the record no longer matched its file (and a playlist sync then re-added and re-downloaded it). Enrichment now only *fills* an empty ID and skips an ID another video already owns instead of failing with an `IntegrityError`.
+- **Playlist sync died on videos with more than 2.1 billion views (#630).** `view_count`/`like_count` are now BIGINT (migration 026, idempotent) and each playlist video is saved in its own savepoint, so one rejected row no longer discards the whole sync.
+- **Scheduler settings did nothing (#631).** The Settings page edited beat's schedule in the web process's memory while beat, a separate program, kept a hard-coded one (downloads every 2h, discovery and playlist sync every 6h). Beat now fires one `scheduler-tick` every 5 minutes and each job runs only when its **saved** schedule says it is due (hourly, every N hours/minutes, daily, twice daily, weekly, named days, at HH:MM **UTC**), so a change applies within about 5 minutes with no restart. A slot missed while the container was down runs once at the next tick; the last run is claimed in the database so two worker processes can never run a job twice. The Playlist Sync Interval setting, which was never read, now works. **Root cause also fixed:** `SettingsService`'s cache was per process and never refreshed, so the Celery worker never saw a setting changed in the web UI until restarted (this also affected the #604 quality cap for scheduled downloads); it now refreshes every 30 seconds and keeps the last known settings if a refresh fails.
+- **Imports downloaded into the uploading channel's folder (#629).** `Smack My Bitch Up` ended up under `The Prodigy - Topic/`; downloads now go to the artist's folder like every other path.
+- **Playlist "Auto-download new videos" posted to a MeTube that is not in the stack (#632).** It now uses MVidarr's own downloader, after the sync commits, at the monitor's quality, regardless of the artist's own download setting, and reverts the video to WANTED if dispatch fails. Playlist videos now also get a `url` (it was NULL).
+- **Downloads often ended up as MKV (#633).** Every download is now merged into MP4, which holds every codec combination YouTube serves, so H.264+Opus and VP9+AAC no longer produce MKV (and the transcoding notice).
+- **Bulk edit always failed (#636).** The page read controls that do not exist and sent a request shape the API ignored. Artist (found or created once for all selected videos) and year now work, and HTTP errors or "0 videos updated" are reported instead of success.
+- **The Edit Video form silently dropped fields (#635).** Year, Album, Duration, Description and Video URL are saved. A YouTube Video URL re-derives `youtube_id`/`youtube_url` (the UI's way to fix a wrong ID); an ID owned by another video is a 409. **"Move file to artist folder if needed" now works**: the media file and its sidecars (`.info.json`, subtitles) move into the new artist's folder, nothing is ever overwritten, it is all-or-nothing, files are restored if the database commit fails, and a name conflict is a 409 that saves nothing. The form also showed "updated successfully" for failed saves; it now shows the server's error.
+- **MvTV filters (#628).** The genre list reads the genres the API actually returns, the artist filter sends an artist ID, filtered loads use the API's 500 cap (1000 was a 422 shown as "No videos found"), failed requests are errors, and `/api/videos/search` gains a minimum-quality filter (`quality=720p` means 720p and above).
+- **`reset_password.py` is no longer stricter than login (#623):** it accepts any password the login box accepts (8+ characters, at most 72 bytes).
+
+### Maintenance
+All of these are **dry runs by default**; add `--apply` to change anything, and back up your database first. Run each on a copy of your library if you can. Details in `scripts/README.md`.
+- `scripts/fix_youtube_ids.py` restores YouTube IDs from each file's `.info.json` (#634). A video whose file's ID is already used by another row is reported as a probable duplicate and left alone: it needs a human decision. `--fill-missing` also fills videos that never had an ID.
+- `scripts/fix_misfiled_videos.py` moves downloads that landed in a channel-named folder into their artist's folder (#629).
+- `scripts/remux_mkv_to_mp4.py` losslessly converts existing MKV downloads with `ffmpeg -c copy` (#633): written to `.mp4.part`, verified, database updated, and only then is the MKV deleted (`--keep-original` to retain it).
+- Migration 026 runs automatically on startup (widens two columns; lossless).
+
+### Notes
+- Schedule times in Settings are **UTC**. Default cadence for unset schedules is now what the Settings form shows (downloads hourly, discovery daily 06:00, playlist sync every 6 hours), which differs from the old fixed 2h/6h.
+- `scheduled-discovery`, `scheduled-downloads` and `playlist-sync` no longer exist as beat entries; the single `scheduler-tick` replaces them.
+
+### Known follow-ups
+- An artist's custom `folder_path` is not read by any download path (they use the sanitized artist name); equal by default.
+- Importing a video with no artist at all fails on `videos.artist_id NOT NULL`.
+- `collection_maintenance_service` queries `Video.file_size`, which does not exist (the same class of bug as #608).
+- Stored `&quot;`-style entities in titles are decoded by the browser where escaped helpers preserve them; a future cleanup could store plain text now that every sink escapes.
+
 ## [1.1.8] - 2026-11-23
 
 Bug-fix release: 13 issues reported against 1.1.7 (#604-#610, #612-#617, thanks @neononyx), plus a dependency sweep that includes an upstream PyMySQL security fix. 1125 tests pass; a clean prod-only venv (`requirements.txt` + `requirements-fastapi.txt`) passes `pip check`, and `pip-audit` is clean on all three requirements files.

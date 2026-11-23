@@ -324,6 +324,50 @@ Only well-formed entities are decoded; `&lt;` `&gt;` `&quot;` stay encoded on pu
 
 ---
 
+#### `fix_youtube_ids.py`
+
+**Purpose**: Restore YouTube IDs that metadata enrichment overwrote with a fuzzy title match (#634), using the `id` in each download's `.info.json`
+
+**Usage** (dry run by default; nothing changes without `--apply`):
+```bash
+docker exec mvidarr python3 scripts/fix_youtube_ids.py
+docker exec mvidarr python3 scripts/fix_youtube_ids.py --apply
+docker exec mvidarr python3 scripts/fix_youtube_ids.py --apply --fill-missing   # also fill videos that never had an ID
+```
+
+A video whose file's ID is already used by another row is reported as a probable duplicate and left alone. Back up the database first.
+
+---
+
+#### `fix_misfiled_videos.py`
+
+**Purpose**: Move downloads that landed in a channel-named folder ("Artist - Topic", label names, "Unknown Artist") into their artist's folder (#629)
+
+**Usage** (dry run by default):
+```bash
+docker exec mvidarr python3 scripts/fix_misfiled_videos.py
+docker exec mvidarr python3 scripts/fix_misfiled_videos.py --apply
+```
+
+Moves the media file and its sidecars (`.info.json`, subtitles); never overwrites; all-or-nothing, with files restored if the database update fails.
+
+---
+
+#### `remux_mkv_to_mp4.py`
+
+**Purpose**: Losslessly convert existing `.mkv` downloads to `.mp4` with `ffmpeg -c copy` (#633). New downloads are already MP4.
+
+**Usage** (dry run by default):
+```bash
+docker exec mvidarr python3 scripts/remux_mkv_to_mp4.py
+docker exec mvidarr python3 scripts/remux_mkv_to_mp4.py --apply
+docker exec mvidarr python3 scripts/remux_mkv_to_mp4.py --apply --keep-original
+```
+
+Each file is written to `<name>.mp4.part`, verified (video stream, duration), moved into place, the database updated, and only then is the original deleted. A failure leaves the original and the database untouched.
+
+---
+
 #### `reset_admin_credentials.py`
 
 **Purpose**: Reset admin password if locked out

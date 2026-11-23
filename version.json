@@ -1,15 +1,15 @@
 {
-  "version": "1.1.8",
+  "version": "1.1.9",
   "build_date": "2026-11-23T18:01:38.832374",
   "git_commit": "19807557",
   "git_branch": "main",
-  "release_name": "v1.1.8 - Bug-fix release (13 issues) + PyMySQL security fix",
+  "release_name": "v1.1.9 - Bug fixes and frontend XSS hardening (9 issues)",
   "features": [
-    "Fix: per-request database sessions (concurrent requests no longer share/close one Session) (#615)",
-    "Fix: downloads run once; no .fNNN fragments recorded as the final file (#605)",
-    "Fix: Maximum Quality Limit and Max File Size now reach yt-dlp (#604)",
-    "Fix: discovery honours its interval (YouTube quota burn), batch enrichment, new-artist enrichment race, moved-file streaming 500",
-    "Fix: YouTube thumbnails on import, thumbnail caching, Last.fm track info, HTML-escaped titles (cleanup: scripts/fix_escaped_titles.py)",
-    "Security: PyMySQL 1.2.4 (upstream security fix)"
+    "Security: shared quote-safe escaping across the frontend; ratchet test (#622)",
+    "Fix: enrichment no longer overwrites YouTube IDs; repair script (#634)",
+    "Fix: Settings schedules now take effect (due-check tick; settings cache refresh) (#631)",
+    "Fix: imports/downloads go to the artist's folder; MP4 merge; playlist auto-download (#629, #633, #632)",
+    "Fix: edit form saves all fields and moves files; bulk edit; MvTV filters (#635, #636, #628)",
+    "Fix: view counts BIGINT; playlist sync resilient (#630)"
   ]
 }
