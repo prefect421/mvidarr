@@ -51,6 +51,7 @@ _REAL_DB_MODULES = {
     "test_playlist_sync_resilience.py",
     "test_mkv_remux.py",
     "test_import_download_folder.py",
+    "test_artist_lastfm_name.py",
     "test_schedule_gate_db.py",
     "test_bulk_edit.py",
     "test_mvtv_filters.py",

@@ -2964,6 +2964,18 @@ div.artist-header-actions button.btn iconify-icon {
                                 <input type="url" id="spotifyUrlSetting" name="spotify_url">
                                 <small class="field-hint">Spotify artist page</small>
                             </div>
+
+                            <div class="setting-group">
+                                <label for="lastfmNameSetting">Last.fm Name:</label>
+                                <input type="text" id="lastfmNameSetting" name="lastfm_name" maxlength="255" autocomplete="off">
+                                <small class="field-hint">Exact artist name on Last.fm. Wrong match? Fix it here, or clear it to re-match from the artist's name (renaming the artist also resets it). Save, then run Auto-match.</small>
+                            </div>
+
+                            <div class="setting-group">
+                                <label for="musicbrainzIdSetting">MusicBrainz ID:</label>
+                                <input type="text" id="musicbrainzIdSetting" name="musicbrainz_id" maxlength="100" autocomplete="off">
+                                <small class="field-hint">MusicBrainz artist ID (UUID). Clear it to re-match.</small>
+                            </div>
                             
                             <div class="setting-group">
                                 <label for="youtubeUrlSetting">YouTube URL:</label>
@@ -4369,7 +4381,7 @@ function renderExternalServices(artist, metadata) {
                 </a>:
             </strong>
             <span class="service-id" style="margin-left: 5px; color: ${service.connected ? 'var(--success-color, #4CAF50)' : 'var(--text-muted, #888)'};">
-                ${service.connected ? (service.serviceId || 'Connected') : 'Not Linked'}
+                ${service.connected ? escapeHtml(service.serviceId || 'Connected') : 'Not Linked'}
             </span>
             <br>
         </div>
@@ -6772,6 +6784,8 @@ function populateSettings(artist) {
     // External Links - check both direct artist fields and enriched metadata
     document.getElementById('websiteUrlSetting').value = artist.website_url || metadata.website_url || '';
     document.getElementById('spotifyUrlSetting').value = artist.spotify_url || metadata.spotify_url || '';
+    document.getElementById('lastfmNameSetting').value = artist.lastfm_name || '';
+    document.getElementById('musicbrainzIdSetting').value = artist.musicbrainz_id || '';
     document.getElementById('youtubeUrlSetting').value = artist.youtube_url || metadata.youtube_url || '';
     document.getElementById('appleMusicUrlSetting').value = artist.apple_music_url || metadata.apple_music_url || '';
     document.getElementById('twitterUrlSetting').value = artist.twitter_url || metadata.twitter_url || '';
@@ -6854,6 +6868,15 @@ function saveArtistSettings() {
         allowed_video_types: Array.from(document.querySelectorAll('.video-type-checkbox:checked')).map(cb => cb.value)
     };
     
+    // Match IDs are sent only when the user changed them: always sending the stored
+    // value would override the automatic "renaming the artist resets its Last.fm
+    // match" rule on the server (#640). A blank value clears the match.
+    const storedArtist = (currentArtistData && currentArtistData.artist) || {};
+    ['lastfm_name', 'musicbrainz_id'].forEach(key => {
+        const value = (formData.get(key) || '').trim();
+        if (value !== (storedArtist[key] || '')) settings[key] = value;
+    });
+
     fetch(`/api/artists/${currentArtistId}`, {
         method: 'PUT',
         headers: {

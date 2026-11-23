@@ -406,6 +406,7 @@ async def get_artist(
             website=getattr(artist, "website", None),
             wikipedia_url=getattr(artist, "wikipedia_url", None),
             musicbrainz_id=getattr(artist, "musicbrainz_id", None),
+            lastfm_name=getattr(artist, "lastfm_name", None),
             spotify_id=artist.spotify_id,
             monitored=getattr(
                 artist, "monitored", True
@@ -552,6 +553,7 @@ async def create_artist(
             website=getattr(artist, "website", None),
             wikipedia_url=getattr(artist, "wikipedia_url", None),
             musicbrainz_id=getattr(artist, "musicbrainz_id", None),
+            lastfm_name=getattr(artist, "lastfm_name", None),
             spotify_id=artist.spotify_id,
             monitored=getattr(artist, "monitored", True),
             auto_download=getattr(artist, "auto_download", False),
@@ -600,6 +602,32 @@ async def update_artist(
                 f"Auto-syncing download_enabled={update_fields['auto_download']} for artist {artist_id}"
             )
 
+        # External IDs: a blank value clears the match (it used to be stored as '')
+        for id_field in ("lastfm_name", "musicbrainz_id", "spotify_id"):
+            if id_field in update_fields:
+                cleaned = (update_fields[id_field] or "").strip()
+                update_fields[id_field] = cleaned or None
+
+        # The Last.fm match is looked up by the stored name before the artist's own
+        # name, so a wrong match survived renaming the artist (#640). When the name
+        # really changes (not just case/spacing), drop it so the next Auto-match
+        # re-finds it from the NEW name; an explicit lastfm_name in the same request
+        # wins.
+        if "name" in update_fields and "lastfm_name" not in update_fields:
+
+            def _norm(value):
+                return " ".join((value or "").split()).lower()
+
+            if (
+                _norm(update_fields["name"]) != _norm(artist.name)
+                and artist.lastfm_name
+            ):
+                logger.info(
+                    f"Artist {artist_id} renamed {artist.name!r} -> {update_fields['name']!r}: "
+                    f"clearing Last.fm match {artist.lastfm_name!r} so it is re-matched"
+                )
+                update_fields["lastfm_name"] = None
+
         # Allowlist of fields that can be updated
         allowed_fields = {
             "name",
@@ -608,6 +636,7 @@ async def update_artist(
             "imvdb_id",
             "imvdb_slug",
             "musicbrainz_id",
+            "lastfm_name",
             "discogs_id",
             "spotify_id",
             "spotify_url",
@@ -676,6 +705,7 @@ async def update_artist(
             website=getattr(artist, "website", None),
             wikipedia_url=getattr(artist, "wikipedia_url", None),
             musicbrainz_id=getattr(artist, "musicbrainz_id", None),
+            lastfm_name=getattr(artist, "lastfm_name", None),
             spotify_id=artist.spotify_id,
             monitored=getattr(
                 artist, "monitored", True
