@@ -10,6 +10,7 @@ reversed if the database update fails.
 
 import html
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -22,19 +23,34 @@ from src.utils.logger import get_logger
 logger = get_logger("mvidarr.title_unescape")
 
 
+_ENTITY_RE = re.compile(r"&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);")
+_MARKUP_CHARS = {"<", ">", '"'}
+
+
+def _decode_entity(match: "re.Match") -> str:
+    entity = match.group(0)
+    decoded = html.unescape(entity)
+    # Leave unknown entities alone, and never decode to markup characters.
+    if decoded == entity or decoded in _MARKUP_CHARS:
+        return entity
+    return decoded
+
+
 def unescape_text(text: Optional[str]) -> Optional[str]:
-    """Decode HTML entities, but keep ``<``, ``>`` and ``"`` encoded.
+    """Decode well-formed HTML entities, except those for ``<``, ``>`` and ``"``.
 
     The YouTube API returns escaped text (``&amp;``, ``&#39;``). We want those
-    two readable, but much of the frontend interpolates titles straight into
+    readable, but much of the frontend interpolates titles straight into
     innerHTML/attributes, and the stored-escaped form is what has been keeping
     ``<``/``>``/``"`` inert there. Decoding them would turn an uploader-chosen
-    title into markup, so they stay encoded. ``None`` passes through.
+    title into markup, so ``&lt;`` ``&gt;`` ``&quot;`` (and their numeric forms)
+    stay encoded. Only entities terminated by ``;`` are decoded, in a single
+    pass, so malformed text such as ``&quotTrue`` is left exactly as stored and
+    ``&amp;lt;`` can never become ``<``. ``None`` passes through.
     """
     if text is None:
         return None
-    decoded = html.unescape(text)
-    return decoded.replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    return _ENTITY_RE.sub(_decode_entity, text)
 
 
 def _escaped(text: Optional[str]) -> bool:
