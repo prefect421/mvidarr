@@ -153,6 +153,20 @@ def clean_title_for_metadata_search(title: str, artist_name: str = None) -> str:
     return cleaned
 
 
+def _youtube_id_in_use(session, youtube_id: str, video_id: int) -> bool:
+    """True if a *different* video already owns this YouTube ID.
+
+    videos.youtube_id is unique; assigning a taken ID used to fail the whole
+    enrichment with an IntegrityError (#634).
+    """
+    return (
+        session.query(Video.id)
+        .filter(Video.youtube_id == youtube_id, Video.id != video_id)
+        .first()
+        is not None
+    )
+
+
 async def enrich_video_metadata(
     video_id: int,
     youtube_search_service: YouTubeSearchService,
@@ -214,7 +228,10 @@ async def enrich_video_metadata(
                 # Ensure video stays attached to session
                 video = session.merge(video)
 
-                if not video.youtube_id or force_refresh:
+                # Only ever FILL an empty youtube_id. For a video that has one
+                # (above all a downloaded one) the ID identifies the actual
+                # file, so even force_refresh must not replace it (#634).
+                if not video.youtube_id:
                     clean_title = clean_title_for_metadata_search(
                         video_title, artist_name
                     )
@@ -232,7 +249,14 @@ async def enrich_video_metadata(
                         elif "youtu.be/" in video_url:
                             youtube_id = video_url.split("youtu.be/")[1].split("?")[0]
 
-                        if youtube_id:
+                        if youtube_id and _youtube_id_in_use(
+                            session, youtube_id, video_id
+                        ):
+                            logger.warning(
+                                f"MusicBrainz official video {youtube_id} for video "
+                                f"{video_id} is already used by another video; skipping"
+                            )
+                        elif youtube_id:
                             video.youtube_id = youtube_id
                             video.youtube_url = video_url
                             updated_fields.extend(["youtube_id", "youtube_url"])
@@ -613,7 +637,7 @@ async def enrich_video_metadata(
                 # Ensure video stays attached to session
                 video = session.merge(video)
 
-                if (not video.youtube_id or force_refresh) and (
+                if not video.youtube_id and (
                     "musicbrainz_video" not in metadata_sources
                 ):
                     # Search for YouTube video using title and artist
@@ -665,7 +689,14 @@ async def enrich_video_metadata(
                                     best_score = score
                                     best_match = youtube_video
 
-                        if best_match:
+                        if best_match and _youtube_id_in_use(
+                            session, best_match["youtube_id"], video_id
+                        ):
+                            logger.warning(
+                                f"Best YouTube match {best_match['youtube_id']} for video "
+                                f"{video_id} is already used by another video; skipping"
+                            )
+                        elif best_match:
                             video.youtube_id = best_match["youtube_id"]
                             video.youtube_url = best_match["youtube_url"]
                             updated_fields.extend(["youtube_id", "youtube_url"])

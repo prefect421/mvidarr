@@ -16,9 +16,9 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import or_
 
-from src.config.config import Config
 from src.database.models import Download, Video
 from src.utils.logger import get_logger
+from src.utils.media_paths import resolve_media_path
 
 logger = get_logger("mvidarr.title_unescape")
 
@@ -87,19 +87,6 @@ def _title_needs_fix(text: Optional[str]) -> bool:
     return bool(text) and unescape_text(text) != text
 
 
-def _resolve(path_str: str) -> Optional[Path]:
-    """Find the file on disk (relative paths are tried against the app root,
-    the same way streaming resolves them)."""
-    p = Path(path_str)
-    if p.exists():
-        return p
-    if not p.is_absolute():
-        alt = Config.BASE_DIR / p
-        if alt.exists():
-            return alt
-    return None
-
-
 def _plan_renames(real_path: Path) -> Dict[str, Any]:
     """Plan renames of the media file and every sibling sharing its stem.
 
@@ -164,7 +151,7 @@ def cleanup_escaped_titles(session, apply: bool = False) -> Dict[str, Any]:
 
         moves: List = []
         if path_escaped:
-            real = _resolve(video.local_path)
+            real = resolve_media_path(video.local_path)
             if real is not None:
                 plan = _plan_renames(real)
                 if plan["conflict"]:
@@ -173,7 +160,7 @@ def cleanup_escaped_titles(session, apply: bool = False) -> Dict[str, Any]:
                     moves = plan["moves"]
         thumb_move = None
         if video.thumbnail_path and _escaped(os.path.basename(video.thumbnail_path)):
-            t_real = _resolve(video.thumbnail_path)
+            t_real = resolve_media_path(video.thumbnail_path)
             if t_real is not None:
                 t_new = t_real.with_name(decode_entities(t_real.name))
                 if "/" not in t_new.name and not t_new.exists():
