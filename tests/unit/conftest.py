@@ -42,6 +42,11 @@ _REAL_DB_MODULES = {
     "test_playlist_sync_resilience.py",
     "test_mkv_remux.py",
     "test_import_download_folder.py",
+    "test_bulk_edit.py",
+    "test_mvtv_filters.py",
+    "test_video_file_mover.py",
+    "test_video_edit_endpoint.py",
+    "test_misfiled_videos.py",
 }
 
 
