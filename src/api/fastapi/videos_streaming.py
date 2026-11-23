@@ -48,7 +48,7 @@ logger = get_logger("mvidarr.api.fastapi.videos_streaming")
 
 async def find_relocated_video(video: Video) -> Optional[Path]:
     """Find video file if it has been relocated"""
-    file_ref = video.file_path or video.local_path
+    file_ref = video.local_path
     if not file_ref:
         return None
 

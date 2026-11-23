@@ -340,12 +340,12 @@ class BulkOperationsWorker(BaseWorker):
                 return
 
             # Delete physical file if requested and exists
-            if delete_files and video.file_path and os.path.exists(video.file_path):
+            if delete_files and video.local_path and os.path.exists(video.local_path):
                 try:
-                    os.remove(video.file_path)
-                    logger.info(f"Deleted file: {video.file_path}")
+                    os.remove(video.local_path)
+                    logger.info(f"Deleted file: {video.local_path}")
                 except Exception as e:
-                    logger.error(f"Failed to delete file {video.file_path}: {e}")
+                    logger.error(f"Failed to delete file {video.local_path}: {e}")
 
             # Add to blacklist if requested
             if blacklist and video.url:

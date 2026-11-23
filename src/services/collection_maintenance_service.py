@@ -301,7 +301,7 @@ class CollectionMaintenanceService:
             try:
                 async with get_async_session() as session:
                     # Get all videos with file paths
-                    videos_query = select(Video).where(Video.file_path.isnot(None))
+                    videos_query = select(Video).where(Video.local_path.isnot(None))
                     result = await session.execute(videos_query)
                     videos = result.scalars().all()
 
@@ -310,15 +310,20 @@ class CollectionMaintenanceService:
                     for i, video in enumerate(videos):
                         try:
                             # Check if file exists
-                            if video.file_path and not os.path.exists(video.file_path):
+                            if video.local_path and not os.path.exists(
+                                video.local_path
+                            ):
+                                # Report only. Deleting the Video row for a
+                                # missing file loses metadata and history for
+                                # what is often a moved/renamed file (see #608).
                                 broken_links.append(video)
-
-                                # Remove broken video record
-                                await session.delete(video)
-                                items_cleaned += 1
-
-                                logger.info(
-                                    f"Removed broken link: {video.title} ({video.file_path})"
+                                warnings.append(
+                                    f"Missing file for video {video.id}: "
+                                    f"{video.title} ({video.local_path})"
+                                )
+                                logger.warning(
+                                    f"Broken link (record kept): {video.title} "
+                                    f"({video.local_path})"
                                 )
 
                         except Exception as e:
@@ -386,8 +391,8 @@ class CollectionMaintenanceService:
             try:
                 # Get all file paths from database
                 async with get_async_session() as session:
-                    videos_query = select(Video.file_path).where(
-                        Video.file_path.isnot(None)
+                    videos_query = select(Video.local_path).where(
+                        Video.local_path.isnot(None)
                     )
                     result = await session.execute(videos_query)
                     db_file_paths = set(row[0] for row in result.all())
@@ -642,8 +647,8 @@ class CollectionMaintenanceService:
         try:
             # Get database file paths
             async with get_async_session() as session:
-                videos_query = select(Video.file_path).where(
-                    Video.file_path.isnot(None)
+                videos_query = select(Video.local_path).where(
+                    Video.local_path.isnot(None)
                 )
                 result = await session.execute(videos_query)
                 db_file_paths = set(row[0] for row in result.all())
@@ -673,7 +678,7 @@ class CollectionMaintenanceService:
         try:
             async with get_async_session() as session:
                 query = (
-                    select(Video.id, Video.title, Video.file_path, Video.file_size)
+                    select(Video.id, Video.title, Video.local_path, Video.file_size)
                     .where(Video.file_size.isnot(None))
                     .order_by(desc(Video.file_size))
                     .limit(limit)
@@ -703,7 +708,7 @@ class CollectionMaintenanceService:
         try:
             async with get_async_session() as session:
                 query = (
-                    select(Video.id, Video.title, Video.file_path, Video.created_at)
+                    select(Video.id, Video.title, Video.local_path, Video.created_at)
                     .order_by(asc(Video.created_at))
                     .limit(limit)
                 )

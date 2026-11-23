@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from threading import Lock
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from src.config.config import Config
@@ -80,10 +80,13 @@ class DatabaseManager:
             with self._lock:
                 if self.session_factory is None:
                     engine = self.create_engine()
-                    session_local = sessionmaker(
+                    # Plain sessionmaker, NOT scoped_session: a thread-scoped
+                    # registry hands the same Session to every request that
+                    # lands on a thread, and one request's close() then breaks
+                    # another's in-flight work (#615).
+                    self.session_factory = sessionmaker(
                         autocommit=False, autoflush=False, bind=engine
                     )
-                    self.session_factory = scoped_session(session_local)
 
                     logger.info("Database session factory created")
 
@@ -162,9 +165,6 @@ class DatabaseManager:
 
     def close_connections(self):
         """Close all database connections"""
-        if self.session_factory:
-            self.session_factory.remove()
-
         if self.engine:
             self.engine.dispose()
             logger.info("Database connections closed")
@@ -216,10 +216,6 @@ def init_db(app):
     def cleanup_db(error):
         if error:
             logger.error(f"Request failed: {error}")
-
-        # Clean up any leftover sessions
-        if SessionLocal:
-            SessionLocal.remove()
 
     logger.info("Database initialization completed")
 
