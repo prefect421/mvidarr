@@ -108,6 +108,11 @@ class VideoDiscoveryService:
                         logger.error(f"Failed to store discovered video: {e}")
                         continue
 
+                # Record the run on every path that discovers (per-artist task
+                # and bulk task alike), otherwise discovery_interval_hours is
+                # never honoured and the artist is re-searched on every
+                # 30-minute beat tick (#616).
+                artist.last_discovery = datetime.utcnow()
                 session.commit()
 
                 logger.info(
@@ -137,84 +142,89 @@ class VideoDiscoveryService:
             Dictionary with overall discovery results
         """
         try:
+            # Read what we need with a short session, then release it. The
+            # per-artist call below opens its own session; holding ORM objects
+            # (and a pooled connection) across that nested call and the rate
+            # limit sleeps is what broke the bulk run after the first artist.
             with get_db() as session:
-                # Get all artists that should be monitored
-                artists = session.query(Artist).filter_by(monitored=True).all()
-
-                if not artists:
-                    return {
-                        "success": True,
-                        "message": "No monitored artists found",
-                        "results": [],
-                    }
-
-                logger.info(f"Starting bulk video discovery for {len(artists)} artists")
-
-                results = []
-                total_discovered = 0
-                total_stored = 0
-
-                for artist in artists:
-                    # Capture artist attributes early to avoid DetachedInstanceError
-                    artist_id = artist.id
-                    artist_name = artist.name
-
-                    try:
-                        # Check if artist needs discovery (based on last discovery time)
-                        if not self._should_discover_for_artist(artist):
-                            logger.debug(
-                                f"Skipping discovery for {artist_name} - too recent"
-                            )
-                            continue
-
-                        result = self.discover_videos_for_artist(
-                            artist_id, limit_per_artist
-                        )
-                        results.append(
-                            {
-                                "artist_id": artist_id,
-                                "artist_name": artist_name,
-                                "result": result,
-                            }
-                        )
-
-                        if result["success"]:
-                            total_discovered += result["discovered_count"]
-                            total_stored += result["stored_count"]
-
-                            # Commit per-artist so interrupted runs don't re-process
-                            artist.last_discovery = datetime.utcnow()
-                            session.add(artist)
-                            session.commit()
-
-                        # Rate limiting between artists
-                        time.sleep(self.rate_limit_delay * 2)
-
-                    except Exception as e:
-                        logger.error(f"Discovery failed for artist {artist_name}: {e}")
-                        results.append(
-                            {
-                                "artist_id": artist_id,
-                                "artist_name": artist_name,
-                                "result": {"success": False, "error": str(e)},
-                            }
+                monitored = session.query(Artist).filter_by(monitored=True).all()
+                candidates = []
+                for artist in monitored:
+                    if not self._should_discover_for_artist(artist):
+                        logger.debug(
+                            f"Skipping discovery for {artist.name} - too recent"
                         )
                         continue
+                    # Per-artist limit wins; the global value is only the
+                    # fallback for artists that have none set.
+                    candidates.append(
+                        (
+                            artist.id,
+                            artist.name,
+                            getattr(artist, "max_videos_per_discovery", None)
+                            or limit_per_artist,
+                        )
+                    )
+                total_monitored = len(monitored)
 
-                session.commit()
-
-                logger.info(
-                    f"Bulk discovery complete: {total_discovered} videos discovered, {total_stored} stored"
-                )
-
+            if not total_monitored:
                 return {
                     "success": True,
-                    "total_artists": len(artists),
-                    "processed_artists": len(results),
-                    "total_discovered": total_discovered,
-                    "total_stored": total_stored,
-                    "results": results,
+                    "message": "No monitored artists found",
+                    "results": [],
                 }
+
+            logger.info(
+                f"Starting bulk video discovery for {len(candidates)} of "
+                f"{total_monitored} monitored artists"
+            )
+
+            results = []
+            total_discovered = 0
+            total_stored = 0
+
+            for artist_id, artist_name, artist_limit in candidates:
+                try:
+                    # discover_videos_for_artist() records last_discovery itself
+                    result = self.discover_videos_for_artist(artist_id, artist_limit)
+                    results.append(
+                        {
+                            "artist_id": artist_id,
+                            "artist_name": artist_name,
+                            "result": result,
+                        }
+                    )
+
+                    if result["success"]:
+                        total_discovered += result["discovered_count"]
+                        total_stored += result["stored_count"]
+
+                    # Rate limiting between artists
+                    time.sleep(self.rate_limit_delay * 2)
+
+                except Exception as e:
+                    logger.error(f"Discovery failed for artist {artist_name}: {e}")
+                    results.append(
+                        {
+                            "artist_id": artist_id,
+                            "artist_name": artist_name,
+                            "result": {"success": False, "error": str(e)},
+                        }
+                    )
+                    continue
+
+            logger.info(
+                f"Bulk discovery complete: {total_discovered} videos discovered, {total_stored} stored"
+            )
+
+            return {
+                "success": True,
+                "total_artists": total_monitored,
+                "processed_artists": len(results),
+                "total_discovered": total_discovered,
+                "total_stored": total_stored,
+                "results": results,
+            }
 
         except Exception as e:
             logger.error(f"Bulk video discovery failed: {e}")
