@@ -1260,9 +1260,9 @@ input:checked + .slider:before {
             </div>
 
             <div class="form-group" id="download_time_group">
-                <label for="auto_download_schedule_time">Schedule Time:</label>
+                <label for="auto_download_schedule_time">Schedule Time (UTC):</label>
                 <input type="time" id="auto_download_schedule_time" name="auto_download_schedule_time" title="Time to run downloads (only applies to daily/weekly)">
-                <small class="form-hint">Only used for daily and weekly schedules</small>
+                <small class="form-hint">Only used for daily and weekly schedules. Times are UTC; changes apply within about 5 minutes.</small>
             </div>
 
             <div class="form-group">
@@ -1293,8 +1293,9 @@ input:checked + .slider:before {
             </div>
 
             <div class="form-group">
-                <label for="auto_discovery_schedule_time">Discovery Time:</label>
-                <input type="time" id="auto_discovery_schedule_time" name="auto_discovery_schedule_time" value="06:00" title="Time to run video discovery">
+                <label for="auto_discovery_schedule_time">Discovery Time (UTC):</label>
+                <input type="time" id="auto_discovery_schedule_time" name="auto_discovery_schedule_time" value="06:00" title="Time to run video discovery (UTC)">
+                <small class="form-hint">Times are UTC; changes apply within about 5 minutes.</small>
             </div>
 
             <div class="form-group">

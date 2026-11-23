@@ -86,22 +86,21 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     # Beat schedule (if using celery beat for periodic tasks)
-    # NOTE: Scheduler V2 (v0.10.1) - These schedules are dynamically updated from database settings
-    # See src/services/scheduler_service_v2.py for dynamic schedule management
+    # NOTE: job schedules (discovery/downloads/playlist sync) come from the saved
+    # settings via the "scheduler-tick" below; see src/services/schedule_gate.py
     beat_schedule={
         "process-downloads": {
             "task": "download_processor.process_downloads",
             "schedule": timedelta(seconds=30),
         },
-        # Scheduler V2 tasks (v0.10.1) - Default schedules, overridden by database settings
-        "scheduled-discovery": {
-            "task": "src.tasks.scheduled_tasks.scheduled_discovery_task",
-            "schedule": timedelta(hours=6),  # Default: every 6 hours
-            "options": {"queue": "scheduler"},
-        },
-        "scheduled-downloads": {
-            "task": "src.tasks.scheduled_tasks.scheduled_downloads_task",
-            "schedule": timedelta(hours=2),  # Default: every 2 hours
+        # Scheduler V2: discovery, downloads and playlist sync used to be fixed
+        # intervals here that ignored the Settings page (#631). Beat now only
+        # fires this cheap tick; the tick reads the SAVED settings and dispatches
+        # whichever jobs are due (src/services/schedule_gate.py), so a change in
+        # Settings applies on the next tick without restarting anything.
+        "scheduler-tick": {
+            "task": "src.tasks.scheduled_tasks.scheduler_tick_task",
+            "schedule": timedelta(minutes=5),
             "options": {"queue": "scheduler"},
         },
         "artist-discovery-check": {
@@ -114,11 +113,6 @@ celery_app.conf.update(
         "scheduler-health-check": {
             "task": "src.tasks.scheduled_tasks.scheduler_health_check_task",
             "schedule": timedelta(minutes=5),  # Health check every 5 minutes
-            "options": {"queue": "scheduler"},
-        },
-        "playlist-sync": {
-            "task": "src.tasks.scheduled_tasks.playlist_sync_task",
-            "schedule": timedelta(hours=6),  # Sync monitored playlists every 6 hours
             "options": {"queue": "scheduler"},
         },
     },
