@@ -614,9 +614,9 @@ function displaySearchResults(data) {
                 </div>
                 ${video.relevance_score ? `<div class="relevance-badge" title="Relevance Score: ${video.relevance_score}%">${Math.round(video.relevance_score)}%</div>` : ''}
                 <div class="video-thumbnail" data-video-id="${video.id}" data-action="play">
-                    ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="thumbnail-artist-link" title="View ${video.artist_name || 'Unknown'} artist page">` : ''}
+                    ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="thumbnail-artist-link" title="View ${escapeHtml(video.artist_name || 'Unknown')} artist page">` : ''}
                     <img src="/api/videos/${video.id}/thumbnail"
-                         alt="${highlightSearchTerms(video.title, searchQuery)}"
+                         alt="${escapeHtml(video.title)}"
                          data-fallback-src="/static/placeholder-video.png">
                     ${video.artist_id ? '</a>' : ''}
                     <div class="play-overlay">
@@ -628,7 +628,7 @@ function displaySearchResults(data) {
                     <p>Artist: ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="artist-link">${highlightSearchTerms(video.artist_name || 'Unknown', searchQuery)}</a>` : highlightSearchTerms(video.artist_name || 'Unknown', searchQuery)}</p>
                     <p>Status: ${video.status}</p>
                     ${video.year ? `<p>Year: ${video.year}</p>` : ''}
-                    ${video.description ? `<p class="video-description" title="${video.description}">${highlightSearchTerms(truncateText(video.description, 100), searchQuery)}</p>` : ''}
+                    ${video.description ? `<p class="video-description" title="${escapeHtml(video.description)}">${highlightSearchTerms(truncateText(video.description, 100), searchQuery)}</p>` : ''}
                 </div>
                 <div class="video-actions">
                     <button data-video-id="${video.id}" data-action="view" class="btn-icon" title="View Details">
@@ -930,8 +930,8 @@ function updateSearchPresetsUI() {
             <select id="searchPresetSelect" class="form-control" style="width: auto; display: inline-block; margin-right: 5px;">
                 <option value="">Select Preset...</option>
                 ${presetNames.map(name => `
-                    <option value="${name}" title="${presets[name].description}">
-                        ${name} (${new Date(presets[name].created).toLocaleDateString()})
+                    <option value="${escapeHtml(name)}" title="${escapeHtml(presets[name].description)}">
+                        ${escapeHtml(name)} (${new Date(presets[name].created).toLocaleDateString()})
                     </option>
                 `).join('')}
             </select>
@@ -1707,7 +1707,7 @@ function updateSingleVideoCard(videoId) {
                 <div class="video-thumbnail" data-video-id="${video.id}" data-action="play">
                     ${video.artist_id ? `<a href="/artist/${video.artist_id}" class="thumbnail-artist-link" title="View ${escapeHtml(video.artist_name || 'Unknown')} artist page">` : ''}
                     <img src="/api/videos/${video.id}/thumbnail"
-                         alt="${video.title}"
+                         alt="${escapeHtml(video.title)}"
                          data-fallback-src="/static/placeholder-video.png">
                     ${video.artist_id ? '</a>' : ''}
                     <div class="play-overlay">
@@ -2856,8 +2856,8 @@ function displayVideoThumbnailResults(results) {
         console.log('No results found, showing "No thumbnails found" message');
     } else {
         const htmlContent = results.map(result => `
-            <div class="thumbnail-result" onclick="selectVideoThumbnailResult('${result.url}')">
-                <img src="${result.url}" alt="${result.title || 'Thumbnail'}" 
+            <div class="thumbnail-result" onclick="selectVideoThumbnailResult(${escapeJsArg(result.url)})">
+                <img src="${result.url}" alt="${escapeHtml(result.title || 'Thumbnail')}" 
                      style="max-width: 150px; max-height: 150px; cursor: pointer;"
                      onerror="this.style.display='none'">
                 <div class="result-info">
@@ -4071,7 +4071,7 @@ function updateSelectedVideosDisplay() {
     container.innerHTML = selectedVideos.map(video => `
         <div class="video-merge-item">
             <div class="video-info-compact">
-                <strong>${video.title}</strong><br>
+                <strong>${escapeHtml(video.title)}</strong><br>
                 <span class="text-muted">${video.artist} • ${video.quality} • ${video.duration}</span>
             </div>
         </div>
@@ -4142,16 +4142,16 @@ function previewMerge() {
                     <div class="primary-video">
                         <strong>Primary (Keep):</strong>
                         <div class="video-merge-item primary">
-                            <strong>${group.primary.title}</strong><br>
-                            <span class="text-muted">${group.primary.artist_name} • ${group.primary.quality || 'Unknown'} • ${group.primary.duration || 'Unknown'}s</span>
+                            <strong>${escapeHtml(group.primary.title)}</strong><br>
+                            <span class="text-muted">${escapeHtml(group.primary.artist_name)} • ${group.primary.quality || 'Unknown'} • ${group.primary.duration || 'Unknown'}s</span>
                         </div>
                     </div>
                     <div class="merge-videos-list">
                         <strong>To Merge (Remove):</strong>
                         ${group.duplicates.map(video => `
                             <div class="video-merge-item duplicate">
-                                <strong>${video.title}</strong><br>
-                                <span class="text-muted">${video.artist_name} • ${video.quality || 'Unknown'} • ${video.duration || 'Unknown'}s</span>
+                                <strong>${escapeHtml(video.title)}</strong><br>
+                                <span class="text-muted">${escapeHtml(video.artist_name)} • ${video.quality || 'Unknown'} • ${video.duration || 'Unknown'}s</span>
                             </div>
                         `).join('')}
                     </div>
@@ -4417,9 +4417,9 @@ function displayVideos(videos) {
                             <input type="checkbox" class="video-checkbox" value="${safeVideo.id}" onchange="updateSelectedCount()">
                         </div>
                         <div class="video-thumbnail" data-video-id="${safeVideo.id}" data-action="play">
-                            ${safeVideo.artist_id ? `<a href="/artist/${safeVideo.artist_id}" class="thumbnail-artist-link" title="View ${safeVideo.artist_name || 'Unknown'} artist page">` : ''}
+                            ${safeVideo.artist_id ? `<a href="/artist/${safeVideo.artist_id}" class="thumbnail-artist-link" title="View ${escapeHtml(safeVideo.artist_name || 'Unknown')} artist page">` : ''}
                             <img src="/api/videos/${safeVideo.id}/thumbnail"
-                                 alt="${safeVideo.title}"
+                                 alt="${escapeHtml(safeVideo.title)}"
                                  data-fallback-src="/static/placeholder-video.png">
                             ${safeVideo.artist_id ? '</a>' : ''}
                             <div class="play-overlay">
@@ -4427,7 +4427,7 @@ function displayVideos(videos) {
                             </div>
                         </div>
                         <div class="video-info">
-                            <h3>${safeVideo.title}</h3>
+                            <h3>${escapeHtml(safeVideo.title)}</h3>
                             <p>Artist: ${safeVideo.artist_id ? `<a href="/artist/${safeVideo.artist_id}" class="artist-link">${safeVideo.artist_name}</a>` : safeVideo.artist_name}</p>
                             <p>Status: ${safeVideo.status}</p>
                             ${safeVideo.year ? `<p>Year: ${safeVideo.year}</p>` : ''}
@@ -4468,16 +4468,6 @@ function displayVideos(videos) {
 }
 
 // Helper function to escape HTML and prevent XSS
-function escapeHtml(text) {
-    if (typeof text !== 'string') {
-        return String(text || '');
-    }
-    
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 // Helper function to format duration in seconds to MM:SS format
 function formatDuration(seconds) {
     if (!seconds || seconds === 0 || isNaN(seconds)) return 'N/A';
@@ -4792,10 +4782,10 @@ function displaySearchPresets(presets) {
         <div class="preset-item ${preset.is_favorite ? 'preset-favorite' : ''}" data-preset-id="${preset.id}">
             <div class="preset-info">
                 <div class="preset-name">
-                    ${preset.is_favorite ? '⭐ ' : ''}${preset.name}
+                    ${preset.is_favorite ? '⭐ ' : ''}${escapeHtml(preset.name)}
                     ${preset.is_public ? '<span class="preset-badge">Public</span>' : ''}
                 </div>
-                <div class="preset-description">${preset.description || 'No description'}</div>
+                <div class="preset-description">${escapeHtml(preset.description || 'No description')}</div>
                 <div class="preset-meta">
                     Used ${preset.usage_count || 0} times
                     ${preset.last_used_at ? `• Last used: ${new Date(preset.last_used_at).toLocaleDateString()}` : ''}
@@ -5138,7 +5128,7 @@ function displaySearchSuggestions(suggestions) {
     }
     
     const suggestionsHtml = suggestions.map((suggestion, index) => `
-        <div class="suggestion-item" data-suggestion="${suggestion.text}" data-index="${index}" onclick="selectSearchSuggestion('${suggestion.text.replace(/'/g, "&#39;")}')">
+        <div class="suggestion-item" data-suggestion="${escapeHtml(suggestion.text)}" data-index="${index}" onclick="selectSearchSuggestion(${escapeJsArg(suggestion.text)})">
             <span class="suggestion-text">${suggestion.text}</span>
             <span class="suggestion-type">${suggestion.type}</span>
         </div>
@@ -5171,16 +5161,10 @@ document.addEventListener('click', function(event) {
 
 // Search Highlighting and Relevance Functions
 function highlightSearchTerms(text, searchQuery) {
-    if (!searchQuery || !text) return text;
-    
-    // Escape HTML entities in text
-    const escapeHtml = (str) => {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    };
-    
+    // Always returns HTML-safe text: escape first, then add <mark> tags (#622).
+    if (!text) return '';
     const escapedText = escapeHtml(text);
+    if (!searchQuery) return escapedText;
     
     // Split search query into terms and remove empty strings
     const terms = searchQuery.toLowerCase().split(/\s+/).filter(term => term.length > 0);
@@ -5328,7 +5312,7 @@ function showBulkAddToPlaylistModal() {
         const videoCard = checkbox.closest('.video-card');
         const title = videoCard.querySelector('.video-info h3')?.textContent || 'Unknown Title';
         const artist = videoCard.querySelector('.video-info p')?.textContent || 'Unknown Artist';
-        return `<div class="selected-video-item">${title} - ${artist}</div>`;
+        return `<div class="selected-video-item">${escapeHtml(title)} - ${artist}</div>`;
     }).join('');
     selectedVideosList.innerHTML = videoCards;
     
@@ -5361,7 +5345,7 @@ async function loadPlaylistsIntoSelect() {
             // Populate with existing playlists
             playlistSelect.innerHTML = '<option value="">Select a playlist...</option>' +
                 data.playlists.map(playlist => 
-                    `<option value="${playlist.id}">${playlist.name} (${playlist.video_count || 0} videos)</option>`
+                    `<option value="${playlist.id}">${escapeHtml(playlist.name)} (${playlist.video_count || 0} videos)</option>`
                 ).join('');
             createPlaylistGroup.style.display = 'block';
         } else {
@@ -5510,7 +5494,7 @@ function showDuplicateVideoDialog(duplicateData, originalContent, videoCard) {
                         <div class="video-info">
                             <h4>Current Video (${duplicateData.current_video.id})</h4>
                             <div class="info-grid">
-                                <span><strong>Title:</strong> ${duplicateData.current_video.title || 'Unknown'}</span>
+                                <span><strong>Title:</strong> ${escapeHtml(duplicateData.current_video.title || 'Unknown')}</span>
                                 <span><strong>Artist:</strong> ${duplicateData.current_video.artist || 'Unknown'}</span>
                                 <span><strong>Quality:</strong> ${duplicateData.current_video.quality || 'N/A'}</span>
                                 <span><strong>Duration:</strong> ${formatDuration(duplicateData.current_video.duration)}</span>
@@ -5533,7 +5517,7 @@ function showDuplicateVideoDialog(duplicateData, originalContent, videoCard) {
                         <div class="video-info">
                             <h4>Existing Video (${duplicateData.duplicate_video.id})</h4>
                             <div class="info-grid">
-                                <span><strong>Title:</strong> ${duplicateData.duplicate_video.title || 'Unknown'}</span>
+                                <span><strong>Title:</strong> ${escapeHtml(duplicateData.duplicate_video.title || 'Unknown')}</span>
                                 <span><strong>Artist:</strong> ${duplicateData.duplicate_video.artist || 'Unknown'}</span>
                                 <span><strong>Quality:</strong> ${duplicateData.duplicate_video.quality || 'N/A'}</span>
                                 <span><strong>Duration:</strong> ${formatDuration(duplicateData.duplicate_video.duration)}</span>
@@ -5544,7 +5528,7 @@ function showDuplicateVideoDialog(duplicateData, originalContent, videoCard) {
             </div>
             
             <div class="merge-actions">
-                <button onclick="performVideoMerge('${duplicateData.current_video.id}', '${duplicateData.duplicate_video.id}')" class="btn btn-primary" id="performVideoMergeBtn">Merge Videos</button>
+                <button onclick="performVideoMerge(${escapeJsArg(duplicateData.current_video.id)}, ${escapeJsArg(duplicateData.duplicate_video.id)})" class="btn btn-primary" id="performVideoMergeBtn">Merge Videos</button>
                 <button onclick="hideDuplicateVideoModal()" class="btn btn-secondary">Skip Merge</button>
             </div>
         </div>

@@ -1145,23 +1145,23 @@ function renderThemesGrid() {
     }
     
     grid.innerHTML = allThemes.map(theme => `
-        <div class="theme-card" data-theme-id="${theme.id || theme.name}">
+        <div class="theme-card" data-theme-id="${escapeHtml(theme.id || theme.name)}">
             <div class="theme-preview">
                 ${generateThemePreview(theme)}
             </div>
             <div class="theme-info">
-                <h4>${theme.display_name}</h4>
-                <p>${theme.description || 'No description available'}</p>
+                <h4>${escapeHtml(theme.display_name)}</h4>
+                <p>${escapeHtml(theme.description || 'No description available')}</p>
                 <div class="theme-meta">
                     ${theme.is_built_in ? '<span class="theme-badge">Built-in</span>' : ''}
                     ${theme.is_public ? '<span class="theme-badge">Public</span>' : ''}
                     ${theme.creator_username ? `<span>by ${theme.creator_username}</span>` : ''}
                 </div>
                 <div class="theme-card-actions" style="margin-top: 10px; display: flex; gap: 5px;">
-                    <button onclick="quickApplyTheme('${theme.id || theme.name}'); event.stopPropagation();" class="btn btn-sm btn-success">
+                    <button onclick="quickApplyTheme(${escapeJsArg(theme.id || theme.name)}); event.stopPropagation();" class="btn btn-sm btn-success">
                         <iconify-icon icon="tabler:check"></iconify-icon> Apply
                     </button>
-                    <button onclick="exportSingleTheme('${theme.id || theme.name}'); event.stopPropagation();" class="btn btn-sm btn-secondary">
+                    <button onclick="exportSingleTheme(${escapeJsArg(theme.id || theme.name)}); event.stopPropagation();" class="btn btn-sm btn-secondary">
                         <iconify-icon icon="tabler:download"></iconify-icon> Export
                     </button>
                 </div>
@@ -1300,8 +1300,8 @@ function loadThemeForCustomization(theme) {
     
     const metadata = document.getElementById('theme-metadata');
     metadata.innerHTML = `
-        <p><strong>Name:</strong> ${theme.name}</p>
-        <p><strong>Description:</strong> ${theme.description || 'No description'}</p>
+        <p><strong>Name:</strong> ${escapeHtml(theme.name)}</p>
+        <p><strong>Description:</strong> ${escapeHtml(theme.description || 'No description')}</p>
         <p><strong>Type:</strong> ${theme.is_built_in ? 'Built-in' : 'Custom'}</p>
         ${theme.creator_username ? `<p><strong>Creator:</strong> ${theme.creator_username}</p>` : ''}
     `;
@@ -1904,7 +1904,7 @@ function displayValidationResults(data) {
         html += '<div class="validation-item success">';
         html += '<h6><iconify-icon icon="tabler:check"></iconify-icon> Valid Themes</h6>';
         data.valid_themes.forEach(theme => {
-            html += `<p>• ${theme.display_name} (${theme.name})</p>`;
+            html += `<p>• ${escapeHtml(theme.display_name)} (${escapeHtml(theme.name)})</p>`;
         });
         html += '</div>';
     }

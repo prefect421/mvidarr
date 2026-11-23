@@ -307,15 +307,15 @@ function displayWantedAlbums(albums) {
             const albumCard = document.createElement('div');
             albumCard.className = 'artist-card';
             albumCard.innerHTML = `
-                <div class="artist-name">${album.artist}</div>
+                <div class="artist-name">${escapeHtml(album.artist)}</div>
                 <div class="artist-stats">
-                    <span><strong>Album:</strong> ${album.album}</span>
-                    <span class="monitoring-badge ${album.monitored ? 'monitored' : 'unmonitored'}">
+                    <span><strong>Album:</strong> ${escapeHtml(album.album)}</span>
+                    <span class="monitoring-badge ${escapeHtml(album.monitored ? 'monitored' : 'unmonitored')}">
                         ${album.monitored ? 'Monitored' : 'Unmonitored'}
                     </span>
                 </div>
                 <div class="artist-stats">
-                    <span><strong>Release Date:</strong> ${album.releaseDate || 'Unknown'}</span>
+                    <span><strong>Release Date:</strong> ${escapeHtml(album.releaseDate || 'Unknown')}</span>
                 </div>
             `;
             grid.appendChild(albumCard);
@@ -381,7 +381,7 @@ function displayArtists(artists) {
             artistCard.innerHTML = `
                 <div class="artist-name">
                     <a href="/artists/${artist.id}" style="color: #00d4ff; text-decoration: none;">
-                        ${artist.name}
+                        ${escapeHtml(artist.name)}
                     </a>
                 </div>
                 <div class="artist-stats">

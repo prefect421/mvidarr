@@ -235,8 +235,8 @@ function createPlaylistCard(playlist) {
     card.innerHTML = `
         <div class="playlist-header">
             <div class="playlist-info">
-                <h3>${playlist.name}</h3>
-                <p>by ${playlist.channel_title}</p>
+                <h3>${escapeHtml(playlist.name)}</h3>
+                <p>by ${escapeHtml(playlist.channel_title)}</p>
             </div>
             <div class="playlist-actions">
                 <button onclick="syncPlaylist(${playlist.id})" class="btn btn-sm btn-info" title="Sync Now">🔄</button>
@@ -298,7 +298,7 @@ function updateKeywordsTags() {
     keywords.forEach(keyword => {
         const tag = document.createElement('span');
         tag.className = 'keyword-tag';
-        tag.innerHTML = `${keyword} <span class="remove" onclick="removeKeyword('${keyword}')">&times;</span>`;
+        tag.innerHTML = `${escapeHtml(keyword)} <span class="remove" onclick="removeKeyword(${escapeJsArg(keyword)})">&times;</span>`;
         container.appendChild(tag);
     });
 }
@@ -344,8 +344,8 @@ function showPreviewModal(data) {
     
     content.innerHTML = `
         <div class="preview-header">
-            <h4>${data.playlist_info.title}</h4>
-            <p>by ${data.playlist_info.channel_title}</p>
+            <h4>${escapeHtml(data.playlist_info.title)}</h4>
+            <p>by ${escapeHtml(data.playlist_info.channel_title)}</p>
             <p>${data.playlist_info.item_count} total videos</p>
         </div>
         
@@ -353,10 +353,10 @@ function showPreviewModal(data) {
         <div class="preview-videos">
             ${data.videos.map(video => `
                 <div class="preview-video">
-                    <img src="${video.thumbnail_url}" alt="${video.title}">
+                    <img src="${video.thumbnail_url}" alt="${escapeHtml(video.title)}">
                     <div class="preview-video-info">
-                        <div class="preview-video-title">${video.title}</div>
-                        <div class="preview-video-channel">${video.channel_title}</div>
+                        <div class="preview-video-title">${escapeHtml(video.title)}</div>
+                        <div class="preview-video-channel">${escapeHtml(video.channel_title)}</div>
                     </div>
                 </div>
             `).join('')}

@@ -365,12 +365,12 @@ class SearchResultsPage {
         
         return `
             <div class="result-item" onclick="window.open('https://youtube.com/watch?v=${result.id.videoId}', '_blank')">
-                <h4>${title}</h4>
+                <h4>${escapeHtml(title)}</h4>
                 <p class="artist-name">${channelTitle}</p>
                 ${publishedAt ? `<p>Published: ${publishedAt}</p>` : ''}
                 <span class="result-source">YouTube</span>
                 <div class="result-actions">
-                    <button class="btn btn-primary" onclick="event.stopPropagation(); addToLibrary('${result.id.videoId}', 'youtube')">Add to Library</button>
+                    <button class="btn btn-primary" onclick="event.stopPropagation(); addToLibrary(${escapeJsArg(result.id.videoId)}, 'youtube')">Add to Library</button>
                     <button class="btn btn-secondary" onclick="event.stopPropagation(); window.open('https://youtube.com/watch?v=${result.id.videoId}', '_blank')">Watch on YouTube</button>
                 </div>
             </div>

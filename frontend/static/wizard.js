@@ -418,7 +418,7 @@ async function handleCookieFileUpload(fileInput) {
             validationDiv.innerHTML = `
                 <div class="validation-badge success" style="margin-top: 0.5rem;">
                     <iconify-icon icon="mdi:check-circle"></iconify-icon>
-                    Cookies file loaded (${file.name})
+                    Cookies file loaded (${escapeHtml(file.name)})
                 </div>
             `;
 
@@ -788,7 +788,7 @@ async function loadDirectory(path) {
         // Add parent directory link if not at root
         if (data.parent_path) {
             html += `
-                <div class="directory-item" onclick="loadDirectory('${escapeHtml(data.parent_path)}')">
+                <div class="directory-item" onclick="loadDirectory(${escapeJsArg(data.parent_path)})">
                     <iconify-icon icon="mdi:arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></iconify-icon>
                     <div class="directory-info">
                         <div class="directory-name">..</div>
@@ -805,7 +805,7 @@ async function loadDirectory(path) {
             data.entries.forEach(entry => {
                 const videoCountText = entry.video_count !== null ? `${entry.video_count} videos` : '';
                 html += `
-                    <div class="directory-item" onclick="loadDirectory('${escapeHtml(entry.path)}')">
+                    <div class="directory-item" onclick="loadDirectory(${escapeJsArg(entry.path)})">
                         <iconify-icon icon="mdi:folder" style="font-size: 1.5rem; color: var(--warning-color);"></iconify-icon>
                         <div class="directory-info">
                             <div class="directory-name">${escapeHtml(entry.name)}</div>
@@ -829,12 +829,6 @@ async function loadDirectory(path) {
             </div>
         `;
     }
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 console.log('🧙 Wizard controller loaded successfully');

@@ -57,6 +57,7 @@
     </style>
     
     <!-- Set theme attribute on HTML element immediately -->
+    <script src="{{ url_for('frontend.static_files', filename='js/html-escape.js') }}"></script>
     <script>
         // Set theme immediately to prevent FOUC
         document.documentElement.setAttribute('data-theme', '{{ current_theme.name if current_theme else "default" }}');

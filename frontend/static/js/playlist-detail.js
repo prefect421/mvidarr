@@ -950,10 +950,8 @@ class PlaylistDetailManager {
     }
 
     escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        // Delegates to js/html-escape.js (quote-safe); see #622.
+        return window.escapeHtml(text);
     }
 
     formatDuration(seconds) {
@@ -1057,9 +1055,8 @@ class PlaylistDetailManager {
         }
     }
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        // Delegates to js/html-escape.js (quote-safe); see #622.
+        return window.escapeHtml(text);
     }
 }
 
@@ -1526,9 +1523,9 @@ async function previewFilters() {
                 const quality = video.quality || 'Unknown';
                 return `
                     <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-secondary);">
-                        <div style="font-weight: 600;">${video.title}</div>
+                        <div style="font-weight: 600;">${escapeHtml(video.title)}</div>
                         <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                            ${video.artist_name} • ${duration} • ${quality}
+                            ${escapeHtml(video.artist_name)} • ${duration} • ${quality}
                         </div>
                     </div>
                 `;

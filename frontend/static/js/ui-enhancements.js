@@ -896,9 +896,8 @@ class UIEnhancements {
     }
     
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        // Delegates to js/html-escape.js (quote-safe); see #622.
+        return window.escapeHtml(text);
     }
     
     // ========================================

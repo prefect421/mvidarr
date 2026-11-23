@@ -62,8 +62,8 @@ class ToastManager {
         toast.innerHTML = `
             <div class="toast-icon">${iconElement}</div>
             <div class="toast-content">
-                ${title ? `<div class="toast-title">${title}</div>` : ''}
-                <div class="toast-message">${message}</div>
+                ${title ? `<div class="toast-title">${sanitizeMessageHtml(title)}</div>` : ''}
+                <div class="toast-message">${sanitizeMessageHtml(message)}</div>
             </div>
             ${closeButton}
         `;
@@ -236,10 +236,10 @@ function toastConfirm(message, onConfirm, onCancel = null, options = {}) {
 
     dialog.innerHTML = `
         <div class="confirm-header" style="margin-bottom: 1.5rem;">
-            <h3 style="color: #fff; margin: 0; font-size: 1.2rem;">${title}</h3>
+            <h3 style="color: #fff; margin: 0; font-size: 1.2rem;">${sanitizeMessageHtml(title)}</h3>
         </div>
         <div class="confirm-message" style="margin-bottom: 2rem; color: #ccc; line-height: 1.5;">
-            ${message}
+            ${sanitizeMessageHtml(message)}
         </div>
         <div class="confirm-actions" style="display: flex; gap: 12px; justify-content: flex-end; align-items: center; margin-top: 1rem;">
             <button class="confirm-cancel" style="
@@ -252,7 +252,7 @@ function toastConfirm(message, onConfirm, onCancel = null, options = {}) {
                 transition: all 0.3s ease;
                 font-size: 14px;
                 min-width: 80px;
-            ">${cancelText}</button>
+            ">${sanitizeMessageHtml(cancelText)}</button>
             <button class="confirm-ok" style="
                 padding: 0.75rem 1.5rem;
                 border: none;
@@ -264,7 +264,7 @@ function toastConfirm(message, onConfirm, onCancel = null, options = {}) {
                 transition: all 0.3s ease;
                 font-size: 14px;
                 min-width: 80px;
-            ">${confirmText}</button>
+            ">${sanitizeMessageHtml(confirmText)}</button>
         </div>
     `;
 

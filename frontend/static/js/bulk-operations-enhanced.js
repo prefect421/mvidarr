@@ -74,7 +74,7 @@ class BulkOperationsEnhanced {
             if (originalOnclick && !originalOnclick.includes('Enhanced')) {
                 // Add preview functionality
                 button.insertAdjacentHTML('afterend', `
-                    <button class="btn-preview" onclick="bulkEnhanced.previewOperation('${originalOnclick}')" title="Preview this operation">
+                    <button class="btn-preview" onclick="bulkEnhanced.previewOperation(${escapeJsArg(originalOnclick)})" title="Preview this operation">
                         👁️ Preview
                     </button>
                 `);

@@ -639,11 +639,11 @@ class BackgroundJobManager {
                 </div>
                 <div class="job-actions">
                     ${status === 'processing' || status === 'queued' ? 
-                        `<button class="btn-cancel" onclick="backgroundJobs.cancelJob('${jobId}')" title="Cancel Job">
+                        `<button class="btn-cancel" onclick="backgroundJobs.cancelJob(${escapeJsArg(jobId)})" title="Cancel Job">
                             <iconify-icon icon="tabler:x"></iconify-icon>
                          </button>` : ''
                     }
-                    <button class="btn-close" onclick="backgroundJobs.hideJobProgress('${jobId}')" title="Hide">
+                    <button class="btn-close" onclick="backgroundJobs.hideJobProgress(${escapeJsArg(jobId)})" title="Hide">
                         <iconify-icon icon="tabler:x"></iconify-icon>
                     </button>
                 </div>

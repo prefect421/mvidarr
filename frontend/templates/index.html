@@ -240,7 +240,7 @@ function loadDownloadQueue() {
                         <div class="download-info">
                             <div class="download-header">
                                 <div class="download-title">
-                                    <strong>${download.title}</strong><br>
+                                    <strong>${escapeHtml(download.title)}</strong><br>
                                     <small>by ${download.artist} • ${getStatusDisplay(download.status, download.progress)}</small>
                                 </div>
                                 <div class="download-actions">
@@ -279,7 +279,7 @@ function loadDownloadHistory() {
                         <div class="download-info">
                             <div class="download-header">
                                 <div class="download-title">
-                                    <strong><a href="/video/${download.video_id || 'unknown'}" class="video-title-link">${download.title}</a></strong><br>
+                                    <strong><a href="/video/${download.video_id || 'unknown'}" class="video-title-link">${escapeHtml(download.title)}</a></strong><br>
                                     <small>by ${download.artist} • ${download.status} • ${formatDownloadDate(download)}</small>
                                     ${download.file_size ? `<div class="file-info">File size: ${formatFileSize(download.file_size)}</div>` : ''}
                                 </div>

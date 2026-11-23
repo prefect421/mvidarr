@@ -116,7 +116,7 @@ class VideoManagementUI {
         actions.forEach(action => {
             const button = document.createElement('button');
             button.className = `btn btn-sm ${action.type}`;
-            button.innerHTML = `<iconify-icon icon="${action.icon}"></iconify-icon> ${action.label}`;
+            button.innerHTML = `<iconify-icon icon="${action.icon}"></iconify-icon> ${escapeHtml(action.label)}`;
             button.setAttribute('aria-label', action.ariaLabel || action.label);
             button.onclick = () => this.executeQuickAction(action.handler, videoId, card);
             quickActions.appendChild(button);
@@ -1102,7 +1102,7 @@ class VideoManagementUI {
                     videoItem.className = 'selected-video-item';
                     videoItem.innerHTML = `
                         <iconify-icon icon="tabler:music"></iconify-icon>
-                        <span><strong>${title}</strong> ${artist ? `by ${artist}` : ''}</span>
+                        <span><strong>${escapeHtml(title)}</strong> ${artist ? `by ${artist}` : ''}</span>
                     `;
                     listElement.appendChild(videoItem);
                 }

@@ -140,3 +140,36 @@ class TestSimpleAuthCredentialSync:
 
         assert success is False
         assert "OLD password" in message
+
+
+class TestSamePolicyAsLogin:
+    """#623: the recovery script must accept anything login/wizard accept (8+
+    characters), not demand upper/lower/digit/special on top."""
+
+    def test_accepts_a_long_all_lowercase_passphrase(self, session_factory):
+        _seed_user(session_factory, "someone")
+        session = session_factory()
+        phrase = "correct horse battery staple"
+
+        success, message = reset_user_password(session, "someone", phrase)
+
+        assert success is True, message
+        user = session.query(User).filter(User.username == "someone").first()
+        assert user.check_password(phrase)
+
+    def test_rejects_under_eight_characters_like_login(self, session_factory):
+        _seed_user(session_factory, "someone")
+        session = session_factory()
+
+        success, message = reset_user_password(session, "someone", "short1")
+
+        assert success is False
+        assert "8 characters" in message
+
+    def test_rejects_over_bcrypt_limit_instead_of_truncating(self, session_factory):
+        _seed_user(session_factory, "someone")
+        session = session_factory()
+
+        success, message = reset_user_password(session, "someone", "a" * 73)
+
+        assert success is False

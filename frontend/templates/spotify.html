@@ -82,7 +82,7 @@ async function checkStatus() {
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle"></i>
                     <strong>Connected!</strong> Spotify integration is active.
-                    ${data.profile ? `<br><small>Logged in as: ${data.profile.display_name}</small>` : ''}
+                    ${data.profile ? `<br><small>Logged in as: ${escapeHtml(data.profile.display_name)}</small>` : ''}
                 </div>
             `;
             
@@ -94,7 +94,7 @@ async function checkStatus() {
                             '<div class="rounded-circle bg-secondary me-3" style="width: 64px; height: 64px;"></div>'
                         }
                         <div>
-                            <h6 class="mb-1">${data.profile.display_name || 'Unknown User'}</h6>
+                            <h6 class="mb-1">${escapeHtml(data.profile.display_name || 'Unknown User')}</h6>
                             <p class="text-muted mb-1">Followers: ${data.profile.followers ? data.profile.followers.total : 0}</p>
                             <p class="text-muted mb-0">Country: ${data.profile.country || 'Unknown'}</p>
                         </div>

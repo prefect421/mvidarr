@@ -991,13 +991,13 @@ function displaySpotifySearchResults(artists) {
             <h4>Select Spotify Artist:</h4>
             <div class="artist-results" id="spotifyArtistResults">
                 ${artists.map((artist, index) => `
-                    <div class="spotify-artist-result" data-spotify-id="${artist.id}" data-spotify-name="${artist.name}" data-index="${index}" style="cursor: pointer; padding: 0.75rem; border: 1px solid var(--border-primary); margin: 0.5rem 0; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s;">
+                    <div class="spotify-artist-result" data-spotify-id="${artist.id}" data-spotify-name="${escapeHtml(artist.name)}" data-index="${index}" style="cursor: pointer; padding: 0.75rem; border: 1px solid var(--border-primary); margin: 0.5rem 0; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s;">
                         ${artist.images && artist.images[0] ? 
-                            `<img src="${artist.images[0].url}" alt="${artist.name}" style="width: 50px; height: 50px; border-radius: 4px;">` : 
+                            `<img src="${artist.images[0].url}" alt="${escapeHtml(artist.name)}" style="width: 50px; height: 50px; border-radius: 4px;">` : 
                             '<div style="width: 50px; height: 50px; background: var(--bg-muted); border-radius: 4px; display: flex; align-items: center; justify-content: center;"><iconify-icon icon="tabler:music"></iconify-icon></div>'
                         }
                         <div>
-                            <div style="font-weight: 600; color: var(--text-primary);">${artist.name}</div>
+                            <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(artist.name)}</div>
                             <div style="font-size: 0.85rem; color: var(--text-secondary);">
                                 ${artist.genres && artist.genres.length > 0 ? artist.genres.slice(0, 3).join(', ') : 'No genres listed'}
                             </div>
@@ -1494,15 +1494,15 @@ function showMetadataSearchResults(service, results) {
                 ${results.map((result, index) => `
                     <div class="${service}-result" 
                          data-service-id="${result.id || result.mbid || result.name}" 
-                         data-service-name="${result.name}" 
+                         data-service-name="${escapeHtml(result.name)}" 
                          data-index="${index}" 
                          style="cursor: pointer; padding: 0.75rem; border: 1px solid var(--border-primary); margin: 0.5rem 0; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s;">
                         <div style="width: 50px; height: 50px; background: var(--bg-muted, #555); border-radius: 4px; display: flex; align-items: center; justify-content: center;">
                             <iconify-icon icon="tabler:music" style="color: var(--text-muted, #888);"></iconify-icon>
                         </div>
                         <div style="flex: 1;">
-                            <div style="font-weight: 600; color: var(--text-primary);">${result.name}</div>
-                            ${result.description ? `<div style="font-size: 0.85rem; color: var(--text-secondary);">${result.description}</div>` : ''}
+                            <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(result.name)}</div>
+                            ${result.description ? `<div style="font-size: 0.85rem; color: var(--text-secondary);">${escapeHtml(result.description)}</div>` : ''}
                             ${result.disambiguation ? `<div style="font-size: 0.85rem; color: var(--text-secondary);">${result.disambiguation}</div>` : ''}
                             ${result.country || result.area ? `<div style="font-size: 0.85rem; color: var(--text-secondary);">${result.country || result.area}</div>` : ''}
                             <div style="font-size: 0.8rem; color: var(--text-muted);">
@@ -1517,7 +1517,7 @@ function showMetadataSearchResults(service, results) {
                 `).join('')}
             </div>
             <div style="margin-top: 1rem; text-align: center;">
-                <button onclick="closeMetadataSearchResults('${overlayId}')" class="btn btn-secondary">Cancel</button>
+                <button onclick="closeMetadataSearchResults(${escapeJsArg(overlayId)})" class="btn btn-secondary">Cancel</button>
             </div>
         </div>
     `;
