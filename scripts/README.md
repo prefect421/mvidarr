@@ -310,19 +310,6 @@ python3 scripts/troubleshoot_database.py
 
 ### User Management
 
-#### `create_admin_user.py`
-
-**Purpose**: Create a new admin user account
-
-**Usage**:
-```bash
-python3 scripts/create_admin_user.py
-```
-
-**Interactive**: Prompts for username, password, and email
-
----
-
 #### `reset_admin_credentials.py`
 
 **Purpose**: Reset admin password if locked out

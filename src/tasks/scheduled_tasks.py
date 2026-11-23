@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 
 from celery import Task
 from celery.utils.log import get_task_logger
+from sqlalchemy import text
 
 from src.database.connection import get_db
 from src.database.models import Artist, Download, ScheduledJob, Video, VideoStatus
@@ -457,7 +458,7 @@ def scheduler_health_check_task(**kwargs) -> Dict[str, Any]:
         try:
             with get_db() as db:
                 # Simple query to verify DB connection
-                db.execute("SELECT 1")
+                db.execute(text("SELECT 1"))
                 health_status["database_connected"] = True
 
                 # Calculate recent job success rate

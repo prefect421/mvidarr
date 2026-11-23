@@ -549,8 +549,11 @@ async def enrich_video_metadata(
 
                 if video.artist.lastfm_name:
                     # Get detailed track info from Last.fm
+                    # Search with the cleaned title: the raw YouTube title
+                    # ("Artist - Song (Official Music Video)") won't match.
                     track_info = lastfm_service.get_track_info(
-                        video.artist.lastfm_name, video_title
+                        video.artist.lastfm_name,
+                        clean_title_for_metadata_search(video_title, artist_name),
                     )
 
                     if track_info:

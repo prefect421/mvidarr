@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 import requests
 
 from src.services.settings_service import settings
+from src.services.title_unescape_service import unescape_text
 from src.utils.logger import get_logger
 from src.utils.youtube_cache import get_youtube_cache
 from src.utils.youtube_quota_tracker import get_quota_tracker, track_youtube_api_call
@@ -259,9 +260,11 @@ class YouTubeSearchService:
 
                 video_info = {
                     "youtube_id": video_id,
-                    "title": snippet.get("title"),
-                    "description": snippet.get("description"),
-                    "channel_title": snippet.get("channelTitle"),
+                    # search.list returns HTML-escaped text (&amp; &#39;); store
+                    # plain text so titles and download file names are clean (#612)
+                    "title": unescape_text(snippet.get("title")),
+                    "description": unescape_text(snippet.get("description")),
+                    "channel_title": unescape_text(snippet.get("channelTitle")),
                     "channel_id": snippet.get("channelId"),
                     "published_at": snippet.get("publishedAt"),
                     "thumbnail_url": snippet.get("thumbnails", {})
@@ -522,9 +525,11 @@ class YouTubeSearchService:
 
                 video_info = {
                     "youtube_id": video_id,
-                    "title": snippet.get("title"),
-                    "description": snippet.get("description"),
-                    "channel_title": snippet.get("channelTitle"),
+                    # search.list returns HTML-escaped text (&amp; &#39;); store
+                    # plain text so titles and download file names are clean (#612)
+                    "title": unescape_text(snippet.get("title")),
+                    "description": unescape_text(snippet.get("description")),
+                    "channel_title": unescape_text(snippet.get("channelTitle")),
                     "channel_id": snippet.get("channelId"),
                     "published_at": snippet.get("publishedAt"),
                     "thumbnail_url": snippet.get("thumbnails", {})

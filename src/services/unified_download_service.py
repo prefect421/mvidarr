@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Callable, Dict, List, Optional
 
+from src.services.settings_service import settings
 from src.services.webhook_service import (
     trigger_video_download_failed,
     trigger_video_downloaded,
@@ -324,6 +325,63 @@ class DownloadStrategy(ABC):
         pass
 
 
+def parse_height(value) -> Optional[int]:
+    """Parse a quality label like "1080p" into a pixel height (None if not one)."""
+    m = re.fullmatch(r"\s*(\d{3,4})p\s*", str(value or ""), re.IGNORECASE)
+    return int(m.group(1)) if m else None
+
+
+def build_quality_format(
+    quality: str,
+    max_height: Optional[int] = None,
+    max_filesize_gb: Optional[float] = None,
+) -> str:
+    """Build the yt-dlp ``-f`` string for a quality preset, honouring limits (#604).
+
+    ``max_height`` is a hard cap: when set there is no unconstrained last-resort
+    alternative that could silently defeat it. ``max_filesize_gb`` is best
+    effort: if nothing fits, the height-only alternative is used so the
+    download still succeeds. Custom yt-dlp selectors (used by quality upgrades,
+    which already apply the user's preferences) pass through untouched.
+    """
+    quality = quality or "best"
+    if any(
+        selector in quality
+        for selector in ["bestvideo", "bestaudio", "bv", "ba", "bv*", "ba*", "+"]
+    ):
+        return quality
+
+    wanted = parse_height(quality)
+    if quality == "best":
+        height = max_height or 2160
+    elif wanted:
+        height = min(wanted, max_height) if max_height else wanted
+    else:
+        if max_height:
+            return f"bv*[height<={max_height}]+ba/best[height<={max_height}]"
+        return "bv*+ba/best"
+
+    size = ""
+    if max_filesize_gb and max_filesize_gb > 0:
+        limit = int(max_filesize_gb * 1024**3)
+        size = f"[filesize<?{limit}][filesize_approx<?{limit}]"
+
+    if quality == "best" and not max_height and not size:
+        # Unchanged default: max available up to 4K, with unconstrained fallbacks
+        return (
+            f"bestvideo[height<={height}]+bestaudio/bv*[height<={height}]+ba"
+            f"/best[height<={height}]/bestvideo+bestaudio/best"
+        )
+
+    hf = f"[height<={height}]"
+    height_only = f"bv*{hf}+ba/best{hf}"
+    if size:
+        return f"bv*{hf}{size}+ba/best{hf}{size}/{height_only}"
+    if max_height:
+        return height_only
+    return f"bv*{hf}+ba/best{hf}/bv+ba/best"
+
+
 # yt-dlp writes per-format intermediates (<title>.f251.webm, <title>.f137.mp4)
 # and deletes them after merging; they are never the final media file (#605).
 _FRAGMENT_RE = re.compile(r"\.f\d+[\w-]*\.\w+$", re.IGNORECASE)
@@ -587,23 +645,16 @@ class YouTubeDownloadStrategy(DownloadStrategy):
             return None
 
     def _get_quality_format(self, quality: str) -> str:
-        """Get optimized format string for YouTube downloads"""
-        # If quality contains yt-dlp format selectors, use it directly (for custom format strings)
-        if any(
-            selector in quality
-            for selector in ["bestvideo", "bestaudio", "bv", "ba", "bv*", "ba*", "+"]
-        ):
-            return quality
-
-        # Simple quality presets
-        if quality == "best":
-            # Max available up to 4K (separate A/V preferred; progressive fallback)
-            return "bestvideo[height<=2160]+bestaudio/bv*[height<=2160]+ba/best[height<=2160]/bestvideo+bestaudio/best"
-        elif quality.endswith("p"):
-            height = quality.replace("p", "")
-            return f"bv*[height<={height}]+ba/best[height<={height}]/bv+ba/best"
-        else:
-            return "bv*+ba/best"
+        """Get the yt-dlp format string, applying the user's quality limits (#604)"""
+        max_height = None
+        max_gb = None
+        try:
+            max_height = parse_height(settings.get("max_video_quality"))
+            raw_gb = settings.get("max_video_file_size_gb")
+            max_gb = float(raw_gb) if raw_gb not in (None, "") else None
+        except Exception as e:  # never fail a download over a settings read
+            logger.warning(f"Could not read quality limits, downloading uncapped: {e}")
+        return build_quality_format(quality, max_height, max_gb)
 
     def _find_downloaded_file(
         self, template: str, output_lines: List[str]

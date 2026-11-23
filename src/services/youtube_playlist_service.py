@@ -38,7 +38,9 @@ class YouTubePlaylistService:
     @property
     def api_key(self):
         """Get YouTube API key from database settings (cached)"""
-        if self._api_key is None:
+        # `not self._api_key`, not `is None`: an empty value (no key saved yet)
+        # must not be cached, or a key saved later is invisible until restart.
+        if not self._api_key:
             try:
                 self._api_key = settings.get("youtube_api_key")
             except Exception as e:
