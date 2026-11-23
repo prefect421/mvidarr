@@ -5,6 +5,7 @@ Replaces the fragmented download system with a single, robust solution
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -323,6 +324,15 @@ class DownloadStrategy(ABC):
         pass
 
 
+# yt-dlp writes per-format intermediates (<title>.f251.webm, <title>.f137.mp4)
+# and deletes them after merging; they are never the final media file (#605).
+_FRAGMENT_RE = re.compile(r"\.f\d+[\w-]*\.\w+$", re.IGNORECASE)
+
+
+def _is_fragment(path: str) -> bool:
+    return bool(_FRAGMENT_RE.search(path or ""))
+
+
 class YouTubeDownloadStrategy(DownloadStrategy):
     """Specialized YouTube download strategy with advanced anti-detection"""
 
@@ -609,7 +619,7 @@ class YouTubeDownloadStrategy(DownloadStrategy):
                     .strip('"')
                     .strip("'")
                 )
-                if cand.lower().endswith(media_exts):
+                if cand.lower().endswith(media_exts) and not _is_fragment(cand):
                     return cand
         # Prefer last media Destination (skip .info.json / part files)
         media_dests = []
@@ -617,7 +627,11 @@ class YouTubeDownloadStrategy(DownloadStrategy):
             if "Destination:" in line:
                 cand = line.split("Destination:", 1)[1].strip()
                 low = cand.lower()
-                if low.endswith(media_exts) and not low.endswith(".part"):
+                if (
+                    low.endswith(media_exts)
+                    and not low.endswith(".part")
+                    and not _is_fragment(cand)
+                ):
                     media_dests.append(cand)
         if media_dests:
             return media_dests[-1]
@@ -628,11 +642,22 @@ class YouTubeDownloadStrategy(DownloadStrategy):
         if os.path.exists(base_path):
             matches = []
             for file in os.listdir(base_path):
-                if file.startswith(stem) and file.lower().endswith(media_exts):
+                if (
+                    file.startswith(stem)
+                    and file.lower().endswith(media_exts)
+                    and not _is_fragment(file)
+                ):
                     matches.append(os.path.join(base_path, file))
             if matches:
-                matches.sort(key=lambda p: os.path.getmtime(p), reverse=True)
-                return matches[0]
+                # Prefer the exact "<stem>.<ext>" name over any other match
+                exact = [
+                    m
+                    for m in matches
+                    if os.path.splitext(os.path.basename(m))[0] == stem
+                ]
+                pool = exact or matches
+                pool.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+                return pool[0]
 
         return None
 
@@ -1013,7 +1038,26 @@ class UnifiedDownloadService:
                 video = session.query(Video).filter(Video.id == video_id).first()
                 if video:
                     video.status = VideoStatus.DOWNLOADED.value
-                    video.local_path = result.file_path
+                    # Never replace a good path with a worse one (#605): keep
+                    # the existing file if it is real and the new result is a
+                    # yt-dlp fragment or missing from disk.
+                    new_path = result.file_path
+                    old_path = video.local_path
+                    new_is_bad = _is_fragment(new_path) or not (
+                        new_path and os.path.exists(new_path)
+                    )
+                    old_is_good = (
+                        old_path
+                        and not _is_fragment(old_path)
+                        and os.path.exists(old_path)
+                    )
+                    if new_is_bad and old_is_good:
+                        logger.warning(
+                            f"Keeping local_path {old_path!r} for video {video_id}; "
+                            f"ignoring worse result {new_path!r}"
+                        )
+                    else:
+                        video.local_path = new_path
                     if result.file_size:
                         video.file_size = result.file_size
                     if result.metadata:

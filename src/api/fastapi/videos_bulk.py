@@ -416,10 +416,7 @@ async def bulk_organize_videos(
 
                     # Update database if requested
                     if request.update_database_paths:
-                        if hasattr(video, "file_path"):
-                            video.file_path = str(target_file)
-                        else:
-                            video.local_path = str(target_file)
+                        video.local_path = str(target_file)
                         video.updated_at = datetime.utcnow()
 
                     moves.append(
