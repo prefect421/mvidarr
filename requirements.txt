@@ -1,7 +1,7 @@
 # MVidarr Enhanced - Production Dependencies
 
 # Core Framework - FastAPI primary, Flask for backwards compatibility
-fastapi==0.162.0
+fastapi==0.163.1
 starlette>=1.10.0  # Security: PYSEC-2026-161 Host header injection fix, GHSA-7f5h-v6xp-fcq8, GHSA-f96h-pmfr-66vw
 typing-inspection>=0.4.4
 uvicorn[standard]==0.54.0
@@ -14,7 +14,7 @@ Flask-Session==0.8.0
 
 # Database
 SQLAlchemy==2.0.52
-PyMySQL==1.2.0
+PyMySQL==1.2.4
 alembic==1.20.1
 mysqlclient>=2.3.0
 
@@ -33,7 +33,7 @@ opencv-python-headless>=5.0.0.93
 python-ffmpeg==2.0.12
 
 # Data Processing
-python-dateutil==3.0.0
+python-dateutil==4.0.0
 python-dotenv==1.2.4  # Security: CVE-2026-28684 symlink following arbitrary file overwrite fix
 pydantic==2.14.2
 pydantic-settings==2.15.0  # Security: GHSA-4xgf-cpjx-pc3j NestedSecretsSettingsSource symlink traversal fix
@@ -55,7 +55,7 @@ bcrypt==5.0.0
 cryptography>=50.0.2
 PyJWT==2.15.1  # Security: CVE-2026-101918 nested-payload DoS, CVE-2026-102275 OKP key mismatch bypass; earlier CVE-2026-32597, PYSEC-2026-175..179
 passlib==1.7.4
-pyotp==2.10.0
+pyotp==2.12.0
 qrcode==7.4.2
 defusedxml==0.7.1
 
