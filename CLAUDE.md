@@ -214,10 +214,10 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 
 ## Development Workflow
 
-### Current Phase: v1.1.8 - Released
+### Current Phase: v1.1.9 - Released
 
 #### Versioning Policy (Updated 2026-09-27)
-- **Current Version**: 1.1.8 (Released 2026-11-23; on `main` as `19807557`, tagged v1.1.8, local Docker :5001 rebuilt and verified; prod to be upgraded manually by the maintainer; v1.1.6 remains a bad image, skip it)
+- **Current Version**: 1.1.9 (Released 2026-11-24; tagged v1.1.9, local Docker :5001 rebuilt and verified; prod to be upgraded manually by the maintainer; v1.1.6 remains a bad image, skip it)
 - **Next Version**: TBD (Planning)
 - **Versioning Standard**: SemVer 2.0.0
 - **Version Scheme**:
@@ -228,6 +228,14 @@ curl -X POST http://localhost:5001/api/videos/123/extract-ffmpeg-metadata
 - **Unreleased (on `dev`, 2026-11-16)**: weekly Dependabot sweep — apprise 2.2.0 (GHSA-cfp4-m43r-v9q4, medium), alembic 1.20.1, python-multipart 0.0.33, yarl >=1.25.1, setup-ruby 1.338.0 (supersedes #592/#593/#594/#596/#597). No version bump; see CHANGELOG `[Unreleased]`
   - ⚠️ Left open for the maintainer: #591 (python 3.15-slim base image) and #595 (python-dateutil 4.0.0), both major bumps
   - ⚠️ Local `~/.local/bin/black` (26.3.1) and `isort` (9.0.1) are stale against the pins (`black==26.10.1`, `isort==9.0.2`; `ci-cd.yml` still installs `isort==9.0.0`). The sweep checked formatting with the pinned versions from a venv
+- **v1.1.9** (2026-11-24): Bug fixes + frontend XSS hardening — issues #628-#636, #640, #622, #623 (see CHANGELOG)
+  - ✅ Security: one quote-safe `html-escape.js` (`escapeHtml`, `escapeJsArg`) replaces every weak local `escapeHtml`; ~200 sinks converted; ratchet test `test_frontend_no_unescaped_sinks`. Standalone templates (wizard.html is read raw, no Jinja) must load `/static/js/html-escape.js` literally
+  - ✅ Scheduler: beat fires `scheduler-tick` every 5 min; `schedule_gate.py` runs jobs from the SAVED schedule (times UTC), last run claimed by DB compare-and-set. Root cause: `SettingsService` cache was per process and never refreshed (now 30s TTL); anything that must be authoritative across processes is read from the DB
+  - ✅ Data: enrichment only fills empty `youtube_id` (#634); BIGINT view/like counts, migration 026 (#630); savepoint per playlist video
+  - ✅ Thumbnail route releases its DB connection before slow work (pool exhaustion froze the UI after v1.1.8's per-request sessions)
+  - ⚠️ A PR that conflicts with `dev` never starts CI; check `mergeStateStatus`. Tests conftest `_REAL_DB_MODULES` list conflicts: keep both sides
+  - ⚠️ Repair scripts (`fix_youtube_ids`, `fix_misfiled_videos`, `remux_mkv_to_mp4`) are dry-run by default and were NOT applied on :5001
+  - ⚠️ Known follow-ups: custom artist `folder_path` ignored by downloads; import with no artist hits NOT NULL; `collection_maintenance_service` queries nonexistent `Video.file_size`; other routes may hold DB connections across slow work
 - **v1.1.8** (2026-11-23): Bug-fix release — 13 issues (#604-#610, #612-#617) + PyMySQL security fix (PRs #618-#621, #611, #624-#626; release PR #627, merge `19807557` on `main`)
   - ✅ Fixed: per-request DB sessions (#615, `scoped_session` shared one `Session` between concurrent requests), downloads run once (#605, atomic `Download`-row claim in `add_music_video_download`), batch enrichment (#609, `base=CallbackTask`; hand-written `state="FAILURE"` removed), moved-file streaming 500 (#608, `Video` has `local_path` not `file_path`), new-artist commit-before-queue (#607), discovery interval / YouTube quota burn (#616), quality limits reach yt-dlp (#604), Last.fm `get_track_info` (#617), import thumbnails (#613), thumbnail `Cache-Control` (#614), escaped YouTube titles (#612), health check `text()` and YouTube test endpoint (#610), yt-dlp cache dir (#606/#611, external contributor)
   - ✅ Security: PyMySQL 1.2.4 (upstream "security fix", GHSA-m75w-33c4-7v8q, **not in the public advisory DB so pip-audit stayed clean** — keep reading Dependabot PR bodies). Two automated-review findings on my own PRs were real and fixed: (1) decoding all entities would have exposed titles to the ~59 unescaped frontend sinks (#622), so `unescape_text()` keeps `&lt; &gt; &quot;` encoded and neutralises raw `< > "`; (2) a client-supplied `thumbnail_url` was an SSRF risk, so it is ignored and rebuilt from a validated 11-char ID
@@ -576,7 +584,7 @@ youtube_download_engine.download_video(quality=format_string)
 - **Primary Development**: All changes must be pushed to the `dev` branch
 - **Main Branch**: Changes can only be made to `main` after approval on `dev`
 - **Feature Branches**: Create feature branches from `dev`, merge back to `dev`
-- **Current Version**: v1.1.8 (Bug fixes + PyMySQL security fix; includes v1.1.7 hotfix)
+- **Current Version**: v1.1.9 (Bug fixes + frontend XSS hardening + scheduler tick)
 - **Development Focus**: Stability, security
 - **Next Version**: TBD
 
@@ -676,7 +684,7 @@ All issues should be planned with the following attributes (fields on the [MVida
 Note: there is no separate "Release Slot" field — the board never got one built; `Milestone` is what actually designates the release window.
 
 ### Release Management
-- **Current Release**: Version 1.1.8 (2026-11-23) — see Version History above for details
+- **Current Release**: Version 1.1.9 (2026-11-24) — see Version History above for details
 - **Next Release**: TBD (Planning)
 - **Versioning**: Milestones correlate directly to version numbers
 - **Release Process**: Dev branch → Testing → Main branch → GitHub Release
