@@ -341,7 +341,6 @@
         <div class="card">
             <div class="card-header">
                 <h2>All Users ({{ users|length }})</h2>
-                <a href="/admin/users/create" class="btn btn-success">➕ Create New User</a>
             </div>
             
             <div style="overflow-x: auto;">
@@ -390,7 +389,6 @@
                             <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
                             <td>
                                 <div class="actions">
-                                    <a href="/admin/users/{{ user.id }}" class="btn btn-primary btn-sm">👁️ View</a>
                                     
                                     {% if user.id != current_user.id %}
                                         {% if user.is_active %}

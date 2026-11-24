@@ -432,18 +432,20 @@ async def admin_users(request: Request, user=Depends(require_admin)):
         raise HTTPException(status_code=500, detail="Failed to load admin users page")
 
 
+# #649: the Create User and User Details pages crash (500) because their
+# templates call get_flashed_messages(with_categories=...), and DB-backed users
+# cannot log in anyway (#650) until the multi-user work in v2.0. Redirect both
+# to the admin dashboard so nobody lands on an error page or creates accounts
+# that cannot sign in. Remove these redirects when multi-user ships.
+MULTI_USER_DISABLED_REDIRECT = "/admin"
+
+
 @frontend_router.get(
     "/admin/users/create", response_class=HTMLResponse, name="admin_create_user"
 )
 async def admin_create_user(request: Request, user=Depends(require_admin)):
-    """Admin create user page"""
-    try:
-        return await template_routes.admin_create_user(request)
-    except Exception as e:
-        logger.error(f"Error rendering admin create user page: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to load admin create user page"
-        )
+    """Disabled until multi-user support (v2.0): redirect to the admin dashboard"""
+    return RedirectResponse(MULTI_USER_DISABLED_REDIRECT, status_code=302)
 
 
 @frontend_router.get(
@@ -452,20 +454,8 @@ async def admin_create_user(request: Request, user=Depends(require_admin)):
 async def admin_user_details(
     request: Request, user_id: int = Path(...), admin_user=Depends(require_admin)
 ):
-    """Admin user details page"""
-    try:
-        context = {
-            "page_title": f"User Details - {user_id}",
-            "page_description": f"Manage user {user_id}",
-            "user_id": user_id,
-            "admin_only": True,
-        }
-        return await template_system.render_response(
-            "admin/user_details.html", request, context
-        )
-    except Exception as e:
-        logger.error(f"Error rendering admin user details page: {e}")
-        raise HTTPException(status_code=500, detail="Failed to load user details page")
+    """Disabled until multi-user support (v2.0): redirect to the admin dashboard"""
+    return RedirectResponse(MULTI_USER_DISABLED_REDIRECT, status_code=302)
 
 
 # =====================================
