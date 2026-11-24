@@ -130,6 +130,27 @@ class ScheduledTaskBase(Task):
             logger.error(f"Failed to update ScheduledJob on retry: {e}")
 
 
+@celery_app.task(name="src.tasks.scheduled_tasks.scheduler_tick_task")
+def scheduler_tick_task() -> Dict[str, Any]:
+    """Dispatch whichever scheduled jobs the SAVED settings say are due (#631).
+
+    Beat fires this every few minutes. It is deliberately not a ScheduledTaskBase
+    task: a no-op tick must not write a ScheduledJob row every five minutes.
+    """
+    from src.services.schedule_gate import due_jobs
+
+    dispatched: List[str] = []
+    errors: List[str] = []
+    for task_name in due_jobs():
+        try:
+            celery_app.send_task(task_name, queue="scheduler")
+            dispatched.append(task_name)
+        except Exception as e:  # one failed dispatch must not block the others
+            logger.error(f"Scheduler tick: could not dispatch {task_name}: {e}")
+            errors.append(f"{task_name}: {e}")
+    return {"success": not errors, "dispatched": dispatched, "errors": errors}
+
+
 @celery_app.task(
     base=ScheduledTaskBase, name="src.tasks.scheduled_tasks.scheduled_discovery_task"
 )

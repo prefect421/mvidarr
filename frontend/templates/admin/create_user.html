@@ -325,6 +325,7 @@
         </div>
     </div>
 
+    <script src="/static/js/html-escape.js"></script>
     <script>
         // Role descriptions
         const roleDescriptions = {
@@ -379,9 +380,9 @@
             
             if (description) {
                 descriptionDiv.innerHTML = `
-                    <strong>${description.title}:</strong>
+                    <strong>${escapeHtml(description.title)}:</strong>
                     <ul>
-                        ${description.permissions.map(p => `<li>${p}</li>`).join('')}
+                        ${description.permissions.map(p => `<li>${escapeHtml(p)}</li>`).join('')}
                     </ul>
                 `;
             }

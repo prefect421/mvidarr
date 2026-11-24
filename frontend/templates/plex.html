@@ -841,10 +841,10 @@ function displayArtists(artists, container) {
         artistEl.className = 'artist-item';
         artistEl.innerHTML = `
             <div class="artist-thumbnail">
-                ${artist.title ? artist.title[0].toUpperCase() : '?'}
+                ${artist.title ? escapeHtml(artist.title[0].toUpperCase()) : '?'}
             </div>
             <div class="artist-info">
-                <div class="artist-name">${artist.title || 'Unknown Artist'}</div>
+                <div class="artist-name">${escapeHtml(artist.title || 'Unknown Artist')}</div>
                 <div class="artist-stats">
                     ${artist.view_count ? `${artist.view_count} plays` : 'No plays'}
                     ${artist.added_at ? ` • Added ${new Date(parseInt(artist.added_at) * 1000).toLocaleDateString()}` : ''}
@@ -866,7 +866,7 @@ function displayTracks(tracks, container) {
                 🎵
             </div>
             <div class="track-info">
-                <div class="track-name">${track.title || 'Unknown Track'}</div>
+                <div class="track-name">${escapeHtml(track.title || 'Unknown Track')}</div>
                 <div class="track-artist">by ${track.artist || 'Unknown Artist'}</div>
                 <div class="track-stats">
                     ${track.view_count ? `${track.view_count} plays` : 'No plays'}

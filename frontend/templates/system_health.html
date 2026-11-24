@@ -441,7 +441,7 @@ function updateDiskStatus(disk) {
         if (!info.exists) continue;
         const color = info.critical ? 'danger' : info.warning ? 'warning' : 'success';
         html += `<div class="mb-2">
-            <small><strong>${path.split('/').pop() || 'root'}:</strong></small>
+            <small><strong>${escapeHtml(path.split('/').pop() || 'root')}:</strong></small>
             <div class="progress">
                 <div class="progress-bar bg-${color}" role="progressbar"
                      style="width: ${info.percent_used}%"
@@ -553,12 +553,6 @@ function refreshHealthData() {
 }
 
 // Escape HTML to prevent XSS
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     refreshHealthData();

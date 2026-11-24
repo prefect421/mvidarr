@@ -666,7 +666,7 @@ function populateEventTypesSelector(containerId) {
         checkboxDiv.className = 'event-checkbox';
         checkboxDiv.innerHTML = `
             <input type="checkbox" id="${containerId}_${eventType.value}" value="${eventType.value}">
-            <label for="${containerId}_${eventType.value}">${eventType.name}</label>
+            <label for="${containerId}_${eventType.value}">${escapeHtml(eventType.name)}</label>
         `;
         container.appendChild(checkboxDiv);
     });
@@ -701,21 +701,6 @@ function loadWebhooks() {
 // text/attribute content (e.g. webhook.url, which is stored verbatim --
 // see WebhookEndpointRequest.url in src/api/fastapi/webhooks.py -- and
 // could otherwise carry a stored-XSS payload).
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Same as escapeHtml, but also escapes single quotes. Use this wherever
-// a value is interpolated inside a single-quoted JS string literal that
-// itself sits inside a double-quoted HTML attribute, e.g.
-// onclick="fn('${escapeHtmlAttr(value)}')" -- escapeHtml alone leaves a
-// bare `'` free to break out of the JS string literal.
-function escapeHtmlAttr(text) {
-    return escapeHtml(text).replace(/'/g, '&#39;');
-}
-
 function displayWebhooks(webhooks) {
     const container = document.getElementById('webhooksList');
     container.innerHTML = '';
@@ -742,8 +727,8 @@ function displayWebhooks(webhooks) {
                 <span>${webhook.enabled ? 'Enabled' : 'Disabled'}</span>
             </div>
             <div class="webhook-actions">
-                <button onclick="editWebhook('${escapeHtmlAttr(webhook.url)}')" class="btn btn-sm btn-primary">Edit</button>
-                <button onclick="deleteWebhook('${escapeHtmlAttr(webhook.url)}')" class="btn btn-sm btn-danger">Delete</button>
+                <button onclick="editWebhook(${escapeJsArg(webhook.url)})" class="btn btn-sm btn-primary">Edit</button>
+                <button onclick="deleteWebhook(${escapeJsArg(webhook.url)})" class="btn btn-sm btn-danger">Delete</button>
             </div>
         `;
         container.appendChild(webhookDiv);

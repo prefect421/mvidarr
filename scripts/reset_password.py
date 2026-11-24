@@ -13,8 +13,11 @@ Usage:
 
 import argparse
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Tuple
+
+from werkzeug.security import generate_password_hash
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -27,6 +30,9 @@ from src.utils.logger import get_logger
 
 logger = get_logger("mvidarr.reset_password_script")
 
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_BYTES = 72  # bcrypt silently truncates beyond this
+
 
 def reset_user_password(session, username: str, new_password: str) -> Tuple[bool, str]:
     """
@@ -35,7 +41,7 @@ def reset_user_password(session, username: str, new_password: str) -> Tuple[bool
     Args:
         session: SQLAlchemy session
         username: Username of the account to reset
-        new_password: New plaintext password (validated for strength before hashing)
+        new_password: New plaintext password (same rule as login: 8+ characters)
 
     Returns:
         (success, message)
@@ -44,11 +50,21 @@ def reset_user_password(session, username: str, new_password: str) -> Tuple[bool
     if not user:
         return False, f"User '{username}' not found"
 
-    try:
-        user.set_password(new_password)
-    except ValueError as e:
-        return False, str(e)
+    # Same rule as the login form and the setup wizard (SimpleAuthService):
+    # 8+ characters. Do NOT go through User.set_password(): its PasswordValidator
+    # additionally demands upper/lower/digit/special, so a recovery tool built on
+    # it refuses passwords the login box itself accepts (#623).
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        return False, f"Password must be at least {MIN_PASSWORD_LENGTH} characters long"
+    if len(new_password.encode("utf-8")) > MAX_PASSWORD_BYTES:
+        return (
+            False,
+            f"Password must be at most {MAX_PASSWORD_BYTES} bytes "
+            f"(longer passwords cannot be stored safely)",
+        )
 
+    user.password_hash = generate_password_hash(new_password)
+    user.password_changed_at = datetime.utcnow()
     session.commit()
 
     # The users table is NOT what the login form authenticates against.

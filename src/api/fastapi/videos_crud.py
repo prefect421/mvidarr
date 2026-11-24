@@ -16,6 +16,7 @@ Authentication: All endpoints require session-based authentication via get_curre
 """
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -36,6 +37,7 @@ from src.api.fastapi.videos_models import (
 )
 from src.database.connection import get_db_session
 from src.database.models import Artist, Video, VideoBlacklist, VideoStatus
+from src.services.video_file_mover import move_video_to_artist_folder, restore_moves
 from src.utils.logger import get_logger
 
 # Router with NO prefix - prefix will be added by parent router
@@ -247,6 +249,7 @@ async def get_video(
             quality=getattr(video, "quality", None),
             video_metadata=getattr(video, "video_metadata", None),
             lyrics=getattr(video, "lyrics", None),
+            description=getattr(video, "description", None),
             year=getattr(video, "year", None),
             release_date=getattr(video, "release_date", None),
             album=getattr(video, "album", None),
@@ -257,6 +260,18 @@ async def get_video(
     except Exception as e:
         logger.error(f"Error getting video {video_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+_YOUTUBE_URL_ID = re.compile(
+    r"(?:youtube\.com/(?:watch\?(?:[^#]*&)?v=|embed/|shorts/|live/)|youtu\.be/)"
+    r"([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])"
+)
+
+
+def _youtube_id_from_url(url: str):
+    """The 11-character video ID in a YouTube URL, or None for anything else."""
+    m = _YOUTUBE_URL_ID.search(url or "")
+    return m.group(1) if m else None
 
 
 @router.put("/{video_id}", response_model=VideoResponse)
@@ -303,6 +318,32 @@ async def update_video(
 
         # Update fields if provided
         update_fields = update_data.dict(exclude_unset=True)
+        move_file = bool(update_fields.pop("move_file", False))
+        video_url = (update_fields.pop("video_url", None) or "").strip()
+        old_artist_id = video.artist_id
+
+        # "Video URL": store it, and for a YouTube URL keep youtube_id/youtube_url
+        # in step (this is the UI's only way to correct a wrong YouTube ID).
+        if video_url:
+            update_fields["url"] = video_url
+            new_yt_id = _youtube_id_from_url(video_url)
+            if new_yt_id and new_yt_id != video.youtube_id:
+                owner = (
+                    session.query(Video.id)
+                    .filter(Video.youtube_id == new_yt_id, Video.id != video_id)
+                    .first()
+                )
+                if owner:
+                    session.rollback()
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Another video (id {owner[0]}) already uses YouTube ID {new_yt_id}",
+                    )
+                update_fields["youtube_id"] = new_yt_id
+                update_fields["youtube_url"] = (
+                    f"https://www.youtube.com/watch?v={new_yt_id}"
+                )
+                update_fields["url"] = update_fields["youtube_url"]
 
         # Handle artist_name - find or create artist and set artist_id
         if "artist_name" in update_fields:
@@ -331,6 +372,9 @@ async def update_video(
             "duration",
             "description",
             "genres",
+            "year",
+            "album",
+            "url",
             "artist_id",
             "release_date",
             "video_type",
@@ -352,7 +396,26 @@ async def update_video(
             setattr(video, field, value)
 
         video.updated_at = datetime.utcnow()
-        session.commit()
+
+        # "Move file to artist folder if needed": only when the artist changed.
+        moved = None
+        if move_file and video.artist_id != old_artist_id:
+            new_artist = session.get(Artist, video.artist_id)
+            if new_artist is not None:
+                session.flush()
+                moved = move_video_to_artist_folder(session, video, new_artist.name)
+                if moved["error"]:
+                    session.rollback()
+                    raise HTTPException(status_code=409, detail=moved["error"])
+
+        try:
+            session.commit()
+        except Exception:
+            # the files already moved must not be left behind a rolled-back DB
+            session.rollback()
+            if moved and moved["moved"]:
+                restore_moves(moved["done"])
+            raise
 
         # Reload with artist relationship
         session.refresh(video)
@@ -390,6 +453,7 @@ async def update_video(
             quality=getattr(video, "quality", None),
             video_metadata=getattr(video, "video_metadata", None),
             lyrics=getattr(video, "lyrics", None),
+            description=getattr(video, "description", None),
             year=getattr(video, "year", None),
             release_date=getattr(video, "release_date", None),
             album=getattr(video, "album", None),

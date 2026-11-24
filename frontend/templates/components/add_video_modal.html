@@ -578,7 +578,7 @@ function displayModalSearchResults(results) {
                             <button class="btn btn-primary btn-small add-to-library-btn" 
                                     data-source="${video.source}" 
                                     data-video-id="${video.id}" 
-                                    data-title="${video.title}" 
+                                    data-title="${escapeHtml(video.title)}" 
                                     data-artist="${video.artist}" 
                                     data-url="${video.url}">
                                 ➕ Add to Library

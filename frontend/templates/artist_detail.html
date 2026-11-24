@@ -2964,6 +2964,18 @@ div.artist-header-actions button.btn iconify-icon {
                                 <input type="url" id="spotifyUrlSetting" name="spotify_url">
                                 <small class="field-hint">Spotify artist page</small>
                             </div>
+
+                            <div class="setting-group">
+                                <label for="lastfmNameSetting">Last.fm Name:</label>
+                                <input type="text" id="lastfmNameSetting" name="lastfm_name" maxlength="255" autocomplete="off">
+                                <small class="field-hint">Exact artist name on Last.fm. Wrong match? Fix it here, or clear it to re-match from the artist's name (renaming the artist also resets it). Save, then run Auto-match.</small>
+                            </div>
+
+                            <div class="setting-group">
+                                <label for="musicbrainzIdSetting">MusicBrainz ID:</label>
+                                <input type="text" id="musicbrainzIdSetting" name="musicbrainz_id" maxlength="100" autocomplete="off">
+                                <small class="field-hint">MusicBrainz artist ID (UUID). Clear it to re-match.</small>
+                            </div>
                             
                             <div class="setting-group">
                                 <label for="youtubeUrlSetting">YouTube URL:</label>
@@ -3626,10 +3638,10 @@ function renderArtistHeader(artist, statistics) {
     const headerHtml = `
         <div class="artist-header-content">
             <div class="artist-thumbnail-large">
-                <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" alt="${artist.name}" onerror="handleThumbnailError(this)">
+                <img src="/api/artists/${artist.id}/thumbnail?t=${Date.now()}" alt="${escapeHtml(artist.name)}" onerror="handleThumbnailError(this)">
             </div>
             <div class="artist-header-info">
-                <h1>${artist.name}</h1>
+                <h1>${escapeHtml(artist.name)}</h1>
                 <div class="artist-header-stats">
                     <div class="stats-left">
                         <span class="header-stat">${statistics.total_videos} videos</span>
@@ -3994,8 +4006,8 @@ function renderSpotifyRecommendations(data) {
             
             html += `
                 <li class="song-item">
-                    <a href="${searchUrl}" class="song-title" title="Search for ${track.name}">
-                        ${track.name}
+                    <a href="${searchUrl}" class="song-title" title="Search for ${escapeHtml(track.name)}">
+                        ${escapeHtml(track.name)}
                     </a>
                 </li>
             `;
@@ -4020,8 +4032,8 @@ function renderSpotifyRecommendations(data) {
             const searchUrl = `/discover?q=${encodeURIComponent(artist.name)}`;
             html += `
                 <li class="artist-item">
-                    <a href="${searchUrl}" class="artist-name" title="Search for ${artist.name}">
-                        ${artist.name}
+                    <a href="${searchUrl}" class="artist-name" title="Search for ${escapeHtml(artist.name)}">
+                        ${escapeHtml(artist.name)}
                     </a>
                 </li>
             `;
@@ -4365,11 +4377,11 @@ function renderExternalServices(artist, metadata) {
         <div class="service-item-new">
             <strong>
                 <a href="javascript:void(0)" onclick="${service.searchFunction}()" class="service-name-link" style="color: var(--text-accent, #00d4ff); text-decoration: none; font-weight: bold;">
-                    ${service.name}
+                    ${escapeHtml(service.name)}
                 </a>:
             </strong>
             <span class="service-id" style="margin-left: 5px; color: ${service.connected ? 'var(--success-color, #4CAF50)' : 'var(--text-muted, #888)'};">
-                ${service.connected ? (service.serviceId || 'Connected') : 'Not Linked'}
+                ${service.connected ? escapeHtml(service.serviceId || 'Connected') : 'Not Linked'}
             </span>
             <br>
         </div>
@@ -4554,7 +4566,7 @@ function renderRecentActivity(artist) {
         activityItems.map(item => `
             <div class="activity-item">
                 <span class="activity-type">${item.type}</span>
-                <span class="activity-description">${item.description}</span>
+                <span class="activity-description">${escapeHtml(item.description)}</span>
                 <span class="activity-time">${item.time}</span>
             </div>
         `).join('') :
@@ -4568,7 +4580,7 @@ function createMetadataItem(label, value, fullWidth = false) {
     if (!value) return '';
     return `
         <div class="metadata-item ${fullWidth ? 'full-width' : ''}">
-            <span class="metadata-label">${label}:</span>
+            <span class="metadata-label">${escapeHtml(label)}:</span>
             <span class="metadata-value">${value}</span>
         </div>
     `;
@@ -4877,7 +4889,7 @@ function displayQualityAnalysisModal(analysis) {
                                         <span class="suggestion-action">${suggestion.action}</span>
                                         <span class="priority-badge priority-${suggestion.priority}">${suggestion.priority}</span>
                                     </div>
-                                    <p class="suggestion-description">${suggestion.description}</p>
+                                    <p class="suggestion-description">${escapeHtml(suggestion.description)}</p>
                                     <p class="suggestion-benefit"><strong>Benefit:</strong> ${suggestion.benefit}</p>
                                 </div>
                             `).join('')}
@@ -5120,11 +5132,11 @@ function renderVideosTab(videos) {
             <input type="checkbox" class="video-select" onchange="toggleVideoSelection(${video.id})" onclick="event.stopPropagation()">
             <div class="selection-indicator"></div>
             <div class="video-thumbnail">
-                <img src="/api/videos/${video.id}/thumbnail" alt="${video.title}" onerror="handleVideoThumbnailError(this)">
+                <img src="/api/videos/${video.id}/thumbnail" alt="${escapeHtml(video.title)}" onerror="handleVideoThumbnailError(this)">
                 <div class="video-status status-${video.status ? video.status.toLowerCase() : 'unknown'}">${video.status || 'Unknown'}</div>
             </div>
             <div class="video-info">
-                <h4>${video.title}</h4>
+                <h4>${escapeHtml(video.title)}</h4>
                 <div class="video-metadata">
                     ${video.year ? `<span class="video-year">${video.year}</span>` : ''}
                     ${video.duration ? `<span class="video-duration">${formatDuration(video.duration)}</span>` : ''}
@@ -5147,7 +5159,7 @@ function renderVideosTab(videos) {
                         type="button"
                         class="btn btn-icon btn-danger delete-video-btn" 
                         data-video-id="${video.id}" 
-                        data-video-title="${(video.title || 'Unknown Video').replace(/"/g, '&quot;')}" 
+                        data-video-title="${escapeHtml(video.title || 'Unknown Video')}" 
                         data-youtube-id="${video.youtube_id || ''}" 
                         title="Delete Video">
                         <iconify-icon icon="tabler:trash"></iconify-icon>
@@ -5329,7 +5341,7 @@ function renderDiscoverResults(data) {
                 ` : ''}
 
                 <div class="discovered-video-thumbnail">
-                    <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${video.title}" data-fallback-src="/static/placeholder-video.png">
+                    <img src="${video.thumbnail_url || '/static/placeholder-video.png'}" alt="${escapeHtml(video.title)}" data-fallback-src="/static/placeholder-video.png">
                     <div class="video-badges">
                         <div class="source-badge source-${video.source || 'youtube'}">${(video.source || 'youtube').toUpperCase()}</div>
                         ${video.already_exists ? `<div class="exists-badge">Exists (${video.existing_status || 'Unknown'})</div>` : ''}
@@ -5341,36 +5353,36 @@ function renderDiscoverResults(data) {
                 </div>
                 
                 <div class="discovered-video-info">
-                    <h5>${video.title}</h5>
+                    <h5>${escapeHtml(video.title)}</h5>
                     <div class="discovered-video-metadata">
-                        ${video.artist_name ? '<span class="meta-artist">🎤 ' + video.artist_name + '</span>' : ''}
-                        ${video.source === 'youtube' && (video.channel_title || video.channel) ? '<span class="meta-channel">📺 ' + (video.channel_title || video.channel) + '</span>' : ''}
+                        ${video.artist_name ? '<span class="meta-artist">🎤 ' + escapeHtml(video.artist_name) + '</span>' : ''}
+                        ${video.source === 'youtube' && (video.channel_title || video.channel) ? '<span class="meta-channel">📺 ' + escapeHtml(video.channel_title || video.channel) + '</span>' : ''}
                         ${video.year ? '<span class="meta-year">📅 ' + video.year + '</span>' : ''}
                         ${video.source === 'youtube' && video.view_count ? '<span class="meta-views">👁️ ' + formatNumber(video.view_count) + ' views</span>' : ''}
                         ${video.source === 'youtube' && video.like_count ? '<span class="meta-likes">👍 ' + formatNumber(video.like_count) + '</span>' : ''}
                         ${video.source === 'youtube' && video.published_at ? '<span class="meta-published">📅 ' + new Date(video.published_at).toLocaleDateString() + '</span>' : ''}
                         ${video.source !== 'youtube' && video.directors ? '<span class="meta-directors">🎥 ' + formatDirectorList(video.directors) + '</span>' : ''}
                         ${video.source !== 'youtube' && video.producers ? '<span class="meta-producers">🎤 ' + formatProducerList(video.producers) + '</span>' : ''}
-                        ${video.source !== 'youtube' && video.album ? '<span class="meta-album">💿 ' + video.album + '</span>' : ''}
-                        ${video.source !== 'youtube' && video.genre ? '<span class="meta-genre">🎵 ' + video.genre + '</span>' : ''}
+                        ${video.source !== 'youtube' && video.album ? '<span class="meta-album">💿 ' + escapeHtml(video.album) + '</span>' : ''}
+                        ${video.source !== 'youtube' && video.genre ? '<span class="meta-genre">🎵 ' + escapeHtml(video.genre) + '</span>' : ''}
                         ${video.duration ? '<span class="meta-duration">⏱️ ' + formatDuration(video.duration) + '</span>' : ''}
                     </div>
                     
                     ${video.description ? `
                         <div class="discovered-video-description">
-                            ${video.description.substring(0, 100)}${video.description.length > 100 ? '...' : ''}
+                            ${escapeHtml(video.description.substring(0, 100))}${video.description.length > 100 ? '...' : ''}
                         </div>
                     ` : ''}
                     
                     <div class="discovered-video-actions">
                         ${!video.already_exists && !video.imported ? `
-                            <button onclick="importSingleVideo('${video.youtube_id}', 'youtube', this)" class="btn btn-small btn-primary" data-video-data="${btoa(unescape(encodeURIComponent(JSON.stringify(video))))}" data-debug-source="${video.source || 'youtube'}" data-debug-youtube="${video.youtube_id || 'none'}">🚀 Import</button>
+                            <button onclick="importSingleVideo(${escapeJsArg(video.youtube_id)}, 'youtube', this)" class="btn btn-small btn-primary" data-video-data="${btoa(unescape(encodeURIComponent(JSON.stringify(video))))}" data-debug-source="${video.source || 'youtube'}" data-debug-youtube="${video.youtube_id || 'none'}">🚀 Import</button>
                         ` : ''}
                         ${video.already_exists && video.existing_video_id ? `
                             <button onclick="viewVideoDetails(${video.existing_video_id})" class="btn btn-small btn-info">🔍 View Details</button>
                         ` : ''}
                         ${video.source === 'youtube' && video.youtube_url ? `
-                            <button onclick="window.open('${video.youtube_url}', '_blank')" class="btn btn-small btn-secondary">▶️ YouTube</button>
+                            <button onclick="window.open(${escapeJsArg(video.youtube_url)}, '_blank')" class="btn btn-small btn-secondary">▶️ YouTube</button>
                         ` : ''}
                     </div>
                 </div>
@@ -5565,18 +5577,18 @@ function showVideoEditModal(video) {
         <div id="videoEditModal" class="modal-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 9999;">
             <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
                 <div class="modal-header">
-                    <h2>Edit Video: ${video.title}</h2>
+                    <h2>Edit Video: ${escapeHtml(video.title)}</h2>
                     <button onclick="closeVideoEditModal()" style="float: right; background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
                         <label>Title:</label>
-                        <input type="text" id="editVideoTitle" value="${video.title}" style="width: 100%; padding: 8px; margin: 5px 0;">
+                        <input type="text" id="editVideoTitle" value="${escapeHtml(video.title)}" style="width: 100%; padding: 8px; margin: 5px 0;">
                     </div>
                     <div class="form-group">
                         <label>Artist Name:</label>
                         <div class="artist-input-container" style="display: flex; align-items: center; position: relative;">
-                            <input type="text" id="editVideoArtist" value="${video.artist_name || ''}" style="width: 100%; padding: 8px; margin: 5px 0;">
+                            <input type="text" id="editVideoArtist" value="${escapeHtml(video.artist_name || '')}" style="width: 100%; padding: 8px; margin: 5px 0;">
                             <button type="button" id="identifyArtistBtn" onclick="identifyArtistInModal()" style="margin-left: 10px; padding: 6px 12px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">
                                 🔍 Identify Artist
                             </button>
@@ -5703,7 +5715,7 @@ function displayArtistSuggestionsInModal(data) {
     data.suggestions.forEach(suggestion => {
         const confidencePercent = Math.round(suggestion.confidence * 100);
         suggestionsHtml += `
-            <div class="artist-suggestion" onclick="selectArtistInModal('${suggestion.artist.replace(/'/g, "\\'")}', ${suggestion.artist_id})" 
+            <div class="artist-suggestion" onclick="selectArtistInModal(${escapeJsArg(suggestion.artist)}, ${suggestion.artist_id})" 
                  style="padding: 10px; border-bottom: 1px solid #555; cursor: pointer; color: white;">
                 <strong>${suggestion.artist}</strong>
                 <span style="float: right; color: #888; font-size: 0.9em;">${confidencePercent}% match</span>
@@ -5770,7 +5782,7 @@ function showThumbnailSelectionModal(thumbnails, videoId) {
                 <div class="modal-body">
                     <div class="thumbnail-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
                         ${thumbnails.map((thumb, index) => `
-                            <div class="thumbnail-option" style="border: 2px solid #ddd; border-radius: 8px; padding: 10px; cursor: pointer; text-align: center;" onclick="selectThumbnail('${thumb.url}', ${videoId}, ${index})">
+                            <div class="thumbnail-option" style="border: 2px solid #ddd; border-radius: 8px; padding: 10px; cursor: pointer; text-align: center;" onclick="selectThumbnail(${escapeJsArg(thumb.url)}, ${videoId}, ${index})">
                                 <img src="${thumb.url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px;" onerror="this.style.display='none'">
                                 <div style="margin-top: 8px; font-size: 12px;">
                                     <div><strong>Source:</strong> ${thumb.source}</div>
@@ -6772,6 +6784,8 @@ function populateSettings(artist) {
     // External Links - check both direct artist fields and enriched metadata
     document.getElementById('websiteUrlSetting').value = artist.website_url || metadata.website_url || '';
     document.getElementById('spotifyUrlSetting').value = artist.spotify_url || metadata.spotify_url || '';
+    document.getElementById('lastfmNameSetting').value = artist.lastfm_name || '';
+    document.getElementById('musicbrainzIdSetting').value = artist.musicbrainz_id || '';
     document.getElementById('youtubeUrlSetting').value = artist.youtube_url || metadata.youtube_url || '';
     document.getElementById('appleMusicUrlSetting').value = artist.apple_music_url || metadata.apple_music_url || '';
     document.getElementById('twitterUrlSetting').value = artist.twitter_url || metadata.twitter_url || '';
@@ -6854,6 +6868,15 @@ function saveArtistSettings() {
         allowed_video_types: Array.from(document.querySelectorAll('.video-type-checkbox:checked')).map(cb => cb.value)
     };
     
+    // Match IDs are sent only when the user changed them: always sending the stored
+    // value would override the automatic "renaming the artist resets its Last.fm
+    // match" rule on the server (#640). A blank value clears the match.
+    const storedArtist = (currentArtistData && currentArtistData.artist) || {};
+    ['lastfm_name', 'musicbrainz_id'].forEach(key => {
+        const value = (formData.get(key) || '').trim();
+        if (value !== (storedArtist[key] || '')) settings[key] = value;
+    });
+
     fetch(`/api/artists/${currentArtistId}`, {
         method: 'PUT',
         headers: {
@@ -7492,7 +7515,7 @@ function renderGlobalQueue(queue) {
     const queueHtml = queue.map(item => `
         <div class="global-queue-item">
             <div class="queue-item-info">
-                <h5>${item.title || item.url}</h5>
+                <h5>${escapeHtml(item.title || item.url)}</h5>
                 <div class="queue-item-metadata">
                     <span class="queue-status status-${item.status}">${item.status}</span>
                     ${item.progress !== undefined ? `<span class="queue-progress">${item.progress}%</span>` : ''}
@@ -7664,10 +7687,10 @@ function loadVideoPreview() {
     const previewHtml = selectedVideoData.map(video => `
         <div class="video-preview-item">
             <div class="preview-thumbnail">
-                <img src="/api/videos/${video.id}/thumbnail" alt="${video.title}" onerror="handleVideoThumbnailError(this)">
+                <img src="/api/videos/${video.id}/thumbnail" alt="${escapeHtml(video.title)}" onerror="handleVideoThumbnailError(this)">
             </div>
             <div class="preview-metadata">
-                <h4>${video.title}</h4>
+                <h4>${escapeHtml(video.title)}</h4>
                 <div class="metadata-grid">
                     <div class="metadata-item">
                         <span class="metadata-label">Status:</span>
@@ -7706,7 +7729,7 @@ function loadVideoPreview() {
                     ${video.local_path ? `
                         <div class="metadata-item">
                             <span class="metadata-label">File Path:</span>
-                            <span class="metadata-value">${video.local_path}</span>
+                            <span class="metadata-value">${escapeHtml(video.local_path)}</span>
                         </div>
                     ` : ''}
                     ${video.created_at ? `
@@ -7718,7 +7741,7 @@ function loadVideoPreview() {
                     ${video.description ? `
                         <div class="metadata-item full-width">
                             <span class="metadata-label">Description:</span>
-                            <span class="metadata-value">${video.description.substring(0, 200)}${video.description.length > 200 ? '...' : ''}</span>
+                            <span class="metadata-value">${escapeHtml(video.description.substring(0, 200))}${video.description.length > 200 ? '...' : ''}</span>
                         </div>
                     ` : ''}
                 </div>
@@ -8020,7 +8043,7 @@ function renderDependencyAnalysis(analysis) {
             <div class="breakdown-section">
                 <h5>🔗 External References</h5>
                 <ul>
-                    ${analysis.references.map(ref => `<li>${ref.type}: ${ref.description}</li>`).join('')}
+                    ${analysis.references.map(ref => `<li>${escapeHtml(ref.type)}: ${escapeHtml(ref.description)}</li>`).join('')}
                 </ul>
             </div>
         `;
@@ -8149,7 +8172,7 @@ function updateNavigationUI() {
     if (navigationData.prev_artist) {
         prevBtn.disabled = false;
         prevBtn.title = `Previous: ${navigationData.prev_artist.name}`;
-        prevBtn.innerHTML = `<span>←</span> ${navigationData.prev_artist.name}`;
+        prevBtn.innerHTML = `<span>←</span> ${escapeHtml(navigationData.prev_artist.name)}`;
     } else {
         prevBtn.disabled = true;
         prevBtn.title = 'No previous artist';
@@ -8160,7 +8183,7 @@ function updateNavigationUI() {
     if (navigationData.next_artist) {
         nextBtn.disabled = false;
         nextBtn.title = `Next: ${navigationData.next_artist.name}`;
-        nextBtn.innerHTML = `${navigationData.next_artist.name} <span>→</span>`;
+        nextBtn.innerHTML = `${escapeHtml(navigationData.next_artist.name)} <span>→</span>`;
     } else {
         nextBtn.disabled = true;
         nextBtn.title = 'No next artist';
@@ -8416,7 +8439,7 @@ function renderQueueVisualization(queue) {
                          data-priority="${item.priority}" 
                          style="left: ${(index * 2)}%; width: ${Math.max(1.5, (100 - index * 2) / queue.length)}%;">
                         <div class="timeline-content priority-${getPriorityLevel(item.priority)}">
-                            <div class="timeline-title">${item.title.substring(0, 30)}${item.title.length > 30 ? '...' : ''}</div>
+                            <div class="timeline-title">${escapeHtml(item.title.substring(0, 30))}${item.title.length > 30 ? '...' : ''}</div>
                             <div class="timeline-meta">
                                 <span class="priority">P${item.priority}</span>
                                 <span class="position">#${index + 1}</span>
@@ -9820,7 +9843,7 @@ async function loadPlaylistsIntoSelect() {
         if (data.playlists && data.playlists.length > 0) {
             playlistSelect.innerHTML = '<option value="">Select a playlist...</option>' +
                 data.playlists.map(playlist => 
-                    `<option value="${playlist.id}">${playlist.name} (${playlist.video_count || 0} videos)</option>`
+                    `<option value="${playlist.id}">${escapeHtml(playlist.name)} (${playlist.video_count || 0} videos)</option>`
                 ).join('');
         } else {
             playlistSelect.innerHTML = '<option value="">No playlists available</option>';

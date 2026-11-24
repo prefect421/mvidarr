@@ -1260,9 +1260,9 @@ input:checked + .slider:before {
             </div>
 
             <div class="form-group" id="download_time_group">
-                <label for="auto_download_schedule_time">Schedule Time:</label>
+                <label for="auto_download_schedule_time">Schedule Time (UTC):</label>
                 <input type="time" id="auto_download_schedule_time" name="auto_download_schedule_time" title="Time to run downloads (only applies to daily/weekly)">
-                <small class="form-hint">Only used for daily and weekly schedules</small>
+                <small class="form-hint">Only used for daily and weekly schedules. Times are UTC; changes apply within about 5 minutes.</small>
             </div>
 
             <div class="form-group">
@@ -1293,8 +1293,9 @@ input:checked + .slider:before {
             </div>
 
             <div class="form-group">
-                <label for="auto_discovery_schedule_time">Discovery Time:</label>
-                <input type="time" id="auto_discovery_schedule_time" name="auto_discovery_schedule_time" value="06:00" title="Time to run video discovery">
+                <label for="auto_discovery_schedule_time">Discovery Time (UTC):</label>
+                <input type="time" id="auto_discovery_schedule_time" name="auto_discovery_schedule_time" value="06:00" title="Time to run video discovery (UTC)">
+                <small class="form-hint">Times are UTC; changes apply within about 5 minutes.</small>
             </div>
 
             <div class="form-group">
@@ -2627,8 +2628,8 @@ function displayUpgradeableVideos(videos) {
                         <label class="upgrade-checkbox">
                             <input type="checkbox" class="upgrade-video-check" value="${video.video_id}">
                             <div class="upgrade-info">
-                                <div class="upgrade-title">${video.title}</div>
-                                <div class="upgrade-artist">${video.artist_name || 'Unknown Artist'}</div>
+                                <div class="upgrade-title">${escapeHtml(video.title)}</div>
+                                <div class="upgrade-artist">${escapeHtml(video.artist_name || 'Unknown Artist')}</div>
                                 <div class="upgrade-details">
                                     <span class="current-quality">${video.current_quality || 'Unknown'}</span>
                                     →
@@ -3378,7 +3379,7 @@ function displaySchedulerV2Status(statusDiv, data) {
 
                     statusHTML += `
                         <div class="schedule-item" style="padding: 4px 0; border-bottom: 1px solid var(--border-color);">
-                            <strong>${name}:</strong> ${scheduleDisplay}
+                            <strong>${escapeHtml(name)}:</strong> ${scheduleDisplay}
                         </div>
                     `;
                 }
@@ -3726,7 +3727,7 @@ function viewEnhancedSchedulerConfig() {
         let schedulesHTML = '<div><strong>Active Schedules:</strong></div><div style="margin-left: 20px;">';
         for (const [name, schedule] of Object.entries(schedules)) {
             schedulesHTML += `
-                <div><strong>${name}:</strong></div>
+                <div><strong>${escapeHtml(name)}:</strong></div>
                 <div style="margin-left: 15px;">
                     <div>Schedule: ${schedule.schedule}</div>
                     <div>Task: ${schedule.task}</div>
@@ -4126,7 +4127,7 @@ function renderUserList(users) {
             <div class="user-item ${statusClass}">
                 <div class="user-info">
                     <div class="user-primary">
-                        <strong>${user.username}</strong>
+                        <strong>${escapeHtml(user.username)}</strong>
                         <span class="role-badge role-${user.role.toLowerCase()}">${user.role}</span>
                         ${twoFactorStatus}
                         ${lockedStatus}
@@ -4679,7 +4680,7 @@ function showEditUserModal(user) {
         <div class="modal-overlay" id="editUserModal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Edit User: ${user.username}</h3>
+                    <h3>Edit User: ${escapeHtml(user.username)}</h3>
                     <button onclick="closeModal('editUserModal')" class="btn-close">✕</button>
                 </div>
                 <div class="modal-body">
@@ -4860,7 +4861,7 @@ function showTwoFactorSetupData(setupData) {
             <p>If you can't scan the QR code, enter this key manually:</p>
             <div class="manual-key">
                 <code>${setupData.manual_entry_key}</code>
-                <button onclick="copyToClipboard('${setupData.manual_entry_key}')" class="btn btn-sm btn-secondary">Copy</button>
+                <button onclick="copyToClipboard(${escapeJsArg(setupData.manual_entry_key)})" class="btn btn-sm btn-secondary">Copy</button>
             </div>
             
             <h4>Step 3: Verify Setup</h4>
@@ -7571,32 +7572,32 @@ function renderThemesGrid() {
     }
 
     grid.innerHTML = allThemes.map(theme => `
-        <div class="theme-card ${theme.is_applied ? 'applied' : ''}" data-theme-id="${theme.id || theme.name}">
+        <div class="theme-card ${theme.is_applied ? 'applied' : ''}" data-theme-id="${escapeHtml(theme.id || theme.name)}">
             <div class="theme-preview-mini">
                 <div class="preview-bg" style="background: ${theme.theme_data?.['--bg-primary'] || '#1a1a1a'};">
                     <div class="preview-accent" style="background: ${theme.theme_data?.['--text-accent'] || '#4a9eff'};"></div>
                 </div>
             </div>
             <div class="theme-info">
-                <h4 class="theme-title">${theme.display_name || theme.name}</h4>
-                <p class="theme-description">${theme.description || 'No description available'}</p>
+                <h4 class="theme-title">${escapeHtml(theme.display_name || theme.name)}</h4>
+                <p class="theme-description">${escapeHtml(theme.description || 'No description available')}</p>
                 <div class="theme-meta">
                     ${theme.is_built_in ? '<span class="theme-badge built-in">Built-in</span>' : ''}
                     ${theme.is_public ? '<span class="theme-badge public">Public</span>' : ''}
                 </div>
             </div>
             <div class="theme-actions">
-                <button onclick="event.preventDefault(); event.stopPropagation(); quickApplyTheme('${theme.id || theme.name}'); return false;" class="btn btn-sm btn-success" type="button">
+                <button onclick="event.preventDefault(); event.stopPropagation(); quickApplyTheme(${escapeJsArg(theme.id || theme.name)}); return false;" class="btn btn-sm btn-success" type="button">
                     Apply
                 </button>
-                <button onclick="event.preventDefault(); event.stopPropagation(); selectTheme('${theme.id || theme.name}'); return false;" class="btn btn-sm btn-primary" type="button">
+                <button onclick="event.preventDefault(); event.stopPropagation(); selectTheme(${escapeJsArg(theme.id || theme.name)}); return false;" class="btn btn-sm btn-primary" type="button">
                     Customize
                 </button>
                 ${!theme.is_built_in ? `
-                    <button onclick="event.preventDefault(); event.stopPropagation(); editTheme('${theme.id || theme.name}'); return false;" class="btn btn-sm btn-secondary" type="button" title="Edit Theme">
+                    <button onclick="event.preventDefault(); event.stopPropagation(); editTheme(${escapeJsArg(theme.id || theme.name)}); return false;" class="btn btn-sm btn-secondary" type="button" title="Edit Theme">
                         <iconify-icon icon="tabler:edit"></iconify-icon>
                     </button>
-                    <button onclick="event.preventDefault(); event.stopPropagation(); deleteTheme('${theme.id || theme.name}', '${theme.display_name}'); return false;" class="btn btn-sm btn-danger" type="button" title="Delete Theme">
+                    <button onclick="event.preventDefault(); event.stopPropagation(); deleteTheme(${escapeJsArg(theme.id || theme.name)}, ${escapeJsArg(theme.display_name)}); return false;" class="btn btn-sm btn-danger" type="button" title="Delete Theme">
                         <iconify-icon icon="tabler:trash"></iconify-icon>
                     </button>
                 ` : ''}
@@ -7611,13 +7612,13 @@ function loadCustomizeThemeGrid() {
     if (!grid || allThemes.length === 0) return;
     
     grid.innerHTML = allThemes.map(theme => `
-        <div class="customize-theme-card" data-theme-id="${theme.id || theme.name}" onclick="selectTheme('${theme.id || theme.name}')">
+        <div class="customize-theme-card" data-theme-id="${escapeHtml(theme.id || theme.name)}" onclick="selectTheme(${escapeJsArg(theme.id || theme.name)})">
             <div class="theme-preview-mini">
                 <div class="preview-bg" style="background: ${theme.theme_data?.['--bg-primary'] || '#1a1a1a'};">
                     <div class="preview-accent" style="background: ${theme.theme_data?.['--text-accent'] || '#4a9eff'};"></div>
                 </div>
             </div>
-            <span class="theme-name">${theme.display_name || theme.name}</span>
+            <span class="theme-name">${escapeHtml(theme.display_name || theme.name)}</span>
         </div>
     `).join('');
 }
@@ -8545,12 +8546,12 @@ function displayBlacklist(blacklistEntries) {
                     <iconify-icon icon="tabler:external-link" class="external-icon"></iconify-icon>
                 </a>
             </td>
-            <td>${entry.title || '<span class="text-muted">Not specified</span>'}</td>
-            <td>${entry.artist_name || '<span class="text-muted">Not specified</span>'}</td>
+            <td>${escapeHtml(entry.title || '<span class="text-muted">Not specified</span>')}</td>
+            <td>${escapeHtml(entry.artist_name || '<span class="text-muted">Not specified</span>')}</td>
             <td>${formatDate(entry.blacklisted_at || entry.created_at)}</td>
             <td>${entry.blacklisted_by_username || '<span class="text-muted">Unknown</span>'}</td>
             <td>
-                <button onclick="removeFromBlacklist('${escapeHtml(entry.youtube_url)}', '${escapeHtml(entry.title || '')}', '${escapeHtml(entry.artist_name || '')}')"
+                <button onclick="removeFromBlacklist(${escapeJsArg(entry.youtube_url)}, ${escapeJsArg(entry.title || '')}, ${escapeJsArg(entry.artist_name || '')})"
                         class="btn btn-danger btn-sm" title="Remove from blacklist">
                     <iconify-icon icon="tabler:trash"></iconify-icon>
                     Remove
@@ -8736,12 +8737,6 @@ function truncateUrl(url) {
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 // Modal Management
@@ -9253,7 +9248,7 @@ function handleFolderSelection() {
         const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
         return `<div style="padding: 0.25rem 0; border-bottom: 1px solid var(--border-secondary, #444);">
             <iconify-icon icon="mdi:file-video" style="margin-right: 0.5rem;"></iconify-icon>
-            ${file.name} <span style="color: var(--text-secondary);">(${sizeMB} MB)</span>
+            ${escapeHtml(file.name)} <span style="color: var(--text-secondary);">(${sizeMB} MB)</span>
         </div>`;
     }).join('');
 
@@ -9439,8 +9434,8 @@ async function browseServerDirectory(path) {
 
             return `
                 <div
-                    onclick="${isReadable ? `selectServerImportDirectory('${entry.path.replace(/'/g, "\\'")}', '${entry.name.replace(/'/g, "\\'")}')` : ''}"
-                    ondblclick="${isReadable ? `browseServerDirectory('${entry.path.replace(/'/g, "\\'")}')` : ''}"
+                    onclick="${isReadable ? `selectServerImportDirectory(${escapeJsArg(entry.path)}, ${escapeJsArg(entry.name)})` : ''}"
+                    ondblclick="${isReadable ? `browseServerDirectory(${escapeJsArg(entry.path)})` : ''}"
                     style="
                         display: flex;
                         align-items: center;
@@ -9460,7 +9455,7 @@ async function browseServerDirectory(path) {
                     <iconify-icon icon="mdi:folder" style="font-size: 1.5rem; margin-right: 0.75rem; color: var(--accent-color, #00d4ff);"></iconify-icon>
                     <div style="flex: 1;">
                         <div style="font-weight: 500; color: var(--text-primary);">
-                            ${entry.name}
+                            ${escapeHtml(entry.name)}
                             ${videoBadge}
                         </div>
                         ${!isReadable ? '<div style="font-size: 0.85rem; color: var(--danger-color);">No read permission</div>' : ''}

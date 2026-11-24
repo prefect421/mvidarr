@@ -1021,7 +1021,7 @@ function renderCandidates(candidates) {
         return `
             <div class="candidate-item" data-candidate-id="${candidate.id}">
                 <div class="candidate-info">
-                    <div class="candidate-name">${candidate.name}</div>
+                    <div class="candidate-name">${escapeHtml(candidate.name)}</div>
                     <div class="candidate-details">
                         <span>Missing IDs: ${(candidate.missing_external_ids || []).join(', ') || 'None'}</span>
                         <span>Enrichment: ${candidate.has_enriched_metadata ? 'Enriched ✓' : 'Needs enrichment'}</span>
@@ -1132,7 +1132,7 @@ function renderQualityMetrics(report) {
     
     const metricsHtml = metrics.map(metric => `
         <div class="quality-metric">
-            <span class="metric-label">${metric.label}</span>
+            <span class="metric-label">${escapeHtml(metric.label)}</span>
             <div style="display: flex; align-items: center;">
                 <span class="metric-value">${metric.value.toFixed(1)}%</span>
                 <div class="metric-bar">
@@ -1203,8 +1203,8 @@ function renderRecentActivity(activities) {
                 <iconify-icon icon="${activity.icon}"></iconify-icon>
             </div>
             <div class="activity-content">
-                <div class="activity-title">${activity.title}</div>
-                <div class="activity-description">${activity.description}</div>
+                <div class="activity-title">${escapeHtml(activity.title)}</div>
+                <div class="activity-description">${escapeHtml(activity.description)}</div>
                 <div class="activity-time">${activity.time}</div>
             </div>
         </div>
@@ -1309,7 +1309,7 @@ function renderDuplicates(duplicates) {
                             <iconify-icon icon="tabler:bolt"></iconify-icon>
                             Auto Merge
                          </button>` : ''}
-                    <button onclick="showMergeModal(${duplicate.artist1_id}, ${duplicate.artist2_id}, '${duplicate.artist1_name}', '${duplicate.artist2_name}')" 
+                    <button onclick="showMergeModal(${duplicate.artist1_id}, ${duplicate.artist2_id}, ${escapeJsArg(duplicate.artist1_name)}, ${escapeJsArg(duplicate.artist2_name)})" 
                             class="btn btn-warning btn-sm">
                         <iconify-icon icon="tabler:git-merge"></iconify-icon>
                         Manual Merge

@@ -232,12 +232,12 @@ function displayBlacklist(blacklistEntries) {
                     <iconify-icon icon="tabler:external-link" class="external-icon"></iconify-icon>
                 </a>
             </td>
-            <td>${entry.title || '<span class="text-muted">Not specified</span>'}</td>
-            <td>${entry.artist_name || '<span class="text-muted">Not specified</span>'}</td>
+            <td>${escapeHtml(entry.title || '<span class="text-muted">Not specified</span>')}</td>
+            <td>${escapeHtml(entry.artist_name || '<span class="text-muted">Not specified</span>')}</td>
             <td>${formatDate(entry.blacklisted_at)}</td>
             <td>${entry.blacklisted_by_username || '<span class="text-muted">Unknown</span>'}</td>
             <td>
-                <button onclick="removeFromBlacklist('${encodeURIComponent(entry.youtube_url)}', '${escapeHtml(entry.title || '')}', '${escapeHtml(entry.artist_name || '')}')" 
+                <button onclick="removeFromBlacklist(${escapeJsArg(encodeURIComponent(entry.youtube_url))}, ${escapeJsArg(entry.title || '')}, ${escapeJsArg(entry.artist_name || '')})" 
                         class="btn btn-danger btn-sm" title="Remove from blacklist">
                     <iconify-icon icon="tabler:trash"></iconify-icon>
                     Remove
@@ -453,12 +453,6 @@ function truncateUrl(url) {
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 // Toast notifications (assuming these exist in base.html)

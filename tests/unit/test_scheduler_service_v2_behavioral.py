@@ -128,81 +128,85 @@ class TestStartStop:
 
 
 class TestGetCurrentSchedules:
-    def test_only_includes_scheduled_and_artist_prefixed_entries(self):
+    """Effective schedules = the saved settings (applied by the scheduler tick,
+    #631) plus beat's remaining fixed artist-* entries. Unrelated celery
+    entries are excluded."""
+
+    def test_reports_effective_job_schedules_and_artist_entries_only(self):
         service = _service()
         service.celery.conf.beat_schedule = {
-            "scheduled-discovery": {"task": "x.discovery", "schedule": "daily"},
             "artist-42-check": {"task": "x.artist_check", "schedule": "weekly"},
+            "scheduler-tick": {"task": "x.tick", "schedule": "5m"},
             "some-unrelated-celery-internal-entry": {
                 "task": "celery.backend_cleanup",
                 "schedule": "hourly",
             },
         }
-        result = service.get_current_schedules()
-        assert set(result.keys()) == {"scheduled-discovery", "artist-42-check"}
+        with patch(
+            "src.services.schedule_gate.rule_for",
+            return_value=(True, object(), "daily at 06:00 UTC"),
+        ):
+            result = service.get_current_schedules()
+        assert set(result.keys()) == {
+            "scheduled-discovery",
+            "scheduled-downloads",
+            "scheduled-playlist-sync",
+            "artist-42-check",
+        }
+        assert result["scheduled-discovery"]["schedule"] == "daily at 06:00 UTC"
 
     def test_returns_empty_dict_on_internal_error_rather_than_raising(self):
         service = _service()
         service.celery.conf.beat_schedule = None  # .items() will raise
-        result = service.get_current_schedules()
+        with patch(
+            "src.services.schedule_gate.rule_for",
+            return_value=(True, object(), "daily at 06:00 UTC"),
+        ):
+            result = service.get_current_schedules()
         assert result == {}
 
 
 class TestUpdateScheduleFromSettings:
-    def test_adds_a_discovery_entry_when_enabled(self):
-        service = _service()
-        with patch(
-            "src.services.scheduler_service_v2.SettingsService"
-        ) as mock_settings:
-            mock_settings.get_bool.side_effect = lambda key, default: {
-                "auto_discovery_schedule_enabled": True,
-                "auto_download_schedule_enabled": False,
-            }.get(key, default)
-            mock_settings.get.side_effect = lambda key, default: {
-                "auto_discovery_schedule_time": "06:00",
-                "auto_discovery_schedule_days": "daily",
-            }.get(key, default)
+    """update_schedule_from_settings() used to edit beat_schedule in the WEB
+    process's memory, which beat (a separate program) never saw (#631). It now
+    reports the effective schedules; the scheduler tick applies them."""
 
+    def _gate(self, enabled_by_job, rule_by_job=None):
+        def rule_for(spec):
+            ok = enabled_by_job.get(spec.key, True)
+            rule = (rule_by_job or {}).get(spec.key, object())
+            return ok, rule, f"{spec.key} schedule"
+
+        return patch("src.services.schedule_gate.rule_for", side_effect=rule_for)
+
+    def test_reports_discovery_enabled_and_downloads_disabled(self):
+        service = _service()
+        with self._gate({"discovery": True, "downloads": False}):
             result = service.update_schedule_from_settings()
 
-        assert "scheduled-discovery" in result["schedules"]
-        assert "scheduled-downloads" not in result["schedules"]
-        assert "scheduled-discovery" in service.celery.conf.beat_schedule
+        assert result["schedules"]["scheduled-discovery"]["enabled"] is True
+        assert result["schedules"]["scheduled-downloads"]["enabled"] is False
+        # the web process's beat_schedule is NOT the schedule and is left alone
+        assert service.celery.conf.beat_schedule == {}
 
-    def test_skips_both_entries_when_both_disabled(self):
+    def test_both_disabled_are_reported_disabled(self):
         service = _service()
-        with patch(
-            "src.services.scheduler_service_v2.SettingsService"
-        ) as mock_settings:
-            mock_settings.get_bool.return_value = False
-            mock_settings.get.return_value = "06:00"
-
-            result = service.update_schedule_from_settings()
-
-        assert result["schedules_updated"] == 0
-        assert result["schedules"] == {}
-
-    def test_an_unparseable_schedule_is_silently_skipped_not_an_error(self):
-        # frequency "not-a-real-frequency" -> _parse_schedule() returns
-        # None -> the entry is skipped, but the overall call still
-        # succeeds (status "updated", not "error").
-        service = _service()
-        with patch(
-            "src.services.scheduler_service_v2.SettingsService"
-        ) as mock_settings:
-            mock_settings.get_bool.side_effect = lambda key, default: {
-                "auto_discovery_schedule_enabled": True,
-                "auto_download_schedule_enabled": False,
-            }.get(key, default)
-            mock_settings.get.side_effect = lambda key, default: {
-                "auto_discovery_schedule_time": "06:00",
-                "auto_discovery_schedule_days": "not-a-real-frequency",
-            }.get(key, default)
-
+        with self._gate({"discovery": False, "downloads": False}):
             result = service.update_schedule_from_settings()
 
         assert result["status"] == "updated"
-        assert result["schedules_updated"] == 0
+        assert not result["schedules"]["scheduled-discovery"]["enabled"]
+        assert not result["schedules"]["scheduled-downloads"]["enabled"]
+
+    def test_an_unparseable_schedule_is_reported_disabled_not_an_error(self):
+        # rule None == "not-a-real-frequency": the job never runs, the call
+        # still succeeds, and the UI can show it as not scheduled.
+        service = _service()
+        with self._gate({}, rule_by_job={"discovery": None}):
+            result = service.update_schedule_from_settings()
+
+        assert result["status"] == "updated"
+        assert result["schedules"]["scheduled-discovery"]["enabled"] is False
 
 
 class TestCheckCeleryConnection:

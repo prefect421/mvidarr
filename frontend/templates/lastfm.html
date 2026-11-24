@@ -1015,7 +1015,7 @@ function displayArtists(artists, container) {
         artistEl.innerHTML = `
             <div class="artist-rank">#${artist.rank || index + 1}</div>
             <div class="artist-info">
-                <div class="artist-name">${artist.name}</div>
+                <div class="artist-name">${escapeHtml(artist.name)}</div>
                 <div class="artist-stats">
                     <span class="playcount">${artist.playcount.toLocaleString()}</span> plays
                     ${artist.listeners ? ` • ${artist.listeners.toLocaleString()} listeners` : ''}
@@ -1045,7 +1045,7 @@ function displayTracks(tracks, container, showDate = false) {
         trackEl.innerHTML = `
             <div class="track-rank">#${track.rank || index + 1}</div>
             <div class="track-info">
-                <div class="track-name">${track.name}</div>
+                <div class="track-name">${escapeHtml(track.name)}</div>
                 <div class="track-stats">
                     by ${track.artist} ${statsHtml}
                 </div>
@@ -1085,7 +1085,7 @@ function displayStats(stats) {
         artistEl.innerHTML = `
             <div class="artist-rank">#${index + 1}</div>
             <div class="artist-info">
-                <div class="artist-name">${artist.name}</div>
+                <div class="artist-name">${escapeHtml(artist.name)}</div>
                 <div class="artist-stats">
                     <span class="playcount">${artist.count.toLocaleString()}</span> plays
                 </div>

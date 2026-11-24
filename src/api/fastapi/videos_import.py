@@ -88,12 +88,16 @@ async def import_from_youtube(
             thumbnail_source="youtube" if youtube_thumbnail_url(youtube_id) else None,
         )
 
-        # Try to find or create artist
+        # Try to find or create artist. resolved_artist_name is what the download
+        # folder is named after: the *artist*, never the uploading channel the
+        # page sends in `artist` ("... - Topic", label names; #629).
+        resolved_artist_name = None
         if artist_id:
             # Use provided artist_id
             artist_obj = session.query(Artist).filter(Artist.id == artist_id).first()
             if artist_obj:
                 new_video.artist_id = artist_obj.id
+                resolved_artist_name = artist_obj.name
         elif artist:
             # Fall back to finding by artist name
             artist_obj = session.query(Artist).filter(Artist.name == artist).first()
@@ -104,6 +108,7 @@ async def import_from_youtube(
                 session.add(artist_obj)
                 session.flush()  # Get the artist ID
             new_video.artist_id = artist_obj.id
+            resolved_artist_name = artist_obj.name
 
         session.add(new_video)
         try:
@@ -138,7 +143,7 @@ async def import_from_youtube(
 
                 # Trigger download
                 download_result = ytdlp_service.add_music_video_download(
-                    artist=artist or "Unknown Artist",
+                    artist=resolved_artist_name or artist or "Unknown Artist",
                     title=title,
                     url=url,
                     quality="best",
