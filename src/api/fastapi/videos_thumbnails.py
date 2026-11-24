@@ -33,7 +33,7 @@ from src.api.fastapi.auth_dependencies import (
 )
 from src.api.fastapi.videos_models import ThumbnailSearchRequest
 from src.config.config import Config
-from src.database.connection import get_db_session
+from src.database.connection import get_db, get_db_session
 from src.database.models import Video
 from src.services.youtube_service import youtube_service
 from src.utils.logger import get_logger
@@ -72,9 +72,19 @@ async def get_video_thumbnail(
         if not video:
             raise HTTPException(status_code=404, detail="Video not found")
 
+        # Copy what we need, then give the connection back to the pool. This
+        # handler awaits network downloads and streams files; holding a pooled
+        # connection across that starved the pool (30 connections) whenever a
+        # page asked for a few hundred thumbnails at once, which blocked every
+        # other request, including the wizard-status check in the middleware.
+        thumb_path = video.thumbnail_path
+        thumb_url = video.thumbnail_url
+        yt_id = video.youtube_id
+        session.close()
+
         # First, check if video has a thumbnail_path in database
-        if video.thumbnail_path and video.thumbnail_path.strip():
-            thumbnail_file = Path(video.thumbnail_path)
+        if thumb_path and thumb_path.strip():
+            thumbnail_file = Path(thumb_path)
             if thumbnail_file.exists():
                 # Detect media type based on file extension
                 media_type = "image/jpeg"
@@ -90,14 +100,14 @@ async def get_video_thumbnail(
                 )
 
         # Check if video has a thumbnail_url that should be downloaded
-        if video.thumbnail_url and video.thumbnail_url.strip():
+        if thumb_url and thumb_url.strip():
             try:
                 # Download and cache the thumbnail
                 thumbnail_dir = Config.THUMBNAILS_DIR / "videos"
                 thumbnail_dir.mkdir(parents=True, exist_ok=True)
 
                 # Determine file extension from URL
-                parsed_url = urlparse(video.thumbnail_url)
+                parsed_url = urlparse(thumb_url)
                 file_extension = Path(parsed_url.path).suffix.lower()
                 if not file_extension or file_extension not in [
                     ".jpg",
@@ -112,14 +122,13 @@ async def get_video_thumbnail(
                 # Download if not already cached — try YouTube quality fallbacks
                 if not cached_thumbnail.exists():
                     # Build candidate URL list: primary URL first, then YouTube fallbacks
-                    candidate_urls = [video.thumbnail_url]
-                    if video.youtube_id:
-                        yt_id = video.youtube_id
+                    candidate_urls = [thumb_url]
+                    if yt_id:
                         for quality in ("maxresdefault", "hqdefault", "mqdefault"):
                             fallback = (
                                 f"https://img.youtube.com/vi/{yt_id}/{quality}.jpg"
                             )
-                            if fallback != video.thumbnail_url:
+                            if fallback != thumb_url:
                                 candidate_urls.append(fallback)
 
                     async with httpx.AsyncClient() as client:
@@ -137,8 +146,10 @@ async def get_video_thumbnail(
                     raise RuntimeError("All thumbnail URL candidates failed")
 
                 # Update database with cached path
-                video.thumbnail_path = str(cached_thumbnail)
-                session.commit()
+                with get_db() as write_session:
+                    write_session.query(Video).filter(Video.id == video_id).update(
+                        {"thumbnail_path": str(cached_thumbnail)}
+                    )
 
                 # Return the cached file
                 media_type = "image/jpeg"
@@ -155,7 +166,7 @@ async def get_video_thumbnail(
 
             except Exception as e:
                 logger.warning(
-                    f"Failed to download thumbnail from URL {video.thumbnail_url}: {e}"
+                    f"Failed to download thumbnail from URL {thumb_url}: {e}"
                 )
                 # Continue to fallback logic
 
