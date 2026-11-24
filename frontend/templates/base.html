@@ -971,6 +971,12 @@
             gap: 1rem;
         }
         
+        /* Phone-only menu button (#651): the sidebar's own toggle moves
+           off-screen with the sidebar below 768px */
+        .header-menu-toggle {
+            display: none;
+        }
+        
         /* Header Universal Search adjustments */
         .app-header .universal-search-container {
             position: static;
@@ -1222,19 +1228,45 @@
         }
         
         @media (max-width: 768px) {
+            /* One row: menu button | search | user | logout. The header is
+               a fixed 60px high, so it can't wrap onto two rows (#651) */
             .app-header {
-                flex-wrap: wrap;
                 gap: 0.5rem;
                 padding: 0.5rem;
             }
             
+            .header-menu-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex: none;
+                width: 44px;
+                height: 44px;
+                padding: 0;
+                background: none;
+                border: 0;
+                border-radius: 8px;
+                color: inherit; /* like .header-logout-button: follows the theme's header text */
+                font-size: 1.5rem;
+                cursor: pointer;
+            }
+            
+            /* same hover as .header-user-info */
+            .header-menu-toggle:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            body.light-theme .header-menu-toggle:hover {
+                background: rgba(0, 0, 0, 0.1);
+            }
+            
             .header-left {
-                order: 2;
-                flex: 1 1 100%;
+                flex: 1 1 auto;
+                min-width: 0;
             }
             
             .header-right {
-                order: 1;
+                position: static;
                 flex: none;
                 gap: 0.5rem;
             }
@@ -1346,6 +1378,9 @@
 
     <!-- Header Bar -->
     <header class="app-header" id="appHeader">
+        <button type="button" class="header-menu-toggle" id="headerMenuToggle" aria-label="Open menu" aria-controls="sidebar">
+            <iconify-icon icon="tabler:menu-deep"></iconify-icon>
+        </button>
         <div class="header-left">
             <!-- Universal Search Component -->
             <div class="universal-search-container" id="universalSearchContainer">
@@ -1873,6 +1908,13 @@
             sidebarToggle.addEventListener('click', function() {
                 toggleSidebar();
             });
+            
+            // Phone-only header button: the toggle above is off-screen
+            // with the sidebar below 768px (#651)
+            const headerMenuToggle = document.getElementById('headerMenuToggle');
+            if (headerMenuToggle) {
+                headerMenuToggle.addEventListener('click', toggleSidebar);
+            }
             
             // Close sidebar when clicking overlay (mobile)
             sidebarOverlay.addEventListener('click', function() {
