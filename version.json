@@ -1,7 +1,7 @@
 {
   "version": "1.1.9",
-  "build_date": "2026-11-23T18:01:38.832374",
-  "git_commit": "19807557",
+  "build_date": "2026-11-24T13:56:57.343883",
+  "git_commit": "2a2a976f",
   "git_branch": "main",
   "release_name": "v1.1.9 - Bug fixes and frontend XSS hardening (9 issues)",
   "features": [
