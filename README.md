@@ -22,18 +22,19 @@
 - **🔐 User Authentication** - Role-based access control with security features
 - **🎨 Advanced Theme System** - 6 built-in themes with export/import functionality
 
-## 🚀 **LATEST: v1.1.8 - Bug Fixes + PyMySQL Security Fix**
+## 🚀 **LATEST: v1.1.9 - Bug Fixes + Frontend Security Hardening**
 
-**Released**: November 23, 2026
+**Released**: November 24, 2026
 
-- **🐛 13 bug fixes** reported against 1.1.7: concurrent requests no longer share one database session (intermittent 500s on the Videos grid), downloads started from the web UI no longer run twice, discovery honours its interval (it was re-searching YouTube every 30 minutes and burning quota), batch metadata enrichment works, moved-file streaming returns 404 instead of 500, and new-artist enrichment no longer races the commit
-- **🎚️ Quality limits work**: *Maximum Quality Limit* and *Max File Size* now reach yt-dlp (downloads were always "best up to 4K")
-- **🖼️ Thumbnails & titles**: imported YouTube videos get their YouTube thumbnail, stale placeholders no longer stick in the browser, Last.fm track data (album, genres) is used, and YouTube titles are no longer stored HTML-escaped
-- **🔒 Security**: PyMySQL 1.2.4 (upstream security fix; includes server certificate checking when `ssl_verify_identity` is set). pip-audit clean across all requirements files
-- **🧹 Optional cleanup**: `scripts/fix_escaped_titles.py` repairs titles and file names already stored escaped (`Where&#39;s`). **Dry run by default**; back up your database before using `--apply`. See [scripts/README.md](scripts/README.md)
-- **📝 Behind a reverse proxy?** After rebuilding, make sure `TRUSTED_PROXY_HOSTS` is still set for your proxy — otherwise `/videos` fails with "Blocked loading mixed active content". See [Troubleshooting](docs/TROUBLESHOOTING.md).
+- **🔒 Security**: titles, artist names and descriptions are now escaped everywhere they are rendered (a crafted YouTube title could previously inject script into a logged-in session); a CI check blocks new unescaped output
+- **🛡️ Data fixes**: metadata refresh no longer overwrites a video's YouTube ID (#634); playlist sync no longer fails on videos with more than 2.1 billion views (#630); imports and downloads go to the artist's folder (#629)
+- **⏰ Scheduler**: the schedules you set in Settings now take effect within about 5 minutes with no restart (#631); the Playlist Sync Interval setting works; schedule times are **UTC**
+- **⬇️ Downloads**: always merged to MP4 instead of MKV (#633); playlist "Auto-download new videos" uses MVidarr's own downloader (#632)
+- **🖥️ UI**: the Edit Video form saves every field and can move the file to the artist's folder (#635); bulk edit works (#636); MvTV filters work (#628); a wrong Last.fm match can be corrected on the artist page (#640); the Videos page no longer freezes loading many thumbnails
+- **🧹 Optional library repairs** (dry run by default, back up first): `scripts/fix_youtube_ids.py`, `scripts/fix_misfiled_videos.py`, `scripts/remux_mkv_to_mp4.py`. See [scripts/README.md](scripts/README.md)
+- **📝 Behind a reverse proxy?** After rebuilding, make sure `TRUSTED_PROXY_HOSTS` is still set for your proxy. See [Troubleshooting](docs/TROUBLESHOOTING.md).
 
-📜 **[View the full changelog](CHANGELOG.md)** for v1.1.8's complete notes and every earlier release.
+📜 **[View the full changelog](CHANGELOG.md)** for v1.1.9's complete notes and every earlier release.
 
 ## 🚀 Quick Start
 
