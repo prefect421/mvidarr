@@ -13,7 +13,7 @@ pytest-mock==3.17.0
 
 # Code Quality and Formatting
 black==26.10.1  # Security: dev-tool advisory fixed in 26.10.1 (previously CVE-2026-32274 fix)
-flake8==7.3.0
+flake8==7.5.0
 mypy==2.3.1
 bandit==1.9.4
 pip-audit==2.10.1
